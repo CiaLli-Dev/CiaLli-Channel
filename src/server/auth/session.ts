@@ -27,6 +27,9 @@ export type SessionUser = {
 
 type RefreshedTokens = Awaited<ReturnType<typeof directusRefresh>>;
 type DirectusMe = Awaited<ReturnType<typeof directusGetMe>>;
+type JwtPayload = {
+    admin_access?: unknown;
+};
 
 const refreshTaskMap = new Map<string, Promise<RefreshedTokens>>();
 const refreshResultCache = new Map<
@@ -69,8 +72,52 @@ function extractRole(
     return { roleId, roleName };
 }
 
+function decodeBase64Url(value: string): string | null {
+    const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(
+        normalized.length + ((4 - (normalized.length % 4)) % 4),
+        "=",
+    );
+    try {
+        return Buffer.from(padded, "base64").toString("utf8");
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * 从 Access Token 中读取 admin_access claim。
+ * 只信任 Directus token 的布尔语义，避免角色名字符串匹配误判管理员。
+ */
+function readAdminAccessFromToken(accessToken: string): boolean {
+    const payloadSegment = accessToken.split(".")[1];
+    if (!payloadSegment) {
+        return false;
+    }
+    const decoded = decodeBase64Url(payloadSegment);
+    if (!decoded) {
+        return false;
+    }
+    try {
+        const payload = JSON.parse(decoded) as JwtPayload;
+        if (typeof payload.admin_access === "boolean") {
+            return payload.admin_access;
+        }
+        if (typeof payload.admin_access === "string") {
+            return payload.admin_access.toLowerCase() === "true";
+        }
+        if (typeof payload.admin_access === "number") {
+            return payload.admin_access === 1;
+        }
+        return false;
+    } catch {
+        return false;
+    }
+}
+
 function buildSessionUser(
     me: DirectusMe,
+    accessToken: string,
     fallbackUser?: AppUser | null,
 ): SessionUser | null {
     const id = String(me.id || fallbackUser?.id || "").trim();
@@ -94,7 +141,7 @@ function buildSessionUser(
               })
             : undefined;
     const { roleId, roleName } = extractRole(me.role, fallbackUser?.role);
-    const isSystemAdmin = roleName?.toLowerCase().includes("admin") || false;
+    const isSystemAdmin = readAdminAccessFromToken(accessToken);
 
     return {
         id,
@@ -179,7 +226,7 @@ async function loadUserByAccessToken(
     try {
         const me = await directusGetMe({ accessToken });
         const fallbackUser = me.id ? await loadDirectusUserById(me.id) : null;
-        return buildSessionUser(me, fallbackUser);
+        return buildSessionUser(me, accessToken, fallbackUser);
     } catch (error) {
         const isAuthError =
             error instanceof DirectusAuthError &&

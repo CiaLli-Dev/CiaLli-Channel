@@ -207,6 +207,25 @@ export async function ensureAppIdentity(
         permissions = normalizePermissions(created);
     }
 
+    // 系统管理员必须在应用层保持 admin 角色，避免双因子判定出现角色漂移。
+    if (user.isSystemAdmin && permissions.app_role !== "admin") {
+        if (permissions.id) {
+            const synced = await updateOne(
+                "app_user_permissions",
+                permissions.id,
+                {
+                    app_role: "admin",
+                },
+            );
+            permissions = normalizePermissions(synced);
+        } else {
+            permissions = {
+                ...permissions,
+                app_role: "admin",
+            };
+        }
+    }
+
     return { profile, permissions };
 }
 
@@ -218,7 +237,7 @@ export async function getAppAccessContext(
         user,
         profile,
         permissions,
-        isAdmin: user.isSystemAdmin || permissions.app_role === "admin",
+        isAdmin: user.isSystemAdmin && permissions.app_role === "admin",
     };
 }
 
