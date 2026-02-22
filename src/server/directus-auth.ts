@@ -46,10 +46,13 @@ export const DIRECTUS_REFRESH_COOKIE_NAME = "cialli_directus_refresh";
 export const REMEMBER_COOKIE_NAME = "cialli_remember";
 
 function resolveCookieSecure(requestUrl?: URL): boolean {
+    if (import.meta.env.PROD) {
+        return true;
+    }
     if (requestUrl) {
         return requestUrl.protocol === "https:";
     }
-    return import.meta.env.PROD;
+    return false;
 }
 
 function clampCookieMaxAge(value: number): number {
@@ -483,13 +486,19 @@ export function pickPublicUserInfo(me: DirectusMe): PublicUserInfo {
 }
 
 export function getClientIp(headers: Headers): string {
-    const forwarded = headers.get("x-forwarded-for") || "";
-    if (forwarded) {
-        return forwarded.split(",")[0]?.trim() || "unknown";
+    const vercelForwarded = headers.get("x-vercel-forwarded-for");
+    if (vercelForwarded) {
+        return vercelForwarded.split(",")[0]?.trim() || "unknown";
     }
-    return (
-        headers.get("x-real-ip") || headers.get("cf-connecting-ip") || "unknown"
-    );
+    const cloudflare = headers.get("cf-connecting-ip");
+    if (cloudflare) {
+        return cloudflare.trim();
+    }
+    const realIp = headers.get("x-real-ip");
+    if (realIp) {
+        return realIp.trim();
+    }
+    return "unknown";
 }
 
 type RateLimitRecord = { count: number; resetAt: number };

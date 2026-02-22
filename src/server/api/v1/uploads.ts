@@ -9,12 +9,17 @@ import {
     uploadDirectusFile,
     updateDirectusFileMetadata,
 } from "@/server/directus/client";
+import { getClientIp } from "@/server/directus-auth";
 import { fail, ok } from "@/server/api/response";
 import {
     validateFileMagicBytes,
     validateImageDimensions,
 } from "@/server/security/file-validation";
 import { sanitizeImage } from "@/server/security/image-sanitize";
+import {
+    applyRateLimit,
+    rateLimitResponse,
+} from "@/server/security/rate-limit";
 
 import { requireAccess } from "./shared";
 
@@ -74,6 +79,11 @@ export async function handleUploads(context: APIContext): Promise<Response> {
         assertCan(access, "can_upload_files");
         ownerUserId = access.user.id;
     } else {
+        const ip = getClientIp(context.request.headers);
+        const rateResult = await applyRateLimit(ip, "upload");
+        if (!rateResult.ok) {
+            return rateLimitResponse(rateResult);
+        }
         const sessionUser = await getSessionUser(context);
         ownerUserId = sessionUser?.id || null;
     }

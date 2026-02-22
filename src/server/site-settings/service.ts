@@ -96,6 +96,46 @@ function isSafeNavigationUrl(url: string, allowHash = false): boolean {
     return /^https?:\/\//.test(url);
 }
 
+const PRIVATE_IP_PATTERNS = [
+    /^127\./,
+    /^10\./,
+    /^172\.(1[6-9]|2\d|3[01])\./,
+    /^192\.168\./,
+    /^169\.254\./,
+    /^0\.0\.0\.0$/,
+];
+
+const BLOCKED_HOSTNAMES = new Set([
+    "localhost",
+    "[::1]",
+    "metadata.google.internal",
+]);
+
+function isSafeExternalUrl(url: string): boolean {
+    if (!url) {
+        return false;
+    }
+    if (!/^https:\/\//.test(url)) {
+        return false;
+    }
+    let parsed: URL;
+    try {
+        parsed = new URL(url);
+    } catch {
+        return false;
+    }
+    const hostname = parsed.hostname.toLowerCase();
+    if (BLOCKED_HOSTNAMES.has(hostname)) {
+        return false;
+    }
+    for (const pattern of PRIVATE_IP_PATTERNS) {
+        if (pattern.test(hostname)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 function normalizeAssetPath(
     input: string,
     fallback: string,
@@ -319,7 +359,7 @@ function normalizeSettings(
         enable: Boolean(
             merged.banner.imageApi?.enable ?? base.banner.imageApi?.enable,
         ),
-        url: isSafeNavigationUrl(imageApiUrl)
+        url: isSafeExternalUrl(imageApiUrl)
             ? imageApiUrl
             : String(base.banner.imageApi?.url ?? "").trim(),
     };

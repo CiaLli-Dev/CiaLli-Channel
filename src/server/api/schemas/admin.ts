@@ -51,7 +51,7 @@ export type AdminUpdateUserInput = z.infer<typeof AdminUpdateUserSchema>;
 // ── 管理员重置密码 ──
 
 export const AdminResetPasswordSchema = z.object({
-    new_password: z.string().min(1, "新密码不能为空"),
+    new_password: z.string().min(8, "密码至少 8 位").max(20, "密码不能超过 20 位"),
 });
 
 export type AdminResetPasswordInput = z.infer<typeof AdminResetPasswordSchema>;

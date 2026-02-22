@@ -47,11 +47,6 @@ function resolveTrustedClientIp(headers: Headers): string {
         return realIp.trim();
     }
 
-    const forwarded = headers.get("x-forwarded-for");
-    if (forwarded) {
-        return forwarded.split(",")[0]?.trim() || "unknown";
-    }
-
     return "unknown";
 }
 

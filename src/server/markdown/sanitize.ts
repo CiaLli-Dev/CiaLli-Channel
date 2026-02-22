@@ -110,7 +110,7 @@ export function sanitizeMarkdownHtml(
         allowedSchemes: ["http", "https", "mailto", "tel"],
         allowedSchemesByTag: resolveAllowedSchemesByTag(options),
         allowedStyles: ALLOWED_STYLES,
-        allowProtocolRelative: true,
+        allowProtocolRelative: false,
         transformTags: {
             a: (tagName, attribs) => {
                 const output = { ...attribs };

@@ -46,7 +46,10 @@ export const VisibilityPatchSchema = z
 
 export const SocialLinkSchema = z.object({
     platform: z.string().min(1).max(50),
-    url: z.string().max(500),
+    url: z.string().max(500).refine(
+        (val) => /^https?:\/\//.test(val) || /^mailto:/.test(val),
+        { message: "链接仅支持 http/https/mailto 协议" },
+    ),
     enabled: z.boolean().default(true),
 });
 

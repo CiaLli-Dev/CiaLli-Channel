@@ -15,6 +15,11 @@ import {
     setRegistrationRequestCookie,
 } from "@/server/auth/registration-request-cookie";
 import { badRequest, conflict, forbidden, notFound } from "@/server/api/errors";
+import { getClientIp } from "@/server/directus-auth";
+import {
+    applyRateLimit,
+    rateLimitResponse,
+} from "@/server/security/rate-limit";
 
 import { parseRouteId } from "../shared";
 
@@ -378,6 +383,12 @@ export async function handlePublicRegistrationCheck(
     }
     if (context.request.method !== "GET") {
         return fail("方法不允许", 405);
+    }
+
+    const ip = getClientIp(context.request.headers);
+    const rateResult = await applyRateLimit(ip, "auth");
+    if (!rateResult.ok) {
+        return rateLimitResponse(rateResult);
     }
 
     assertRegisterEnabled(context);
