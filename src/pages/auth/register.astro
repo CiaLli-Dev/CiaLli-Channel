@@ -728,6 +728,43 @@ const registerI18n = {
     let defaultAvatarPreviewSrc = "";
     let registerI18n: Record<string, string> = {};
 
+    type ProgressTaskHandle = number;
+    type ProgressTaskPayload = Record<string, unknown>;
+    type ProgressTaskStartPayload = ProgressTaskPayload & {
+      delayMs?: number;
+    };
+
+    type RegisterPageMessageTone = "normal" | "error" | "success";
+    type FieldHintTone = "default" | "error" | "success" | "loading";
+
+    type RegisterErrorPayload = {
+      error?: {
+        code?: string;
+        message?: string;
+      };
+    };
+
+    type ReapplyDraftPayload = {
+      email: string;
+      username: string;
+      displayName: string;
+      reason: string;
+      avatarFileId: string;
+      avatarUrl: string;
+    };
+
+    type ReapplyDraftInput =
+      | {
+          email?: string | null;
+          username?: string | null;
+          displayName?: string | null;
+          reason?: string | null;
+          avatarFileId?: string | null;
+          avatarUrl?: string | null;
+        }
+      | null
+      | undefined;
+
     function readPageConfig() {
       const el = document.getElementById("register-page-config");
       if (el) {
@@ -752,7 +789,7 @@ const registerI18n = {
       return window.__CIALLI_PROGRESS_OVERLAY__;
     }
 
-    function startOverlayTask(options) {
+    function startOverlayTask(options: ProgressTaskStartPayload) {
       const progressOverlay = getProgressOverlay();
       if (!progressOverlay) return null;
       return progressOverlay.startTask({
@@ -761,13 +798,16 @@ const registerI18n = {
       });
     }
 
-    function updateOverlayTask(handle, stage) {
+    function updateOverlayTask(
+      handle: ProgressTaskHandle | null,
+      stage: ProgressTaskPayload,
+    ) {
       const progressOverlay = getProgressOverlay();
       if (!progressOverlay || typeof handle !== "number") return;
       progressOverlay.updateTask(handle, stage);
     }
 
-    function finishOverlayTask(handle) {
+    function finishOverlayTask(handle: ProgressTaskHandle | null) {
       const progressOverlay = getProgressOverlay();
       if (!progressOverlay || typeof handle !== "number") return;
       progressOverlay.finishTask(handle);
@@ -801,7 +841,10 @@ const registerI18n = {
       );
     }
 
-    function setPageMessage(message, tone = "normal") {
+    function setPageMessage(
+      message: string,
+      tone: RegisterPageMessageTone = "normal",
+    ) {
       const messageEl = document.getElementById("register-message");
       if (!messageEl) {
         return;
@@ -820,7 +863,11 @@ const registerI18n = {
       messageEl.textContent = message;
     }
 
-    function setFieldHint(element, message, tone = "default") {
+    function setFieldHint(
+      element: Element | null,
+      message: string,
+      tone: FieldHintTone = "default",
+    ) {
       if (!element) {
         return;
       }
@@ -884,7 +931,7 @@ const registerI18n = {
       return data;
     }
 
-    function buildAssetUrl(fileId) {
+    function buildAssetUrl(fileId: string) {
       const normalized = String(fileId || "").trim();
       if (!normalized) {
         return "";
@@ -892,14 +939,14 @@ const registerI18n = {
       return `/api/v1/public/assets/${encodeURIComponent(normalized)}?width=160&height=160&fit=cover`;
     }
 
-    function toSafeFileLabel(value) {
+    function toSafeFileLabel(value: string) {
       return String(value || "")
         .trim()
         .replace(/[\\/:*?"<>|]/g, "-")
         .replace(/\s+/g, " ");
     }
 
-    function resolveRegisterError(data) {
+    function resolveRegisterError(data: RegisterErrorPayload | null): string {
       const error = data?.error;
       const code = String(error?.code || "");
       if (code === "REGISTER_DISABLED") {
@@ -935,9 +982,9 @@ const registerI18n = {
       return String(error?.message || registerI18n.submitFailed);
     }
 
-    function persistReapplyDraft(draft) {
+    function persistReapplyDraft(draft: ReapplyDraftInput) {
       try {
-        const payload = {
+        const payload: ReapplyDraftPayload = {
           email: String(draft?.email || "").trim(),
           username: String(draft?.username || "").trim(),
           displayName: String(draft?.displayName || "").trim(),
@@ -963,7 +1010,7 @@ const registerI18n = {
       }
     }
 
-    function consumeReapplyDraft() {
+    function consumeReapplyDraft(): ReapplyDraftPayload | null {
       try {
         const raw = window.sessionStorage.getItem(REAPPLY_DRAFT_STORAGE_KEY);
         if (!raw) {
@@ -1087,7 +1134,7 @@ const registerI18n = {
       }
       form.setAttribute(DATA_BOUND, "1");
 
-      const setAvatarPreviewSrc = (input) => {
+      const setAvatarPreviewSrc = (input: string) => {
         const next = String(input || "").trim() || DEFAULT_AVATAR_SRC;
         avatarPreviewEl.dataset.fallbackApplied = "0";
         avatarPreviewEl.src = next;
@@ -1125,7 +1172,8 @@ const registerI18n = {
       let cropPointerX = 0;
       let cropPointerY = 0;
 
-      const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+      const clamp = (value: number, min: number, max: number): number =>
+        Math.min(max, Math.max(min, value));
 
       const revokePendingAvatarPreviewUrl = () => {
         if (!pendingAvatarPreviewUrl) {
@@ -1267,7 +1315,7 @@ const registerI18n = {
         return false;
       };
 
-      const setPasswordVisible = (visible) => {
+      const setPasswordVisible = (visible: boolean) => {
         const nextType = visible ? "text" : "password";
         try {
           passwordEl.type = nextType;
@@ -1353,7 +1401,7 @@ const registerI18n = {
         setPageMessage(registerI18n.reapplyDraftLoaded, "success");
       }
 
-      const setCropMessage = (message) => {
+      const setCropMessage = (message: string) => {
         cropMsg.textContent = String(message || "");
       };
 
@@ -1364,7 +1412,7 @@ const registerI18n = {
           : registerI18n.cropApply;
       };
 
-      const setCropEmptyVisible = (visible) => {
+      const setCropEmptyVisible = (visible: boolean) => {
         cropEmpty.classList.toggle("hidden", !visible);
       };
 
@@ -1446,7 +1494,11 @@ const registerI18n = {
         setCropEmptyVisible(false);
       };
 
-      const setCropScaleFromZoom = (zoomValue, anchorX, anchorY) => {
+      const setCropScaleFromZoom = (
+        zoomValue: number | string,
+        anchorX: number,
+        anchorY: number,
+      ) => {
         if (!cropLoaded || cropViewportSize <= 0) {
           return;
         }
@@ -1470,7 +1522,7 @@ const registerI18n = {
         cropZoomInput.value = String(Math.round(normalizedZoom));
       };
 
-      const loadCropFile = (file) => {
+      const loadCropFile = (file: File | null | undefined) => {
         if (!file) {
           setCropMessage(registerI18n.selectImage);
           return;
@@ -1664,7 +1716,7 @@ const registerI18n = {
         cropOffsetY += deltaY;
         renderCropImage();
       });
-      const releasePointer = (event) => {
+      const releasePointer = (event: PointerEvent) => {
         if (cropPointerId !== event.pointerId) {
           return;
         }
@@ -1934,4 +1986,3 @@ const registerI18n = {
     });
   </script>
 </MainGridLayout>
-

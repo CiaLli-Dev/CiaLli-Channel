@@ -45,9 +45,7 @@ describe("sanitizeMarkdownHtml 样式白名单", () => {
             "https://embed.music.apple.com/album/123456789",
         ];
         for (const src of sources) {
-            const html = sanitizeMarkdownHtml(
-                `<iframe src="${src}"></iframe>`,
-            );
+            const html = sanitizeMarkdownHtml(`<iframe src="${src}"></iframe>`);
             expect(html).toContain(
                 'sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"',
             );
@@ -72,9 +70,7 @@ describe("sanitizeMarkdownHtml 样式白名单", () => {
     });
 
     it("无效 src 的 iframe 使用严格 sandbox", () => {
-        const html = sanitizeMarkdownHtml(
-            '<iframe src="not-a-url"></iframe>',
-        );
+        const html = sanitizeMarkdownHtml('<iframe src="not-a-url"></iframe>');
         expect(html).toContain("<iframe");
         expect(html).toContain("sandbox");
         expect(html).not.toContain("allow-scripts");

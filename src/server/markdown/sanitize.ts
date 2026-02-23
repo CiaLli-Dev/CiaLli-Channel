@@ -204,4 +204,3 @@ export function sanitizeMarkdownHtml(
         nonTextTags: ["script", "style", "textarea", "option"],
     });
 }
-
