@@ -201,20 +201,60 @@ const stats = [
   </div>
 </MainGridLayout>
 
-<script is:inline define:vars={{ siteStartDate }}>
-  function updateDynamicStats() {
+<script is:inline data-astro-rerun define:vars={{ siteStartDate }}>
+  function getRunningDays(startDateText) {
+    const startDate = new Date(startDateText);
+    if (Number.isNaN(startDate.getTime())) {
+      return 0;
+    }
+
     const today = new Date();
-    const startDate = new Date(siteStartDate);
-    const diffTime = Math.abs(today.getTime() - startDate.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    // 统一按自然日计算，避免时分秒与时区导致的偏差
+    const normalizedToday = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
+    const normalizedStartDate = new Date(
+      startDate.getFullYear(),
+      startDate.getMonth(),
+      startDate.getDate(),
+    );
+    const diffDays = Math.floor(
+      (normalizedToday.getTime() - normalizedStartDate.getTime()) /
+        (1000 * 60 * 60 * 24),
+    );
+
+    // 建站日期被误配置到未来时，最小显示为 0
+    return Math.max(0, diffDays);
+  }
+
+  function updateDynamicStats() {
+    const runningDays = getRunningDays(siteStartDate);
 
     document.querySelectorAll('[data-stat-id="running-days"]').forEach((el) => {
-      el.textContent = diffDays.toString();
+      el.textContent = runningDays.toString();
     });
   }
 
-  updateDynamicStats();
-  setInterval(updateDynamicStats, 60 * 60 * 1000);
+  let runningDaysIntervalId = null;
+
+  function initDynamicStats() {
+    updateDynamicStats();
+
+    // 避免在 Astro 局部导航时重复创建定时器
+    if (runningDaysIntervalId !== null) {
+      return;
+    }
+    runningDaysIntervalId = window.setInterval(
+      updateDynamicStats,
+      60 * 60 * 1000,
+    );
+  }
+
+  initDynamicStats();
+  document.addEventListener("astro:page-load", initDynamicStats);
+  document.addEventListener("astro:after-swap", initDynamicStats);
 </script>
 
 <style>
