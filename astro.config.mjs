@@ -29,7 +29,18 @@ export default defineConfig({
     },
 
     output: "static",
-    adapter: vercel(),
+    adapter: vercel({
+        // 启用 Vercel Image Optimization
+        imageService: true,
+        imagesConfig: {
+            sizes: [
+                48, 72, 96, 128, 160, 192, 256, 320, 400, 480, 640, 720, 800,
+                960, 1200, 1536, 1920, 2560,
+            ],
+            formats: ["image/avif", "image/webp"],
+            minimumCacheTTL: 60 * 60 * 24 * 30,
+        },
+    }),
 
     integrations: [
         swup({

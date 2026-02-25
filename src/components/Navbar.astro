@@ -1,6 +1,9 @@
 ---
+import { Image } from "astro:assets";
 import { Icon } from "astro-icon/components";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
+import defaultNavIconImage from "@assets/home/home.png";
+import defaultNavLogoImage from "@assets/home/default-logo.png";
 import { LinkPresets } from "@constants/link-presets";
 import type { LinkPreset } from "@/types/config";
 import { type NavBarLink } from "@/types/config";
@@ -16,7 +19,8 @@ const resolvedSiteSettings =
 const siteSettings = resolvedSiteSettings.settings;
 const navBarConfig = siteSettings.navBar;
 
-const DEFAULT_NAV_ICON = "/assets/home/home.png";
+const DEFAULT_NAV_ICON_PATH = "/assets/home/home.png";
+const DEFAULT_NAV_LOGO_PATH = "/assets/home/default-logo.png";
 
 function resolveAssetSrc(path: string): string {
   if (!path) {
@@ -34,9 +38,15 @@ function resolveAssetSrc(path: string): string {
 const navbarIconSrc =
   siteSettings.navbarTitle?.icon ||
   siteSettings.site.favicon[0]?.src ||
-  DEFAULT_NAV_ICON;
-const navbarLogoSrc =
-  siteSettings.navbarTitle?.logo || "/assets/home/default-logo.png";
+  DEFAULT_NAV_ICON_PATH;
+const navbarLogoSrc = siteSettings.navbarTitle?.logo || DEFAULT_NAV_LOGO_PATH;
+const resolvedNavbarIconSrc = resolveAssetSrc(navbarIconSrc);
+const resolvedNavbarLogoSrc = resolveAssetSrc(navbarLogoSrc);
+// 默认内置素材走 astro:assets，可进入 Vercel Image Optimization；自定义地址保持原始直连逻辑。
+const useOptimizedDefaultNavIcon =
+  resolvedNavbarIconSrc === url(DEFAULT_NAV_ICON_PATH);
+const useOptimizedDefaultNavLogo =
+  resolvedNavbarLogoSrc === url(DEFAULT_NAV_LOGO_PATH);
 
 const navbarTransparentMode =
   siteSettings.banner?.navbar?.transparentMode || "semi";
@@ -100,20 +110,46 @@ const links: NavBarLink[] = navBarConfig.links
         {
           siteSettings.navbarTitle ? (
             siteSettings.navbarTitle.mode === "logo" ? (
-              <img
-                src={resolveAssetSrc(navbarLogoSrc)}
-                alt={siteSettings.navbarTitle.text}
-                class="h-[3.25rem] in-[.enable-banner]:!h-[2.5rem] in-[.enable-banner]:group-[.scrolled]:!h-[3.25rem] max-w-full object-contain transition-all duration-920"
-                loading="lazy"
-              />
-            ) : (
-              <>
-                <img
-                  src={resolveAssetSrc(navbarIconSrc)}
+              useOptimizedDefaultNavLogo ? (
+                <Image
+                  src={defaultNavLogoImage}
                   alt={siteSettings.navbarTitle.text}
-                  class="h-[1.75rem] w-[1.75rem] mr-2 object-contain"
+                  class="h-[3.25rem] w-auto in-[.enable-banner]:!h-[2.5rem] in-[.enable-banner]:group-[.scrolled]:!h-[3.25rem] max-w-full object-contain transition-all duration-920"
+                  loading="lazy"
+                  width={320}
+                  height={160}
+                  widths={[128, 160, 192, 320]}
+                  sizes="(max-width: 1024px) 10rem, 14rem"
+                />
+              ) : (
+                <img
+                  src={resolvedNavbarLogoSrc}
+                  alt={siteSettings.navbarTitle.text}
+                  class="h-[3.25rem] w-auto in-[.enable-banner]:!h-[2.5rem] in-[.enable-banner]:group-[.scrolled]:!h-[3.25rem] max-w-full object-contain transition-all duration-920"
                   loading="lazy"
                 />
+              )
+            ) : (
+              <>
+                {useOptimizedDefaultNavIcon ? (
+                  <Image
+                    src={defaultNavIconImage}
+                    alt={siteSettings.navbarTitle.text}
+                    class="h-[1.75rem] w-[1.75rem] mr-2 object-contain"
+                    loading="lazy"
+                    width={96}
+                    height={99}
+                    widths={[48, 72, 96, 128]}
+                    sizes="1.75rem"
+                  />
+                ) : (
+                  <img
+                    src={resolvedNavbarIconSrc}
+                    alt={siteSettings.navbarTitle.text}
+                    class="h-[1.75rem] w-[1.75rem] mr-2 object-contain"
+                    loading="lazy"
+                  />
+                )}
                 <span class="max-w-none truncate dark:text-white text-black">
                   {siteSettings.navbarTitle.text}
                 </span>

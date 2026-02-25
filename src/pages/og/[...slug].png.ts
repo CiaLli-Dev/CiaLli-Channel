@@ -66,6 +66,26 @@ export const getStaticPaths: GetStaticPaths = async () => {
 
 let fontCache: { regular: Buffer | null; bold: Buffer | null } | null = null;
 
+function loadLocalOgFonts(): { regular: Buffer | null; bold: Buffer | null } {
+    const readLocalFont = (path: string): Buffer | null => {
+        try {
+            return fs.readFileSync(path);
+        } catch (error) {
+            console.warn(`[og] failed to read local font: ${path}`, error);
+            return null;
+        }
+    };
+
+    return {
+        regular: readLocalFont(
+            "./node_modules/@fontsource/roboto/files/roboto-latin-400-normal.woff",
+        ),
+        bold: readLocalFont(
+            "./node_modules/@fontsource/roboto/files/roboto-latin-700-normal.woff",
+        ),
+    };
+}
+
 async function fetchNotoSansSCFonts(): Promise<{
     regular: Buffer | null;
     bold: Buffer | null;
@@ -101,9 +121,9 @@ async function fetchNotoSansSCFonts(): Promise<{
 
         if (!regularUrl || !boldUrl) {
             console.warn(
-                "Could not find font urls in Google Fonts CSS; falling back to no fonts.",
+                "Could not find font urls in Google Fonts CSS; falling back to local fonts.",
             );
-            fontCache = { regular: null, bold: null };
+            fontCache = loadLocalOgFonts();
             return fontCache;
         }
 
@@ -113,9 +133,9 @@ async function fetchNotoSansSCFonts(): Promise<{
         ]);
         if (!rResp.ok || !bResp.ok) {
             console.warn(
-                "Failed to download font files from Google; falling back to no fonts.",
+                "Failed to download font files from Google; falling back to local fonts.",
             );
-            fontCache = { regular: null, bold: null };
+            fontCache = loadLocalOgFonts();
             return fontCache;
         }
 
@@ -126,7 +146,8 @@ async function fetchNotoSansSCFonts(): Promise<{
         return fontCache;
     } catch (error) {
         console.warn("Error fetching fonts:", error);
-        fontCache = { regular: null, bold: null };
+        // 大陆构建环境可能无法访问 Google 字体，回退到仓库内置字体以保证 build 稳定。
+        fontCache = loadLocalOgFonts();
         return fontCache;
     }
 }

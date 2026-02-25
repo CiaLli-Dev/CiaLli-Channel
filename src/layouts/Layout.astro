@@ -1,4 +1,6 @@
 ---
+import Analytics from "@vercel/analytics/astro";
+import SpeedInsights from "@vercel/speed-insights/astro";
 import ConfigCarrier from "@components/ConfigCarrier.astro";
 import MusicPlayer from "@components/widget/MusicPlayer.svelte";
 import DesktopOnlyNotice from "@components/misc/DesktopOnlyNotice.astro";
@@ -503,6 +505,9 @@ const bodyStyle = bodyFontFamily ? `font-family: ${bodyFontFamily};` : "";
       <!-- 切页时临时增加页面高度，避免滚动动画跳变 -->
       <div id="page-height-extend" class="hidden h-[300vh]"></div>
     </div>
+    <!-- Vercel 可观测性 -->
+    <Analytics />
+    <SpeedInsights />
     <DesktopOnlyNotice />
   </body>
 </html>
