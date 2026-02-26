@@ -39,8 +39,8 @@ class CodeBlockCollapser {
             this.syncWithThemeOptimizer();
         });
 
-        // 监听页面切换事件，确保同步
-        document.addEventListener("swup:pageView", () => {
+        // 监听 Astro 页面切换事件，确保同步
+        document.addEventListener("astro:page-load", () => {
             // 延迟同步，确保主题优化器已经处理完代码块
             setTimeout(() => {
                 this.syncWithThemeOptimizer();
@@ -320,61 +320,17 @@ const codeBlockCollapser = new CodeBlockCollapser();
 window.CodeBlockCollapser = CodeBlockCollapser;
 window.codeBlockCollapser = codeBlockCollapser;
 
-// 设置 Swup 钩子的函数
-function setupSwupHooks() {
-    if (window.swup) {
-        codeBlockCollapser.log("Setting up Swup hooks");
-
-        // 监听 page:view 事件
-        window.swup.hooks.on("page:view", () => {
-            codeBlockCollapser.log(
-                "Swup page:view event - reinitializing code blocks",
-            );
-            // 页面切换后重置 processedBlocks，确保新页面的代码块被处理
-            codeBlockCollapser.processedBlocks = new WeakSet();
-            setTimeout(() => {
-                codeBlockCollapser.setupCodeBlocks();
-            }, 100);
-        });
-
-        // 监听 content:replace 事件（更早触发）
-        window.swup.hooks.on("content:replace", () => {
-            codeBlockCollapser.log(
-                "Swup content:replace event - preparing for reinitialization",
-            );
-            // 内容替换时也重置，确保不会因为缓存而跳过处理
-            codeBlockCollapser.processedBlocks = new WeakSet();
-            setTimeout(() => {
-                codeBlockCollapser.setupCodeBlocks();
-            }, 50);
-        });
-
-        return true;
-    }
-    return false;
-}
-
-// 尝试立即设置 Swup 钩子
-if (!setupSwupHooks()) {
-    // 如果 Swup 尚未初始化，等待它加载
-    codeBlockCollapser.log("Swup not ready, waiting for initialization");
-
-    // 监听 swup:enable 事件
-    document.addEventListener("swup:enable", () => {
-        codeBlockCollapser.log("Swup enabled, setting up hooks");
-        setupSwupHooks();
-    });
-
-    // 额外的延迟重试机制，确保捕获到 Swup
-    const retryInterval = setInterval(() => {
-        if (setupSwupHooks()) {
-            codeBlockCollapser.log("Swup hooks set up successfully via retry");
-            clearInterval(retryInterval);
-        }
-    }, 100);
-
-    // 最多重试 20 次（2 秒）
+// Astro View Transitions 页面切换钩子
+document.addEventListener('astro:page-load', () => {
+    codeBlockCollapser.processedBlocks = new WeakSet();
     setTimeout(() => {
-        clearInterval(retryInterval);
-    }, 2000);
-}
+        codeBlockCollapser.setupCodeBlocks();
+    }, 100);
+});
+
+document.addEventListener('astro:after-swap', () => {
+    codeBlockCollapser.processedBlocks = new WeakSet();
+    setTimeout(() => {
+        codeBlockCollapser.setupCodeBlocks();
+    }, 50);
+});

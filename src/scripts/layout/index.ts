@@ -25,7 +25,7 @@ import { checkKatex } from "./katex-loader";
 import { initLayoutController } from "./layout-controller";
 import { syncSidebarAvatarLoadingState } from "./sidebar-profile-sync";
 import { setupScrollIntentSource } from "./scroll-ui";
-import { setupSwupIntentSource } from "./swup-hooks";
+import { setupTransitionIntentSource } from "./transition-hooks";
 
 const BANNER_HEIGHT = 35;
 const BANNER_HEIGHT_EXTEND = 30;
@@ -36,88 +36,9 @@ type LayoutRuntimeWindow = Window &
     typeof globalThis & {
         sakuraInitialized?: boolean;
         __layoutRuntimeInitialized?: boolean;
-        __layoutSwupHooksAttached?: boolean;
+        __layoutTransitionHooksAttached?: boolean;
         __layoutHashOffsetBound?: boolean;
-        swup?: {
-            hooks?: {
-                on: (
-                    event: string,
-                    callback: (...args: never[]) => void,
-                ) => void;
-            };
-            options?: {
-                animateHistoryBrowsing?: boolean;
-                skipPopStateHandling?: (event: PopStateEvent) => boolean;
-            };
-        };
     };
-
-type PopStateSkipHandler = (event: PopStateEvent) => boolean;
-type PopStateSkipHandlerWithFlag = PopStateSkipHandler & {
-    __layoutSkipWrapped?: boolean;
-};
-
-function resolveStateUrl(state: unknown): string | null {
-    if (!state || typeof state !== "object") {
-        return null;
-    }
-
-    const stateRecord = state as Record<string, unknown>;
-    const stateUrl = stateRecord.url;
-    return typeof stateUrl === "string" && stateUrl.trim().length > 0
-        ? stateUrl.trim()
-        : null;
-}
-
-function isHashOnlyHistoryPopState(event: PopStateEvent): boolean {
-    const stateUrl = resolveStateUrl(event.state);
-    if (!stateUrl) {
-        return false;
-    }
-
-    try {
-        const targetUrl = new URL(stateUrl, window.location.origin);
-        const currentUrl = new URL(window.location.href);
-        return (
-            targetUrl.origin === currentUrl.origin &&
-            targetUrl.pathname === currentUrl.pathname &&
-            targetUrl.search === currentUrl.search &&
-            targetUrl.hash.length > 0
-        );
-    } catch {
-        return stateUrl.includes("#");
-    }
-}
-
-function ensureSwupHistoryAnimation(
-    swup: NonNullable<LayoutRuntimeWindow["swup"]>,
-): void {
-    const options = (swup.options ??= {});
-    options.animateHistoryBrowsing = true;
-
-    const currentSkip = options.skipPopStateHandling as
-        | PopStateSkipHandlerWithFlag
-        | undefined;
-    if (currentSkip?.__layoutSkipWrapped) {
-        return;
-    }
-
-    const wrappedSkip: PopStateSkipHandlerWithFlag = (
-        event: PopStateEvent,
-    ): boolean => {
-        if (isHashOnlyHistoryPopState(event)) {
-            return true;
-        }
-
-        if (typeof currentSkip === "function") {
-            return currentSkip(event);
-        }
-        return false;
-    };
-
-    wrappedSkip.__layoutSkipWrapped = true;
-    options.skipPopStateHandling = wrappedSkip;
-}
 
 export function initLayoutRuntime(): void {
     const runtimeWindow = window as LayoutRuntimeWindow;
@@ -193,20 +114,9 @@ export function initLayoutRuntime(): void {
         bannerHeightExtend: BANNER_HEIGHT_EXTEND,
     });
 
-    const attachSwupHooks = () => {
-        const swup = runtimeWindow.swup;
-        if (!swup) {
-            return;
-        }
-        ensureSwupHistoryAnimation(swup);
-
-        if (runtimeWindow.__layoutSwupHooksAttached) {
-            return;
-        }
-        if (!swup.hooks) {
-            return;
-        }
-        setupSwupIntentSource({
+    // Attach Astro View Transitions hooks
+    if (!runtimeWindow.__layoutTransitionHooksAttached) {
+        setupTransitionIntentSource({
             controller: layoutController,
             initFancybox: fancyboxController.initFancybox,
             cleanupFancybox: fancyboxController.cleanupFancybox,
@@ -217,27 +127,12 @@ export function initLayoutRuntime(): void {
             pathsEqual,
             url,
         });
-        runtimeWindow.__layoutSwupHooksAttached = true;
-    };
-
-    if (runtimeWindow.swup?.hooks) {
-        void fancyboxController.initFancybox();
-        checkKatex();
-        attachSwupHooks();
-    } else {
-        document.addEventListener("swup:enable", attachSwupHooks, {
-            once: true,
-        });
-        if (document.readyState === "loading") {
-            document.addEventListener("DOMContentLoaded", () => {
-                void fancyboxController.initFancybox();
-                checkKatex();
-            });
-        } else {
-            void fancyboxController.initFancybox();
-            checkKatex();
-        }
+        runtimeWindow.__layoutTransitionHooksAttached = true;
     }
+
+    // Initialize fancybox and katex directly
+    void fancyboxController.initFancybox();
+    checkKatex();
 
     const initBannerAndPanels = async () => {
         showBanner();
@@ -338,13 +233,9 @@ initLayoutRuntime();
 // Dynamic page-specific initialization
 //
 // Some pages (e.g. /me/) have page-specific modules that must re-initialise
-// after every Swup navigation.  We cannot rely on SwupHeadPlugin to inject
-// and execute a new <script type="module"> during Swup transitions — ES
-// modules only execute once per URL per document.
-//
-// Instead, we register a global listener here (guaranteed to be loaded on
-// the very first full page load) and dynamically import the page module on
-// demand.
+// after every navigation.  We register a global listener here (guaranteed to
+// be loaded on the very first full page load) and dynamically import the page
+// module on demand.
 // ---------------------------------------------------------------------------
 
 const runDynamicPageInit = async (): Promise<void> => {

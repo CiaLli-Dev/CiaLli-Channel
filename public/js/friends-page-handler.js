@@ -1,5 +1,5 @@
 // 友情链接页面处理脚本
-// 此脚本作为全局脚本加载，不受 Swup 页面切换影响
+// 此脚本作为全局脚本加载，不受页面切换影响
 
 (() => {
     console.log("[Friends Global] Script loaded");
@@ -260,8 +260,6 @@
 
     // 监听所有可能的页面切换事件
     const events = [
-        "swup:contentReplaced",
-        "swup:pageView",
         "astro:page-load",
         "astro:after-swap",
     ];

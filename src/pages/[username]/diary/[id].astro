@@ -227,7 +227,6 @@ const diaryMetaText = formatDiaryMetaDate(diary?.date_created);
                         href={diaryGallery[0].preview}
                         data-fancybox="diary-photo-preview"
                         data-caption={diaryGallery[0].caption || undefined}
-                        data-no-swup
                         class="block overflow-hidden rounded-xl border border-(--line-divider) bg-(--card-bg)"
                       >
                         <img
@@ -251,7 +250,6 @@ const diaryMetaText = formatDiaryMetaDate(diary?.date_created);
                             href={image.preview}
                             data-fancybox="diary-photo-preview"
                             data-caption={image.caption || undefined}
-                            data-no-swup
                             class="block aspect-square overflow-hidden rounded-xl border border-(--line-divider) bg-(--card-bg)"
                           >
                             <img

@@ -3,7 +3,7 @@ import svelte, { vitePreprocess } from "@astrojs/svelte";
 import vercel from "@astrojs/vercel";
 import { pluginCollapsibleSections } from "@expressive-code/plugin-collapsible-sections";
 import { pluginLineNumbers } from "@expressive-code/plugin-line-numbers";
-import swup from "@swup/astro";
+
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
 import expressiveCode from "astro-expressive-code";
@@ -42,20 +42,12 @@ export default defineConfig({
         },
     }),
 
+    prefetch: {
+        prefetchAll: false,
+        defaultStrategy: 'hover',
+    },
+
     integrations: [
-        swup({
-            theme: false,
-            animationClass: "transition-swup-",
-            containers: ["main", "#right-sidebar-slot", "#sidebar"],
-            smoothScrolling: false, // 禁用平滑滚动以提升性能，避免与锚点导航冲突
-            cache: false, // 关闭 Swup 页面快照缓存，避免旧页面 DOM 在客户端被回放。
-            preload: true, // swup 默认鼠标悬停预加载
-            accessibility: true,
-            updateHead: true,
-            updateBodyClass: false,
-            globalInstance: true,
-            loadOnIdle: false, // 尽早初始化 swup，避免首页快速点击时退回原生跳转
-        }),
         icon(),
         expressiveCode({
             themes: ["github-light", "github-dark"],

@@ -13,21 +13,6 @@ import {
 import { scrollToHashBelowTocBaseline } from "@/utils/hash-scroll";
 import { getTocBaselineOffset } from "@/utils/toc-offset";
 
-type SwupVisit = {
-    containers: string[];
-    to: {
-        document?: Document;
-        url?: unknown;
-        path?: unknown;
-        pathname?: unknown;
-        href?: unknown;
-    };
-    scroll?: {
-        reset?: boolean;
-        target?: string | false;
-    };
-};
-
 const BANNER_TO_SPEC_TRANSITION_CLASS = "layout-banner-to-spec-transition";
 const BANNER_TO_SPEC_TRANSITION_PREPARING_CLASS =
     "layout-banner-to-spec-transition-preparing";
@@ -46,6 +31,17 @@ const BANNER_TO_SPEC_TRANSITION_DURATION_MS = 920;
 const COLLAPSED_MAIN_PANEL_TOP = "5.5rem";
 const SIDEBAR_OVERSHOOT_TOLERANCE_PX = 0.75;
 
+// Astro View Transitions event types
+type BeforePreparationEvent = Event & {
+    to: URL;
+    from: URL;
+};
+
+type BeforeSwapEvent = Event & {
+    newDocument: Document;
+    swap: () => void;
+};
+
 function isCurrentHomeRoute(body: HTMLElement): boolean {
     if (body.dataset.routeHome === "true") {
         return true;
@@ -59,68 +55,6 @@ function isCurrentHomeRoute(body: HTMLElement): boolean {
 function normalizePathname(pathname: string): string {
     const normalized = pathname.replace(/\/+$/, "");
     return normalized === "" ? "/" : normalized;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-    if (!value || typeof value !== "object") {
-        return null;
-    }
-    return value as Record<string, unknown>;
-}
-
-function extractPathnameFromUnknown(value: unknown): string | null {
-    if (value instanceof URL) {
-        return normalizePathname(value.pathname);
-    }
-
-    if (typeof value === "string") {
-        const trimmed = value.trim();
-        if (!trimmed) {
-            return null;
-        }
-
-        try {
-            const parsed = new URL(trimmed, window.location.origin);
-            return normalizePathname(parsed.pathname);
-        } catch {
-            const fallbackPath = trimmed.split("#")[0]?.split("?")[0] || "";
-            if (!fallbackPath) {
-                return null;
-            }
-            return normalizePathname(fallbackPath);
-        }
-    }
-
-    const record = asRecord(value);
-    if (!record) {
-        return null;
-    }
-
-    return (
-        extractPathnameFromUnknown(record.pathname) ??
-        extractPathnameFromUnknown(record.path) ??
-        extractPathnameFromUnknown(record.url) ??
-        extractPathnameFromUnknown(record.href)
-    );
-}
-
-function extractVisitPathname(visit: SwupVisit): string | null {
-    const to = asRecord(visit.to);
-    const fromVisitTarget =
-        extractPathnameFromUnknown(to?.url) ??
-        extractPathnameFromUnknown(to?.pathname) ??
-        extractPathnameFromUnknown(to?.path) ??
-        extractPathnameFromUnknown(to?.href) ??
-        extractPathnameFromUnknown(
-            to?.document instanceof Document ? to.document.URL : null,
-        );
-    if (fromVisitTarget) {
-        return fromVisitTarget;
-    }
-
-    // Swup history navigation can provide target URL through history.state.
-    const historyState = asRecord(history.state);
-    return extractPathnameFromUnknown(historyState?.url);
 }
 
 function parseCssLengthToPx(lengthValue: string): number | null {
@@ -145,8 +79,8 @@ function parseCssLengthToPx(lengthValue: string): number | null {
     return measuredPx;
 }
 
-function resolveTargetMainPanelTopPx(visit: SwupVisit): number {
-    const targetMainPanel = visit.to.document?.querySelector<HTMLElement>(
+function resolveTargetMainPanelTopPx(newDocument?: Document): number {
+    const targetMainPanel = newDocument?.querySelector<HTMLElement>(
         ".main-panel-wrapper",
     );
     const inlineTop = targetMainPanel?.style.top?.trim() || "";
@@ -184,9 +118,9 @@ type BannerToSpecShiftMetrics = {
 };
 
 function resolveBannerToSpecShiftMetrics(
-    visit: SwupVisit,
+    newDocument?: Document,
 ): BannerToSpecShiftMetrics {
-    const targetTop = resolveTargetMainPanelTopPx(visit);
+    const targetTop = resolveTargetMainPanelTopPx(newDocument);
     const mainPanelTop = resolveAnchorViewportTop(".main-panel-wrapper");
     const resolvedBannerExtraShift = Math.max(0, Number(targetTop.toFixed(3)));
     if (mainPanelTop === null) {
@@ -196,8 +130,6 @@ function resolveBannerToSpecShiftMetrics(
         };
     }
 
-    // Keep the main panel as the primary anchor so transition end aligns
-    // exactly with the target layout top and avoids a tail "catch-up" snap.
     const rawMainShift = mainPanelTop - targetTop;
     if (rawMainShift <= 0) {
         return {
@@ -206,8 +138,6 @@ function resolveBannerToSpecShiftMetrics(
         };
     }
 
-    // Apply a safety cap only when a sidebar would move above navbar baseline.
-    // This prevents overshoot while avoiding conservative under-shift.
     const sidebarCap = ["#sidebar", "#right-sidebar-slot"]
         .map((selector) => resolveAnchorViewportTop(selector))
         .filter((top): top is number => typeof top === "number")
@@ -228,11 +158,11 @@ function resolveBannerToSpecShiftMetrics(
 }
 
 function applyBannerToSpecShiftVariables(
-    visit: SwupVisit,
+    newDocument?: Document,
     root: HTMLElement = document.documentElement,
 ): void {
     const { mainPanelShiftPx, bannerExtraShiftPx } =
-        resolveBannerToSpecShiftMetrics(visit);
+        resolveBannerToSpecShiftMetrics(newDocument);
     root.style.setProperty(BANNER_TO_SPEC_SHIFT_VAR, `${mainPanelShiftPx}px`);
     root.style.setProperty(
         BANNER_TO_SPEC_BANNER_EXTRA_SHIFT_VAR,
@@ -250,7 +180,7 @@ function stripOnloadAnimationClasses(scope: HTMLElement): void {
     });
 }
 
-type SwupIntentSourceDependencies = {
+type TransitionIntentSourceDependencies = {
     controller: LayoutController;
     initFancybox: () => Promise<void>;
     cleanupFancybox: () => void;
@@ -262,30 +192,13 @@ type SwupIntentSourceDependencies = {
     url: (path: string) => string;
 };
 
-export function setupSwupIntentSource(
-    deps: SwupIntentSourceDependencies,
+export function setupTransitionIntentSource(
+    deps: TransitionIntentSourceDependencies,
 ): void {
     const runtimeWindow = window as Window &
         typeof globalThis & {
-            swup?: {
-                hooks?: {
-                    on: (
-                        event: string,
-                        callback: (...args: never[]) => void,
-                    ) => void;
-                    before: (
-                        event: string,
-                        callback: (visit: SwupVisit) => void,
-                    ) => void;
-                };
-            };
             floatingTOCInit?: () => void;
         };
-
-    const swup = runtimeWindow.swup;
-    if (!swup?.hooks) {
-        return;
-    }
 
     let pendingBannerToSpecRoutePath: string | null = null;
     let pendingSidebarProfilePatch: SidebarProfilePatch | null = null;
@@ -294,14 +207,14 @@ export function setupSwupIntentSource(
     let didReplaceContentDuringVisit = false;
     let shouldDelayBannerToSpecMoveUntilReplace = false;
     let didForceNavbarScrolledForBannerToSpec = false;
-    let pendingBannerToSpecVisit: SwupVisit | null = null;
+    let pendingBannerToSpecNewDocument: Document | null = null;
+    let navigationInProgress = false;
 
     const setPageHeightExtendVisible = (visible: boolean): void => {
         const heightExtend = document.getElementById("page-height-extend");
         if (!heightExtend) {
             return;
         }
-        // 仅在 banner->spec 过渡窗口期暂时拉高文档高度，避免内容替换时滚动位置被浏览器强制校正。
         heightExtend.classList.toggle("hidden", !visible);
     };
 
@@ -382,8 +295,11 @@ export function setupSwupIntentSource(
             return;
         }
         const root = document.documentElement;
-        if (pendingBannerToSpecVisit) {
-            applyBannerToSpecShiftVariables(pendingBannerToSpecVisit, root);
+        if (pendingBannerToSpecNewDocument) {
+            applyBannerToSpecShiftVariables(
+                pendingBannerToSpecNewDocument,
+                root,
+            );
         }
         forceNavbarScrolledForBannerToSpecTransition();
         root.classList.remove(BANNER_TO_SPEC_TRANSITION_PREPARING_CLASS);
@@ -434,17 +350,97 @@ export function setupSwupIntentSource(
         setPageHeightExtendVisible(false);
     });
 
-    swup.hooks.before("content:replace", (visit: SwupVisit) => {
-        pendingSidebarProfilePatch = null;
+    // ===== astro:before-preparation (replaces visit:start + link:click) =====
+    document.addEventListener(
+        "astro:before-preparation",
+        (event: Event) => {
+            const e = event as BeforePreparationEvent;
+            const targetPathname = normalizePathname(e.to.pathname);
 
-        // Sidebar UID 比较：相同 sidebar 跳过替换；不同账号但布局相同仅同步 profile 数据
-        const currentSidebar = document.querySelector<HTMLElement>("#sidebar");
-        const newSidebar = visit.to.document?.querySelector("#sidebar");
+            navigationInProgress = true;
+            didReplaceContentDuringVisit = false;
+            forceResetEnterSkeleton();
+            setAwaitingReplaceState(true);
+            deps.cleanupFancybox();
+            pendingBannerToSpecRoutePath = null;
+            pendingSidebarProfilePatch = null;
+            pendingBannerToSpecNewDocument = null;
+            bannerToSpecAnimationStartedAt = null;
+            shouldDelayBannerToSpecMoveUntilReplace = false;
+            clearBannerToSpecTransitionVisualState();
+
+            // was link:click
+            document.documentElement.style.setProperty(
+                "--content-delay",
+                "0ms",
+            );
+
+            // Banner-to-spec detection
+            const isTargetHome = deps.pathsEqual(
+                targetPathname,
+                deps.url("/"),
+            );
+            const body = document.body;
+            const currentPathname = normalizePathname(
+                window.location.pathname,
+            );
+            const currentIsHome =
+                deps.pathsEqual(currentPathname, deps.url("/")) ||
+                isCurrentHomeRoute(body);
+            const hasBannerWrapper =
+                document.getElementById("banner-wrapper");
+            const shouldUseBannerToSpecTransition =
+                currentIsHome &&
+                hasBannerWrapper !== null &&
+                !isTargetHome;
+
+            if (shouldUseBannerToSpecTransition) {
+                pendingBannerToSpecRoutePath = targetPathname;
+                const root = document.documentElement;
+                // Initial shift calculation without newDocument (uses fallback values)
+                applyBannerToSpecShiftVariables(undefined, root);
+                root.style.setProperty(
+                    BANNER_TO_SPEC_TRANSITION_DURATION_VAR,
+                    `${BANNER_TO_SPEC_TRANSITION_DURATION_MS}ms`,
+                );
+                root.classList.add(BANNER_TO_SPEC_TRANSITION_CLASS);
+                root.classList.add(
+                    BANNER_TO_SPEC_TRANSITION_PREPARING_CLASS,
+                );
+                shouldDelayBannerToSpecMoveUntilReplace = true;
+                setPageHeightExtendVisible(true);
+            } else {
+                setPageHeightExtendVisible(false);
+            }
+
+            const toc = document.getElementById("toc-wrapper");
+            if (toc) {
+                toc.classList.add("toc-not-ready");
+            }
+        },
+    );
+
+    // ===== astro:before-swap (replaces before:content:replace + content:scroll + animation:out:start) =====
+    document.addEventListener("astro:before-swap", (event: Event) => {
+        const e = event as BeforeSwapEvent;
+        const newDocument = e.newDocument;
+        pendingBannerToSpecNewDocument = newDocument;
+
+        // ----- Sidebar preservation logic (was before:content:replace) -----
+        pendingSidebarProfilePatch = null;
+        const currentSidebar =
+            document.querySelector<HTMLElement>("#sidebar");
+        const newSidebar =
+            newDocument.querySelector<HTMLElement>("#sidebar");
+        let shouldPreserveSidebar = false;
+
         if (currentSidebar && newSidebar) {
-            const currentUid = currentSidebar.getAttribute("data-sidebar-uid");
+            const currentUid =
+                currentSidebar.getAttribute("data-sidebar-uid");
             const newUid = newSidebar.getAttribute("data-sidebar-uid");
             const currentLayoutKey =
-                currentSidebar.getAttribute("data-sidebar-layout-key") || "";
+                currentSidebar.getAttribute("data-sidebar-layout-key") ||
+                "";
             const newLayoutKey =
                 newSidebar.getAttribute("data-sidebar-layout-key") || "";
             const layoutComparable =
@@ -454,10 +450,8 @@ export function setupSwupIntentSource(
             const nextPatch = extractSidebarProfilePatch(newSidebar);
             const canPatch = sameLayout && nextPatch !== null;
 
-            const preserveSidebar = (): void => {
-                visit.containers = visit.containers.filter(
-                    (c) => c !== "#sidebar",
-                );
+            const prepareSidebarPreservation = (): void => {
+                shouldPreserveSidebar = true;
                 stripOnloadAnimationClasses(currentSidebar);
                 currentSidebar.dataset.sidebarPreserved = "";
                 const nextScrollable =
@@ -472,45 +466,71 @@ export function setupSwupIntentSource(
 
             if (currentUid && newUid && currentUid === newUid) {
                 if (layoutComparable && !sameLayout) {
-                    // Same account but different widget layout -> let Swup replace full sidebar.
+                    // Same account but different widget layout -> full sidebar replace
                 } else {
-                    preserveSidebar();
+                    prepareSidebarPreservation();
                     if (canPatch) {
-                        // 每次保留 sidebar 时都应用新文档 patch，确保清除潜在的旧 DOM 残留。
                         pendingSidebarProfilePatch =
                             nextPatch as SidebarProfilePatch;
                     }
                 }
             } else if (currentUid && newUid && sameLayout) {
                 if (canPatch) {
-                    preserveSidebar();
+                    prepareSidebarPreservation();
                     pendingSidebarProfilePatch =
                         nextPatch as SidebarProfilePatch;
                 }
             }
         }
 
-        // 同步 #main-grid 类名
-        // #main-grid 不是 Swup 容器，但其 CSS 类会随侧边栏布局变化。
-        // 在内容替换前同步，避免布局错乱。
-        const newMainGrid = visit.to.document?.querySelector("#main-grid");
+        // ----- #main-grid class sync -----
+        const newMainGrid = newDocument.querySelector("#main-grid");
         const currentMainGrid = document.getElementById("main-grid");
         if (newMainGrid instanceof HTMLElement && currentMainGrid) {
             currentMainGrid.className = newMainGrid.className;
         }
+
+        // ----- Banner-to-spec: recalculate shift with actual newDocument -----
+        if (pendingBannerToSpecRoutePath) {
+            applyBannerToSpecShiftVariables(newDocument);
+        }
+
+        // ----- Custom swap: sidebar preservation + scroll suppression -----
+        const savedSidebar = shouldPreserveSidebar
+            ? document.querySelector<HTMLElement>("#sidebar")
+            : null;
+        const savedScrollY = window.scrollY;
+        const suppressScroll = !!pendingBannerToSpecRoutePath;
+
+        const originalSwap = e.swap;
+        e.swap = () => {
+            originalSwap();
+
+            // Restore preserved sidebar after default swap replaced everything
+            if (savedSidebar) {
+                const newSidebarInDom =
+                    document.querySelector("#sidebar");
+                if (newSidebarInDom) {
+                    newSidebarInDom.replaceWith(savedSidebar);
+                }
+            }
+
+            // Suppress scroll reset during banner-to-spec transitions
+            if (suppressScroll) {
+                window.scrollTo(0, savedScrollY);
+            }
+        };
     });
 
-    swup.hooks.on("link:click", () => {
-        document.documentElement.style.setProperty("--content-delay", "0ms");
-    });
-
-    swup.hooks.on("content:replace", () => {
+    // ===== astro:after-swap (replaces content:replace) =====
+    document.addEventListener("astro:after-swap", () => {
         didReplaceContentDuringVisit = true;
         setAwaitingReplaceState(false);
         activateEnterSkeleton();
         void deps.initFancybox();
         deps.checkKatex();
         deps.initKatexScrollbars();
+
         if (pendingSidebarProfilePatch) {
             applySidebarProfilePatch(pendingSidebarProfilePatch);
             pendingSidebarProfilePatch = null;
@@ -531,82 +551,20 @@ export function setupSwupIntentSource(
             }, 100);
         }
 
+        // Start banner-to-spec animation now that content is replaced
         if (pendingBannerToSpecRoutePath) {
             shouldDelayBannerToSpecMoveUntilReplace = false;
             startBannerToSpecMoveTransition();
         }
     });
 
-    swup.hooks.on("visit:start", (visit: SwupVisit) => {
-        didReplaceContentDuringVisit = false;
-        forceResetEnterSkeleton();
-        setAwaitingReplaceState(true);
-        deps.cleanupFancybox();
-        pendingBannerToSpecRoutePath = null;
-        pendingSidebarProfilePatch = null;
-        pendingBannerToSpecVisit = null;
-        bannerToSpecAnimationStartedAt = null;
-        shouldDelayBannerToSpecMoveUntilReplace = false;
-        clearBannerToSpecTransitionVisualState();
-
-        const targetPathname = extractVisitPathname(visit);
-        const isTargetHome =
-            targetPathname !== null &&
-            deps.pathsEqual(targetPathname, deps.url("/"));
-        const body = document.body;
-        const currentPathname = normalizePathname(window.location.pathname);
-        const currentIsHome =
-            deps.pathsEqual(currentPathname, deps.url("/")) ||
-            isCurrentHomeRoute(body);
-        const hasBannerWrapper = document.getElementById("banner-wrapper");
-        const shouldUseBannerToSpecTransition =
-            currentIsHome &&
-            hasBannerWrapper !== null &&
-            targetPathname !== null &&
-            !isTargetHome;
-
-        if (shouldUseBannerToSpecTransition) {
-            pendingBannerToSpecRoutePath = targetPathname;
-            pendingBannerToSpecVisit = visit;
-            const root = document.documentElement;
-            applyBannerToSpecShiftVariables(visit, root);
-            root.style.setProperty(
-                BANNER_TO_SPEC_TRANSITION_DURATION_VAR,
-                `${BANNER_TO_SPEC_TRANSITION_DURATION_MS}ms`,
-            );
-            root.classList.add(BANNER_TO_SPEC_TRANSITION_CLASS);
-            root.classList.add(BANNER_TO_SPEC_TRANSITION_PREPARING_CLASS);
-            shouldDelayBannerToSpecMoveUntilReplace = true;
-            setPageHeightExtendVisible(true);
-        } else {
-            setPageHeightExtendVisible(false);
-        }
-
-        const toc = document.getElementById("toc-wrapper");
-        if (toc) {
-            toc.classList.add("toc-not-ready");
-        }
-    });
-
-    swup.hooks.before("content:scroll", (visit: SwupVisit) => {
-        if (!pendingBannerToSpecRoutePath || !visit.scroll) {
+    // ===== astro:page-load (replaces page:view + visit:end) =====
+    document.addEventListener("astro:page-load", () => {
+        // Skip on initial page load (no navigation in progress)
+        if (!navigationInProgress) {
             return;
         }
-        visit.scroll.reset = false;
-        visit.scroll.target = false;
-    });
 
-    swup.hooks.on("animation:out:start", () => {
-        if (!pendingBannerToSpecRoutePath) {
-            return;
-        }
-        if (shouldDelayBannerToSpecMoveUntilReplace) {
-            return;
-        }
-        startBannerToSpecMoveTransition();
-    });
-
-    swup.hooks.on("page:view", () => {
         const finalizePageView = (): void => {
             setAwaitingReplaceState(false);
             deactivateEnterSkeleton();
@@ -618,9 +576,6 @@ export function setupSwupIntentSource(
             clearBannerToSpecTransitionVisualState({
                 preserveNavbarCommitFreeze: didUseNavbarCommitFreeze,
             });
-            pendingBannerToSpecRoutePath = null;
-            pendingSidebarProfilePatch = null;
-            pendingBannerToSpecVisit = null;
 
             const isHomePage = deps.pathsEqual(
                 window.location.pathname,
@@ -653,6 +608,7 @@ export function setupSwupIntentSource(
                 });
             }
 
+            // Theme sync
             const storedTheme =
                 localStorage.getItem("theme") || deps.defaultTheme;
             const isDark = storedTheme === deps.darkMode;
@@ -692,6 +648,9 @@ export function setupSwupIntentSource(
                     );
                 }
             }, 300);
+
+            // visit:end cleanup
+            doVisitEndCleanup();
         };
 
         const remainingMs = getBannerToSpecRemainingMs();
@@ -707,12 +666,15 @@ export function setupSwupIntentSource(
         finalizePageView();
     });
 
-    swup.hooks.on("visit:end", () => {
-        setAwaitingReplaceState(false);
-        const shouldForceCleanupForAbortedVisit = !didReplaceContentDuringVisit;
+    const doVisitEndCleanup = (): void => {
+        navigationInProgress = false;
+
+        const shouldForceCleanupForAbortedVisit =
+            !didReplaceContentDuringVisit;
         if (shouldForceCleanupForAbortedVisit) {
             forceResetEnterSkeleton();
         }
+
         const remainingMs = getBannerToSpecRemainingMs();
         const hasPendingBannerToSpecTransition =
             pendingBannerToSpecRoutePath !== null;
@@ -722,7 +684,7 @@ export function setupSwupIntentSource(
         ) {
             pendingBannerToSpecRoutePath = null;
             pendingSidebarProfilePatch = null;
-            pendingBannerToSpecVisit = null;
+            pendingBannerToSpecNewDocument = null;
             clearBannerToSpecTransitionVisualState();
         }
 
@@ -740,5 +702,5 @@ export function setupSwupIntentSource(
                 toc.classList.remove("toc-not-ready");
             }
         }, cleanupDelayMs);
-    });
+    };
 }

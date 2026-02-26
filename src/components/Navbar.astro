@@ -251,7 +251,6 @@ const links: NavBarLink[] = navBarConfig.links
     anchor.setAttribute(AUTH_PROTECTED_TARGET_ATTR, targetHref);
     anchor.setAttribute("href", "#");
     anchor.setAttribute("data-needs-login", "");
-    anchor.setAttribute("data-no-swup", "");
   };
 
   const clearAuthProtectedLink = (
@@ -261,7 +260,6 @@ const links: NavBarLink[] = navBarConfig.links
     anchor.setAttribute("href", href);
     anchor.removeAttribute("data-needs-login");
     anchor.removeAttribute(AUTH_PROTECTED_TARGET_ATTR);
-    anchor.removeAttribute("data-no-swup");
   };
 
   const updateUserRouteLinks = (
@@ -439,7 +437,6 @@ const links: NavBarLink[] = navBarConfig.links
       if (isPublishTarget && !isLoggedIn) {
         e.preventDefault();
         e.stopImmediatePropagation();
-        anchor.setAttribute("data-no-swup", "");
         showAuthRequiredDialog();
         return;
       }
@@ -453,7 +450,6 @@ const links: NavBarLink[] = navBarConfig.links
       if (needsLogin) {
         e.preventDefault();
         e.stopImmediatePropagation();
-        anchor.setAttribute("data-no-swup", "");
         showAuthRequiredDialog();
       }
     },

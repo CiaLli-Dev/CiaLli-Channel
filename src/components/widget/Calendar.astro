@@ -178,7 +178,7 @@ const calendarTitle = isChinese ? "日期" : "Date";
     isChinese,
   }}
 >
-  // 清理旧实例，避免 SWUP 场景中重复绑定事件
+  // 清理旧实例，避免页面切换场景中重复绑定事件
   const runtimeWindow = window;
   runtimeWindow.__calendarWidgetCleanup?.();
 

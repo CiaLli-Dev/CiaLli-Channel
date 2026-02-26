@@ -93,7 +93,7 @@ function syncNavbar(next: LayoutState): void {
         root.classList.contains(BANNER_TO_SPEC_TRANSITION_PREPARING_CLASS) ||
         root.classList.contains(BANNER_TO_SPEC_TRANSITION_ACTIVE_CLASS);
     if (shouldLockScrolledState) {
-        // 过渡窗口期由 swup-hooks 统一控制 navbar.scrolled，避免中途抖动。
+        // 过渡窗口期由 transition-hooks 统一控制 navbar.scrolled，避免中途抖动。
         return;
     }
 
@@ -183,7 +183,7 @@ function compensateScrollForCollapse(
     window.scrollTo({ top: targetScroll, behavior: "instant" });
 }
 
-function isSwupTransitioning(): boolean {
+function isViewTransitioning(): boolean {
     const html = document.documentElement;
     return (
         html.classList.contains("is-changing") ||
@@ -258,7 +258,7 @@ export function applyLayoutState(
     syncNavbar(next);
     syncToc(next, deps);
 
-    if (collapsingFromBanner && !isSwupTransitioning()) {
+    if (collapsingFromBanner && !isViewTransitioning()) {
         compensateScrollForCollapse(deps, contentTopBeforeCollapse);
         triggerContentSoftCollapseAnimation(runtimeWindow);
     }

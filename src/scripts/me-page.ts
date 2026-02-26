@@ -1,7 +1,7 @@
 /**
  * /me/ 账户设置页运行逻辑。
  *
- * 从页面内联脚本抽离为模块，确保 Swup 导航后可重新初始化，
+ * 从页面内联脚本抽离为模块，确保页面导航后可重新初始化，
  * 避免依赖整页刷新。
  */
 
@@ -97,7 +97,7 @@ export function initMePage(): void {
         return;
     }
 
-    // 每次初始化都重新获取 DOM，避免 Swup 替换后引用失效
+    // 每次初始化都重新获取 DOM，避免页面切换后引用失效
     const authenticatedSections = document.getElementById(
         "me-authenticated-sections",
     );
@@ -1764,4 +1764,4 @@ export function initMePage(): void {
 }
 
 // 初始化由全局 layout 运行时通过动态导入触发，而非模块级自动执行。
-// 这样可避免依赖 SwupHeadPlugin 在切页时重复执行页面脚本。
+// 这样可避免在切页时重复执行页面脚本。

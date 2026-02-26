@@ -167,7 +167,7 @@ if (desktopShowLeftSidebar && effectiveShowRightSidebar) {
 }
 
 const mainContentClass = `
-  transition-swup-fade overflow-clip w-full
+  transition-fade overflow-clip w-full
   col-span-1 row-start-1 row-end-2
   ${desktopShowSidebar ? mainGridPositionClass : "col-span-1"}
 `
@@ -396,7 +396,7 @@ const hasCarousel =
           desktopShowLeftSidebar ? (
             <SideBar class={sidebarClass} headings={headings} />
           ) : (
-            // 保证 Swup 容器在全宽页也存在，避免 container mismatch 触发整页刷新。
+            // 保证 sidebar 容器在全宽页也存在，确保布局结构一致。
             <div
               id="sidebar"
               class="hidden"
@@ -419,14 +419,14 @@ const hasCarousel =
               <>
                 <RightSideBar headings={headings} />
                 {shouldRenderDedicatedPostToc && (
-                  <div id="toc-wrapper" class="w-full transition-swup-fade">
+                  <div id="toc-wrapper" class="w-full transition-fade">
                     <div
                       id="toc-inner-wrapper"
                       class="w-full max-h-[calc(100vh-10rem)] overflow-hidden"
                     >
                       <div
                         id="toc-container"
-                        class="w-full transition-swup-fade"
+                        class="w-full transition-fade"
                       >
                         <TOC headings={headings} />
                       </div>
@@ -435,12 +435,12 @@ const hasCarousel =
                 )}
               </>
             ) : shouldRenderDedicatedPostToc ? (
-              <div id="toc-wrapper" class="w-full transition-swup-fade">
+              <div id="toc-wrapper" class="w-full transition-fade">
                 <div
                   id="toc-inner-wrapper"
                   class="w-full max-h-[calc(100vh-10rem)] overflow-hidden"
                 >
-                  <div id="toc-container" class="w-full transition-swup-fade">
+                  <div id="toc-container" class="w-full transition-fade">
                     <TOC headings={headings} />
                   </div>
                 </div>
@@ -450,7 +450,7 @@ const hasCarousel =
         </div>
 
         <main
-          id="swup-container"
+          id="main-container"
           data-enter-skeleton-target="fallback"
           class={`${mainContentClass} transition-main relative`}
         >
@@ -635,23 +635,12 @@ const hasCarousel =
 
   :global(html.layout-banner-to-spec-transition .transition-main),
   :global(html.layout-banner-to-spec-transition .transition-leaving),
-  :global(html.layout-banner-to-spec-transition .transition-swup-fade) {
+  :global(html.layout-banner-to-spec-transition .transition-fade) {
     transition-duration: 280ms !important;
   }
 
   :global(html.layout-banner-to-spec-transition #content-wrapper) {
     transition: opacity 240ms cubic-bezier(0.22, 1, 0.36, 1) !important;
-  }
-
-  :global(html.layout-banner-to-spec-transition.is-animating) #swup-container,
-  :global(html.layout-banner-to-spec-transition.is-animating.is-leaving)
-    #content-wrapper {
-    transform: none !important;
-  }
-
-  :global(html.layout-banner-to-spec-transition.is-animating.is-leaving)
-    #content-wrapper {
-    opacity: 1 !important;
   }
 
   :global(

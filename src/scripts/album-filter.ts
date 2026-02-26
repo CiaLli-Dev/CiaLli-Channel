@@ -216,7 +216,7 @@ export function initAlbumFilter(): void {
         updateButtonStates(currentFilter);
     }
 
-    // 统一通过 AbortController 管理事件，便于 Swup 切页时清理
+    // 统一通过 AbortController 管理事件，便于切页时清理
     const ac = new AbortController();
     const signal = ac.signal;
 

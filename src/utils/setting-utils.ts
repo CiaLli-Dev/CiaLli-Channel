@@ -13,7 +13,7 @@ export function getDefaultHue(): number {
     const runtimeHue = getRuntimeSettings()?.system.themeColor.hue;
     const fallback = String(typeof runtimeHue === "number" ? runtimeHue : 250);
     const configCarrier = document.getElementById("config-carrier");
-    // 在Swup页面切换时，config-carrier可能不存在，使用默认值
+    // 在页面切换时，config-carrier可能不存在，使用默认值
     if (!configCarrier) {
         return Number.parseInt(fallback);
     }
