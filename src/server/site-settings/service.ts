@@ -547,6 +547,26 @@ export function resolveSiteSettingsPayload(
     return normalizeSettings(raw, base);
 }
 
+/**
+ * 执行一次站点设置拉取，失败时立即重试 1 次。
+ *
+ * Directus 客户端全局超时 30s/次，Vercel Serverless 执行窗口约 60s，重试上限为 1 次，避免函数执行溢出。
+ */
+async function fetchSiteSettingsWithRetry(): Promise<{
+    settings: unknown;
+    updatedAt: string | null;
+} | null> {
+    try {
+        return await readSiteSettingsRow();
+    } catch (firstError) {
+        console.warn(
+            "[site-settings] 首次拉取失败，立即重试一次:",
+            firstError instanceof Error ? firstError.message : String(firstError),
+        );
+        return await readSiteSettingsRow();
+    }
+}
+
 export async function getResolvedSiteSettings(): Promise<ResolvedSiteSettings> {
     const cached = await cacheManager.get<SiteSettingsCacheValue>(
         "site-settings",
@@ -558,7 +578,7 @@ export async function getResolvedSiteSettings(): Promise<ResolvedSiteSettings> {
 
     const defaultResolved = buildDefaultResolvedSettings();
     try {
-        const row = await readSiteSettingsRow();
+        const row = await fetchSiteSettingsWithRetry();
         if (!row) {
             const value: SiteSettingsCacheValue = {
                 resolved: defaultResolved,
@@ -580,12 +600,8 @@ export async function getResolvedSiteSettings(): Promise<ResolvedSiteSettings> {
         void cacheManager.set("site-settings", "default", value);
         return resolved;
     } catch (error) {
-        console.error("[site-settings] failed to load settings:", error);
-        const value: SiteSettingsCacheValue = {
-            resolved: defaultResolved,
-            updatedAt: null,
-        };
-        void cacheManager.set("site-settings", "default", value);
+        // 错误路径（含重试后仍失败）：不缓存，让下次请求重新尝试 Directus
+        console.error("[site-settings] 拉取设置失败（含重试）:", error);
         return defaultResolved;
     }
 }
