@@ -4,6 +4,7 @@ import "@/styles/progress-overlay.css";
 import { DARK_MODE, DEFAULT_THEME } from "@/constants/constants";
 import { setupCodeCopyDelegation } from "@/scripts/code-copy";
 import { ensureProgressOverlayBridge } from "@/scripts/progress-overlay-manager";
+import { initRunningDaysRuntime } from "@/scripts/running-days-runtime";
 import {
     encodeHashId,
     resolveSamePageHashLink,
@@ -333,6 +334,7 @@ function setupHashOffsetNavigation(runtimeWindow: LayoutRuntimeWindow): void {
 }
 
 initLayoutRuntime();
+initRunningDaysRuntime();
 
 // ---------------------------------------------------------------------------
 // Dynamic page-specific initialization

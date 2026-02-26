@@ -1,6 +1,7 @@
 # 构建产物
 dist/
 public/assets/font/
+src/generated/
 
 # Astro 生成目录
 .astro/
