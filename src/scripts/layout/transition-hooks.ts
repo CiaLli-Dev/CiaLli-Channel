@@ -287,9 +287,11 @@ export function setupTransitionIntentSource(
         root.style.removeProperty(BANNER_TO_SPEC_TRANSITION_DURATION_VAR);
         setPageHeightExtendVisible(false);
         // 清理命名 VT，防止影响后续导航
-        const mainPanel = document.querySelector<HTMLElement>('.main-panel-wrapper');
+        const mainPanel = document.querySelector<HTMLElement>(
+            ".main-panel-wrapper",
+        );
         if (mainPanel) {
-            mainPanel.style.removeProperty('view-transition-name');
+            mainPanel.style.removeProperty("view-transition-name");
         }
     };
 
@@ -412,10 +414,18 @@ export function setupTransitionIntentSource(
         }
 
         // 任意方向的位移过渡均需设置旧页面命名 VT（VT 截图前必须已设置）
-        if (shouldUseBannerToSpecTransition || shouldUseSpecToBannerTransition) {
-            const oldMainPanel = document.querySelector<HTMLElement>('.main-panel-wrapper');
+        if (
+            shouldUseBannerToSpecTransition ||
+            shouldUseSpecToBannerTransition
+        ) {
+            const oldMainPanel = document.querySelector<HTMLElement>(
+                ".main-panel-wrapper",
+            );
             if (oldMainPanel) {
-                oldMainPanel.style.setProperty('view-transition-name', 'main-panel');
+                oldMainPanel.style.setProperty(
+                    "view-transition-name",
+                    "main-panel",
+                );
             }
         }
 
@@ -522,9 +532,14 @@ export function setupTransitionIntentSource(
 
             // swap 后立即给新页面 .main-panel-wrapper 设置命名 VT
             if (pendingBannerToSpecRoutePath || pendingSpecToBannerRoutePath) {
-                const newMainPanel = document.querySelector<HTMLElement>('.main-panel-wrapper');
+                const newMainPanel = document.querySelector<HTMLElement>(
+                    ".main-panel-wrapper",
+                );
                 if (newMainPanel) {
-                    newMainPanel.style.setProperty('view-transition-name', 'main-panel');
+                    newMainPanel.style.setProperty(
+                        "view-transition-name",
+                        "main-panel",
+                    );
                 }
             }
         };
