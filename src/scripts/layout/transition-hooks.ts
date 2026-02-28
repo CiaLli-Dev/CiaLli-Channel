@@ -284,7 +284,6 @@ export function setupTransitionIntentSource(
     let delayedPageViewTimerId: number | null = null;
     let didReplaceContentDuringVisit = false;
     let didForceNavbarScrolledForBannerToSpec = false;
-    let pendingBannerToSpecNewDocument: Document | null = null;
     let pendingSpecToBannerFreeze = false;
     let navigationInProgress = false;
 
@@ -491,7 +490,6 @@ export function setupTransitionIntentSource(
             didReplaceContentDuringVisit = false;
             pendingBannerToSpecRoutePath = null;
             pendingSidebarProfilePatch = null;
-            pendingBannerToSpecNewDocument = null;
             pendingSpecToBannerFreeze = false;
             bannerToSpecAnimationStartedAt = null;
             clearBannerToSpecTransitionVisualState();
@@ -509,7 +507,6 @@ export function setupTransitionIntentSource(
         deps.cleanupFancybox();
         pendingBannerToSpecRoutePath = null;
         pendingSidebarProfilePatch = null;
-        pendingBannerToSpecNewDocument = null;
         pendingSpecToBannerFreeze = false;
         bannerToSpecAnimationStartedAt = null;
         clearBannerToSpecTransitionVisualState();
@@ -573,7 +570,6 @@ export function setupTransitionIntentSource(
     document.addEventListener("astro:before-swap", (event: Event) => {
         const e = event as BeforeSwapEvent;
         const newDocument = e.newDocument;
-        pendingBannerToSpecNewDocument = newDocument;
 
         // #top-row 采用 transition:persist 后会跨页面复用同一节点，
         // 若保留 onload-animation，某些导航路径会在重挂接时重放一次入场动画
@@ -854,7 +850,6 @@ export function setupTransitionIntentSource(
         ) {
             pendingBannerToSpecRoutePath = null;
             pendingSidebarProfilePatch = null;
-            pendingBannerToSpecNewDocument = null;
             pendingSpecToBannerFreeze = false;
             clearBannerToSpecTransitionVisualState();
         }

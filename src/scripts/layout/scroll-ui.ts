@@ -57,6 +57,16 @@ function updateBackToTopButton(
     }
 }
 
+function resolveBackToTopButton(
+    currentButton: HTMLElement | null,
+): HTMLElement | null {
+    if (currentButton && currentButton.isConnected) {
+        return currentButton;
+    }
+
+    return document.getElementById("back-to-top-btn");
+}
+
 function updateBannerExtendCssVar(bannerHeightExtend: number): void {
     let offset = Math.floor(window.innerHeight * (bannerHeightExtend / 100));
     offset = offset - (offset % 4);
@@ -88,7 +98,7 @@ function getCollapseScrollThreshold(
 export function setupScrollIntentSource(
     options: ScrollIntentSourceOptions,
 ): () => void {
-    const backToTopBtn = document.getElementById("back-to-top-btn");
+    let backToTopBtn = document.getElementById("back-to-top-btn");
 
     const handleScroll = () => {
         const scrollTop = document.documentElement.scrollTop;
@@ -103,6 +113,7 @@ export function setupScrollIntentSource(
               });
 
         requestAnimationFrame(() => {
+            backToTopBtn = resolveBackToTopButton(backToTopBtn);
             updateBackToTopButton(backToTopBtn, options.bannerHeight);
 
             if (shouldFreezeCollapseIntent) {
