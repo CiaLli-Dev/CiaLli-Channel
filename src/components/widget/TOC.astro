@@ -686,7 +686,7 @@ const className = Astro.props.class;
               '<div class="transition w-1.5 h-1.5 rounded-sm bg-black/5 dark:bg-white/10"></div>';
           }
 
-          return `<a href="#${heading.id}" data-no-swup class="px-2 flex gap-2 relative transition w-full min-h-9 rounded-xl hover:bg-(--toc-btn-hover) active:bg-(--toc-btn-active) py-2">
+          return `<a href="#${heading.id}" class="px-2 flex gap-2 relative transition w-full min-h-9 rounded-xl hover:bg-(--toc-btn-hover) active:bg-(--toc-btn-active) py-2">
                     <div class="transition w-5 h-5 shrink-0 rounded-lg text-xs flex items-center justify-center font-bold ${depthClass} ${heading.level === 1 ? "bg-(--toc-badge-bg) text-(--btn-content)" : ""}">
                         ${badgeContent}
                     </div>

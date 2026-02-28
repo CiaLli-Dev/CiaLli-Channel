@@ -45,8 +45,8 @@ html[data-theme="github-dark"] input[type="date"].date-picker-input::-webkit-cal
 @layer components {
   /* View Transitions API 主题切换动画 */
   /* 为整个文档根元素设置视图过渡 */
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
+  html.use-view-transition::view-transition-old(root),
+  html.use-view-transition::view-transition-new(root) {
     animation-duration: 0.5s;
     animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     /* 使用混合模式使颜色过渡更平滑 */
@@ -54,20 +54,20 @@ html[data-theme="github-dark"] input[type="date"].date-picker-input::-webkit-cal
   }
 
   /* 视图过渡组 - 使用交叉淡化效果 */
-  ::view-transition-group(root) {
+  html.use-view-transition::view-transition-group(root) {
     animation-duration: 0.5s;
     animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   /* 淡出旧视图 - 使用更平滑的曲线 */
-  ::view-transition-old(root) {
+  html.use-view-transition::view-transition-old(root) {
     animation-name: theme-fade-out;
     /* 确保背景色同步切换 */
     z-index: 2;
   }
 
   /* 淡入新视图 - 使用更平滑的曲线 */
-  ::view-transition-new(root) {
+  html.use-view-transition::view-transition-new(root) {
     animation-name: theme-fade-in;
     /* 确保新视图在上层 */
     z-index: 1;

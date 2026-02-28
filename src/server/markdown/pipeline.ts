@@ -57,7 +57,6 @@ const rehypeAutolinkPlugin: Pluggable = [
         behavior: "append",
         properties: {
             className: ["anchor"],
-            "data-no-swup": "",
         },
         content: {
             type: "element",

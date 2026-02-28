@@ -28,6 +28,14 @@ let isRendering = false;
 let renderQueued = false;
 let renderSequence = 0;
 let lastTheme: MermaidTheme | null = null;
+const MAX_DEFERRED_RENDER_ATTEMPTS = 12;
+const MERMAID_DEFER_COUNT_ATTR = "data-mermaid-defer-count";
+const ACTIVE_TRANSITION_ROOT_CLASSES = [
+    "layout-banner-to-spec-transition",
+    "layout-banner-to-spec-transition-preparing",
+    "layout-banner-to-spec-transition-active",
+    "layout-spec-to-banner-transition",
+];
 
 const pageWindow = window as MermaidRuntimeWindow;
 
@@ -44,6 +52,35 @@ const hashCode = (code: string): string => {
     }
     return `${code.length}:${Math.abs(hash)}`;
 };
+
+const isElementLayoutReady = (element: HTMLElement): boolean => {
+    if (!element.isConnected) {
+        return false;
+    }
+
+    const style = window.getComputedStyle(element);
+    if (style.display === "none" || style.visibility === "hidden") {
+        return false;
+    }
+
+    const rect = element.getBoundingClientRect();
+    // Mermaid 在宽度为 0 的容器中渲染时可能产生负尺寸 SVG 属性，需等待布局稳定后再渲染。
+    return rect.width > 1;
+};
+
+const getDeferredRenderCount = (element: HTMLElement): number => {
+    const rawValue = element.getAttribute(MERMAID_DEFER_COUNT_ATTR);
+    if (!rawValue) {
+        return 0;
+    }
+    const parsed = Number(rawValue);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+};
+
+const isLayoutTransitionActive = (): boolean =>
+    ACTIVE_TRANSITION_ROOT_CLASSES.some((className) =>
+        document.documentElement.classList.contains(className),
+    );
 
 const scheduleRender = (delay = 0): void => {
     if (renderTimer !== null) {
@@ -168,6 +205,7 @@ const renderOne = async (
 
         element.setAttribute("data-mermaid-rendered-hash", codeHash);
         element.setAttribute("data-mermaid-rendered-theme", theme);
+        element.removeAttribute(MERMAID_DEFER_COUNT_ATTR);
     } catch (error) {
         console.error("[mermaid] failed to render diagram:", error);
         element.innerHTML =
@@ -185,10 +223,39 @@ const renderMermaidDiagrams = async (force = false): Promise<void> => {
         return;
     }
 
-    const elements = Array.from(
+    // Banner-to-spec 转场期间优先保证位移动画流畅，Mermaid 渲染延后执行。
+    if (isLayoutTransitionActive()) {
+        scheduleRender(220);
+        return;
+    }
+
+    const rawElements = Array.from(
         document.querySelectorAll<HTMLElement>(".mermaid[data-mermaid-code]"),
     );
+    if (rawElements.length === 0) {
+        return;
+    }
+
+    const elements: HTMLElement[] = [];
+    let hasDeferredElements = false;
+    for (const element of rawElements) {
+        if (isElementLayoutReady(element)) {
+            elements.push(element);
+            element.removeAttribute(MERMAID_DEFER_COUNT_ATTR);
+            continue;
+        }
+
+        const deferredCount = getDeferredRenderCount(element) + 1;
+        element.setAttribute(MERMAID_DEFER_COUNT_ATTR, String(deferredCount));
+        if (deferredCount < MAX_DEFERRED_RENDER_ATTEMPTS) {
+            hasDeferredElements = true;
+        }
+    }
+
     if (elements.length === 0) {
+        if (hasDeferredElements) {
+            scheduleRender(160);
+        }
         return;
     }
 
@@ -212,15 +279,17 @@ const renderMermaidDiagrams = async (force = false): Promise<void> => {
         });
 
         const shouldForce = force || themeChanged;
-        await Promise.all(
-            elements.map((element) =>
-                renderOne(mermaid, element, theme, shouldForce),
-            ),
-        );
+        // 顺序渲染可降低多图并发时的主线程峰值占用，避免转场与排版同时抖动。
+        for (const element of elements) {
+            await renderOne(mermaid, element, theme, shouldForce);
+        }
     } catch (error) {
         console.error("[mermaid] runtime render failed:", error);
     } finally {
         isRendering = false;
+        if (hasDeferredElements) {
+            scheduleRender(160);
+        }
         if (renderQueued) {
             renderQueued = false;
             scheduleRender();

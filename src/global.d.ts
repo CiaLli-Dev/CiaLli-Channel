@@ -5,8 +5,6 @@ import type { ProgressOverlayApi } from "./scripts/progress-overlay-manager";
 
 export {};
 
-type SwupVisit = { to: { url: string } };
-
 type UmamiWebsiteStats = {
     pageviews?: number;
     visits?: number;
@@ -14,21 +12,6 @@ type UmamiWebsiteStats = {
     bounces?: number;
     totaltime?: number;
 };
-
-interface SwupHooks {
-    on(
-        event: "visit:start" | "visit:end",
-        callback: (visit: SwupVisit) => void,
-    ): void;
-    on(event: string, callback: () => void): void;
-    off(event: string, callback?: () => void): void;
-}
-
-interface SwupInstance {
-    hooks: SwupHooks;
-    navigate: (url: string, options?: { history?: boolean }) => void;
-    preload?: (url: string) => void;
-}
 
 declare global {
     interface HTMLElementTagNameMap {
@@ -41,8 +24,6 @@ declare global {
     }
 
     interface Window {
-        // Define swup type directly since @swup/astro doesn't export AstroIntegration
-        swup?: SwupInstance;
         closeAnnouncement: () => void;
 
         __bannerCarouselController?: {

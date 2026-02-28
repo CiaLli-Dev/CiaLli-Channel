@@ -117,6 +117,15 @@ export function initBannerCarousel(): void {
     updateBannerCarouselState();
 }
 
+export function resetBannerCarousel(): void {
+    const runtimeWindow = getRuntimeWindow();
+    const controller = runtimeWindow.__bannerCarouselController;
+    if (controller) {
+        controller.setPaused(true);
+    }
+    runtimeWindow.__bannerCarouselController = undefined;
+}
+
 export function showBanner(): void {
     requestAnimationFrame(() => {
         const banner = document.getElementById("banner");

@@ -167,7 +167,7 @@ if (desktopShowLeftSidebar && effectiveShowRightSidebar) {
 }
 
 const mainContentClass = `
-  transition-swup-fade overflow-clip w-full
+  transition-fade overflow-clip w-full
   col-span-1 row-start-1 row-end-2
   ${desktopShowSidebar ? mainGridPositionClass : "col-span-1"}
 `
@@ -190,7 +190,11 @@ const hasCarousel =
   <IconifyLoader />
 
   <slot slot="head" name="head" />
-  <div id="top-row" class="z-50 pointer-events-none fixed top-0 left-0 right-0">
+  <div
+    id="top-row"
+    class="z-50 pointer-events-none fixed top-0 left-0 right-0"
+    transition:persist
+  >
     <div id="navbar-wrapper" class="pointer-events-auto">
       <Navbar />
     </div>
@@ -235,6 +239,7 @@ const hasCarousel =
 
       <script
         is:inline
+        data-astro-rerun
         define:vars={{
           desktopImages: bannerImages,
           position: siteConfig.banner.position,
@@ -396,7 +401,7 @@ const hasCarousel =
           desktopShowLeftSidebar ? (
             <SideBar class={sidebarClass} headings={headings} />
           ) : (
-            // 保证 Swup 容器在全宽页也存在，避免 container mismatch 触发整页刷新。
+            // 保证 sidebar 容器在全宽页也存在，确保布局结构一致。
             <div
               id="sidebar"
               class="hidden"
@@ -419,16 +424,12 @@ const hasCarousel =
               <>
                 <RightSideBar headings={headings} />
                 {shouldRenderDedicatedPostToc && (
-                  <div
-                    id="toc-wrapper"
-                    data-post-detail-toc="1"
-                    class="w-full transition-swup-fade"
-                  >
-                    <div id="toc-inner-wrapper" class="w-full">
-                      <div
-                        id="toc-container"
-                        class="w-full transition-swup-fade"
-                      >
+                  <div id="toc-wrapper" class="w-full transition-fade">
+                    <div
+                      id="toc-inner-wrapper"
+                      class="w-full max-h-[calc(100vh-10rem)] overflow-hidden"
+                    >
+                      <div id="toc-container" class="w-full transition-fade">
                         <TOC headings={headings} />
                       </div>
                     </div>
@@ -436,13 +437,12 @@ const hasCarousel =
                 )}
               </>
             ) : shouldRenderDedicatedPostToc ? (
-              <div
-                id="toc-wrapper"
-                data-post-detail-toc="1"
-                class="w-full transition-swup-fade"
-              >
-                <div id="toc-inner-wrapper" class="w-full">
-                  <div id="toc-container" class="w-full transition-swup-fade">
+              <div id="toc-wrapper" class="w-full transition-fade">
+                <div
+                  id="toc-inner-wrapper"
+                  class="w-full max-h-[calc(100vh-10rem)] overflow-hidden"
+                >
+                  <div id="toc-container" class="w-full transition-fade">
                     <TOC headings={headings} />
                   </div>
                 </div>
@@ -452,7 +452,7 @@ const hasCarousel =
         </div>
 
         <main
-          id="swup-container"
+          id="main-container"
           data-enter-skeleton-target="fallback"
           class={`${mainContentClass} transition-main relative`}
         >
@@ -509,11 +509,6 @@ const hasCarousel =
               </div>
             </div>
           </div>
-          <!--
-            详情页右侧互动控件专用挂载锚点：
-            放在 #content-wrapper 外，避免其 transform 影响 fixed 定位
-          -->
-          <div id="detail-action-float-anchor" aria-hidden="true"></div>
         </main>
       </div>
 
@@ -616,49 +611,27 @@ const hasCarousel =
       html.layout-banner-to-spec-transition.layout-banner-to-spec-transition-active
     )
     .main-panel-wrapper {
-    transform: translate3d(
-      0px,
-      calc(var(--layout-banner-route-up-shift, 0px) * -1),
-      0px
-    );
+    transform: translateY(calc(-1 * var(--layout-banner-route-up-shift, 0px)));
   }
 
   :global(
       html.layout-banner-to-spec-transition.layout-banner-to-spec-transition-active
     )
     #banner-wrapper {
-    transform: translate3d(
-      0px,
-      calc(
-        (
-            var(--layout-banner-route-up-shift, 0px) +
-              var(--layout-banner-route-banner-extra-shift, 0px)
-          ) *
-          -1
-      ),
-      0px
+    transform: translateY(
+      calc(-1 * var(--layout-banner-route-banner-extra-shift, 0px))
     );
+    opacity: 0;
   }
 
   :global(html.layout-banner-to-spec-transition .transition-main),
   :global(html.layout-banner-to-spec-transition .transition-leaving),
-  :global(html.layout-banner-to-spec-transition .transition-swup-fade) {
+  :global(html.layout-banner-to-spec-transition .transition-fade) {
     transition-duration: 280ms !important;
   }
 
   :global(html.layout-banner-to-spec-transition #content-wrapper) {
     transition: opacity 240ms cubic-bezier(0.22, 1, 0.36, 1) !important;
-  }
-
-  :global(html.layout-banner-to-spec-transition.is-animating) #swup-container,
-  :global(html.layout-banner-to-spec-transition.is-animating.is-leaving)
-    #content-wrapper {
-    transform: none !important;
-  }
-
-  :global(html.layout-banner-to-spec-transition.is-animating.is-leaving)
-    #content-wrapper {
-    opacity: 1 !important;
   }
 
   :global(
@@ -727,9 +700,8 @@ const hasCarousel =
   }
 
   :global(#right-sidebar-slot.right-sidebar-toc-fixed) {
-    --right-sidebar-sticky-top: 5.5rem;
     position: sticky;
-    top: var(--right-sidebar-sticky-top);
+    top: 5.5rem;
     align-self: start;
   }
 
@@ -769,17 +741,6 @@ const hasCarousel =
   }
 
   #toc-inner-wrapper {
-    /* 右侧文章 TOC 的可视高度：顶部 sticky 偏移到底部返回顶部按钮上沿 */
-    --toc-stop-above-back-top: calc(
-      var(--back-to-top-bottom, 10rem) + var(--right-float-size, 3.75rem)
-    );
-    --post-detail-toc-max-height: max(
-      0px,
-      calc(
-        100vh - var(--right-sidebar-sticky-top, 5.5rem) -
-          var(--toc-stop-above-back-top)
-      )
-    );
     transition:
       top var(--layout-mode-transition-duration)
         var(--layout-mode-transition-easing),
@@ -801,12 +762,6 @@ const hasCarousel =
     overflow-anchor: none;
   }
 
-  :global(#detail-action-float-anchor) {
-    position: relative;
-    width: 0;
-    height: 0;
-  }
-
   #top-row {
     position: fixed;
     top: 0;
@@ -826,13 +781,7 @@ const hasCarousel =
   body[data-layout-mode="none"] #toc-inner-wrapper,
   body[data-layout-mode="collapsed"] #toc-inner-wrapper {
     top: 5.5rem !important;
-    --post-detail-toc-max-height: max(
-      0px,
-      calc(
-        100vh - var(--right-sidebar-sticky-top, 5.5rem) -
-          var(--toc-stop-above-back-top)
-      )
-    ) !important;
+    max-height: calc(100vh - 8rem) !important;
   }
 
   .waves {

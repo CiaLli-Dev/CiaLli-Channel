@@ -39,6 +39,11 @@ function getInitialScrollTop(): number {
     return document.documentElement.scrollTop;
 }
 
+function isHomePath(pathname: string): boolean {
+    const normalized = pathname.replace(/\/+$/, "");
+    return normalized === "" || normalized === "/";
+}
+
 export function initLayoutController(
     deps: LayoutControllerDeps,
 ): LayoutController {
@@ -70,6 +75,17 @@ export function initLayoutController(
     };
 
     const handleLogoClick = (event: Event): void => {
+        if (
+            event instanceof MouseEvent &&
+            (event.button !== 0 ||
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey)
+        ) {
+            return;
+        }
+
         const eventTarget = event.target;
         if (!(eventTarget instanceof Element)) {
             return;
@@ -78,20 +94,36 @@ export function initLayoutController(
         if (!logo) {
             return;
         }
-        if (!(state.isHome && state.mode === "collapsed")) {
+
+        // 必须在捕获阶段先于 ClientRouter 拦截首页同地址点击，
+        // 否则会先触发 Astro 同 URL 导航，出现“重载”体感与状态重置。
+        const onHomeRoute = isHomePath(window.location.pathname);
+        if (!onHomeRoute) {
             return;
         }
+
         event.preventDefault();
-        dispatch({ type: "LOGO_CLICK" });
+        const collapsedByDom =
+            document.body.dataset.layoutMode === "collapsed" ||
+            document.body.classList.contains("scroll-collapsed-banner");
+        if (state.mode === "collapsed" || collapsedByDom) {
+            dispatch({ type: "LOGO_CLICK" });
+            return;
+        }
+
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth",
+        });
     };
 
-    document.addEventListener("click", handleLogoClick);
+    document.addEventListener("click", handleLogoClick, true);
 
     return {
         dispatch,
         getState: () => state,
         destroy: () => {
-            document.removeEventListener("click", handleLogoClick);
+            document.removeEventListener("click", handleLogoClick, true);
         },
     };
 }
