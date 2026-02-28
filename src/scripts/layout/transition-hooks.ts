@@ -27,8 +27,7 @@ const BANNER_TO_SPEC_BANNER_EXTRA_SHIFT_VAR =
     "--layout-banner-route-banner-extra-shift";
 const BANNER_TO_SPEC_TRANSITION_DURATION_VAR =
     "--layout-banner-route-transition-duration";
-const BANNER_TO_SPEC_VT_DURATION_VAR =
-    "--layout-banner-route-vt-duration";
+const BANNER_TO_SPEC_VT_DURATION_VAR = "--layout-banner-route-vt-duration";
 const BANNER_TO_SPEC_MAIN_PANEL_VT_NAME = "banner-route-main-panel";
 const BANNER_TO_SPEC_BANNER_VT_NAME = "banner-route-banner";
 const ENTER_SKELETON_AWAITING_REPLACE_CLASS = "enter-skeleton-awaiting-replace";
@@ -661,8 +660,7 @@ export function setupTransitionIntentSource(
             pendingBannerToSpecRoutePath &&
             bannerToSpecAnimationStartedAt !== null
         ) {
-            const elapsed =
-                performance.now() - bannerToSpecAnimationStartedAt;
+            const elapsed = performance.now() - bannerToSpecAnimationStartedAt;
             const remaining = Math.max(
                 50,
                 BANNER_TO_SPEC_TRANSITION_DURATION_MS - elapsed,

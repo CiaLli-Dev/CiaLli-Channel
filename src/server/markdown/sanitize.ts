@@ -74,7 +74,15 @@ const TRUSTED_EMBED_HOSTS: ReadonlySet<string> = new Set([
     "www.youtube-nocookie.com",
     "player.bilibili.com",
     "embed.music.apple.com",
+    "www.notion.so",
+    "notion.so",
 ]);
+
+/**
+ * 可信嵌入域名后缀白名单。
+ * 例如 notion.site 是用户工作区二级域名，需要后缀匹配。
+ */
+const TRUSTED_EMBED_HOST_SUFFIXES: readonly string[] = [".notion.site"];
 
 /**
  * 部分嵌入来源在官方代码中携带布局样式，但 CMS 保存时可能将其剥离。
@@ -101,14 +109,43 @@ function resolveStyleForIframe(
     }
 }
 
+/**
+ * 规范化 iframe 地址，避免内容侧输入差异影响第三方嵌入行为。
+ * - 协议相对 URL（//host/path）补全为 https://
+ * - pathname 中连续斜杠收敛为单斜杠（保留 query/hash）
+ */
+function normalizeIframeSrc(src: string | undefined): string | undefined {
+    if (typeof src !== "string" || !src.trim()) return undefined;
+    const rawSrc = src.trim();
+    const normalizedSrc = rawSrc.startsWith("//") ? `https:${rawSrc}` : rawSrc;
+
+    try {
+        const url = new URL(normalizedSrc);
+        const normalizedPathname = url.pathname.replace(/\/{2,}/g, "/");
+        if (normalizedPathname !== url.pathname) {
+            url.pathname = normalizedPathname;
+        }
+        return url.toString();
+    } catch {
+        return normalizedSrc;
+    }
+}
+
 const TRUSTED_SANDBOX =
     "allow-scripts allow-same-origin allow-popups allow-presentation";
+
+function isTrustedEmbedHost(hostname: string): boolean {
+    if (TRUSTED_EMBED_HOSTS.has(hostname)) return true;
+    return TRUSTED_EMBED_HOST_SUFFIXES.some((suffix) =>
+        hostname.endsWith(suffix),
+    );
+}
 
 function resolveSandboxForIframe(src: string | undefined): string {
     if (!src) return "";
     try {
         const { hostname } = new URL(src);
-        return TRUSTED_EMBED_HOSTS.has(hostname) ? TRUSTED_SANDBOX : "";
+        return isTrustedEmbedHost(hostname) ? TRUSTED_SANDBOX : "";
     } catch {
         return "";
     }
@@ -184,13 +221,8 @@ export function sanitizeMarkdownHtml(
                 return { tagName, attribs: output };
             },
             iframe: (tagName, attribs) => {
-                // 将协议相对 URL（//host/path）补全为 https://，
-                // 必须在 sanitize-html 的 scheme 校验前处理，否则 src 会被剥离。
-                const src =
-                    typeof attribs.src === "string" &&
-                    attribs.src.startsWith("//")
-                        ? `https:${attribs.src}`
-                        : attribs.src;
+                // 必须在 sanitize-html 的 scheme 校验前规范化 URL，否则 src 可能被剥离。
+                const src = normalizeIframeSrc(attribs.src);
                 const style = resolveStyleForIframe(src, attribs.style);
                 const output = {
                     ...attribs,

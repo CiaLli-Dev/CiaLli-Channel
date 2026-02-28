@@ -608,16 +608,16 @@ const hasCarousel =
   }
 
   :global(
-    html.layout-banner-to-spec-transition.layout-banner-to-spec-transition-active
-  ) .main-panel-wrapper {
-    transform: translateY(
-      calc(-1 * var(--layout-banner-route-up-shift, 0px))
-    );
+      html.layout-banner-to-spec-transition.layout-banner-to-spec-transition-active
+    )
+    .main-panel-wrapper {
+    transform: translateY(calc(-1 * var(--layout-banner-route-up-shift, 0px)));
   }
 
   :global(
-    html.layout-banner-to-spec-transition.layout-banner-to-spec-transition-active
-  ) #banner-wrapper {
+      html.layout-banner-to-spec-transition.layout-banner-to-spec-transition-active
+    )
+    #banner-wrapper {
     transform: translateY(
       calc(-1 * var(--layout-banner-route-banner-extra-shift, 0px))
     );

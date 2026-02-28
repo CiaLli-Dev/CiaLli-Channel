@@ -43,6 +43,8 @@ describe("sanitizeMarkdownHtml 样式白名单", () => {
             "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ",
             "https://player.bilibili.com/player.html?bvid=BV1xx411c7mD",
             "https://embed.music.apple.com/album/123456789",
+            "https://www.notion.so/embeds/example",
+            "https://uednd.notion.site/ebd/894a51c4c6c64a2f88c1e0f2deb0ba6c",
         ];
         for (const src of sources) {
             const html = sanitizeMarkdownHtml(`<iframe src="${src}"></iframe>`);
@@ -60,6 +62,30 @@ describe("sanitizeMarkdownHtml 样式白名单", () => {
             'sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"',
         );
         expect(html).toContain("player.bilibili.com");
+    });
+
+    it("notion.site 双斜杠路径会被规范化并保留可信 sandbox", () => {
+        const html = sanitizeMarkdownHtml(
+            '<iframe src="https://uednd.notion.site/ebd//894a51c4c6c64a2f88c1e0f2deb0ba6c"></iframe>',
+        );
+        expect(html).toContain(
+            'src="https://uednd.notion.site/ebd/894a51c4c6c64a2f88c1e0f2deb0ba6c"',
+        );
+        expect(html).toContain(
+            'sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"',
+        );
+    });
+
+    it("iframe src 含首尾空白时仍可被规范化并命中可信源", () => {
+        const html = sanitizeMarkdownHtml(
+            '<iframe src="  https://uednd.notion.site/ebd/894a51c4c6c64a2f88c1e0f2deb0ba6c  "></iframe>',
+        );
+        expect(html).toContain(
+            'src="https://uednd.notion.site/ebd/894a51c4c6c64a2f88c1e0f2deb0ba6c"',
+        );
+        expect(html).toContain(
+            'sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"',
+        );
     });
 
     it("无 src 的 iframe 使用严格 sandbox", () => {
