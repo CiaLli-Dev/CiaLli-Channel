@@ -39,6 +39,7 @@ vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
         if (typeof v === "string") return v || null;
         return null;
     }),
+    extractDirectusFileIdsFromUnknown: vi.fn(() => []),
     cleanupOrphanDirectusFiles: vi.fn().mockResolvedValue([]),
 }));
 

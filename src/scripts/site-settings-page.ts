@@ -15,59 +15,21 @@ import I18nKey from "@/i18n/i18nKey";
 import { runWithTask } from "@/scripts/progress-overlay-manager";
 import { getApiErrorMessage, requestApi as api } from "@/scripts/http-client";
 import { t, tFmt } from "@/scripts/i18n-runtime";
+import {
+    el,
+    inputVal,
+    textareaVal,
+    checked,
+    setVal,
+    setChecked,
+    setSelect,
+    setMsg,
+    clamp,
+    numberOrFallback,
+    buildAssetUrl,
+} from "@/scripts/dom-helpers";
 
 const DATA_BOUND = "data-ss-bound";
-
-// ---------------------------------------------------------------------------
-// DOM 工具函数
-// ---------------------------------------------------------------------------
-
-const el = (id: string): HTMLElement | null => document.getElementById(id);
-
-const inputVal = (id: string): string =>
-    String((el(id) as HTMLInputElement | null)?.value ?? "").trim();
-
-const textareaVal = (id: string): string =>
-    String((el(id) as HTMLTextAreaElement | null)?.value ?? "");
-
-const checked = (id: string): boolean =>
-    Boolean((el(id) as HTMLInputElement | null)?.checked);
-
-const setVal = (id: string, value: string): void => {
-    const node = el(id) as HTMLInputElement | HTMLTextAreaElement | null;
-    if (node) {
-        node.value = value;
-    }
-};
-
-const setChecked = (id: string, value: boolean): void => {
-    const node = el(id) as HTMLInputElement | null;
-    if (node) {
-        node.checked = value;
-    }
-};
-
-const setSelect = (id: string, value: string): void => {
-    const node = el(id) as HTMLSelectElement | null;
-    if (node) {
-        node.value = value;
-    }
-};
-
-const setMsg = (id: string, text: string): void => {
-    const node = el(id);
-    if (node) {
-        node.textContent = text;
-    }
-};
-
-const clamp = (value: number, min: number, max: number): number =>
-    Math.min(max, Math.max(min, value));
-
-const numberOrFallback = (value: unknown, fallback: number): number => {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : fallback;
-};
 
 // ---------------------------------------------------------------------------
 // 资源工具函数
@@ -78,9 +40,6 @@ const DIRECTUS_FILE_ID_PATTERN =
 
 const isLikelyDirectusFileId = (value: string): boolean =>
     DIRECTUS_FILE_ID_PATTERN.test(value);
-
-const buildAssetUrl = (fileId: string): string =>
-    `/api/v1/public/assets/${encodeURIComponent(fileId)}`;
 
 const resolveAssetPreviewUrl = (value: string): string => {
     const raw = String(value || "").trim();

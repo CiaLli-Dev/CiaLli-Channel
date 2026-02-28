@@ -5,6 +5,7 @@
 import I18nKey from "@i18n/i18nKey";
 import { UPLOAD_LIMITS, UPLOAD_LIMIT_LABELS } from "@constants/upload-limits";
 import { t, tFmt } from "@/scripts/i18n-runtime";
+import { clamp } from "@/scripts/dom-helpers";
 
 export interface CropModalConfig {
     outputWidth: number;
@@ -15,11 +16,6 @@ export interface CropModalConfig {
     maxFileSize?: number; // 字节；不传则使用 UPLOAD_LIMITS["article-cover"]
     title?: string;
 }
-
-// ── 工具函数 ──
-
-const clamp = (value: number, min: number, max: number): number =>
-    Math.min(max, Math.max(min, value));
 
 // ── ImageCropModal ──
 

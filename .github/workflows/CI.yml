@@ -39,5 +39,8 @@ jobs:
       - name: Run checks
         run: pnpm check && pnpm lint && pnpm build
 
+      - name: Run tests
+        run: pnpm test
+
       - name: Check formatting
         run: pnpm exec prettier --check .

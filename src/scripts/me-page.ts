@@ -28,6 +28,12 @@ import {
     DISPLAY_NAME_MAX_WEIGHT,
     PROFILE_BIO_MAX_LENGTH,
 } from "@/constants/text-limits";
+import {
+    clamp,
+    buildAssetUrl,
+    buildLoginRedirectHref,
+    extractFileId,
+} from "@/scripts/dom-helpers";
 
 const OUTSIDE_CLICK_KEY = "__cialli_me_page_outside_click__";
 
@@ -35,45 +41,6 @@ interface RuntimeWindow extends Window {
     [OUTSIDE_CLICK_KEY]?: ((e: MouseEvent) => void) | undefined;
 }
 const runtimeWindow = window as RuntimeWindow;
-
-const clamp = (value: number, min: number, max: number): number =>
-    Math.min(max, Math.max(min, value));
-
-const buildAssetUrl = (fileId: string): string => {
-    const normalized = String(fileId || "").trim();
-    if (!normalized) {
-        return "";
-    }
-    return `/api/v1/public/assets/${encodeURIComponent(normalized)}`;
-};
-
-const buildLoginRedirectHref = (): string => {
-    const pathname = String(window.location.pathname || "/");
-    const search = String(window.location.search || "");
-    const hash = String(window.location.hash || "");
-    const redirect = `${pathname}${search}${hash}` || "/";
-    if (!redirect.startsWith("/") || redirect.startsWith("//")) {
-        return "/auth/login";
-    }
-    return `/auth/login?redirect=${encodeURIComponent(redirect)}`;
-};
-
-const extractFileId = (value: unknown): string => {
-    if (!value) {
-        return "";
-    }
-    if (typeof value === "string") {
-        return value.trim();
-    }
-    if (
-        typeof value === "object" &&
-        "id" in value &&
-        typeof (value as { id: unknown }).id === "string"
-    ) {
-        return String((value as { id: string }).id || "").trim();
-    }
-    return "";
-};
 
 const AUTH_ME_RETRY_DELAY_MS = 220;
 const PROFILE_BIO_TYPEWRITER_SPEED_MIN = 10;
