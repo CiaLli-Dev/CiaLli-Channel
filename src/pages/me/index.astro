@@ -5,7 +5,7 @@ import { i18n } from "@i18n/translation";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
 import { getSessionUser } from "@/server/auth/session";
 import {
-  loadPublicProfileByUserId,
+  loadProfileForViewerByUserId,
   profileToSidebarData,
 } from "@/server/api/v1/public-data";
 
@@ -14,7 +14,7 @@ export const prerender = false;
 try {
   const user = await getSessionUser(Astro);
   if (user) {
-    const profile = await loadPublicProfileByUserId(user.id);
+    const profile = await loadProfileForViewerByUserId(user.id, user.id);
     if (profile) {
       Astro.locals.sidebarProfile = profileToSidebarData(profile);
     }

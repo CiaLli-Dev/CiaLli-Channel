@@ -8,7 +8,11 @@ import ArticleCardCompact from "@components/home/ArticleCardCompact.astro";
 import BangumiCardCompact from "@components/home/BangumiCardCompact.astro";
 import AlbumCardCompact from "@components/home/AlbumCardCompact.astro";
 import DiaryCardCompact from "@components/home/DiaryCardCompact.astro";
-import { loadUserHomeData } from "@/server/api/v1/public-data";
+import {
+  loadProfileForViewer,
+  loadUserHomeData,
+  profileToSidebarData,
+} from "@/server/api/v1/public-data";
 import type {
   ContentLoadResult,
   UserHomeData,
@@ -48,6 +52,12 @@ try {
       Astro.response.status = 404;
     } else if (result.status === "permission_denied") {
       Astro.response.status = 404;
+    } else {
+      const sidebarProfile = await loadProfileForViewer(username, viewerId);
+      if (sidebarProfile) {
+        // 个人主页侧栏优先显示当前主页用户资料，避免回退到官方账户
+        Astro.locals.sidebarProfile = profileToSidebarData(sidebarProfile);
+      }
     }
   }
 } catch (error) {

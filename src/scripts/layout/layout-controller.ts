@@ -9,6 +9,10 @@ import {
     type LayoutIntent,
     type LayoutState,
 } from "./layout-state";
+import {
+    normalizeNavigationPathname,
+    shouldIgnoreSamePageNavigation,
+} from "./navigation-dedupe";
 
 export type LayoutControllerDeps = {
     bannerEnabled: boolean;
@@ -40,8 +44,33 @@ function getInitialScrollTop(): number {
 }
 
 function isHomePath(pathname: string): boolean {
-    const normalized = pathname.replace(/\/+$/, "");
-    return normalized === "" || normalized === "/";
+    return normalizeNavigationPathname(pathname) === "/";
+}
+
+function isModifiedPrimaryClick(event: Event): boolean {
+    return (
+        event instanceof MouseEvent &&
+        (event.button !== 0 ||
+            event.metaKey ||
+            event.ctrlKey ||
+            event.shiftKey ||
+            event.altKey)
+    );
+}
+
+function resolveAnchorNavigationTarget(
+    anchor: HTMLAnchorElement,
+    baseUrl: URL,
+): URL | null {
+    const rawHref = anchor.getAttribute("href");
+    if (!rawHref) {
+        return null;
+    }
+    try {
+        return new URL(rawHref, baseUrl);
+    } catch {
+        return null;
+    }
 }
 
 export function initLayoutController(
@@ -74,15 +103,8 @@ export function initLayoutController(
         return state;
     };
 
-    const handleLogoClick = (event: Event): void => {
-        if (
-            event instanceof MouseEvent &&
-            (event.button !== 0 ||
-                event.metaKey ||
-                event.ctrlKey ||
-                event.shiftKey ||
-                event.altKey)
-        ) {
+    const handleNavigationClick = (event: Event): void => {
+        if (isModifiedPrimaryClick(event)) {
             return;
         }
 
@@ -90,15 +112,34 @@ export function initLayoutController(
         if (!(eventTarget instanceof Element)) {
             return;
         }
-        const logo = eventTarget.closest<HTMLAnchorElement>("#navbar-logo");
-        if (!logo) {
+
+        const anchor = eventTarget.closest<HTMLAnchorElement>("a[href]");
+        if (!anchor) {
             return;
         }
 
-        // 必须在捕获阶段先于 ClientRouter 拦截首页同地址点击，
-        // 否则会先触发 Astro 同 URL 导航，出现“重载”体感与状态重置。
+        const isNavbarLogo = anchor.id === "navbar-logo";
         const onHomeRoute = isHomePath(window.location.pathname);
-        if (!onHomeRoute) {
+
+        // 首页 Logo 在首页时保持既有行为
+        if (!(isNavbarLogo && onHomeRoute)) {
+            const currentUrl = new URL(window.location.href);
+            const targetUrl = resolveAnchorNavigationTarget(anchor, currentUrl);
+            if (!targetUrl) {
+                return;
+            }
+
+            // 必须在捕获阶段先于 ClientRouter 拦截“同页同地址”点击，
+            // 否则会先触发 Astro 同 URL 导航，出现重复过渡与重载体感
+            const shouldIgnore = shouldIgnoreSamePageNavigation({
+                currentUrl,
+                targetUrl,
+                targetAttr: anchor.getAttribute("target"),
+                hasDownload: anchor.hasAttribute("download"),
+            });
+            if (shouldIgnore) {
+                event.preventDefault();
+            }
             return;
         }
 
@@ -117,13 +158,13 @@ export function initLayoutController(
         });
     };
 
-    document.addEventListener("click", handleLogoClick, true);
+    document.addEventListener("click", handleNavigationClick, true);
 
     return {
         dispatch,
         getState: () => state,
         destroy: () => {
-            document.removeEventListener("click", handleLogoClick, true);
+            document.removeEventListener("click", handleNavigationClick, true);
         },
     };
 }
