@@ -26,6 +26,7 @@ export type PublishDomRefs = {
     articleTitleHintEl: HTMLElement | null;
     articleSummaryInput: HTMLTextAreaElement;
     articleBodyInput: HTMLTextAreaElement;
+    editorMonacoEl: HTMLElement | null;
     articleCoverUrlInput: HTMLInputElement;
     articleTagsInput: HTMLInputElement;
     articleCategoryInput: HTMLInputElement;
@@ -199,6 +200,7 @@ export function collectDomRefs(): PublishDomRefs | null {
 
     return {
         ...required,
+        editorMonacoEl: document.getElementById("publish-editor-monaco"),
         currentHintEl: document.getElementById("publish-current-hint"),
         previewErrorEl: document.getElementById("publish-preview-error"),
         previewContentEl: document.getElementById("publish-preview-content"),

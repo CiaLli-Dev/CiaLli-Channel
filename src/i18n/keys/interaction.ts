@@ -42,6 +42,7 @@ export enum InteractionKey {
     interactionCommonImageUploading = "interactionCommonImageUploading",
     interactionCommonLoaded = "interactionCommonLoaded",
     interactionCommonNoChangesToSave = "interactionCommonNoChangesToSave",
+    interactionCommonUnsavedChangesLeaveConfirm = "interactionCommonUnsavedChangesLeaveConfirm",
     interactionCommonRequestFailed = "interactionCommonRequestFailed",
     interactionCommonSaveCompleted = "interactionCommonSaveCompleted",
     interactionCommonSaveCompletedReloading = "interactionCommonSaveCompletedReloading",

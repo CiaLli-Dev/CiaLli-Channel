@@ -2,6 +2,7 @@ import { UPLOAD_LIMIT_LABELS, UPLOAD_LIMITS } from "@/constants/upload-limits";
 import I18nKey from "@/i18n/i18nKey";
 import { t, tFmt } from "@/scripts/i18n-runtime";
 import type { ProgressTaskHandle } from "@/scripts/progress-overlay-manager";
+import { setupUnsavedChangesGuard } from "@/scripts/unsaved-changes-guard";
 import { setupPageInit } from "@/utils/page-init";
 import {
     api,
@@ -27,6 +28,34 @@ import {
 } from "@/scripts/diary-editor-save";
 
 const MAX_DIARY_UPLOAD_COUNT = 9;
+let disposeActiveDiaryEditorPage: (() => void) | null = null;
+let activeDiaryEditorController: AbortController | null = null;
+
+function buildDiaryDraftSnapshot(
+    contentInput: HTMLTextAreaElement,
+    allowCommentsInput: HTMLInputElement,
+    isPublicInput: HTMLInputElement,
+    imageOrderItems: DiaryImageOrderItem[],
+    pendingUploads: Map<string, PendingDiaryUpload>,
+    deletedExistingImageIds: Set<string>,
+): string {
+    // 统一快照比较，覆盖文本、开关、图片顺序/待上传/待删除等编辑状态。
+    const imageOrder = imageOrderItems.map((item) => ({
+        key: item.key,
+        kind: item.kind,
+        caption: item.caption || "",
+        imageId: item.imageId || "",
+        localUrl: item.localUrl || "",
+    }));
+    return JSON.stringify({
+        content: String(contentInput.value || ""),
+        allowComments: allowCommentsInput.checked,
+        isPublic: isPublicInput.checked,
+        imageOrder,
+        pendingUploadKeys: Array.from(pendingUploads.keys()).sort(),
+        deletedImageIds: Array.from(deletedExistingImageIds).sort(),
+    });
+}
 
 // ---- DOM refs type ----
 type EditorDomRefs = {
@@ -261,6 +290,11 @@ export function initDiaryEditorPage(options: InitOptions): boolean {
     }
     // 仅在关键节点全部就绪后标记已绑定，避免过早短路导致页面无响应。
     root.dataset.diaryEditorBound = "1";
+    // 页面重复进入前释放上一次编辑实例，避免残留监听器干扰导航确认。
+    disposeActiveDiaryEditorPage?.();
+    activeDiaryEditorController?.abort();
+    const pageController = new AbortController();
+    activeDiaryEditorController = pageController;
 
     const {
         allowCommentsInput,
@@ -294,6 +328,7 @@ export function initDiaryEditorPage(options: InitOptions): boolean {
     const deletedExistingImageIds = new Set<string>();
     let isSaving = false;
     let saveTaskHandle: ProgressTaskHandle | null = null;
+    let savedDraftSnapshot = "";
 
     const setSubmitMessage = makeSetSubmitMessage(submitMsgEl);
     const setSubmitError = makeSetSubmitError(submitErrorEl);
@@ -305,6 +340,31 @@ export function initDiaryEditorPage(options: InitOptions): boolean {
         savePublishedBtn.textContent = nextSaving
             ? publishButtonLoadingText
             : publishButtonIdleText;
+    };
+    const markDraftSaved = (): void => {
+        savedDraftSnapshot = buildDiaryDraftSnapshot(
+            contentInput,
+            allowCommentsInput,
+            isPublicInput,
+            imageOrderItems,
+            pendingUploads,
+            deletedExistingImageIds,
+        );
+    };
+    const hasUnsavedDraftChanges = (): boolean => {
+        if (isSaving) {
+            return false;
+        }
+        return (
+            buildDiaryDraftSnapshot(
+                contentInput,
+                allowCommentsInput,
+                isPublicInput,
+                imageOrderItems,
+                pendingUploads,
+                deletedExistingImageIds,
+            ) !== savedDraftSnapshot
+        );
     };
 
     const renderCtx: RenderImageOrderContext = {
@@ -398,16 +458,50 @@ export function initDiaryEditorPage(options: InitOptions): boolean {
             renderImageOrder,
             setSubmitMessage,
             setSubmitError,
-        );
+        ).finally(() => {
+            markDraftSaved();
+        });
     } else {
         renderImageOrder();
+        markDraftSaved();
     }
 
-    window.addEventListener("beforeunload", () => {
+    const disposeUnsavedGuard = setupUnsavedChangesGuard({
+        isDirty: hasUnsavedDraftChanges,
+        getConfirmMessage: () =>
+            t(I18nKey.interactionCommonUnsavedChangesLeaveConfirm),
+    });
+    let disposed = false;
+    const disposeDiaryEditorResources = (): void => {
+        if (disposed) {
+            return;
+        }
+        disposed = true;
+        if (disposeActiveDiaryEditorPage === disposeDiaryEditorResources) {
+            disposeActiveDiaryEditorPage = null;
+        }
+        if (activeDiaryEditorController === pageController) {
+            activeDiaryEditorController = null;
+        }
+        pageController.abort();
+        disposeUnsavedGuard();
         for (const pending of pendingUploads.values()) {
             URL.revokeObjectURL(pending.localUrl);
         }
         pendingUploads.clear();
+    };
+    disposeActiveDiaryEditorPage = disposeDiaryEditorResources;
+    document.addEventListener(
+        "astro:before-swap",
+        disposeDiaryEditorResources,
+        {
+            once: true,
+            signal: pageController.signal,
+        },
+    );
+    window.addEventListener("pagehide", disposeDiaryEditorResources, {
+        once: true,
+        signal: pageController.signal,
     });
     return true;
 }

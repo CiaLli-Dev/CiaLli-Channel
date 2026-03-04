@@ -44,6 +44,8 @@ export const zhTWInteraction: Record<string, string> = {
     [Key.interactionCommonImageUploading]: "圖片上傳中...",
     [Key.interactionCommonLoaded]: "載入完成",
     [Key.interactionCommonNoChangesToSave]: "沒有可儲存的變更",
+    [Key.interactionCommonUnsavedChangesLeaveConfirm]:
+        "目前有尚未儲存的變更，離開頁面後將遺失，是否繼續？",
     [Key.interactionCommonRequestFailed]: "請求失敗，請稍後重試。",
     [Key.interactionCommonSaveCompleted]: "儲存完成",
     [Key.interactionCommonSaveCompletedReloading]: "儲存完成，正在重新整理...",

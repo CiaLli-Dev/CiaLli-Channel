@@ -46,6 +46,8 @@ export const jaInteraction: Record<string, string> = {
     [Key.interactionCommonImageUploading]: "Common Image Uploading",
     [Key.interactionCommonLoaded]: "Common Loaded",
     [Key.interactionCommonNoChangesToSave]: "Common No Changes To Save",
+    [Key.interactionCommonUnsavedChangesLeaveConfirm]:
+        "未保存の変更があります。ページを離れてもよろしいですか？",
     [Key.interactionCommonRequestFailed]: "Common Request Failed",
     [Key.interactionCommonSaveCompleted]: "Common Save Completed",
     [Key.interactionCommonSaveCompletedReloading]:

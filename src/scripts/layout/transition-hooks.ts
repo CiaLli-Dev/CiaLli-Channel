@@ -42,6 +42,8 @@ import {
 type BeforePreparationEvent = Event & {
     to: URL;
     from: URL;
+    direction?: string;
+    navigationType?: string;
 };
 
 type BeforeSwapEvent = Event & {
@@ -64,6 +66,7 @@ type TransitionIntentSourceDependencies = {
 type RuntimeWindowWithTOC = Window &
     typeof globalThis & {
         floatingTOCInit?: () => void;
+        __cialliUnsavedNavigationCanceledAt?: number;
     };
 
 // ===== Before-preparation helpers =====
@@ -73,6 +76,16 @@ function resetNavigationState(state: TransitionState): void {
     state.pendingSidebarProfilePatch = null;
     state.pendingSpecToBannerFreeze = false;
     state.bannerToSpecAnimationStartedAt = null;
+}
+
+function forceResetTransitionState(state: TransitionState): void {
+    state.navigationInProgress = false;
+    state.didReplaceContentDuringVisit = false;
+    resetNavigationState(state);
+    clearBannerToSpecTransitionVisualState(state);
+    setAwaitingReplaceState(false);
+    setPageHeightExtendVisible(false);
+    forceResetEnterSkeleton();
 }
 
 function applyBannerToSpecTransitionSetup(
@@ -101,6 +114,20 @@ function handleBeforePreparation(
     state: TransitionState,
     deps: TransitionIntentSourceDependencies,
 ): void {
+    const runtimeWindow = window as RuntimeWindowWithTOC;
+    const canceledAt = runtimeWindow.__cialliUnsavedNavigationCanceledAt ?? 0;
+    if (Date.now() - canceledAt <= 1800) {
+        // 兜底：未保存拦截取消后若仍误触发准备阶段，直接复位并跳过骨架激活。
+        forceResetTransitionState(state);
+        return;
+    }
+
+    if (e.defaultPrevented) {
+        // 若导航在其他监听器中已被取消，需立即复位过渡状态，防止骨架屏残留。
+        forceResetTransitionState(state);
+        return;
+    }
+
     if (isSameNavigationTarget(e.from, e.to)) {
         state.navigationInProgress = false;
         state.didReplaceContentDuringVisit = false;
@@ -423,5 +450,10 @@ export function setupTransitionIntentSource(
 
     document.addEventListener("astro:page-load", () => {
         handlePageLoad(state, transitionDeps);
+    });
+
+    document.addEventListener("cialli:unsaved-navigation-cancel", () => {
+        // 未保存拦截取消后，确保所有过渡视觉态立即回收，避免骨架屏残留。
+        forceResetTransitionState(state);
     });
 }

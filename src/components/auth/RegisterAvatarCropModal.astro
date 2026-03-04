@@ -5,56 +5,61 @@ import { i18n } from "@i18n/translation";
 
 <div
   id="register-avatar-crop-modal"
-  class="fixed inset-0 z-9999 hidden items-center justify-center bg-black/70 px-4 py-5"
+  class="overlay-dialog hidden px-4 py-5"
   tabindex="-1"
 >
   <div
-    class="card-base w-full max-w-xl rounded-(--radius-large) border border-(--line-divider) p-5 space-y-4 text-75"
+    class="overlay-dialog-card overlay-dialog-card-crop w-full max-w-xl border border-(--line-divider) text-75"
+    style="text-align: left;"
   >
-    <div class="flex items-center gap-2">
-      <h3 class="text-lg font-semibold text-90">
-        {i18n(I18nKey.authRegisterCropAvatarTitle)}
-      </h3>
-    </div>
-    <p class="text-sm text-60">
-      {i18n(I18nKey.authRegisterCropAvatarHint)}
-    </p>
-    <div
-      id="register-avatar-crop-viewport"
-      class="relative mx-auto w-full max-w-[360px] aspect-square overflow-hidden rounded-2xl border border-(--line-divider) bg-black/15 dark:bg-white/10 select-none touch-none"
-    >
-      <img
-        id="register-avatar-crop-image"
-        src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
-        class="absolute left-0 top-0 max-w-none pointer-events-none hidden"
-        alt={i18n(I18nKey.authRegisterCropAvatarAlt)}
-      />
-      <div
-        id="register-avatar-crop-empty"
-        class="absolute inset-0 grid place-items-center text-sm text-60 pointer-events-none"
-      >
-        {i18n(I18nKey.interactionCommonSelectImageFirst)}
+    <div class="overlay-dialog-body">
+      <div class="flex items-center gap-2">
+        <h3 class="text-lg font-semibold text-90">
+          {i18n(I18nKey.authRegisterCropAvatarTitle)}
+        </h3>
       </div>
+      <p class="text-sm text-60">
+        {i18n(I18nKey.authRegisterCropAvatarHint)}
+      </p>
       <div
-        class="absolute inset-0 pointer-events-none rounded-2xl ring-2 ring-white/80"
+        id="register-avatar-crop-viewport"
+        class="relative mx-auto w-full max-w-[360px] aspect-square overflow-hidden rounded-2xl border border-(--line-divider) bg-black/15 dark:bg-white/10 select-none touch-none"
       >
+        <img
+          id="register-avatar-crop-image"
+          src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
+          class="absolute left-0 top-0 max-w-none pointer-events-none hidden"
+          alt={i18n(I18nKey.authRegisterCropAvatarAlt)}
+        />
+        <div
+          id="register-avatar-crop-empty"
+          class="absolute inset-0 grid place-items-center text-sm text-60 pointer-events-none"
+        >
+          {i18n(I18nKey.interactionCommonSelectImageFirst)}
+        </div>
+        <div
+          class="absolute inset-0 pointer-events-none rounded-2xl ring-2 ring-white/80"
+        >
+        </div>
       </div>
+      <div class="space-y-1">
+        <label for="register-avatar-crop-zoom" class="text-sm text-60">
+          {i18n(I18nKey.interactionCommonZoom)}
+        </label>
+        <input
+          id="register-avatar-crop-zoom"
+          type="range"
+          min="100"
+          max="300"
+          step="1"
+          value="100"
+          class="w-full"
+        />
+      </div>
+      <span id="register-avatar-crop-msg" class="text-sm text-red-500"></span>
     </div>
-    <div class="space-y-1">
-      <label for="register-avatar-crop-zoom" class="text-sm text-60">
-        {i18n(I18nKey.interactionCommonZoom)}
-      </label>
-      <input
-        id="register-avatar-crop-zoom"
-        type="range"
-        min="100"
-        max="300"
-        step="1"
-        value="100"
-        class="w-full"
-      />
-    </div>
-    <div class="flex flex-wrap items-center gap-3">
+
+    <div class="overlay-dialog-actions overlay-dialog-actions-crop">
       <input
         id="register-avatar-crop-file"
         type="file"
@@ -78,11 +83,10 @@ import { i18n } from "@i18n/translation";
       <button
         type="button"
         id="register-avatar-crop-cancel-btn"
-        class="ml-auto px-4 py-2.5 rounded-lg border border-(--line-divider) text-sm text-75"
+        class="overlay-dialog-actions-end px-4 py-2.5 rounded-lg border border-(--line-divider) text-sm text-75"
       >
         {i18n(I18nKey.interactionCommonCancel)}
       </button>
     </div>
-    <span id="register-avatar-crop-msg" class="text-sm text-red-500"></span>
   </div>
 </div>

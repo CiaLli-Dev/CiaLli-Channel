@@ -3,6 +3,7 @@ import MainGridLayout from "@layouts/MainGridLayout.astro";
 import { Icon } from "astro-icon/components";
 import { getSessionUser } from "@/server/auth/session";
 import PublishPageSkeleton from "@components/publish/PublishPageSkeleton.astro";
+import PublishSettingsOverlay from "@components/publish/PublishSettingsOverlay.astro";
 import "@/styles/markdown.css";
 import "@/styles/markdown-extend.styl";
 
@@ -24,13 +25,16 @@ if (!user) {
 <MainGridLayout title="编辑文章" description="编辑文章">
   <div
     id="publish-root"
-    class="space-y-4 text-90"
+    class="h-full min-h-0 flex flex-col gap-4 text-90"
     data-mode="edit"
     data-article-id={articleId}
     data-enter-skeleton-page="publish-page"
     data-enter-skeleton-target="publish-page"
   >
-    <div data-enter-skeleton-inline-content class="space-y-4">
+    <div
+      data-enter-skeleton-inline-content
+      class="flex-1 min-h-0 flex flex-col gap-4"
+    >
       <!-- 标题栏 -->
       <section class="card-base px-9 py-6 rounded-(--radius-large)">
         <div>
@@ -48,260 +52,132 @@ if (!user) {
       </section>
 
       <!-- 主编辑区 -->
-      <section id="publish-workspace" class="hidden space-y-4">
-        <!-- 元数据区 -->
-        <div class="card-base p-6 rounded-(--radius-large) space-y-4">
-          <h2 id="publish-editor-title" class="text-xl font-semibold text-90">
-            编辑文章
-          </h2>
-
-          <div id="publish-form-article" class="space-y-4">
-            <label class="space-y-1.5 block">
-              <span class="text-sm text-60"
-                >标题 <span class="text-red-500">*</span></span
-              >
-              <input
-                id="publish-article-title"
-                type="text"
-                placeholder="输入文章标题"
-                class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-90"
-              />
-              <span id="publish-article-title-hint" class="text-xs text-60">
-                0/30
-              </span>
-            </label>
-
-            <label class="space-y-1.5 block">
-              <span class="text-sm text-60">摘要</span>
-              <textarea
-                id="publish-article-summary"
-                rows="3"
-                placeholder="简要描述这篇文章（可选）"
-                class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-90 resize-y"
-              ></textarea>
-            </label>
-
-            <!-- 封面裁剪上传区域 -->
-            <div class="space-y-2">
-              <span class="text-sm text-60">封面图片</span>
-              <div class="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  id="publish-cover-crop-btn"
-                  class="px-4 py-2 rounded-lg border border-(--line-divider) text-sm text-75 hover:bg-(--btn-plain-bg-hover) transition"
-                >
-                  选择封面
-                </button>
-                <button
-                  type="button"
-                  id="publish-cover-clear-btn"
-                  class="px-4 py-2 rounded-lg border border-(--line-divider) text-sm text-75 hover:bg-(--btn-plain-bg-hover) transition"
-                >
-                  清空封面
-                </button>
-                <span id="publish-cover-msg" class="text-xs text-60"></span>
-              </div>
-              <div
-                id="publish-cover-preview-wrap"
-                class="hidden rounded-xl border border-(--line-divider) p-3 space-y-2"
-              >
-                <p class="text-xs text-60">封面预览</p>
-                <img
-                  id="publish-cover-preview"
-                  src=""
-                  alt="article cover preview"
-                  class="w-full max-h-56 object-cover rounded-lg border border-(--line-divider)"
-                  loading="lazy"
-                />
-              </div>
-              <!-- 折叠：外部封面 URL -->
-              <details class="text-sm text-60">
-                <summary
-                  class="cursor-pointer select-none hover:text-75 transition"
-                >
-                  或使用外部链接
-                </summary>
-                <div class="mt-2">
-                  <input
-                    id="publish-article-cover-url"
-                    type="text"
-                    placeholder="https://..."
-                    class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-90"
-                  />
-                </div>
-              </details>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <label class="space-y-1.5 block">
-                <span class="text-sm text-60">标签（逗号分隔）</span>
-                <input
-                  id="publish-article-tags"
-                  type="text"
-                  placeholder="Astro, Svelte, TypeScript"
-                  class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-90"
-                />
-              </label>
-              <label class="space-y-1.5 block">
-                <span class="text-sm text-60">分类</span>
-                <input
-                  id="publish-article-category"
-                  type="text"
-                  placeholder="前端"
-                  class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-90"
-                />
-              </label>
-            </div>
-
-            <div
-              class="rounded-xl border border-(--line-divider) p-4 space-y-3"
-            >
-              <label
-                class="flex items-center gap-3 text-sm text-75 cursor-pointer select-none"
-              >
-                <input
-                  id="publish-article-encrypt-enabled"
-                  type="checkbox"
-                  class="toggle-checkbox"
-                />
-                <span class="toggle-track"
-                  ><span class="toggle-knob"></span></span
-                >
-                启用密码保护
-              </label>
-              <div
-                id="publish-article-encrypt-panel"
-                class="hidden space-y-1.5"
-              >
-                <label class="space-y-1.5 block">
-                  <span class="text-sm text-60">
-                    访问密码 <span class="text-red-500">*</span>
-                  </span>
-                  <input
-                    id="publish-article-encrypt-password"
-                    type="password"
-                    autocomplete="new-password"
-                    placeholder="输入访问密码"
-                    class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-90"
-                  />
-                </label>
-                <p id="publish-article-encrypt-hint" class="text-xs text-60">
-                  启用后，正文将以密文存储，访客需要输入密码才能查看内容。
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
+      <section
+        id="publish-workspace"
+        class="hidden min-h-0 flex-1 flex flex-col gap-4"
+      >
         <!-- 双栏编辑+预览 -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 publish-dual-pane">
+        <div
+          class="grid grid-cols-1 lg:grid-cols-2 gap-4 publish-dual-pane flex-1 min-h-0"
+        >
           <!-- 左栏：编辑 -->
           <div
             class="card-base p-6 rounded-(--radius-large) flex flex-col publish-editor-col"
           >
-            <div class="flex items-center justify-between gap-2 mb-4">
+            <div class="publish-editor-head publish-pane-head">
               <span class="text-sm text-60">
                 正文内容 <span class="text-red-500">*</span>
               </span>
+              <div
+                id="publish-toolbar"
+                class="publish-toolbar flex flex-wrap items-center justify-end gap-2"
+              >
+                <button
+                  type="button"
+                  class="publish-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
+                  data-md-action="bold"
+                  aria-label="加粗"
+                  title="加粗"
+                >
+                  <Icon
+                    name="material-symbols:format-bold"
+                    class="text-[1.1rem]"
+                  />
+                </button>
+                <button
+                  type="button"
+                  class="publish-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
+                  data-md-action="italic"
+                  aria-label="斜体"
+                  title="斜体"
+                >
+                  <Icon
+                    name="material-symbols:format-italic"
+                    class="text-[1.1rem]"
+                  />
+                </button>
+                <button
+                  type="button"
+                  class="publish-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
+                  data-md-action="underline"
+                  aria-label="下划线"
+                  title="下划线"
+                >
+                  <Icon
+                    name="material-symbols:format-underlined"
+                    class="text-[1.1rem]"
+                  />
+                </button>
+                <button
+                  type="button"
+                  class="publish-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
+                  data-md-action="strike"
+                  aria-label="删除线"
+                  title="删除线"
+                >
+                  <Icon
+                    name="material-symbols:format-strikethrough"
+                    class="text-[1.1rem]"
+                  />
+                </button>
+                <button
+                  type="button"
+                  class="publish-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
+                  data-md-action="quote"
+                  aria-label="引用"
+                  title="引用"
+                >
+                  <Icon
+                    name="material-symbols:format-quote"
+                    class="text-[1.1rem]"
+                  />
+                </button>
+                <button
+                  type="button"
+                  class="publish-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
+                  data-md-action="inline-code"
+                  aria-label="行内代码"
+                  title="行内代码"
+                >
+                  <Icon name="material-symbols:code" class="text-[1.1rem]" />
+                </button>
+                <button
+                  type="button"
+                  class="publish-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
+                  data-md-action="code-block"
+                  aria-label="代码块"
+                  title="代码块"
+                >
+                  <Icon
+                    name="material-symbols:terminal"
+                    class="text-[1.1rem]"
+                  />
+                </button>
+              </div>
             </div>
 
-            <div
-              id="publish-toolbar"
-              class="flex flex-wrap items-center gap-2 mb-4 shrink-0"
-            >
-              <button
-                type="button"
-                class="publish-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
-                data-md-action="bold"
-                aria-label="加粗"
-                title="加粗"
+            <div class="publish-editor-input-wrap">
+              <div
+                id="publish-editor-monaco"
+                class="publish-editor-monaco"
+                aria-hidden="true"
               >
-                <Icon
-                  name="material-symbols:format-bold"
-                  class="text-[1.1rem]"
-                />
-              </button>
-              <button
-                type="button"
-                class="publish-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
-                data-md-action="italic"
-                aria-label="斜体"
-                title="斜体"
-              >
-                <Icon
-                  name="material-symbols:format-italic"
-                  class="text-[1.1rem]"
-                />
-              </button>
-              <button
-                type="button"
-                class="publish-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
-                data-md-action="underline"
-                aria-label="下划线"
-                title="下划线"
-              >
-                <Icon
-                  name="material-symbols:format-underlined"
-                  class="text-[1.1rem]"
-                />
-              </button>
-              <button
-                type="button"
-                class="publish-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
-                data-md-action="strike"
-                aria-label="删除线"
-                title="删除线"
-              >
-                <Icon
-                  name="material-symbols:format-strikethrough"
-                  class="text-[1.1rem]"
-                />
-              </button>
-              <button
-                type="button"
-                class="publish-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
-                data-md-action="quote"
-                aria-label="引用"
-                title="引用"
-              >
-                <Icon
-                  name="material-symbols:format-quote"
-                  class="text-[1.1rem]"
-                />
-              </button>
-              <button
-                type="button"
-                class="publish-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
-                data-md-action="inline-code"
-                aria-label="行内代码"
-                title="行内代码"
-              >
-                <Icon name="material-symbols:code" class="text-[1.1rem]" />
-              </button>
-              <button
-                type="button"
-                class="publish-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
-                data-md-action="code-block"
-                aria-label="代码块"
-                title="代码块"
-              >
-                <Icon name="material-symbols:terminal" class="text-[1.1rem]" />
-              </button>
+              </div>
+              <textarea
+                id="publish-article-body"
+                rows="20"
+                placeholder="写点什么..."
+                class="publish-editor-sync-input"></textarea>
             </div>
-
-            <textarea
-              id="publish-article-body"
-              rows="20"
-              placeholder="写点什么..."
-              class="w-full flex-1 rounded-xl border border-(--line-divider) bg-transparent px-4 py-3 text-90 font-mono focus:outline-none focus:border-(--primary) resize-none overflow-y-auto"
-            ></textarea>
           </div>
 
           <!-- 右栏：实时预览 -->
           <div
             class="card-base p-6 rounded-(--radius-large) flex flex-col publish-preview-col"
           >
-            <span class="text-sm text-60 mb-4 shrink-0">实时预览</span>
+            <div class="publish-preview-head publish-pane-head">
+              <span class="text-sm text-60 shrink-0">实时预览</span>
+            </div>
             <p
               id="publish-preview-error"
               class="hidden text-sm text-red-500 shrink-0"
@@ -321,58 +197,67 @@ if (!user) {
         <div
           class="card-base px-6 py-4 rounded-(--radius-large) flex flex-wrap items-center justify-between gap-2"
         >
+          <button
+            id="publish-open-settings"
+            type="button"
+            class="px-4 py-2 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm"
+          >
+            发布
+          </button>
           <span id="publish-submit-msg" class="text-sm text-60"></span>
-          <div class="flex flex-wrap items-center gap-4 ml-auto">
-            <label
-              class="flex items-center gap-3 text-sm text-75 cursor-pointer select-none"
-            >
-              <input
-                id="publish-article-allow-comments"
-                type="checkbox"
-                class="toggle-checkbox"
-                checked
-              />
-              <span class="toggle-track"><span class="toggle-knob"></span></span
-              >
-              允许评论
-            </label>
-            <label
-              class="flex items-center gap-3 text-sm text-75 cursor-pointer select-none"
-            >
-              <input
-                id="publish-article-is-public"
-                type="checkbox"
-                class="toggle-checkbox"
-                checked
-              />
-              <span class="toggle-track"><span class="toggle-knob"></span></span
-              >
-              公开可见
-            </label>
-            <button
-              id="publish-save-published"
-              type="button"
-              class="px-4 py-2 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm"
-            >
-              立即发布
-            </button>
-          </div>
         </div>
-        <p id="publish-submit-error" class="hidden text-sm text-red-500"></p>
       </section>
     </div>
     <PublishPageSkeleton />
+    <PublishSettingsOverlay />
   </div>
 </MainGridLayout>
 
 <style>
-  .publish-dual-pane {
-    height: calc(100vh - 12rem);
-    min-height: 28rem;
-  }
+  .publish-dual-pane,
   .publish-editor-col,
   .publish-preview-col {
     min-height: 0;
+  }
+  .publish-editor-col,
+  .publish-preview-col {
     overflow: hidden;
+  }
+  .publish-editor-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+  .publish-pane-head {
+    border-bottom: 1px solid var(--line-divider);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.625rem;
+  }
+  .publish-preview-head {
+    flex-shrink: 0;
+  }
+  .publish-toolbar {
+    flex: 1;
+  }
+  .publish-editor-input-wrap {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+  }
+  .publish-editor-monaco {
+    width: 100%;
+    height: 100%;
+    border-radius: 0.75rem;
+    border: 1px solid var(--line-divider);
+    overflow: hidden;
+  }
+  .publish-editor-sync-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    user-select: none;
   }
 </style>

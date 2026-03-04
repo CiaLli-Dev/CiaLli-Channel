@@ -57,6 +57,7 @@
     "dotenv": "^17.3.1",
     "hastscript": "^9.0.1",
     "katex": "^0.16.33",
+    "monaco-editor": "^0.55.1",
     "node-html-parser": "^7.1.0",
     "overlayscrollbars": "^2.14.0",
     "photoswipe": "^5.4.4",

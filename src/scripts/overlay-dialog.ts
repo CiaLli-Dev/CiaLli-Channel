@@ -92,6 +92,9 @@ function ensureDOM(): void {
     const card = document.createElement("div");
     card.className = "overlay-dialog-card";
 
+    const bodyEl = document.createElement("div");
+    bodyEl.className = "overlay-dialog-body";
+
     messageEl = document.createElement("p");
     messageEl.className = "overlay-dialog-message";
 
@@ -110,10 +113,11 @@ function ensureDOM(): void {
     actionsEl = document.createElement("div");
     actionsEl.className = "overlay-dialog-actions";
 
-    card.appendChild(messageEl);
-    card.appendChild(contentEl);
-    card.appendChild(fieldsEl);
-    card.appendChild(errorEl);
+    bodyEl.appendChild(messageEl);
+    bodyEl.appendChild(contentEl);
+    bodyEl.appendChild(fieldsEl);
+    bodyEl.appendChild(errorEl);
+    card.appendChild(bodyEl);
     card.appendChild(actionsEl);
     overlayEl.appendChild(card);
 

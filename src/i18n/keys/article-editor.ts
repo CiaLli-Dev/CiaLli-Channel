@@ -12,7 +12,6 @@ export enum ArticleEditorKey {
     articleEditorEditorTitleCreate = "articleEditorEditorTitleCreate",
     articleEditorEditorTitleEdit = "articleEditorEditorTitleEdit",
     articleEditorEncryptEnabledPasswordRequired = "articleEditorEncryptEnabledPasswordRequired",
-    articleEditorEncryptHintDefault = "articleEditorEncryptHintDefault",
     articleEditorEncryptHintExisting = "articleEditorEncryptHintExisting",
     articleEditorEncryptHintLocked = "articleEditorEncryptHintLocked",
     articleEditorEncryptUnsupported = "articleEditorEncryptUnsupported",

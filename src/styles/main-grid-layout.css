@@ -247,3 +247,34 @@ body[data-layout-mode="collapsed"] #right-sidebar #right-sidebar-sticky {
   position: relative;
   top: auto;
 }
+
+/* 发布/编辑页工作台模式：固定视口并禁用全局滚动 */
+html.route-post-editor,
+html.route-post-editor body {
+  height: 100dvh;
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+html.route-post-editor .main-panel-wrapper.post-editor-workbench {
+  height: calc(100dvh - 5.5rem);
+  min-height: calc(100dvh - 5.5rem) !important;
+}
+
+html.route-post-editor .post-editor-workbench-inner,
+html.route-post-editor .post-editor-workbench-grid,
+html.route-post-editor .post-editor-main-container,
+html.route-post-editor .post-editor-content-wrapper {
+  height: 100%;
+  min-height: 0;
+}
+
+html.route-post-editor .post-editor-main-container {
+  overflow: hidden;
+}
+
+html.route-post-editor .post-editor-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}

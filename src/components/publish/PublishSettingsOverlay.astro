@@ -1,0 +1,189 @@
+---
+
+---
+
+<div id="publish-settings-overlay" class="overlay-dialog" hidden>
+  <div class="overlay-dialog-card" style="text-align: left; max-width: 600px;">
+    <div class="overlay-dialog-body">
+      <h2 id="publish-editor-title" class="text-xl font-semibold text-90 mb-6">
+        新建文章
+      </h2>
+
+      <div class="space-y-4">
+        <label class="space-y-1.5 block">
+          <span class="text-sm text-60"
+            >标题 <span class="text-red-500">*</span></span
+          >
+          <input
+            id="publish-article-title"
+            type="text"
+            placeholder="输入文章标题"
+            class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-90"
+          />
+          <span id="publish-article-title-hint" class="text-xs text-60">
+            0/30
+          </span>
+        </label>
+
+        <label class="space-y-1.5 block">
+          <span class="text-sm text-60">摘要</span>
+          <textarea
+            id="publish-article-summary"
+            rows="3"
+            placeholder="简要描述这篇文章（可选）"
+            class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-90 resize-y"
+          ></textarea>
+        </label>
+
+        <!-- 封面裁剪上传区域 -->
+        <div class="space-y-2">
+          <span class="text-sm text-60">封面图片</span>
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              id="publish-cover-crop-btn"
+              class="px-4 py-2 rounded-lg border border-(--line-divider) text-sm text-75 hover:bg-(--btn-plain-bg-hover) transition"
+            >
+              选择封面
+            </button>
+            <button
+              type="button"
+              id="publish-cover-clear-btn"
+              class="px-4 py-2 rounded-lg border border-(--line-divider) text-sm text-75 hover:bg-(--btn-plain-bg-hover) transition"
+            >
+              清空封面
+            </button>
+            <span id="publish-cover-msg" class="text-xs text-60"></span>
+          </div>
+          <div
+            id="publish-cover-preview-wrap"
+            class="hidden rounded-xl border border-(--line-divider) p-3 space-y-2"
+          >
+            <p class="text-xs text-60">封面预览</p>
+            <img
+              id="publish-cover-preview"
+              src=""
+              alt="article cover preview"
+              class="w-full max-h-56 object-cover rounded-lg border border-(--line-divider)"
+              loading="lazy"
+            />
+          </div>
+          <!-- 折叠：外部封面 URL -->
+          <details class="text-sm text-60">
+            <summary
+              class="cursor-pointer select-none hover:text-75 transition"
+            >
+              或使用外部链接
+            </summary>
+            <div class="mt-2">
+              <input
+                id="publish-article-cover-url"
+                type="text"
+                placeholder="https://..."
+                class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-90"
+              />
+            </div>
+          </details>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <label class="space-y-1.5 block">
+            <span class="text-sm text-60">标签（逗号分隔）</span>
+            <input
+              id="publish-article-tags"
+              type="text"
+              placeholder="Astro, Svelte, TypeScript"
+              class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-90"
+            />
+          </label>
+          <label class="space-y-1.5 block">
+            <span class="text-sm text-60">分类</span>
+            <input
+              id="publish-article-category"
+              type="text"
+              placeholder="前端"
+              class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-90"
+            />
+          </label>
+        </div>
+
+        <div class="rounded-xl border border-(--line-divider) p-4 space-y-3">
+          <label
+            class="flex items-center gap-3 text-sm text-75 cursor-pointer select-none"
+          >
+            <input
+              id="publish-article-encrypt-enabled"
+              type="checkbox"
+              class="toggle-checkbox"
+            />
+            <span class="toggle-track"><span class="toggle-knob"></span></span>
+            启用密码保护
+          </label>
+          <div id="publish-article-encrypt-panel" class="hidden space-y-1.5">
+            <label class="space-y-1.5 block">
+              <span class="text-sm text-60">
+                访问密码 <span class="text-red-500">*</span>
+              </span>
+              <input
+                id="publish-article-encrypt-password"
+                type="password"
+                autocomplete="new-password"
+                placeholder="输入访问密码"
+                class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-90"
+              />
+            </label>
+            <p id="publish-article-encrypt-hint" class="text-xs text-60">
+              启用后，正文将以密文存储，访客需要输入密码才能查看内容。
+            </p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-6 pt-1">
+          <label
+            class="flex items-center gap-3 text-sm text-75 cursor-pointer select-none"
+          >
+            <input
+              id="publish-article-allow-comments"
+              type="checkbox"
+              class="toggle-checkbox"
+              checked
+            />
+            <span class="toggle-track"><span class="toggle-knob"></span></span>
+            允许评论
+          </label>
+          <label
+            class="flex items-center gap-3 text-sm text-75 cursor-pointer select-none"
+          >
+            <input
+              id="publish-article-is-public"
+              type="checkbox"
+              class="toggle-checkbox"
+              checked
+            />
+            <span class="toggle-track"><span class="toggle-knob"></span></span>
+            公开可见
+          </label>
+        </div>
+      </div>
+
+      <p id="publish-submit-error" class="overlay-dialog-error hidden mt-4"></p>
+    </div>
+
+    <div class="overlay-dialog-actions">
+      <button
+        id="publish-cancel-settings"
+        type="button"
+        class="overlay-dialog-action-secondary"
+      >
+        取消
+      </button>
+      <button
+        id="publish-save-published"
+        type="button"
+        class="overlay-dialog-action-primary"
+      >
+        立即发布
+      </button>
+    </div>
+  </div>
+</div>

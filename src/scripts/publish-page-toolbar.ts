@@ -7,6 +7,7 @@
 
 import I18nKey from "@/i18n/i18nKey";
 import { t } from "@/scripts/i18n-runtime";
+import type { PublishEditorAdapter } from "@/scripts/publish-editor-adapter";
 import {
     type ToolbarAction,
     TOOLBAR_ACTIONS,
@@ -17,39 +18,33 @@ function isToolbarAction(value: string): value is ToolbarAction {
 }
 
 function replaceSelection(
-    textarea: HTMLTextAreaElement,
+    editor: PublishEditorAdapter,
     replacement: string,
     selectionStartOffset: number,
     selectionEndOffset: number,
     markPreviewDirty: () => void,
 ): void {
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const source = textarea.value;
-    const before = source.slice(0, start);
-    const after = source.slice(end);
-    textarea.value = `${before}${replacement}${after}`;
-    const nextStart = before.length + selectionStartOffset;
-    const nextEnd = before.length + selectionEndOffset;
-    textarea.focus();
-    textarea.setSelectionRange(nextStart, nextEnd);
+    editor.replaceSelection(
+        replacement,
+        selectionStartOffset,
+        selectionEndOffset,
+    );
     markPreviewDirty();
 }
 
 function applyWrapAction(
-    textarea: HTMLTextAreaElement,
+    editor: PublishEditorAdapter,
     prefix: string,
     suffix: string,
     placeholder: string,
     markPreviewDirty: () => void,
 ): void {
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selected = textarea.value.slice(start, end);
+    const { start, end } = editor.getSelection();
+    const selected = editor.getValue().slice(start, end);
     const content = selected || placeholder;
     const replacement = `${prefix}${content}${suffix}`;
     replaceSelection(
-        textarea,
+        editor,
         replacement,
         prefix.length,
         prefix.length + content.length,
@@ -58,28 +53,26 @@ function applyWrapAction(
 }
 
 function applyQuoteAction(
-    textarea: HTMLTextAreaElement,
+    editor: PublishEditorAdapter,
     markPreviewDirty: () => void,
 ): void {
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selected = textarea.value.slice(start, end);
+    const { start, end } = editor.getSelection();
+    const selected = editor.getValue().slice(start, end);
     const source = selected || t(I18nKey.articleEditorToolbarQuotePlaceholder);
     const quoted = source
         .replaceAll("\r\n", "\n")
         .split("\n")
         .map((line) => (line.startsWith("> ") ? line : `> ${line}`))
         .join("\n");
-    replaceSelection(textarea, quoted, 0, quoted.length, markPreviewDirty);
+    replaceSelection(editor, quoted, 0, quoted.length, markPreviewDirty);
 }
 
 function applyCodeBlockAction(
-    textarea: HTMLTextAreaElement,
+    editor: PublishEditorAdapter,
     markPreviewDirty: () => void,
 ): void {
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const source = textarea.value;
+    const { start, end } = editor.getSelection();
+    const source = editor.getValue();
     const selected =
         source.slice(start, end) ||
         t(I18nKey.articleEditorToolbarCodeBlockPlaceholder);
@@ -93,7 +86,7 @@ function applyCodeBlockAction(
     const contentStart = prefix.length + `\`\`\`${language}\n`.length;
     const contentEnd = contentStart + selected.length;
     replaceSelection(
-        textarea,
+        editor,
         replacement,
         contentStart,
         contentEnd,
@@ -103,7 +96,7 @@ function applyCodeBlockAction(
 
 export function applyToolbarAction(
     action: string,
-    articleBodyInput: HTMLTextAreaElement,
+    editor: PublishEditorAdapter,
     markPreviewDirty: () => void,
 ): void {
     if (!isToolbarAction(action)) {
@@ -111,7 +104,7 @@ export function applyToolbarAction(
     }
     if (action === "bold") {
         applyWrapAction(
-            articleBodyInput,
+            editor,
             "**",
             "**",
             t(I18nKey.articleEditorToolbarBoldPlaceholder),
@@ -121,7 +114,7 @@ export function applyToolbarAction(
     }
     if (action === "italic") {
         applyWrapAction(
-            articleBodyInput,
+            editor,
             "*",
             "*",
             t(I18nKey.articleEditorToolbarItalicPlaceholder),
@@ -131,7 +124,7 @@ export function applyToolbarAction(
     }
     if (action === "underline") {
         applyWrapAction(
-            articleBodyInput,
+            editor,
             "<u>",
             "</u>",
             t(I18nKey.articleEditorToolbarUnderlinePlaceholder),
@@ -141,7 +134,7 @@ export function applyToolbarAction(
     }
     if (action === "strike") {
         applyWrapAction(
-            articleBodyInput,
+            editor,
             "~~",
             "~~",
             t(I18nKey.articleEditorToolbarStrikePlaceholder),
@@ -150,12 +143,12 @@ export function applyToolbarAction(
         return;
     }
     if (action === "quote") {
-        applyQuoteAction(articleBodyInput, markPreviewDirty);
+        applyQuoteAction(editor, markPreviewDirty);
         return;
     }
     if (action === "inline-code") {
         applyWrapAction(
-            articleBodyInput,
+            editor,
             "`",
             "`",
             t(I18nKey.articleEditorToolbarInlineCodePlaceholder),
@@ -163,5 +156,5 @@ export function applyToolbarAction(
         );
         return;
     }
-    applyCodeBlockAction(articleBodyInput, markPreviewDirty);
+    applyCodeBlockAction(editor, markPreviewDirty);
 }

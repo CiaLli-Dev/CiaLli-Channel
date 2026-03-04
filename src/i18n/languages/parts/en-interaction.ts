@@ -46,6 +46,8 @@ export const enInteraction: Record<string, string> = {
     [Key.interactionCommonImageUploading]: "Common Image Uploading",
     [Key.interactionCommonLoaded]: "Common Loaded",
     [Key.interactionCommonNoChangesToSave]: "Common No Changes To Save",
+    [Key.interactionCommonUnsavedChangesLeaveConfirm]:
+        "You have unsaved changes. Leave this page anyway?",
     [Key.interactionCommonRequestFailed]: "Common Request Failed",
     [Key.interactionCommonSaveCompleted]: "Common Save Completed",
     [Key.interactionCommonSaveCompletedReloading]:

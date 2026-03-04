@@ -20,6 +20,7 @@ export type MainGridLayoutState = {
     shouldShowPostTocSidebar: boolean;
     isHomePage: boolean;
     isFullWidthPage: boolean;
+    isPostEditorPage: boolean;
     showHomeText: boolean;
     initialWallpaperMode: string;
     mainPanelTop: string;
@@ -152,6 +153,7 @@ function resolveTocState(siteConfig: SiteConfig, pathname: string): TocState {
 type PageKindState = {
     isHomePage: boolean;
     isFullWidthPage: boolean;
+    isPostEditorPage: boolean;
     showHomeText: boolean;
 };
 
@@ -161,12 +163,18 @@ function resolvePageKindState(
 ): PageKindState {
     const isHomePage = pathname === "/" || pathname === "";
     const normalizedPath = pathname.replace(/\/+$/, "");
-    const isFullWidthPage =
+    const isPostEditorPage =
         normalizedPath === "/posts/new" ||
         /^\/posts\/[^/]+\/edit$/.test(normalizedPath);
+    const isFullWidthPage = isPostEditorPage;
     const showHomeText =
         Boolean(siteConfig.banner.homeText?.enable) && isHomePage;
-    return { isHomePage, isFullWidthPage, showHomeText };
+    return {
+        isHomePage,
+        isFullWidthPage,
+        isPostEditorPage,
+        showHomeText,
+    };
 }
 
 type WallpaperPanelState = {
@@ -245,10 +253,8 @@ export function buildMainGridLayoutState(
         shouldShowPostTocSidebar,
     } = resolveTocState(siteConfig, pathname);
 
-    const { isHomePage, isFullWidthPage, showHomeText } = resolvePageKindState(
-        siteConfig,
-        pathname,
-    );
+    const { isHomePage, isFullWidthPage, isPostEditorPage, showHomeText } =
+        resolvePageKindState(siteConfig, pathname);
 
     const { initialWallpaperMode, mainPanelTop, finalMainPanelTop } =
         resolveWallpaperPanelState(siteConfig, isHomePage);
@@ -306,6 +312,7 @@ export function buildMainGridLayoutState(
         shouldShowPostTocSidebar,
         isHomePage,
         isFullWidthPage,
+        isPostEditorPage,
         showHomeText,
         initialWallpaperMode,
         mainPanelTop,

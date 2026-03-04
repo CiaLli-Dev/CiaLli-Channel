@@ -100,20 +100,23 @@ export class ImageCropModal {
         if (this.overlay) return;
 
         const overlay = document.createElement("div");
-        overlay.className =
-            "fixed inset-0 z-9999 bg-black/45 flex items-center justify-center px-4";
+        overlay.className = "overlay-dialog px-4";
         overlay.style.display = "none";
         overlay.tabIndex = -1;
 
         const card = document.createElement("div");
         card.className =
-            "card-base w-full max-w-2xl p-6 rounded-(--radius-large) border border-(--line-divider) space-y-4";
+            "overlay-dialog-card overlay-dialog-card-crop w-full max-w-2xl border border-(--line-divider) text-75";
+        card.style.textAlign = "left";
+
+        const body = document.createElement("div");
+        body.className = "overlay-dialog-body";
 
         // 标题
         const title = document.createElement("h3");
         title.className = "text-xl font-semibold text-90";
         title.textContent = this.config.title;
-        card.appendChild(title);
+        body.appendChild(title);
 
         // 视口
         const viewport = document.createElement("div");
@@ -136,7 +139,7 @@ export class ImageCropModal {
 
         viewport.appendChild(img);
         viewport.appendChild(emptyHint);
-        card.appendChild(viewport);
+        body.appendChild(viewport);
 
         // 控件行
         const controls = document.createElement("div");
@@ -168,21 +171,21 @@ export class ImageCropModal {
         controls.appendChild(selectBtn);
         controls.appendChild(zoomLabel);
         controls.appendChild(zoomInput);
-        card.appendChild(controls);
+        body.appendChild(controls);
 
         // 消息
         const msgEl = document.createElement("p");
         msgEl.className = "text-sm text-(--error-color) min-h-5";
-        card.appendChild(msgEl);
+        body.appendChild(msgEl);
 
         // 底部按钮
         const footer = document.createElement("div");
-        footer.className = "flex justify-end gap-3";
+        footer.className = "overlay-dialog-actions overlay-dialog-actions-crop";
 
         const cancelBtn = document.createElement("button");
         cancelBtn.type = "button";
         cancelBtn.className =
-            "px-4 h-9 rounded-lg text-sm font-medium transition cursor-pointer bg-(--btn-regular-bg) hover:bg-(--btn-regular-bg-hover) text-(--btn-content)";
+            "overlay-dialog-actions-end px-4 h-9 rounded-lg text-sm font-medium transition cursor-pointer bg-(--btn-regular-bg) hover:bg-(--btn-regular-bg-hover) text-(--btn-content)";
         cancelBtn.textContent = t(I18nKey.interactionCommonCancel);
 
         const applyBtn = document.createElement("button");
@@ -194,6 +197,7 @@ export class ImageCropModal {
 
         footer.appendChild(cancelBtn);
         footer.appendChild(applyBtn);
+        card.appendChild(body);
         card.appendChild(footer);
 
         overlay.appendChild(card);

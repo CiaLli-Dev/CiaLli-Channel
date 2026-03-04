@@ -17,7 +17,6 @@ export const enArticleEditor: Record<string, string> = {
     [Key.articleEditorEditorTitleEdit]: "Publish Editor Title Edit",
     [Key.articleEditorEncryptEnabledPasswordRequired]:
         "Publish Encrypt Enabled Password Required",
-    [Key.articleEditorEncryptHintDefault]: "Publish Encrypt Hint Default",
     [Key.articleEditorEncryptHintExisting]: "Publish Encrypt Hint Existing",
     [Key.articleEditorEncryptHintLocked]: "Publish Encrypt Hint Locked",
     [Key.articleEditorEncryptUnsupported]: "Publish Encrypt Unsupported",

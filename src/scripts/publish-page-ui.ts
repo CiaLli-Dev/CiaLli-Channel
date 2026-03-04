@@ -22,7 +22,6 @@ export const TITLE_TOO_LONG_MESSAGE = tFmt(
     },
 );
 export const DEFAULT_BODY_PLACEHOLDER = t(I18nKey.articleEditorBodyPlaceholder);
-export const DEFAULT_ENCRYPT_HINT = t(I18nKey.articleEditorEncryptHintDefault);
 const EXISTING_ENCRYPT_HINT = t(I18nKey.articleEditorEncryptHintExisting);
 
 export function makeUiHelpers(
@@ -54,7 +53,7 @@ export function makeUiHelpers(
             return;
         }
         if (!dom.articleEncryptEnabledInput.checked) {
-            dom.articleEncryptHintEl.textContent = DEFAULT_ENCRYPT_HINT;
+            dom.articleEncryptHintEl.textContent = "";
             return;
         }
         if (state.loadedEncryptedBody && !state.loadedEncryptedBodyUnlocked) {
@@ -70,7 +69,7 @@ export function makeUiHelpers(
             dom.articleEncryptHintEl.textContent = EXISTING_ENCRYPT_HINT;
             return;
         }
-        dom.articleEncryptHintEl.textContent = DEFAULT_ENCRYPT_HINT;
+        dom.articleEncryptHintEl.textContent = "";
     };
 
     const updateEncryptPanel = (): void => {

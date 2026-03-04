@@ -12,6 +12,7 @@
   animation: overlay-dialog-fade-in 150ms cubic-bezier(0, 0, 0, 1) forwards;
 }
 
+.overlay-dialog.hidden,
 .overlay-dialog[hidden] {
   display: none !important;
 }
@@ -21,19 +22,53 @@
 }
 
 .overlay-dialog-card {
+  --overlay-dialog-card-padding-inline: 2.25rem;
+  --overlay-dialog-card-padding-block: 2.5rem;
   width: 90%;
   max-width: 640px;
   max-height: min(86vh, 760px);
-  padding: 2.5rem 2.25rem;
+  padding: 0;
   border-radius: var(--radius-large);
   background: var(--card-bg);
   display: flex;
   flex-direction: column;
   text-align: center;
-  overflow-y: auto;
+  overflow: hidden;
   transform: scale(0.92) translateY(12px);
   opacity: 0;
   animation: overlay-dialog-card-in 200ms cubic-bezier(0, 0, 0, 1) 50ms forwards;
+}
+
+.overlay-dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--overlay-dialog-card-padding-block) var(--overlay-dialog-card-padding-inline) 1rem;
+  overflow-y: auto;
+  /* 滚动条预留在容器内部，避免贴到外边缘 */
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-bg) transparent;
+}
+
+.overlay-dialog-body::-webkit-scrollbar {
+  width: 0.5rem;
+}
+
+.overlay-dialog-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overlay-dialog-body::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-bg);
+  border-radius: 999px;
+}
+
+.overlay-dialog-body::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-bg-hover);
+}
+
+.overlay-dialog-body::-webkit-scrollbar-thumb:active {
+  background: var(--scrollbar-bg-active);
 }
 
 .overlay-dialog.is-closing .overlay-dialog-card {
@@ -191,9 +226,10 @@ textarea.overlay-dialog-field-control {
   display: flex;
   gap: 0.75rem;
   justify-content: center;
-  position: sticky;
-  bottom: 0;
-  padding-top: 0.5rem;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0.875rem var(--overlay-dialog-card-padding-inline) max(0.875rem, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line-divider);
   background: var(--card-bg);
 }
 
@@ -208,6 +244,25 @@ textarea.overlay-dialog-field-control {
   cursor: pointer;
   transition: background-color 150ms;
   border: none;
+}
+
+.overlay-dialog-card-crop {
+  max-height: min(92vh, 860px);
+}
+
+.overlay-dialog-actions-crop {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.overlay-dialog-actions-crop a,
+.overlay-dialog-actions-crop button {
+  flex: 0 0 auto;
+  max-width: none;
+}
+
+.overlay-dialog-actions-end {
+  margin-left: auto;
 }
 
 .overlay-dialog-action-primary {

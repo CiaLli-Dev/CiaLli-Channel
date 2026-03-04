@@ -72,6 +72,9 @@ const isHomePage = pathsEqual(Astro.url.pathname, url("/"));
 const normalizedPathname = Astro.url.pathname.replace(/\/+$/, "").toLowerCase();
 const isArchivePage =
   normalizedPathname === "/posts" || normalizedPathname.endsWith("/posts");
+const isPostEditorRoute =
+  normalizedPathname === "/posts/new" ||
+  /^\/posts\/[^/]+\/edit$/.test(normalizedPathname);
 
 // 定义全局 CSS 变量
 // 放在 Layout 而非 GlobalStyles 的原因见：
@@ -136,10 +139,18 @@ const umamiScripts = umamiConfig.scripts || ""; // 获取 Umami scripts 配置
 const gtmId = analyticsConfig.gtmId;
 const clarityId = analyticsConfig.clarityId;
 const analyticsEnabled = Boolean(gtmId || clarityId);
+const htmlClassName = [
+  "bg-(--page-bg)",
+  "text-[16px]",
+  isPostEditorRoute ? "route-post-editor" : "",
+]
+  .filter(Boolean)
+  .join(" ");
 const bodyClassName = [
   "min-h-screen",
   isHomePage ? "lg:is-home" : "",
   isArchivePage ? "page-archive" : "",
+  isPostEditorRoute ? "route-post-editor" : "",
   initialLayoutMode === "banner" ? "enable-banner" : "no-banner-mode",
   initialLayoutMode !== "banner" ? "waves-paused" : "",
 ]
@@ -186,7 +197,7 @@ const bodyStyle = bodyFontFamily ? `font-family: ${bodyFontFamily};` : "";
 <!doctype html>
 <html
   lang={siteLang}
-  class="bg-(--page-bg) text-[16px]"
+  class={htmlClassName}
   style={`--page-width:${pageWidthRem};--hue:${configHue};`}
   data-overlayscrollbars-initialize
 >
@@ -628,6 +639,7 @@ const bodyStyle = bodyFontFamily ? `font-family: ${bodyFontFamily};` : "";
     data-layout-mode={initialLayoutMode}
     data-route-home={String(isHomePage)}
     data-route-archive={String(isArchivePage)}
+    data-route-post-editor={String(isPostEditorRoute)}
     data-overlayscrollbars-initialize
   >
     <div data-desktop-app>

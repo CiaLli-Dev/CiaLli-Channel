@@ -14,7 +14,6 @@ export const zhCNArticleEditor: Record<string, string> = {
     [Key.articleEditorEditorTitleCreate]: "创建文章",
     [Key.articleEditorEditorTitleEdit]: "编辑文章",
     [Key.articleEditorEncryptEnabledPasswordRequired]: "启用加密后必须填写密码",
-    [Key.articleEditorEncryptHintDefault]: "可选开启加密阅读",
     [Key.articleEditorEncryptHintExisting]: "当前文章已启用加密",
     [Key.articleEditorEncryptHintLocked]: "加密内容已锁定",
     [Key.articleEditorEncryptUnsupported]: "当前环境不支持加密",

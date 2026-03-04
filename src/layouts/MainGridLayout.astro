@@ -49,6 +49,7 @@ const {
 const hasCustomRightSidebar = Astro.slots.has("sidebar-right");
 const {
   isFloatTOC,
+  isPostEditorPage,
   showHomeText,
   initialWallpaperMode,
   finalMainPanelTop,
@@ -278,13 +279,15 @@ const {
   </div>
 
   <div
-    class={`absolute w-full z-30 pointer-events-none main-panel-wrapper ${initialWallpaperMode === "none" ? "no-banner-layout" : ""}`}
+    class={`absolute w-full z-30 pointer-events-none main-panel-wrapper ${initialWallpaperMode === "none" ? "no-banner-layout" : ""} ${isPostEditorPage ? "post-editor-workbench" : ""}`}
     style={`top: ${finalMainPanelTop}`}
   >
-    <div class="relative max-w-(--page-width) mx-auto pointer-events-auto">
+    <div
+      class={`relative pointer-events-auto ${isPostEditorPage ? "w-full px-4 post-editor-workbench-inner" : "max-w-(--page-width) mx-auto"}`}
+    >
       <div
         id="main-grid"
-        class={`transition duration-700 w-full left-0 right-0 grid ${gridCols} grid-rows-none mx-auto gap-4 px-4`}
+        class={`transition duration-700 w-full left-0 right-0 grid ${gridCols} grid-rows-none mx-auto gap-4 ${isPostEditorPage ? "post-editor-workbench-grid" : "px-4"}`}
       >
         {
           desktopShowLeftSidebar ? (
@@ -343,17 +346,21 @@ const {
         <main
           id="main-container"
           data-enter-skeleton-target="fallback"
-          class={`${mainContentClass} transition-main relative`}
+          class={`${mainContentClass} transition-main relative ${isPostEditorPage ? "post-editor-main-container" : ""}`}
         >
           <div
             id="content-wrapper"
             data-enter-skeleton-content
-            class="onload-animation transition-leaving"
+            class={`onload-animation transition-leaving ${isPostEditorPage ? "post-editor-content-wrapper" : ""}`}
           >
             <slot />
-            <div class="footer col-span-full onload-animation block">
-              <Footer />
-            </div>
+            {
+              !isPostEditorPage && (
+                <div class="footer col-span-full onload-animation block">
+                  <Footer />
+                </div>
+              )
+            }
           </div>
           <div
             data-enter-skeleton-placeholder

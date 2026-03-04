@@ -43,6 +43,8 @@ export const zhCNInteraction: Record<string, string> = {
     [Key.interactionCommonImageUploading]: "图片上传中...",
     [Key.interactionCommonLoaded]: "加载完成",
     [Key.interactionCommonNoChangesToSave]: "没有可保存的更改",
+    [Key.interactionCommonUnsavedChangesLeaveConfirm]:
+        "当前有未保存的更改，离开页面后将丢失，是否继续？",
     [Key.interactionCommonRequestFailed]: "请求失败，请稍后重试。",
     [Key.interactionCommonSaveCompleted]: "保存完成",
     [Key.interactionCommonSaveCompletedReloading]: "保存完成，正在刷新...",

@@ -18,6 +18,8 @@ import { MarkdownPreviewClient } from "@/scripts/markdown-preview-client";
 import { SaveProgressOverlay } from "@/scripts/save-progress-overlay";
 import { ARTICLE_TITLE_MAX, charWeight } from "@/constants/text-limits";
 import I18nKey from "@/i18n/i18nKey";
+import type { PublishEditorAdapter } from "@/scripts/publish-editor-adapter";
+import { createPublishEditorAdapter } from "@/scripts/publish-editor-monaco";
 import { requestApi as api } from "@/scripts/http-client";
 import { t, tFmt } from "@/scripts/i18n-runtime";
 import { generateClientShortId } from "@/utils/short-id";
@@ -54,6 +56,7 @@ import {
     makePreviewHelpers,
 } from "@/scripts/publish-page-preview";
 import { makeUiHelpers } from "@/scripts/publish-page-ui";
+import { setupUnsavedChangesGuard } from "@/scripts/unsaved-changes-guard";
 
 // ── 常量（依赖 i18n，在模块顶层初始化）──
 
@@ -61,11 +64,39 @@ const TITLE_TOO_LONG_MESSAGE = tFmt(I18nKey.articleEditorTitleMaxLength, {
     max: ARTICLE_TITLE_MAX,
 });
 const DEFAULT_BODY_PLACEHOLDER = t(I18nKey.articleEditorBodyPlaceholder);
+let disposeActivePublishPage: (() => void) | null = null;
+let activePublishPageController: AbortController | null = null;
+
+function buildPublishDraftSnapshot(
+    dom: PublishDomRefs,
+    state: PublishState,
+    pendingUploads: Map<string, PendingUpload>,
+): string {
+    // 用稳定快照判断是否存在“未保存改动”，避免依赖单一 dirty 标记误判。
+    const pendingUploadKeys = Array.from(pendingUploads.values())
+        .map((item) => `${item.purpose}:${item.fileName}:${item.localUrl}`)
+        .sort();
+    return JSON.stringify({
+        title: String(dom.articleTitleInput.value || ""),
+        summary: String(dom.articleSummaryInput.value || ""),
+        body: String(dom.articleBodyInput.value || ""),
+        coverUrl: String(dom.articleCoverUrlInput.value || ""),
+        tags: String(dom.articleTagsInput.value || ""),
+        category: String(dom.articleCategoryInput.value || ""),
+        allowComments: dom.articleAllowCommentsInput.checked,
+        isPublic: dom.articleIsPublicInput.checked,
+        encryptEnabled: dom.articleEncryptEnabledInput.checked,
+        encryptPassword: String(dom.articleEncryptPasswordInput.value || ""),
+        coverFileId: state.currentCoverFileId,
+        pendingUploadKeys,
+    });
+}
 
 // ── 表单操作 ──
 
 async function fillArticleForm(
     dom: PublishDomRefs,
+    editor: PublishEditorAdapter,
     state: PublishState,
     updateEncryptPanel: () => void,
     updateCoverPreview: () => void,
@@ -93,6 +124,7 @@ async function fillArticleForm(
         dom.articleBodyInput.placeholder = DEFAULT_BODY_PLACEHOLDER;
         dom.articleEncryptPasswordInput.value = "";
     }
+    editor.setValue(dom.articleBodyInput.value);
     updateEncryptPanel();
     dom.articleCoverUrlInput.value = toStringValue(item.cover_url);
     dom.articleTagsInput.value = arrayToCsv(toStringArrayValue(item.tags));
@@ -112,6 +144,7 @@ async function fillArticleForm(
 
 type PageContext = {
     dom: PublishDomRefs;
+    editor: PublishEditorAdapter;
     state: PublishState;
     pendingUploads: Map<string, PendingUpload>;
     saveOverlay: SaveProgressOverlay;
@@ -127,7 +160,7 @@ type PageContext = {
 };
 
 function bindEditorEvents(ctx: PageContext): void {
-    const { dom, state, ui, preview } = ctx;
+    const { dom, editor, state, ui, preview } = ctx;
 
     dom.toolbarEl.addEventListener("click", (event) => {
         const target = event.target as HTMLElement | null;
@@ -139,11 +172,7 @@ function bindEditorEvents(ctx: PageContext): void {
             return;
         }
         const action = toStringValue(button.dataset.mdAction);
-        applyToolbarAction(
-            action,
-            dom.articleBodyInput,
-            preview.markPreviewDirty,
-        );
+        applyToolbarAction(action, editor, preview.markPreviewDirty);
     });
 
     dom.articleTitleInput.addEventListener("input", () => {
@@ -160,12 +189,12 @@ function bindEditorEvents(ctx: PageContext): void {
         ui.updateEncryptPanel();
     });
 
-    dom.articleBodyInput.addEventListener("input", () => {
+    editor.onInput(() => {
         ui.updateEncryptHint();
         preview.markPreviewDirty();
     });
 
-    dom.articleBodyInput.addEventListener("blur", () => {
+    editor.onBlur(() => {
         if (!state.previewDirty) {
             return;
         }
@@ -181,7 +210,7 @@ function bindEditorEvents(ctx: PageContext): void {
         void preview.requestPreview("full", generation, true);
     });
 
-    dom.articleBodyInput.addEventListener("paste", (event: ClipboardEvent) => {
+    editor.onPaste((event: ClipboardEvent) => {
         const items = event.clipboardData?.items;
         if (!items) {
             return;
@@ -206,27 +235,27 @@ function bindEditorEvents(ctx: PageContext): void {
                 fileName,
             });
             const markdown = `![image](${localUrl})`;
-            const start = dom.articleBodyInput.selectionStart;
-            const end = dom.articleBodyInput.selectionEnd;
-            const before = dom.articleBodyInput.value.slice(0, start);
-            const after = dom.articleBodyInput.value.slice(end);
-            dom.articleBodyInput.value = `${before}${markdown}${after}`;
-            const nextCursor = before.length + markdown.length;
-            dom.articleBodyInput.focus();
-            dom.articleBodyInput.setSelectionRange(nextCursor, nextCursor);
+            editor.replaceSelection(markdown, markdown.length, markdown.length);
             preview.markPreviewDirty();
             break;
         }
     });
 }
 
-function bindScrollSync(dom: PublishDomRefs): void {
+function bindScrollSync(
+    editor: PublishEditorAdapter,
+    previewScrollEl: HTMLElement | null,
+): void {
     let syncScrollSource: "editor" | "preview" | null = null;
     let syncScrollTimer: number | null = null;
 
     const syncScroll = (
-        source: HTMLElement,
-        target: HTMLElement,
+        source: {
+            scrollTop: number;
+            scrollHeight: number;
+            clientHeight: number;
+        },
+        applyTargetScrollTop: (scrollTop: number) => void,
         origin: "editor" | "preview",
     ): void => {
         if (syncScrollSource && syncScrollSource !== origin) {
@@ -245,17 +274,45 @@ function bindScrollSync(dom: PublishDomRefs): void {
             return;
         }
         const ratio = source.scrollTop / sourceMax;
-        const targetMax = target.scrollHeight - target.clientHeight;
-        target.scrollTop = ratio * targetMax;
+        const targetState =
+            origin === "editor"
+                ? {
+                      scrollHeight: previewScrollEl?.scrollHeight || 0,
+                      clientHeight: previewScrollEl?.clientHeight || 0,
+                  }
+                : {
+                      scrollHeight: editor.getScrollState().scrollHeight,
+                      clientHeight: editor.getScrollState().clientHeight,
+                  };
+        const targetMax = targetState.scrollHeight - targetState.clientHeight;
+        applyTargetScrollTop(targetMax <= 0 ? 0 : ratio * targetMax);
     };
 
-    dom.articleBodyInput.addEventListener("scroll", () => {
-        if (dom.previewScrollEl) {
-            syncScroll(dom.articleBodyInput, dom.previewScrollEl, "editor");
+    editor.onScroll(() => {
+        if (!previewScrollEl) {
+            return;
         }
+        syncScroll(
+            editor.getScrollState(),
+            (nextScrollTop: number) => {
+                previewScrollEl.scrollTop = nextScrollTop;
+            },
+            "editor",
+        );
     });
-    dom.previewScrollEl?.addEventListener("scroll", () => {
-        syncScroll(dom.previewScrollEl!, dom.articleBodyInput, "preview");
+
+    previewScrollEl?.addEventListener("scroll", () => {
+        syncScroll(
+            {
+                scrollTop: previewScrollEl.scrollTop,
+                scrollHeight: previewScrollEl.scrollHeight,
+                clientHeight: previewScrollEl.clientHeight,
+            },
+            (nextScrollTop: number) => {
+                editor.setScrollTop(nextScrollTop);
+            },
+            "preview",
+        );
     });
 }
 
@@ -311,14 +368,12 @@ function bindSubmitAndAuth(ctx: PageContext, initialIdFromUrl: string): void {
         dom,
         state,
         ui,
-        preview,
         pendingUploads,
         saveOverlay,
         previewClient,
         fillForm,
         resetForm,
         loadDetail,
-        cropModal,
     } = ctx;
 
     dom.savePublishedBtn.addEventListener("click", () => {
@@ -380,19 +435,50 @@ function bindSubmitAndAuth(ctx: PageContext, initialIdFromUrl: string): void {
             console.warn("[publish] hydrate auth state failed:", error);
         }
     })();
+}
 
-    window.addEventListener("beforeunload", () => {
-        clearPendingUploads(pendingUploads);
-        cropModal.destroy();
-        saveOverlay.destroy();
+function bindSettingsOverlay(): void {
+    const settingsOverlay = document.getElementById("publish-settings-overlay");
+    const openSettingsBtn = document.getElementById("publish-open-settings");
+    const cancelSettingsBtn = document.getElementById(
+        "publish-cancel-settings",
+    );
+
+    function openSettingsOverlay(): void {
+        if (settingsOverlay) {
+            settingsOverlay.hidden = false;
+            document.body.style.overflow = "hidden";
+        }
+    }
+
+    function closeSettingsOverlay(): void {
+        if (settingsOverlay) {
+            settingsOverlay.hidden = true;
+            document.body.style.overflow = "";
+        }
+    }
+
+    openSettingsBtn?.addEventListener("click", openSettingsOverlay);
+    cancelSettingsBtn?.addEventListener("click", closeSettingsOverlay);
+    settingsOverlay?.addEventListener("click", (event) => {
+        if (event.target === settingsOverlay) {
+            closeSettingsOverlay();
+        }
     });
-
-    void preview;
+    document.addEventListener("keydown", (event) => {
+        if (
+            event.key === "Escape" &&
+            settingsOverlay &&
+            !settingsOverlay.hidden
+        ) {
+            closeSettingsOverlay();
+        }
+    });
 }
 
 // ── 主函数 ──
 
-export function initPublishPage(): void {
+async function initPublishPageCore(): Promise<void> {
     const path = window.location.pathname.replace(/\/+$/, "") || "/";
     const isNewPage = path === "/posts/new";
     const editMatch = path.match(/^\/posts\/([^/]+)\/edit$/);
@@ -405,10 +491,27 @@ export function initPublishPage(): void {
         return;
     }
     root.dataset.publishBound = "1";
+    // 页面重新进入前先释放上一轮实例，避免监听器与编辑器残留。
+    disposeActivePublishPage?.();
+    activePublishPageController?.abort();
+    activePublishPageController = null;
 
     const runtimeWindow = window as PublishRuntimeWindow;
     const dom = collectDomRefs();
     if (!dom) {
+        return;
+    }
+
+    let editor: PublishEditorAdapter;
+    try {
+        editor = await createPublishEditorAdapter({
+            textareaEl: dom.articleBodyInput,
+            monacoHostEl: dom.editorMonacoEl,
+        });
+    } catch (error) {
+        console.error("[publish] monaco init failed:", error);
+        dom.submitErrorEl.textContent = t(I18nKey.articleEditorLoadFailedRetry);
+        dom.submitErrorEl.classList.remove("hidden");
         return;
     }
 
@@ -442,6 +545,7 @@ export function initPublishPage(): void {
         loadedEncryptedBodyUnlocked: false,
         inlineImageCounter: 0,
     };
+    let savedDraftSnapshot = "";
 
     const ui = makeUiHelpers(dom, state);
     const updateCoverPreview = (): void =>
@@ -453,20 +557,42 @@ export function initPublishPage(): void {
         runtimeWindow,
     );
 
-    const fillForm = async (item: Record<string, unknown>): Promise<boolean> =>
-        fillArticleForm(
+    const markDraftSaved = (): void => {
+        savedDraftSnapshot = buildPublishDraftSnapshot(
             dom,
+            state,
+            pendingUploads,
+        );
+    };
+    const hasUnsavedDraftChanges = (): boolean => {
+        // 不能用按钮 disabled 作为“无未保存改动”依据：
+        // 按钮可能因 UI 态被禁用，但表单实际仍有变更。
+        return (
+            buildPublishDraftSnapshot(dom, state, pendingUploads) !==
+            savedDraftSnapshot
+        );
+    };
+
+    const fillForm = async (
+        item: Record<string, unknown>,
+    ): Promise<boolean> => {
+        const unlocked = await fillArticleForm(
+            dom,
+            editor,
             state,
             ui.updateEncryptPanel,
             updateCoverPreview,
             ui.updateTitleHint,
             item,
         );
+        markDraftSaved();
+        return unlocked;
+    };
 
     const resetForm = (): void => {
         dom.articleTitleInput.value = "";
         dom.articleSummaryInput.value = "";
-        dom.articleBodyInput.value = "";
+        editor.setValue("");
         dom.articleBodyInput.placeholder = DEFAULT_BODY_PLACEHOLDER;
         dom.articleCoverUrlInput.value = "";
         dom.articleTagsInput.value = "";
@@ -490,6 +616,7 @@ export function initPublishPage(): void {
         ui.setSubmitMessage("");
         ui.setCoverMessage("");
         ui.updateTitleHint();
+        markDraftSaved();
     };
 
     const loadDetail = async (id: string): Promise<void> => {
@@ -546,6 +673,7 @@ export function initPublishPage(): void {
                     : "",
             );
             preview.markPreviewDirty();
+            markDraftSaved();
         } catch (error) {
             console.error("[publish] load detail failed:", error);
             ui.setSubmitError(t(I18nKey.articleEditorLoadFailedRetry));
@@ -554,6 +682,7 @@ export function initPublishPage(): void {
 
     const ctx: PageContext = {
         dom,
+        editor,
         state,
         pendingUploads,
         saveOverlay,
@@ -573,9 +702,52 @@ export function initPublishPage(): void {
     preview.renderPreview();
     ui.updateTitleHint();
     ui.updateEncryptPanel();
+    markDraftSaved();
+
+    const pageController = new AbortController();
+    activePublishPageController = pageController;
+    const disposeUnsavedGuard = setupUnsavedChangesGuard({
+        isDirty: hasUnsavedDraftChanges,
+        getConfirmMessage: () =>
+            t(I18nKey.interactionCommonUnsavedChangesLeaveConfirm),
+    });
+    let disposed = false;
+    const disposePublishResources = (): void => {
+        if (disposed) {
+            return;
+        }
+        disposed = true;
+        if (disposeActivePublishPage === disposePublishResources) {
+            disposeActivePublishPage = null;
+        }
+        if (activePublishPageController === pageController) {
+            activePublishPageController = null;
+        }
+        pageController.abort();
+        disposeUnsavedGuard();
+        editor.dispose();
+        clearPendingUploads(pendingUploads);
+        cropModal.destroy();
+        saveOverlay.destroy();
+    };
+    disposeActivePublishPage = disposePublishResources;
 
     bindEditorEvents(ctx);
-    bindScrollSync(dom);
+    bindScrollSync(editor, dom.previewScrollEl);
     bindCoverEvents(ctx);
     bindSubmitAndAuth(ctx, initialIdFromUrl);
+    bindSettingsOverlay();
+
+    document.addEventListener("astro:before-swap", disposePublishResources, {
+        once: true,
+        signal: pageController.signal,
+    });
+    window.addEventListener("pagehide", disposePublishResources, {
+        once: true,
+        signal: pageController.signal,
+    });
+}
+
+export function initPublishPage(): void {
+    void initPublishPageCore();
 }

@@ -16,7 +16,7 @@ export const zhCNAdmin: Record<string, string> = {
     [Key.adminAboutTitle]: "关于页面设置",
     [Key.adminBulletinBodyPlaceholder]: "请输入公告正文",
     [Key.adminBulletinBodyRequired]: "公告正文不能为空",
-    [Key.adminBulletinClosable]: "允许关闭",
+    [Key.adminBulletinClosable]: "公告可关闭",
     [Key.adminBulletinDescription]: "在这里维护站点公告内容。",
     [Key.adminBulletinLoadFailed]: "加载公告数据失败",
     [Key.adminBulletinLoadFailedRetry]: "加载公告数据失败，请重试",

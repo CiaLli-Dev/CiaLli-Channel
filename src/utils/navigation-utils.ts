@@ -16,12 +16,31 @@ type NavigateOptions = {
     force?: boolean;
 };
 
+type NavigationRuntimeWindow = Window &
+    typeof globalThis & {
+        __cialliUnsavedChangesConfirm?: (
+            targetUrl: string,
+            options?: {
+                forcePromptForDirty?: boolean;
+            },
+        ) => boolean;
+    };
+
 function isExternalUrl(url: string): boolean {
     return (
         url.startsWith("http://") ||
         url.startsWith("https://") ||
         url.startsWith("//")
     );
+}
+
+function shouldProceedByUnsavedGuard(url: string): boolean {
+    const runtimeWindow = window as NavigationRuntimeWindow;
+    const confirmLeave = runtimeWindow.__cialliUnsavedChangesConfirm;
+    if (typeof confirmLeave !== "function") {
+        return true;
+    }
+    return confirmLeave(url);
 }
 
 /**
@@ -93,6 +112,10 @@ export function navigateToPage(url: unknown, options?: NavigateOptions): void {
 
     // 站内同 URL 导航直接忽略，避免重复触发过渡与组件重挂载。
     if (handleSamePageHashNavigation(url)) {
+        return;
+    }
+
+    if (!shouldProceedByUnsavedGuard(url)) {
         return;
     }
 

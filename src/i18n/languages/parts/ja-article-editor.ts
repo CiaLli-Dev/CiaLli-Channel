@@ -17,7 +17,6 @@ export const jaArticleEditor: Record<string, string> = {
     [Key.articleEditorEditorTitleEdit]: "記事を編集",
     [Key.articleEditorEncryptEnabledPasswordRequired]:
         "暗号化を有効にする場合はパスワードが必要です",
-    [Key.articleEditorEncryptHintDefault]: "必要に応じて暗号化を有効にできます",
     [Key.articleEditorEncryptHintExisting]: "この投稿は暗号化が有効です",
     [Key.articleEditorEncryptHintLocked]:
         "暗号化コンテンツはロックされています",
