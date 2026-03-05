@@ -8,6 +8,7 @@ type CommentRuntimeWindow = Window &
         _directusCommentAuthSubscribed?: boolean;
         _directusCommentApplyAuth?: (state: AuthState) => void;
         _directusCommentMenuOutsideBound?: boolean;
+        _directusCommentMenuToggleBound?: boolean;
         _directusCommentNearObserver?: IntersectionObserver;
     };
 
@@ -42,6 +43,21 @@ export function initComments(): void {
             closeAllCommentActionMenus();
         });
     }
+    if (!runtimeWindow._directusCommentMenuToggleBound) {
+        runtimeWindow._directusCommentMenuToggleBound = true;
+        document.addEventListener(
+            "toggle",
+            (event) => {
+                const target = event.target;
+                if (!(target instanceof HTMLDetailsElement)) return;
+                if (!target.classList.contains("comment-action-menu")) return;
+                if (!target.open) return;
+                // 仅保留当前打开的评论菜单，避免多个二级面板同时展开
+                closeAllCommentActionMenus(target);
+            },
+            true,
+        );
+    }
 
     if (!runtimeWindow._directusCommentAuthSubscribed) {
         runtimeWindow._directusCommentAuthSubscribed = true;
@@ -58,11 +74,14 @@ export function initComments(): void {
     controller.setupCommentLoadStrategy();
 }
 
-function closeAllCommentActionMenus(): void {
+function closeAllCommentActionMenus(exceptMenu?: HTMLDetailsElement): void {
     const openedMenus = document.querySelectorAll<HTMLDetailsElement>(
         "details.comment-action-menu[open]",
     );
     openedMenus.forEach((menu) => {
+        if (exceptMenu && menu === exceptMenu) {
+            return;
+        }
         menu.removeAttribute("open");
     });
 }

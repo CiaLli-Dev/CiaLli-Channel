@@ -332,7 +332,11 @@ const diaryMetaText = formatDiaryMetaDate(diary?.date_created);
               dockToBackTop={true}
               editHref={`/${username}/diary/${encodeURIComponent(diary.short_id || diary.id)}/edit`}
               deleteEndpoint={`/api/v1/me/diaries/${encodeURIComponent(diary.id)}`}
+              adminDeleteEndpoint={`/api/v1/admin/content/diaries/${encodeURIComponent(diary.id)}`}
               deleteConfirmMessage={i18n(I18nKey.contentDiaryDeleteConfirm)}
+              adminDeleteConfirmMessage={i18n(
+                I18nKey.interactionPostDeleteConfirmAdminDiary,
+              )}
               deleteSuccessHref={`/${username}/diary`}
             />
 

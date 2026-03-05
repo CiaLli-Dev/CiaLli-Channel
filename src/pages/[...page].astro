@@ -29,6 +29,7 @@ if (rawPagePath) {
 let homeFeedItems: HomeFeedItem[] = [];
 const invalidPath = Boolean(rawPagePath);
 let sessionUserId: string | null = null;
+const deleteAdminLabelI18n = i18n(I18nKey.interactionCommonDeleteAdmin);
 const hasSessionCookie = Boolean(
   Astro.cookies.get(DIRECTUS_ACCESS_COOKIE_NAME)?.value ||
   Astro.cookies.get(DIRECTUS_REFRESH_COOKIE_NAME)?.value,
@@ -74,6 +75,11 @@ if (!invalidPath) {
       </div>
     ) : (
       <div class="home-layout">
+        <div
+          id="home-feed-runtime-config"
+          class="hidden"
+          data-delete-admin-label={deleteAdminLabelI18n}
+        />
         <div class="min-w-0">
           {homeFeedItems.length === 0 ? (
             <div class="card-base p-8 rounded-(--radius-large) text-70">
@@ -160,6 +166,17 @@ if (!invalidPath) {
   type HomeFeedItem = HomeFeedArticleItem | HomeFeedDiaryItem;
 
   const BATCH_SIZE = 5;
+
+  function resolveDeleteAdminLabel(): string {
+    const configEl = document.getElementById("home-feed-runtime-config");
+    if (!(configEl instanceof HTMLElement)) {
+      return "Delete (Admin)";
+    }
+    const value = String(configEl.dataset.deleteAdminLabel || "").trim();
+    return value || "Delete (Admin)";
+  }
+
+  const deleteAdminLabel = resolveDeleteAdminLabel();
 
   function escapeHtml(input: string): string {
     return input
@@ -253,8 +270,8 @@ if (!invalidPath) {
               <details class="relative post-card-menu">
                 <summary class="list-none cursor-pointer">⋯</summary>
                 <div class="absolute right-0 bottom-full mb-2 z-30 min-w-[10rem] rounded-xl border border-black/5 dark:border-white/10 bg-(--float-panel-bg) p-1.5 shadow-xl dark:shadow-none">
-                  <button type="button" class="hidden w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors" data-action="delete-own-article">Delete Article</button>
-                  <button type="button" class="hidden w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors" data-action="delete-admin-article">Delete Article (Admin)</button>
+                  <button type="button" class="hidden w-full text-left px-3 py-2 text-sm rounded-lg text-red-500 hover:text-red-500 hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors" data-action="delete-own-article">Delete Article</button>
+                  <button type="button" class="hidden w-full text-left px-3 py-2 text-sm rounded-lg text-red-500 hover:text-red-500 hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors" data-action="delete-admin-article">${escapeHtml(deleteAdminLabel)}</button>
                   <button type="button" class="w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors" data-action="block-user">Block User</button>
                 </div>
               </details>
@@ -309,8 +326,8 @@ if (!invalidPath) {
               <details class="relative post-card-menu">
                 <summary class="list-none cursor-pointer">⋯</summary>
                 <div class="absolute right-0 bottom-full mb-2 z-30 min-w-[10rem] rounded-xl border border-black/5 dark:border-white/10 bg-(--float-panel-bg) p-1.5 shadow-xl dark:shadow-none">
-                  <button type="button" class="hidden w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors" data-action="delete-own-diary">Delete Diary</button>
-                  <button type="button" class="hidden w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors" data-action="delete-admin-diary">Delete Diary (Admin)</button>
+                  <button type="button" class="hidden w-full text-left px-3 py-2 text-sm rounded-lg text-red-500 hover:text-red-500 hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors" data-action="delete-own-diary">Delete Diary</button>
+                  <button type="button" class="hidden w-full text-left px-3 py-2 text-sm rounded-lg text-red-500 hover:text-red-500 hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors" data-action="delete-admin-diary">${escapeHtml(deleteAdminLabel)}</button>
                   <button type="button" class="w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors" data-action="block-user">Block User</button>
                 </div>
               </details>

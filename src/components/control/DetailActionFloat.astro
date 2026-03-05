@@ -1,5 +1,7 @@
 ---
 import { Icon } from "astro-icon/components";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
 
 interface Props {
   contentType: "article" | "diary";
@@ -11,7 +13,10 @@ interface Props {
   dockToBackTop?: boolean;
   editHref?: string;
   deleteEndpoint?: string;
+  adminDeleteEndpoint?: string;
   deleteConfirmMessage?: string;
+  adminDeleteConfirmMessage?: string;
+  adminDeleteLabel?: string;
   deleteSuccessHref?: string;
 }
 
@@ -25,9 +30,13 @@ const {
   dockToBackTop = false,
   editHref = "",
   deleteEndpoint = "",
+  adminDeleteEndpoint = "",
   deleteConfirmMessage = "确认删除该内容？删除后不可恢复。",
+  adminDeleteConfirmMessage = deleteConfirmMessage,
+  adminDeleteLabel = i18n(I18nKey.interactionCommonDeleteAdmin),
   deleteSuccessHref = "/",
 } = Astro.props;
+const deleteLabel = i18n(I18nKey.interactionCommonDelete);
 ---
 
 <div
@@ -41,7 +50,11 @@ const {
   data-dock-to-back-top={dockToBackTop ? "1" : "0"}
   data-edit-href={editHref}
   data-delete-endpoint={deleteEndpoint}
+  data-admin-delete-endpoint={adminDeleteEndpoint}
   data-delete-confirm-message={deleteConfirmMessage}
+  data-admin-delete-confirm-message={adminDeleteConfirmMessage}
+  data-delete-label={deleteLabel}
+  data-admin-delete-label={adminDeleteLabel}
   data-delete-success-href={deleteSuccessHref}
 >
   <div class="detail-action-bar card-base rounded-2xl">
@@ -81,7 +94,7 @@ const {
       type="button"
       class="detail-manage-delete hidden w-full text-left px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-black/5 dark:hover:bg-white/10"
     >
-      删除
+      {deleteLabel}
     </button>
   </div>
 </div>
@@ -153,13 +166,13 @@ const {
     position: absolute
     bottom: 0
     left: calc(100% + .4rem)
-    min-width: 8rem
+    min-width: 11.5rem
     z-index: 60
     background: var(--card-bg)
     border: 1px solid var(--line-divider)
     border-radius: 1rem
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15)
-    padding: 0.5rem
+    padding: 0.6rem
     opacity: 0
     visibility: hidden
     transform: translate(-6px, 6px) scale(0.95)
@@ -195,6 +208,13 @@ const {
   } from "@/scripts/detail-action-float-helpers";
   import type { LikeActionState } from "@/scripts/detail-action-float-helpers";
 
+  function applyDeleteButtonLabel(
+    button: HTMLButtonElement,
+    label: string,
+  ): void {
+    button.textContent = label;
+  }
+
   function bindDetailRoot(rootEl: HTMLElement): void {
     rootEl.dataset.bound = "1";
     const dockToBackTop = rootEl.dataset.dockToBackTop === "1";
@@ -205,8 +225,18 @@ const {
     const authorId = String(rootEl.dataset.authorId || "");
     const editHref = String(rootEl.dataset.editHref || "");
     const deleteEndpoint = String(rootEl.dataset.deleteEndpoint || "");
+    const adminDeleteEndpoint = String(
+      rootEl.dataset.adminDeleteEndpoint || "",
+    );
     const deleteConfirmMessage = String(
       rootEl.dataset.deleteConfirmMessage || "确认删除该内容？删除后不可恢复。",
+    );
+    const adminDeleteConfirmMessage = String(
+      rootEl.dataset.adminDeleteConfirmMessage || deleteConfirmMessage,
+    );
+    const deleteLabel = String(rootEl.dataset.deleteLabel || "删除");
+    const adminDeleteLabel = String(
+      rootEl.dataset.adminDeleteLabel || "删除（管理员）",
     );
     const deleteSuccessHref = String(rootEl.dataset.deleteSuccessHref || "/");
 
@@ -226,6 +256,7 @@ const {
       likeCount: Number(rootEl.dataset.likeCount || "0") || 0,
       likePending: false,
     };
+    let currentAuthState: AuthState = getAuthState();
     let isOpen = false;
 
     function applyLikeUI(): void {
@@ -244,15 +275,27 @@ const {
     }
 
     function applyActionVisibility(state: AuthState): void {
-      const canManage =
-        state.isLoggedIn &&
-        Boolean(state.userId) &&
-        (state.isAdmin || state.userId === authorId);
-      const canOpenPanel = canManage || state.isLoggedIn;
+      currentAuthState = state;
+      const isOwner =
+        state.isLoggedIn && Boolean(state.userId) && state.userId === authorId;
+      const isAdminOnly = state.isLoggedIn && state.isAdmin && !isOwner;
+      const canEdit = isOwner;
+      const canDelete = isOwner || isAdminOnly;
+      const canOpenPanel = canEdit || canDelete;
 
       manageBtn?.classList.toggle("hidden", !canOpenPanel);
-      editBtn?.classList.toggle("hidden", !canManage);
-      deleteBtn?.classList.toggle("hidden", !canManage);
+      editBtn?.classList.toggle("hidden", !canEdit);
+      deleteBtn?.classList.toggle("hidden", !canDelete);
+
+      if (deleteBtn) {
+        // 管理员删除与作者删除走不同链路，按钮文案同步标识当前模式。
+        const deleteMode = isAdminOnly ? "admin" : "owner";
+        deleteBtn.dataset.deleteMode = deleteMode;
+        applyDeleteButtonLabel(
+          deleteBtn,
+          deleteMode === "admin" ? adminDeleteLabel : deleteLabel,
+        );
+      }
 
       if (!canOpenPanel && isOpen) {
         panel?.classList.remove("show");
@@ -306,9 +349,19 @@ const {
 
     deleteBtn?.addEventListener("click", () => {
       if (!deleteBtn) return;
+      const isOwner =
+        currentAuthState.isLoggedIn &&
+        Boolean(currentAuthState.userId) &&
+        currentAuthState.userId === authorId;
+      const isAdminOnly =
+        currentAuthState.isLoggedIn && currentAuthState.isAdmin && !isOwner;
+      const deleteMode: "owner" | "admin" = isAdminOnly ? "admin" : "owner";
       void handleDeleteAction({
-        deleteEndpoint,
-        deleteConfirmMessage,
+        mode: deleteMode,
+        ownerDeleteEndpoint: deleteEndpoint,
+        adminDeleteEndpoint,
+        ownerDeleteConfirmMessage: deleteConfirmMessage,
+        adminDeleteConfirmMessage,
         deleteSuccessHref,
         contentType,
         deleteBtn,

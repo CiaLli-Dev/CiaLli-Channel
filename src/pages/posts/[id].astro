@@ -400,7 +400,11 @@ const createdMetaText = formatArticleMetaDate(article?.date_created);
           dockToBackTop={true}
           editHref={`/posts/${encodeURIComponent(article.short_id || rawId)}/edit`}
           deleteEndpoint={`/api/v1/me/articles/${encodeURIComponent(article.id)}`}
+          adminDeleteEndpoint={`/api/v1/admin/content/articles/${encodeURIComponent(article.id)}`}
           deleteConfirmMessage={i18n(I18nKey.contentArticleDeleteConfirm)}
+          adminDeleteConfirmMessage={i18n(
+            I18nKey.interactionPostDeleteConfirmAdminArticle,
+          )}
           deleteSuccessHref="/"
         />
 

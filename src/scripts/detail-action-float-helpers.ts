@@ -114,8 +114,11 @@ export function resolveAndMountElement(ctx: DetailMountContext): void {
 }
 
 export type DeleteActionContext = {
-    deleteEndpoint: string;
-    deleteConfirmMessage: string;
+    mode: "owner" | "admin";
+    ownerDeleteEndpoint: string;
+    adminDeleteEndpoint?: string;
+    ownerDeleteConfirmMessage: string;
+    adminDeleteConfirmMessage?: string;
     deleteSuccessHref: string;
     contentType: string;
     deleteBtn: HTMLButtonElement;
@@ -154,13 +157,27 @@ export async function handleDeleteAction(
     ctx: DeleteActionContext,
 ): Promise<void> {
     const {
-        deleteEndpoint,
-        deleteConfirmMessage,
+        mode,
+        ownerDeleteEndpoint,
+        adminDeleteEndpoint,
+        ownerDeleteConfirmMessage,
+        adminDeleteConfirmMessage,
         deleteSuccessHref,
         contentType,
         deleteBtn,
         closePanel,
     } = ctx;
+
+    // 统一在 helper 内做删除链路选择，避免调用方遗漏管理员路径分支。
+    const deleteEndpoint =
+        mode === "admin"
+            ? String(adminDeleteEndpoint || "").trim()
+            : String(ownerDeleteEndpoint || "").trim();
+    const deleteConfirmMessage =
+        mode === "admin"
+            ? String(adminDeleteConfirmMessage || "").trim() ||
+              ownerDeleteConfirmMessage
+            : ownerDeleteConfirmMessage;
 
     if (!deleteEndpoint) {
         return;

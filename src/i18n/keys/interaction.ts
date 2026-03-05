@@ -4,6 +4,7 @@ export enum InteractionKey {
     interactionCommonConfirm = "interactionCommonConfirm",
     interactionCommonCancel = "interactionCommonCancel",
     interactionCommonDelete = "interactionCommonDelete",
+    interactionCommonDeleteAdmin = "interactionCommonDeleteAdmin",
     interactionCommonEdit = "interactionCommonEdit",
     interactionCommonPreview = "interactionCommonPreview",
     interactionCommonCreate = "interactionCommonCreate",

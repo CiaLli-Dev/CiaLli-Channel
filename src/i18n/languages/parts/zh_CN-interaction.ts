@@ -5,6 +5,7 @@ export const zhCNInteraction: Record<string, string> = {
     [Key.interactionCommonConfirm]: "确认",
     [Key.interactionCommonCancel]: "取消",
     [Key.interactionCommonDelete]: "删除",
+    [Key.interactionCommonDeleteAdmin]: "删除（管理员）",
     [Key.interactionCommonEdit]: "编辑",
     [Key.interactionCommonPreview]: "预览",
     [Key.interactionCommonCreate]: "创建",

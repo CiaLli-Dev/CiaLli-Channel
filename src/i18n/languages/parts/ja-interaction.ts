@@ -5,6 +5,7 @@ export const jaInteraction: Record<string, string> = {
     [Key.interactionCommonConfirm]: "確認",
     [Key.interactionCommonCancel]: "キャンセル",
     [Key.interactionCommonDelete]: "削除",
+    [Key.interactionCommonDeleteAdmin]: "削除（管理者）",
     [Key.interactionCommonEdit]: "編集",
     [Key.interactionCommonPreview]: "プレビュー",
     [Key.interactionCommonCreate]: "作成",

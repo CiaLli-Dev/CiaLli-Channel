@@ -2,6 +2,8 @@
 import { Icon } from "astro-icon/components";
 
 import type { DirectusPostEntry } from "@/utils/content-utils";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
 import { resolveAuthorIdentity } from "@/utils/author-identity";
 import { getPostUrl } from "@/utils/url-utils";
 
@@ -53,6 +55,7 @@ const publishedDateSource = new Date(published);
 const publishedDate = !Number.isNaN(publishedDateSource.getTime())
   ? `${publishedDateSource.getFullYear()}/${String(publishedDateSource.getMonth() + 1).padStart(2, "0")}/${String(publishedDateSource.getDate()).padStart(2, "0")}`
   : "1970/01/01";
+const adminDeleteLabel = i18n(I18nKey.interactionCommonDeleteAdmin);
 ---
 
 <div
@@ -163,17 +166,17 @@ const publishedDate = !Number.isNaN(publishedDateSource.getTime())
           >
             <button
               type="button"
-              class="hidden w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors"
+              class="hidden w-full text-left px-3 py-2 text-sm rounded-lg text-red-500 hover:text-red-500 hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors"
               data-action="delete-own-article"
             >
               删除文章
             </button>
             <button
               type="button"
-              class="hidden w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors"
+              class="hidden w-full text-left px-3 py-2 text-sm rounded-lg text-red-500 hover:text-red-500 hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors"
               data-action="delete-admin-article"
             >
-              删除此文章【管理员】
+              {adminDeleteLabel}
             </button>
             <button
               type="button"

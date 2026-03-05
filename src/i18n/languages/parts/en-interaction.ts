@@ -5,6 +5,7 @@ export const enInteraction: Record<string, string> = {
     [Key.interactionCommonConfirm]: "Confirm",
     [Key.interactionCommonCancel]: "Cancel",
     [Key.interactionCommonDelete]: "Delete",
+    [Key.interactionCommonDeleteAdmin]: "Delete (Admin)",
     [Key.interactionCommonEdit]: "Edit",
     [Key.interactionCommonPreview]: "Preview",
     [Key.interactionCommonCreate]: "Create",

@@ -9,6 +9,7 @@ import { getCsrfToken } from "@/utils/csrf";
 import type { AuthState } from "@/scripts/auth-state";
 
 export type LikeRelationField = "article_id" | "diary_id";
+type DeleteMode = "owner" | "admin";
 
 export type FetchAllLikedIdsOptions = {
     endpoint: string;
@@ -85,15 +86,20 @@ export async function fetchAllLikedIds({
     return likedIds;
 }
 
-export async function requestDeleteArticle(articleId: string): Promise<void> {
-    const response = await fetch(
-        `/api/v1/me/articles/${encodeURIComponent(articleId)}`,
-        {
-            method: "DELETE",
-            credentials: "include",
-            headers: { "x-csrf-token": getCsrfToken() },
-        },
-    );
+export async function requestDeleteArticle(
+    articleId: string,
+    mode: DeleteMode,
+): Promise<void> {
+    // 管理员删除走 admin 内容端点，作者删除走 me 端点，避免权限语义混淆。
+    const endpoint =
+        mode === "admin"
+            ? `/api/v1/admin/content/articles/${encodeURIComponent(articleId)}`
+            : `/api/v1/me/articles/${encodeURIComponent(articleId)}`;
+    const response = await fetch(endpoint, {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "x-csrf-token": getCsrfToken() },
+    });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data?.ok) {
         throw new Error(
@@ -102,15 +108,20 @@ export async function requestDeleteArticle(articleId: string): Promise<void> {
     }
 }
 
-export async function requestDeleteDiary(diaryId: string): Promise<void> {
-    const response = await fetch(
-        `/api/v1/me/diaries/${encodeURIComponent(diaryId)}`,
-        {
-            method: "DELETE",
-            credentials: "include",
-            headers: { "x-csrf-token": getCsrfToken() },
-        },
-    );
+export async function requestDeleteDiary(
+    diaryId: string,
+    mode: DeleteMode,
+): Promise<void> {
+    // 日记删除链路与文章保持一致：管理员和作者各自走独立后端路由。
+    const endpoint =
+        mode === "admin"
+            ? `/api/v1/admin/content/diaries/${encodeURIComponent(diaryId)}`
+            : `/api/v1/me/diaries/${encodeURIComponent(diaryId)}`;
+    const response = await fetch(endpoint, {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "x-csrf-token": getCsrfToken() },
+    });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data?.ok) {
         throw new Error(
@@ -256,7 +267,9 @@ export async function handleDeleteArticleAction(
         return;
     }
     try {
-        await requestDeleteArticle(itemId);
+        const deleteMode: DeleteMode =
+            action === "delete-admin-article" ? "admin" : "owner";
+        await requestDeleteArticle(itemId, deleteMode);
         onSuccess(itemId);
     } catch (error) {
         const message =
@@ -300,7 +313,9 @@ export async function handleDeleteDiaryAction(
         return;
     }
     try {
-        await requestDeleteDiary(itemId);
+        const deleteMode: DeleteMode =
+            action === "delete-admin-diary" ? "admin" : "owner";
+        await requestDeleteDiary(itemId, deleteMode);
         onSuccess(itemId);
     } catch (error) {
         const message =

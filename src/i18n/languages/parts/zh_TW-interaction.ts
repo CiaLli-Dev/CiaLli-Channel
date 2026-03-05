@@ -5,6 +5,7 @@ export const zhTWInteraction: Record<string, string> = {
     [Key.interactionCommonConfirm]: "確認",
     [Key.interactionCommonCancel]: "取消",
     [Key.interactionCommonDelete]: "刪除",
+    [Key.interactionCommonDeleteAdmin]: "刪除（管理員）",
     [Key.interactionCommonEdit]: "編輯",
     [Key.interactionCommonPreview]: "預覽",
     [Key.interactionCommonCreate]: "建立",

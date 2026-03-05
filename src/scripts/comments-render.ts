@@ -2,6 +2,8 @@ import type {
     CommentItem,
     TopLevelReplyExpandState,
 } from "@/scripts/comments-types";
+import I18nKey from "@/i18n/i18nKey";
+import { t } from "@/scripts/i18n-runtime";
 import {
     escapeHtml,
     formatDate,
@@ -85,12 +87,12 @@ function buildToggleButtonHtml(
     return `<button type="button" class="comment-action mt-2 inline-flex items-center gap-1 rounded-lg border border-(--line-divider) px-3 py-1.5 text-xs text-60 hover:text-(--primary) transition-colors" data-action="toggle-replies" data-parent-id="${escapeHtml(parentId)}" aria-expanded="${expanded ? "true" : "false"}" aria-controls="${repliesContainerId}">${label}</button>`;
 }
 
-function buildActionMenu(commentId: string): string {
-    const deleteBtn = `<button type="button" class="comment-action w-full text-left px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-black/5 dark:hover:bg-white/10" data-action="delete" data-id="${escapeHtml(commentId)}">删除</button>`;
+function buildActionMenu(commentId: string, deleteLabel: string): string {
+    const deleteBtn = `<button type="button" class="comment-action w-full text-left px-3 py-2 rounded-lg text-sm text-red-500 whitespace-nowrap hover:bg-black/5 dark:hover:bg-white/10" data-action="delete" data-id="${escapeHtml(commentId)}">${escapeHtml(deleteLabel)}</button>`;
     return `
     <details class="relative comment-action-menu z-20">
       <summary class="list-none cursor-pointer btn-plain scale-animation w-8 h-8 rounded-lg flex items-center justify-center text-base select-none text-75" aria-label="评论操作">...</summary>
-      <div class="absolute right-0 top-9 z-50 min-w-[7rem] card-base rounded-xl border border-(--line-divider) p-2 text-90">
+      <div class="absolute right-0 top-9 z-50 min-w-[11rem] card-base rounded-xl border border-(--line-divider) p-2 text-90">
         ${deleteBtn}
       </div>
     </details>
@@ -105,10 +107,15 @@ function renderCommentActions(
     pendingLikeCommentIds: Set<string>,
 ): string {
     const canReply = level < 2;
-    const canDelete =
+    const isOwner =
         Boolean(currentUserId) &&
         Boolean(item) &&
-        (item.author_id === currentUserId || isAdmin);
+        item.author_id === currentUserId;
+    const canDelete = isOwner || isAdmin;
+    const isAdminOnlyDelete = isAdmin && !isOwner;
+    const deleteLabel = isAdminOnlyDelete
+        ? t(I18nKey.interactionCommonDeleteAdmin)
+        : t(I18nKey.interactionCommonDelete);
     const replyCount = Array.isArray(item.replies) ? item.replies.length : 0;
     const likedByViewer = Boolean(item.liked_by_viewer);
     const likeCount = Math.max(0, Number(item.like_count || 0));
@@ -121,7 +128,7 @@ function renderCommentActions(
     const replyButton = canReply
         ? `<button type="button" class="comment-action inline-flex h-8 items-center gap-1 text-sm font-medium text-60 hover:text-(--primary) transition-colors" data-action="reply" data-id="${escapeHtml(item.id)}" data-author="${escapeHtml(item.author?.name || "用户")}" aria-label="回复评论"><iconify-icon icon="material-symbols:comment-rounded" class="text-lg"></iconify-icon><span>${escapeHtml(String(replyCount))}</span></button>`
         : "";
-    const menu = canDelete ? buildActionMenu(item.id) : "";
+    const menu = canDelete ? buildActionMenu(item.id, deleteLabel) : "";
     return `
     <div class="flex items-center gap-2 shrink-0">
       <button type="button" class="comment-action inline-flex h-8 items-center gap-1 text-sm font-medium ${likeClass} ${likePendingClass} hover:text-(--primary) transition-colors" data-action="like" data-id="${escapeHtml(item.id)}" aria-label="点赞评论" ${likePendingAttr}>
