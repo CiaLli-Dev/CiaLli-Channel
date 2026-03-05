@@ -153,6 +153,8 @@ export const jaContent: Record<string, string> = {
     [Key.contentArticleNotFoundTitle]: "記事が見つかりません",
     [Key.contentArticleNotFoundDescription]:
         "この記事は未公開・削除済み、またはリンクが無効です。",
+    [Key.contentArticleLastEditedLabel]: "最終更新",
+    [Key.contentArticleCreatedAtLabel]: "作成日時",
     [Key.contentArticleDeleteConfirm]:
         "この記事を削除しますか？削除後は元に戻せません。",
     [Key.contentRss]: "RSSフィード",

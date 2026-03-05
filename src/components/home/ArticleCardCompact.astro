@@ -22,7 +22,7 @@ const coverUrl = article.cover_file
 
 const hasCover = Boolean(coverUrl);
 
-const publishedDate = article.published_at || article.date_created;
+const publishedDate = article.date_updated || article.date_created;
 const dateStr = publishedDate
   ? formatDateToYYYYMMDD(new Date(publishedDate)).replace(/-/g, "/")
   : "";

@@ -3,7 +3,6 @@ import { describe, it, expect } from "vitest";
 import {
     isArticlePubliclyVisible,
     canTransitionArticleStatus,
-    resolvePublishedAt,
     isArticleCommentable,
     canUserModifyArticle,
     isOwner,
@@ -30,30 +29,6 @@ describe("canTransitionArticleStatus", () => {
 
     it("archived → published 不合法", () => {
         expect(canTransitionArticleStatus("archived", "published")).toBe(false);
-    });
-});
-
-describe("resolvePublishedAt", () => {
-    const now = "2026-02-15T00:00:00.000Z";
-
-    it("published 状态下无 publishedAt → 使用 now", () => {
-        expect(resolvePublishedAt("published", null, now)).toBe(now);
-        expect(resolvePublishedAt("published", undefined, now)).toBe(now);
-    });
-
-    it("published 状态下有 publishedAt → 使用用户提供的值", () => {
-        const custom = "2025-01-01T00:00:00.000Z";
-        expect(resolvePublishedAt("published", custom, now)).toBe(custom);
-    });
-
-    it("draft 状态下无 publishedAt → null", () => {
-        expect(resolvePublishedAt("draft", null, now)).toBeNull();
-        expect(resolvePublishedAt("draft", undefined, now)).toBeNull();
-    });
-
-    it("draft 状态下有 publishedAt → 保留用户值", () => {
-        const custom = "2025-01-01T00:00:00.000Z";
-        expect(resolvePublishedAt("draft", custom, now)).toBe(custom);
     });
 });
 

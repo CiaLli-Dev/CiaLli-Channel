@@ -23,7 +23,7 @@ type OgPost = {
     slug: string;
     title: string;
     summary: string | null;
-    published_at: string | null;
+    date_updated: string | null;
     date_created: string | null;
 };
 
@@ -37,9 +37,9 @@ export const getStaticPaths: GetStaticPaths = async () => {
                 { is_public: { _eq: true } },
             ],
         } as JsonObject,
-        sort: ["-published_at", "-date_created"],
+        sort: ["-date_updated", "-date_created"],
         limit: 1000,
-        fields: ["slug", "title", "summary", "published_at", "date_created"],
+        fields: ["slug", "title", "summary", "date_updated", "date_created"],
     });
 
     return rows
@@ -57,7 +57,7 @@ export const getStaticPaths: GetStaticPaths = async () => {
                     slug: post.slug,
                     title: post.title,
                     summary: post.summary,
-                    published_at: post.published_at,
+                    date_updated: post.date_updated,
                     date_created: post.date_created,
                 } satisfies OgPost,
             },
@@ -153,7 +153,7 @@ async function fetchNotoSansSCFonts(): Promise<{
 }
 
 function resolvePublishedDate(post: OgPost): string {
-    const raw = post.published_at || post.date_created;
+    const raw = post.date_updated || post.date_created;
     const date = raw ? new Date(raw) : new Date();
     if (Number.isNaN(date.getTime())) {
         return "";

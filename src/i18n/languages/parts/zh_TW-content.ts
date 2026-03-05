@@ -141,6 +141,8 @@ export const zhTWContent: Record<string, string> = {
     [Key.contentArticleNotFoundTitle]: "文章不存在",
     [Key.contentArticleNotFoundDescription]:
         "該文章可能未發布、已刪除或連結錯誤。",
+    [Key.contentArticleLastEditedLabel]: "上次更改",
+    [Key.contentArticleCreatedAtLabel]: "建立時間",
     [Key.contentArticleDeleteConfirm]: "確認刪除這篇文章？刪除後無法復原。",
     [Key.contentRss]: "RSS 訂閱",
     [Key.contentRssDescription]: "訂閱以接收最新更新",

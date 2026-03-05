@@ -78,7 +78,6 @@ const ARTICLE_FEED_FIELDS = [
     "tags",
     "category",
     "is_public",
-    "published_at",
     "date_created",
     "date_updated",
 ] as const;
@@ -325,7 +324,7 @@ export async function buildHomeFeedCandidatePool(options: {
         readMany("app_articles", {
             filter: { _and: articleFilters } as JsonObject,
             fields: [...ARTICLE_FEED_FIELDS],
-            sort: ["-published_at", "-date_created"],
+            sort: ["-date_updated", "-date_created"],
             limit: options.articleCandidateLimit,
         }),
         readMany("app_diaries", {

@@ -150,6 +150,8 @@ export const enContent: Record<string, string> = {
     [Key.contentArticleNotFoundTitle]: "Article Not Found",
     [Key.contentArticleNotFoundDescription]:
         "This article may be unpublished, deleted, or the link is invalid.",
+    [Key.contentArticleLastEditedLabel]: "Last Updated",
+    [Key.contentArticleCreatedAtLabel]: "Created At",
     [Key.contentArticleDeleteConfirm]:
         "Are you sure you want to delete this article? This action cannot be undone.",
     [Key.contentRss]: "RSS Feed",

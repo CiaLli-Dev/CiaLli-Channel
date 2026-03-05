@@ -132,6 +132,8 @@ export enum ContentKey {
     contentPageNoPublicPosts = "contentPageNoPublicPosts",
     contentArticleNotFoundTitle = "contentArticleNotFoundTitle",
     contentArticleNotFoundDescription = "contentArticleNotFoundDescription",
+    contentArticleLastEditedLabel = "contentArticleLastEditedLabel",
+    contentArticleCreatedAtLabel = "contentArticleCreatedAtLabel",
     contentArticleDeleteConfirm = "contentArticleDeleteConfirm",
     contentRss = "contentRss",
     contentRssDescription = "contentRssDescription",

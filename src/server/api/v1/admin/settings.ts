@@ -29,7 +29,7 @@ import {
 } from "@/server/site-settings/service";
 import { cleanupOrphanDirectusFiles } from "../shared/file-cleanup";
 
-import { nowIso, requireAdmin } from "../shared";
+import { requireAdmin } from "../shared";
 
 const ABOUT_ARTICLE_SLUG = "about";
 const ABOUT_FALLBACK_TITLE = "关于我们";
@@ -264,7 +264,6 @@ async function upsertAboutArticle(
             cover_url: null,
             tags: [] as string[],
             category: null,
-            published_at: nowIso(),
         });
         return mapRowToAboutArticleData(created);
     }

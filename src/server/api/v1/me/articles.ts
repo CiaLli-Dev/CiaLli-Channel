@@ -24,8 +24,8 @@ import { createWithShortId } from "@/server/utils/short-id";
 
 import type { AppAccess } from "../shared";
 import {
+    ARTICLE_FIELDS,
     hasOwn,
-    nowIso,
     parseRouteId,
     safeCsv,
     toSpecialArticleSlug,
@@ -174,13 +174,15 @@ async function handleMeArticlesCreate(
         category: input.category ?? null,
         allow_comments: input.allow_comments,
         is_public: input.is_public,
-        published_at: input.published_at || nowIso(),
     };
 
     const created = await createWithShortId(
         "app_articles",
         articlePayload,
-        createOne,
+        (collection, payload) =>
+            createOne(collection, payload, {
+                fields: [...ARTICLE_FIELDS],
+            }),
     );
     if (created?.cover_file) {
         const coverTitle = created.short_id
@@ -246,7 +248,7 @@ function applyArticleBaseFields(
     return nextCoverFile;
 }
 
-// ── 辅助：填充状态与发布时间到 payload ──
+// ── 辅助：填充状态到 payload ──
 
 function applyArticleStatusFields(
     payload: JsonObject,
@@ -256,18 +258,8 @@ function applyArticleStatusFields(
     if (input.status !== undefined) {
         payload.status = "published";
     }
-    if (input.published_at !== undefined) {
-        payload.published_at = input.published_at;
-    }
     if (String(target.status ?? "").trim() !== "published") {
         payload.status = "published";
-    }
-    if (
-        String(payload.status ?? "").trim() === "published" &&
-        payload.published_at === undefined
-    ) {
-        const targetPublishedAt = String(target.published_at ?? "").trim();
-        payload.published_at = targetPublishedAt || nowIso();
     }
 }
 
@@ -345,7 +337,9 @@ async function handleMeArticlesPatch(
         target,
     );
 
-    const updated = await updateOne("app_articles", id, payload);
+    const updated = await updateOne("app_articles", id, payload, {
+        fields: [...ARTICLE_FIELDS],
+    });
     await cleanupPatchedArticleFiles(
         body as JsonObject,
         input,

@@ -119,7 +119,7 @@ export async function listPublic(
     }
     return await readMany("app_articles", {
         filter: { _and: andFilters } as JsonObject,
-        sort: options.sort ?? ["-published_at", "-date_created"],
+        sort: options.sort ?? ["-date_updated", "-date_created"],
         limit: options.limit,
         offset: options.offset,
         fields: options.fields,

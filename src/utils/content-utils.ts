@@ -60,13 +60,13 @@ function isProtectedContentBody(value: string | null | undefined): boolean {
 }
 
 function resolvePublishedAt(post: AppArticle): Date {
-    const raw = post.published_at || post.date_created || post.date_updated;
+    const raw = post.date_updated || post.date_created;
     const parsed = raw ? new Date(raw) : new Date();
     return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
 }
 
 function resolveUpdatedAt(post: AppArticle): Date {
-    const raw = post.date_updated || post.date_created || post.published_at;
+    const raw = post.date_updated || post.date_created;
     const parsed = raw ? new Date(raw) : new Date();
     return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
 }
@@ -379,7 +379,7 @@ async function loadDirectusPosts(): Promise<DirectusPostEntry[]> {
     try {
         const rows = await readMany("app_articles", {
             filter: { _and: andFilters } as JsonObject,
-            sort: ["-published_at", "-date_created"],
+            sort: ["-date_updated", "-date_created"],
             limit: 1000,
         });
 

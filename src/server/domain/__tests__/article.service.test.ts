@@ -49,20 +49,7 @@ beforeEach(() => {
 // ── createArticle ──
 
 describe("createArticle", () => {
-    it("draft 文章不自动设置 published_at", async () => {
-        const created = mockArticle({ status: "draft", published_at: null });
-        mockedRepo.create.mockResolvedValue(created);
-
-        await createArticle(
-            { title: "Test", body_markdown: "content", status: "draft" },
-            "user-1",
-        );
-
-        const payload = mockedRepo.create.mock.calls[0][0];
-        expect(payload.published_at).toBeNull();
-    });
-
-    it("published 文章自动设置 published_at", async () => {
+    it("创建时不再写入 published_at", async () => {
         const created = mockArticle({ status: "published" });
         mockedRepo.create.mockResolvedValue(created);
 
@@ -72,28 +59,7 @@ describe("createArticle", () => {
         );
 
         const payload = mockedRepo.create.mock.calls[0][0];
-        expect(payload.published_at).toBeTruthy();
-        // 应为 ISO 时间字符串
-        expect(typeof payload.published_at).toBe("string");
-    });
-
-    it("published 文章保留用户提供的 published_at", async () => {
-        const created = mockArticle({ status: "published" });
-        mockedRepo.create.mockResolvedValue(created);
-
-        const customDate = "2025-06-01T00:00:00.000Z";
-        await createArticle(
-            {
-                title: "Test",
-                body_markdown: "content",
-                status: "published",
-                published_at: customDate,
-            },
-            "user-1",
-        );
-
-        const payload = mockedRepo.create.mock.calls[0][0];
-        expect(payload.published_at).toBe(customDate);
+        expect(payload).not.toHaveProperty("published_at");
     });
 
     it("传递正确的 author_id", async () => {

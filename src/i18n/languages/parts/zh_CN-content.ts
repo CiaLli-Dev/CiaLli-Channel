@@ -141,6 +141,8 @@ export const zhCNContent: Record<string, string> = {
     [Key.contentArticleNotFoundTitle]: "文章不存在",
     [Key.contentArticleNotFoundDescription]:
         "该文章可能未发布、已删除，或链接错误。",
+    [Key.contentArticleLastEditedLabel]: "上次更改",
+    [Key.contentArticleCreatedAtLabel]: "创建时间",
     [Key.contentArticleDeleteConfirm]: "确认删除这篇文章？删除后不可恢复。",
     [Key.contentRss]: "RSS 订阅",
     [Key.contentRssDescription]: "订阅获取最新更新",

@@ -17,7 +17,6 @@ export interface CreateArticleInput {
     status?: AppStatus;
     allow_comments?: boolean;
     is_public?: boolean;
-    published_at?: string | null;
 }
 
 /** 更新文章所需的输入（所有字段可选） */

@@ -246,7 +246,7 @@ export function normalizeArticleTags(tags: AppArticle["tags"]): string[] {
 }
 
 export function resolveArticlePublishedAt(article: AppArticle): Date {
-    return toSafeDate(article.published_at || article.date_created);
+    return toSafeDate(article.date_updated || article.date_created);
 }
 
 export function resolveArticleUpdatedAt(article: AppArticle): Date {

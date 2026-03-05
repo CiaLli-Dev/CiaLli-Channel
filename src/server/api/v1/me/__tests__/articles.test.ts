@@ -43,11 +43,18 @@ vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
     cleanupOrphanDirectusFiles: vi.fn().mockResolvedValue([]),
 }));
 
-import { readMany, updateOne, deleteOne } from "@/server/directus/client";
+import {
+    createOne,
+    readMany,
+    updateOne,
+    deleteOne,
+} from "@/server/directus/client";
+import { ARTICLE_FIELDS } from "@/server/api/v1/shared/constants";
 import { createWithShortId } from "@/server/utils/short-id";
 
 import { handleMeArticles } from "@/server/api/v1/me/articles";
 
+const mockedCreateOne = vi.mocked(createOne);
 const mockedReadMany = vi.mocked(readMany);
 const mockedUpdateOne = vi.mocked(updateOne);
 const mockedDeleteOne = vi.mocked(deleteOne);
@@ -116,6 +123,17 @@ describe("POST /me/articles", () => {
         }>(res);
         expect(body.ok).toBe(true);
         expect(body.item.title).toBe("New Article");
+
+        const createFn = mockedCreateWithShortId.mock.calls[0]?.[2];
+        expect(typeof createFn).toBe("function");
+        if (createFn) {
+            await createFn("app_articles", { title: "probe" });
+            expect(mockedCreateOne).toHaveBeenCalledWith(
+                "app_articles",
+                { title: "probe" },
+                { fields: [...ARTICLE_FIELDS] },
+            );
+        }
     });
 
     it("缺失 title → 400 VALIDATION_ERROR", async () => {
@@ -252,6 +270,12 @@ describe("PATCH /me/articles/:id", () => {
         }>(res);
         expect(body.ok).toBe(true);
         expect(body.item.title).toBe("Updated Title");
+        expect(mockedUpdateOne).toHaveBeenCalledWith(
+            "app_articles",
+            "article-1",
+            { title: "Updated Title", tags: [] },
+            { fields: [...ARTICLE_FIELDS] },
+        );
     });
 
     it("非 owner → 404", async () => {

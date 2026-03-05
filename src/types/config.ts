@@ -142,7 +142,7 @@ export type PermalinkConfig = {
      * - %hour% : 2位小时 (00-23)
      * - %minute% : 2位分钟 (00-59)
      * - %second% : 2位秒数 (00-59)
-     * - %post_id% : 文章序号（按发布时间升序排列）
+     * - %post_id% : 文章序号（按创建时间升序排列，稳定不随编辑变化）
      * - %postname% : 文章文件名（slug）
      * - %category% : 分类名（无分类时为 "uncategorized"）
      *

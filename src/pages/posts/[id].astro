@@ -51,7 +51,8 @@ let article: {
   tags: string[];
   category: string | null;
   allow_comments: boolean;
-  published_at: string | null;
+  date_created: string | null;
+  date_updated: string | null;
   author?: { id?: string; name?: string };
 } | null = null;
 let articleHtml = "";
@@ -236,7 +237,9 @@ function formatArticleMetaDate(input: string | null | undefined): string {
   return `${timePart} · ${datePart}`;
 }
 
-const publishedMetaText = formatArticleMetaDate(article?.published_at);
+const lastEditedAt = article?.date_updated || article?.date_created || null;
+const lastEditedMetaText = formatArticleMetaDate(lastEditedAt);
+const createdMetaText = formatArticleMetaDate(article?.date_created);
 ---
 
 <MainGridLayout
@@ -275,12 +278,31 @@ const publishedMetaText = formatArticleMetaDate(article?.published_at);
             <header class="mb-6 space-y-3">
               <h1 class="text-3xl font-bold text-90">{article.title}</h1>
               <div class="flex flex-wrap items-center gap-3 text-sm text-60">
-                {article.published_at && publishedMetaText && (
-                  <time datetime={article.published_at}>
-                    {publishedMetaText}
-                  </time>
+                {lastEditedAt && lastEditedMetaText && (
+                  <span>
+                    {i18n(I18nKey.contentArticleLastEditedLabel)}：
+                    <time datetime={lastEditedAt}>{lastEditedMetaText}</time>
+                  </span>
                 )}
-                {article.category && <span>{article.category}</span>}
+                {article.date_created && createdMetaText && (
+                  <span>
+                    {i18n(I18nKey.contentArticleCreatedAtLabel)}：
+                    <time datetime={article.date_created}>
+                      {createdMetaText}
+                    </time>
+                  </span>
+                )}
+                {article.category && (
+                  // 分类使用胶囊样式，和时间信息形成明显视觉区分。
+                  <span class="inline-flex items-center gap-1.5 rounded-full border border-(--md-sys-color-outline-variant) bg-(--md-sys-color-secondary-container) px-2.5 py-1 text-xs font-semibold text-(--md-sys-color-on-secondary-container)">
+                    <span class="text-[0.7rem] opacity-80">
+                      {i18n(I18nKey.interactionCommonCategory)}
+                    </span>
+                    <span class="max-w-[16rem] truncate">
+                      {article.category}
+                    </span>
+                  </span>
+                )}
               </div>
               {article.summary && (
                 <p class="text-base text-75">{article.summary}</p>

@@ -4,7 +4,6 @@
  * 从以下位置提取而来：
  * - shared/auth.ts: filterPublicStatus()
  * - shared/loaders.ts: loadPublicArticle*
- * - me/articles.ts: published_at 自动设置
  * - comments.ts: allow_comments 检查
  */
 
@@ -30,24 +29,6 @@ export function canTransitionArticleStatus(
     to: AppStatus,
 ): boolean {
     return isValidTransition(from, to);
-}
-
-/**
- * 解析 published_at 值
- *
- * 规则：
- * - 状态为 published 且未提供 published_at → 使用当前时间
- * - 其余情况使用用户提供的值或 null
- */
-export function resolvePublishedAt(
-    status: AppStatus,
-    publishedAt: string | null | undefined,
-    now: string,
-): string | null {
-    if (status === "published") {
-        return publishedAt || now;
-    }
-    return publishedAt ?? null;
 }
 
 // ── 评论规则 ──

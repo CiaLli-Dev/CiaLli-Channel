@@ -55,7 +55,6 @@ describe("CreateArticleSchema", () => {
             category: "tech",
             allow_comments: false,
             is_public: false,
-            published_at: "2026-01-01T00:00:00.000Z",
         };
         const result = CreateArticleSchema.parse(input);
         expect(result).toEqual(input);

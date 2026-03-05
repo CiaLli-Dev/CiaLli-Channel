@@ -175,7 +175,7 @@ export async function loadHomeDataInParallel(
                           ...articleFilters(isOwnerViewing),
                       ],
                   } as JsonObject,
-                  sort: ["-published_at", "-date_created"],
+                  sort: ["-date_updated", "-date_created"],
                   limit: 5,
               })
             : Promise.resolve([] as AppArticle[]),

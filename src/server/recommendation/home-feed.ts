@@ -79,8 +79,8 @@ async function ensurePermalinkPostIdMapInitialized(): Promise<void> {
 
     const rows = await readMany("app_articles", {
         filter: { _and: articleFilters } as JsonObject,
-        fields: ["id", "short_id", "published_at", "date_created"],
-        sort: ["-published_at", "-date_created"],
+        fields: ["id", "short_id", "date_updated", "date_created"],
+        sort: ["-date_updated", "-date_created"],
         limit: 1000,
     });
 
@@ -89,6 +89,7 @@ async function ensurePermalinkPostIdMapInitialized(): Promise<void> {
             id: normalizeIdentity(row.short_id) || normalizeIdentity(row.id),
             data: {
                 published: resolveArticlePublishedAt(row),
+                created: toSafeDate(row.date_created),
             },
         }))
         .filter((post) => Boolean(post.id));

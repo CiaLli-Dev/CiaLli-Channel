@@ -95,9 +95,8 @@ export function mockArticle(overrides: Partial<AppArticle> = {}): AppArticle {
         category: null,
         allow_comments: true,
         is_public: true,
-        published_at: "2026-01-01T00:00:00.000Z",
         date_created: "2026-01-01T00:00:00.000Z",
-        date_updated: null,
+        date_updated: "2026-01-01T00:00:00.000Z",
         ...overrides,
     };
 }

@@ -1,5 +1,24 @@
 export const DEFAULT_LIST_LIMIT = 20;
 
+export const ARTICLE_FIELDS = [
+    "id",
+    "short_id",
+    "author_id",
+    "status",
+    "title",
+    "slug",
+    "summary",
+    "body_markdown",
+    "cover_file",
+    "cover_url",
+    "tags",
+    "category",
+    "allow_comments",
+    "is_public",
+    "date_created",
+    "date_updated",
+] as const;
+
 export const DIARY_FIELDS = [
     "id",
     "short_id",

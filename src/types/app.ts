@@ -75,7 +75,6 @@ export type AppArticle = {
     category: string | null;
     allow_comments: boolean;
     is_public: boolean;
-    published_at: string | null;
     date_created: string | null;
     date_updated: string | null;
 };

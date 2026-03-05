@@ -29,7 +29,6 @@ export const CreateArticleSchema = z.object({
     category: OptionalStringSchema,
     allow_comments: z.boolean().default(true),
     is_public: z.boolean().default(true),
-    published_at: OptionalStringSchema,
 });
 
 export type CreateArticleInput = z.infer<typeof CreateArticleSchema>;
@@ -49,7 +48,6 @@ export const UpdateArticleSchema = z
         allow_comments: z.boolean(),
         status: z.literal("published"),
         is_public: z.boolean(),
-        published_at: OptionalStringSchema,
     })
     .partial();
 

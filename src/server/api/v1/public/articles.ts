@@ -106,7 +106,7 @@ async function handleArticleList(context: APIContext): Promise<Response> {
     const [rows, total] = await Promise.all([
         readMany("app_articles", {
             filter,
-            sort: ["-published_at", "-date_created"],
+            sort: ["-date_updated", "-date_created"],
             limit,
             offset,
         }),

@@ -15,19 +15,12 @@ import {
 
 import {
     canUserModifyArticle,
-    resolvePublishedAt,
     isArticlePubliclyVisible,
     isArticleCommentable,
     canTransitionArticleStatus,
 } from "./article.rules";
 import * as articleRepo from "./article.repository";
 import type { CreateArticleInput, UpdateArticleInput } from "./article.types";
-
-// ── 辅助 ──
-
-function nowIso(): string {
-    return new Date().toISOString();
-}
 
 // ── 创建 ──
 
@@ -36,11 +29,6 @@ export async function createArticle(
     authorId: string,
 ): Promise<AppArticle> {
     const status = input.status ?? "draft";
-    const publishedAt = resolvePublishedAt(
-        status,
-        input.published_at,
-        nowIso(),
-    );
 
     return await articleRepo.create({
         author_id: authorId,
@@ -55,7 +43,6 @@ export async function createArticle(
         category: input.category ?? null,
         allow_comments: input.allow_comments ?? true,
         is_public: input.is_public ?? true,
-        published_at: publishedAt,
     } as Partial<AppArticle>);
 }
 
@@ -75,8 +62,6 @@ function buildArticleUpdatePayload(input: UpdateArticleInput): JsonObject {
         payload.allow_comments = input.allow_comments;
     if (input.is_public !== undefined) payload.is_public = input.is_public;
     if (input.status !== undefined) payload.status = input.status;
-    if (input.published_at !== undefined)
-        payload.published_at = input.published_at;
     return payload;
 }
 

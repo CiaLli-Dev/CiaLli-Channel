@@ -8,21 +8,30 @@ export type PermalinkPost = {
     id: string;
     data: {
         published?: Date;
+        created?: Date;
         category?: string;
         alias?: string;
         permalink?: string;
     };
 };
 
-function safePublishedDate(post: PermalinkPost): Date {
+function safeCreatedDate(post: PermalinkPost): Date {
     const date =
-        post.data.published instanceof Date ? post.data.published : new Date(0);
+        post.data.created instanceof Date ? post.data.created : new Date(0);
+    return Number.isNaN(date.getTime()) ? new Date(0) : date;
+}
+
+function safePermalinkDate(post: PermalinkPost): Date {
+    const date =
+        post.data.published instanceof Date
+            ? post.data.published
+            : safeCreatedDate(post);
     return Number.isNaN(date.getTime()) ? new Date(0) : date;
 }
 
 /**
  * 初始化文章 ID 映射
- * 按发布时间升序排列（最早的文章 id = 1），草稿文章不参与计算
+ * 按创建时间升序排列（最早的文章 id = 1），草稿文章不参与计算
  * @param posts 所有非草稿文章
  */
 export function initPostIdMap(posts: PermalinkPost[]): Map<string, number> {
@@ -30,10 +39,9 @@ export function initPostIdMap(posts: PermalinkPost[]): Map<string, number> {
         return postIdMap;
     }
 
-    // 按发布时间升序排序（最早的在前）
+    // 按创建时间升序排序（最早的在前），避免编辑导致 %post_id% 漂移。
     const sortedPosts = [...posts].sort(
-        (a, b) =>
-            safePublishedDate(a).getTime() - safePublishedDate(b).getTime(),
+        (a, b) => safeCreatedDate(a).getTime() - safeCreatedDate(b).getTime(),
     );
 
     postIdMap = new Map();
@@ -100,7 +108,7 @@ export function generatePermalinkSlug(post: PermalinkPost): string {
         format = format.replace(/\//g, "-");
     }
 
-    const published = safePublishedDate(post);
+    const published = safePermalinkDate(post);
     const postname = removeFileExtension(post.id);
     const category = post.data.category || "uncategorized";
 
