@@ -254,84 +254,14 @@ const showRegistrationDetailDialog = async (
 
 let pageEventsController: AbortController | null = null;
 
-const handleSaveUserRole = async (
-    target: HTMLElement,
-    userId: string,
-): Promise<void> => {
-    const row = target.closest("tr");
-    if (!row) return;
-    const appRole = (
-        row.querySelector(
-            `select[data-user-id="${userId}"][data-field="app_role"]`,
-        ) as HTMLSelectElement | null
-    )?.value;
-    const getToggleValue = (
-        field:
-            | "can_publish_articles"
-            | "can_comment_articles"
-            | "can_manage_diaries"
-            | "can_comment_diaries"
-            | "can_manage_albums"
-            | "can_upload_files",
-    ): boolean | undefined => {
-        const input = row.querySelector(
-            `input[data-user-id="${userId}"][data-field="${field}"]`,
-        ) as HTMLInputElement | null;
-        if (!input) {
-            return undefined;
-        }
-        return input.checked;
-    };
-    await runWithTask(
-        {
-            title: t(I18nKey.adminUsersSavingRoleTitle),
-            mode: "indeterminate",
-            text: t(I18nKey.interactionCommonSaving),
-        },
-        async () => {
-            const { response, data } = await api(
-                `/api/v1/admin/users/${userId}`,
-                {
-                    method: "PATCH",
-                    body: JSON.stringify({
-                        app_role: appRole,
-                        can_publish_articles: getToggleValue(
-                            "can_publish_articles",
-                        ),
-                        can_comment_articles: getToggleValue(
-                            "can_comment_articles",
-                        ),
-                        can_manage_diaries:
-                            getToggleValue("can_manage_diaries"),
-                        can_comment_diaries: getToggleValue(
-                            "can_comment_diaries",
-                        ),
-                        can_manage_albums: getToggleValue("can_manage_albums"),
-                        can_upload_files: getToggleValue("can_upload_files"),
-                    }),
-                },
-            );
-            if (!response.ok || !data?.ok) {
-                window.alert(
-                    resolveErrorMessage(
-                        data,
-                        t(I18nKey.interactionCommonSaveFailed),
-                    ),
-                );
-                return;
-            }
-            await loadUsers();
-        },
-    );
-};
-
 const handleDeleteUser = async (
     target: HTMLElement,
     userId: string,
 ): Promise<void> => {
     const username = String(target.getAttribute("data-username") || "").trim();
+    const email = String(target.getAttribute("data-email") || "").trim();
     const expectedText = tFmt(I18nKey.adminUsersDeleteExpectedText, {
-        name: username || userId,
+        name: email || username || userId,
     });
     const confirmDelete = await showConfirmDialog({
         message: t(I18nKey.adminUsersDeleteConfirmMessage),
@@ -347,17 +277,35 @@ const handleDeleteUser = async (
         return;
     }
 
-    const { response, data } = await api(`/api/v1/admin/users/${userId}`, {
-        method: "DELETE",
-    });
-    if (!response.ok || !data?.ok) {
-        window.alert(
-            resolveErrorMessage(data, t(I18nKey.interactionCommonDeleteFailed)),
-        );
-        return;
-    }
-    window.alert(t(I18nKey.adminUsersDeleted));
-    await loadUsers();
+    await runWithTask(
+        {
+            title: t(I18nKey.adminUsersDeleteAccount),
+            mode: "indeterminate",
+            text: t(I18nKey.interactionCommonProcessing),
+        },
+        async ({ update }) => {
+            const { response, data } = await api(
+                `/api/v1/admin/users/${userId}`,
+                {
+                    method: "DELETE",
+                },
+            );
+            if (!response.ok || !data?.ok) {
+                window.alert(
+                    resolveErrorMessage(
+                        data,
+                        t(I18nKey.interactionCommonDeleteFailed),
+                    ),
+                );
+                return;
+            }
+            update({
+                text: t(I18nKey.interactionCommonActionSucceededReloading),
+            });
+            window.alert(t(I18nKey.adminUsersDeleted));
+            await loadUsers();
+        },
+    );
 };
 
 const handleRegisterSwitchChange = async (): Promise<void> => {
@@ -453,11 +401,6 @@ const bindEvents = (): void => {
             const action = target.getAttribute("data-action");
             const userId = target.getAttribute("data-user-id");
             if (!action || !userId) return;
-
-            if (action === "save") {
-                void handleSaveUserRole(target, userId);
-                return;
-            }
 
             if (action === "delete") {
                 void handleDeleteUser(target, userId);

@@ -57,7 +57,7 @@ export const enAdmin: Record<string, string> = {
     [Key.adminUsersDeleteConfirmButton]: "Confirm delete",
     [Key.adminUsersDeleteConfirmMessage]:
         "This action permanently deletes the account and related data. Continue?",
-    [Key.adminUsersDeleteExpectedText]: "Type DELETE to confirm deletion",
+    [Key.adminUsersDeleteExpectedText]: "Confirm deletion of {name}",
     [Key.adminUsersDeleted]: "User deleted",
     [Key.adminUsersDescription]: "Manage users and registration requests.",
     [Key.adminUsersEmailExists]: "Email already exists",

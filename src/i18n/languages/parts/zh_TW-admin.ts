@@ -54,7 +54,7 @@ export const zhTWAdmin: Record<string, string> = {
     [Key.adminUsersDeleteConfirmButton]: "確認刪除",
     [Key.adminUsersDeleteConfirmMessage]:
         "此操作會永久刪除該帳號及關聯資料，是否繼續？",
-    [Key.adminUsersDeleteExpectedText]: "請輸入 DELETE 以確認刪除",
+    [Key.adminUsersDeleteExpectedText]: "確認刪除 {name}",
     [Key.adminUsersDeleted]: "使用者已刪除",
     [Key.adminUsersDescription]: "管理使用者與註冊申請。",
     [Key.adminUsersEmailExists]: "電子郵件已存在",

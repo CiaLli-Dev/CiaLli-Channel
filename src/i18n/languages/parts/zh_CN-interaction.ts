@@ -66,7 +66,7 @@ export const zhCNInteraction: Record<string, string> = {
     [Key.interactionDialogFormTitle]: "填写信息",
     [Key.interactionDialogAcknowledge]: "我知道了",
     [Key.interactionDialogManualConfirmLabel]: "键入“",
-    [Key.interactionDialogManualConfirmSuffix]: "”以确认删除",
+    [Key.interactionDialogManualConfirmSuffix]: "”以删除该账户",
     [Key.interactionDialogManualConfirmMismatch]:
         "输入内容不匹配，请输入“{text}”",
     [Key.interactionApiIllegalOrigin]: "非法来源请求",

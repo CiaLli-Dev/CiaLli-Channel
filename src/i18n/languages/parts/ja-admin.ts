@@ -59,7 +59,7 @@ export const jaAdmin: Record<string, string> = {
     [Key.adminUsersDeleteConfirmButton]: "削除を確認",
     [Key.adminUsersDeleteConfirmMessage]:
         "この操作はアカウントと関連データを完全に削除します。続行しますか？",
-    [Key.adminUsersDeleteExpectedText]: "DELETE と入力して削除を確認",
+    [Key.adminUsersDeleteExpectedText]: "{name} の削除を確認",
     [Key.adminUsersDeleted]: "ユーザーを削除しました",
     [Key.adminUsersDescription]: "ユーザーと登録申請を管理します。",
     [Key.adminUsersEmailExists]: "メールアドレスは既に存在します",

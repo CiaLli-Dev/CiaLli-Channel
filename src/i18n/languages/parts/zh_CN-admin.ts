@@ -54,7 +54,7 @@ export const zhCNAdmin: Record<string, string> = {
     [Key.adminUsersDeleteConfirmButton]: "确认删除",
     [Key.adminUsersDeleteConfirmMessage]:
         "此操作会永久删除该账号及关联数据，是否继续？",
-    [Key.adminUsersDeleteExpectedText]: "请输入 DELETE 确认删除",
+    [Key.adminUsersDeleteExpectedText]: "确认删除 {name}",
     [Key.adminUsersDeleted]: "用户已删除",
     [Key.adminUsersDescription]: "管理用户与注册申请。",
     [Key.adminUsersEmailExists]: "邮箱已存在",
