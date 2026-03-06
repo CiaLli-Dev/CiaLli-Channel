@@ -1,7 +1,12 @@
 import type { APIContext } from "astro";
 
 import { assertCan, assertOwnerOrAdmin } from "@/server/auth/acl";
-import { readOneById, updateOne } from "@/server/directus/client";
+import {
+    readOneById,
+    runWithDirectusPublicAccess,
+    runWithDirectusUserAccess,
+    updateOne,
+} from "@/server/directus/client";
 import { fail, ok } from "@/server/api/response";
 import { awaitCacheInvalidations } from "@/server/cache/invalidation";
 import { cacheManager } from "@/server/cache/manager";
@@ -21,6 +26,11 @@ import {
     renderCommentItem,
     validateReplyParent,
 } from "./comments-shared";
+import {
+    cleanupOrphanDirectusFiles,
+    extractDirectusFileIdsFromUnknown,
+} from "./shared/file-cleanup";
+import { syncMarkdownFilesToVisibility } from "./me/_helpers";
 
 function buildDiaryDetailInvalidationTasks(
     id: string,
@@ -133,7 +143,19 @@ async function handleDiaryCommentPost(
         }
     }
 
-    const created = await createDiaryComment(diaryId, access.user.id, input);
+    const created = (await createDiaryComment(
+        diaryId,
+        access.user.id,
+        input,
+    )) as {
+        body: string;
+        is_public: boolean;
+    } & Awaited<ReturnType<typeof createDiaryComment>>;
+    await syncMarkdownFilesToVisibility(
+        created.body,
+        access.user.id,
+        created.is_public ? "public" : "private",
+    );
     await awaitCacheInvalidations(
         [
             ...buildDiaryDetailInvalidationTasks(
@@ -179,8 +201,27 @@ async function handleDiaryCommentPatch(
 
     const body = await parseJsonBody(context.request);
     const input = validateBody(UpdateCommentSchema, body);
+    const prevBodyFileIds = extractDirectusFileIdsFromUnknown(comment.body);
     const payload = buildCommentUpdatePayload(input);
     const updated = await updateOne("app_diary_comments", commentId, payload);
+    if (input.body !== undefined || input.is_public !== undefined) {
+        await syncMarkdownFilesToVisibility(
+            input.body ?? updated.body,
+            access.user.id,
+            (input.is_public ?? updated.is_public) ? "public" : "private",
+        );
+    }
+    if (input.body !== undefined && prevBodyFileIds.length > 0) {
+        const nextBodyFileIds = new Set(
+            extractDirectusFileIdsFromUnknown(input.body),
+        );
+        const removedBodyFileIds = prevBodyFileIds.filter(
+            (id) => !nextBodyFileIds.has(id),
+        );
+        if (removedBodyFileIds.length > 0) {
+            await cleanupOrphanDirectusFiles(removedBodyFileIds);
+        }
+    }
     await awaitCacheInvalidations(
         [
             invalidateDiaryDetailCacheByDiaryId(comment.diary_id),
@@ -241,7 +282,13 @@ export async function handleDiaryComments(
         segments[1] === "comments" &&
         segments[2] === "preview"
     ) {
-        return handleCommentPreview(context, "can_comment_diaries");
+        const required = await requireAccess(context);
+        if ("response" in required) {
+            return required.response;
+        }
+        return await runWithDirectusUserAccess(required.accessToken, async () =>
+            handleCommentPreview(context, "can_comment_diaries"),
+        );
     }
 
     if (segments.length === 3 && segments[2] === "comments") {
@@ -249,7 +296,18 @@ export async function handleDiaryComments(
         if (!diaryId) {
             return fail("缺少日记 ID", 400);
         }
-        return handleDiaryCommentListOrCreate(context, diaryId);
+        if (context.request.method === "GET") {
+            return await runWithDirectusPublicAccess(async () =>
+                handleDiaryCommentListOrCreate(context, diaryId),
+            );
+        }
+        const required = await requireAccess(context);
+        if ("response" in required) {
+            return required.response;
+        }
+        return await runWithDirectusUserAccess(required.accessToken, async () =>
+            handleDiaryCommentListOrCreate(context, diaryId),
+        );
     }
 
     if (segments.length === 3 && segments[1] === "comments") {
@@ -257,7 +315,13 @@ export async function handleDiaryComments(
         if (!commentId) {
             return fail("缺少评论 ID", 400);
         }
-        return handleDiaryCommentById(context, commentId);
+        const required = await requireAccess(context);
+        if ("response" in required) {
+            return required.response;
+        }
+        return await runWithDirectusUserAccess(required.accessToken, async () =>
+            handleDiaryCommentById(context, commentId),
+        );
     }
 
     return fail("未找到接口", 404);

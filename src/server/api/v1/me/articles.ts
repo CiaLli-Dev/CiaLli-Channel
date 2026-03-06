@@ -35,7 +35,11 @@ import {
     extractDirectusFileIdsFromUnknown,
     normalizeDirectusFileId,
 } from "../shared/file-cleanup";
-import { bindFileOwnerToUser, renderMeMarkdownPreview } from "./_helpers";
+import {
+    bindFileOwnerToUser,
+    renderMeMarkdownPreview,
+    syncMarkdownFilesToVisibility,
+} from "./_helpers";
 
 // ── 文章所有权解析（支持 short_id / UUID） ──
 
@@ -192,8 +196,14 @@ async function handleMeArticlesCreate(
             created.cover_file,
             access.user.id,
             coverTitle,
+            created.is_public ? "public" : "private",
         );
     }
+    await syncMarkdownFilesToVisibility(
+        created?.body_markdown,
+        access.user.id,
+        created?.is_public ? "public" : "private",
+    );
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("article-list"),
@@ -282,6 +292,7 @@ function buildArticlePatchPayload(
 
 // ── 辅助：处理 PATCH 后的文件清理 ──
 
+// eslint-disable-next-line complexity -- 文章更新需同时处理封面、正文资源和公开性回收
 async function cleanupPatchedArticleFiles(
     body: JsonObject,
     input: UpdateArticleInput,
@@ -299,7 +310,12 @@ async function cleanupPatchedArticleFiles(
         const coverTitle = target.short_id
             ? `Cover ${target.short_id}`
             : undefined;
-        await bindFileOwnerToUser(nextCoverFile, access.user.id, coverTitle);
+        await bindFileOwnerToUser(
+            nextCoverFile,
+            access.user.id,
+            coverTitle,
+            (input.is_public ?? target.is_public) ? "public" : "private",
+        );
     }
     if (
         hasOwn(body, "cover_file") &&
@@ -318,6 +334,28 @@ async function cleanupPatchedArticleFiles(
         if (removedBodyFileIds.length > 0) {
             await cleanupOrphanDirectusFiles(removedBodyFileIds);
         }
+    }
+    if (input.body_markdown !== undefined || input.is_public !== undefined) {
+        await syncMarkdownFilesToVisibility(
+            String(input.body_markdown ?? target.body_markdown ?? ""),
+            access.user.id,
+            (input.is_public ?? target.is_public) ? "public" : "private",
+        );
+    }
+    if (
+        input.is_public !== undefined &&
+        prevCoverFile &&
+        !hasOwn(body, "cover_file")
+    ) {
+        const coverTitle = target.short_id
+            ? `Cover ${target.short_id}`
+            : undefined;
+        await bindFileOwnerToUser(
+            prevCoverFile,
+            access.user.id,
+            coverTitle,
+            input.is_public ? "public" : "private",
+        );
     }
 }
 

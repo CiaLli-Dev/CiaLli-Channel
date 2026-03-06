@@ -6,6 +6,8 @@ import { UPLOAD_LIMITS, UPLOAD_LIMIT_LABELS } from "@/constants/upload-limits";
 import { assertCan } from "@/server/auth/acl";
 import { getSessionUser } from "@/server/auth/session";
 import {
+    runWithDirectusServiceAccess,
+    runWithDirectusUserAccess,
     uploadDirectusFile,
     updateDirectusFileMetadata,
 } from "@/server/directus/client";
@@ -53,10 +55,28 @@ async function convertBufferToIco(inputBuffer: Buffer): Promise<Buffer> {
 }
 
 function resolvePurpose(raw: FormDataEntryValue | null): UploadPurpose {
-    if (typeof raw === "string" && VALID_PURPOSES.has(raw)) {
-        return raw as UploadPurpose;
+    if (typeof raw === "string") {
+        const normalized = raw.trim();
+        if (normalized === "cover") {
+            return "article-cover";
+        }
+        if (normalized === "inline") {
+            return "general";
+        }
+        if (VALID_PURPOSES.has(normalized)) {
+            return normalized as UploadPurpose;
+        }
     }
     return "general";
+}
+
+function resolveInitialFileVisibility(
+    purpose: UploadPurpose,
+): "private" | "public" {
+    if (purpose === "avatar") {
+        return "private";
+    }
+    return "public";
 }
 
 type OwnerResolution = { ownerUserId: string | null } | { response: Response };
@@ -167,6 +187,15 @@ export async function handleUploads(context: APIContext): Promise<Response> {
     }
     const { ownerUserId } = ownerResolution;
 
+    let userAccessToken = "";
+    if (purpose !== "registration-avatar") {
+        const required = await requireAccess(context);
+        if ("response" in required) {
+            return required.response;
+        }
+        userAccessToken = required.accessToken;
+    }
+
     const file = formData.get("file");
     if (!(file instanceof File)) {
         return fail("缺少上传文件", 400);
@@ -201,16 +230,34 @@ export async function handleUploads(context: APIContext): Promise<Response> {
     const titleRaw = formData.get("title");
     const folderRaw = formData.get("folder");
     const requestedTitle = typeof titleRaw === "string" ? titleRaw.trim() : "";
-    const uploaded = await uploadDirectusFile({
-        file: uploadFile,
-        title: requestedTitle || undefined,
-        folder: typeof folderRaw === "string" ? folderRaw : undefined,
-    });
-    if (uploaded.id && (requestedTitle || ownerUserId)) {
-        await updateDirectusFileMetadata(uploaded.id, {
+    const uploadTask = async (): Promise<{
+        id: string;
+        title?: string;
+        filename_download?: string;
+    }> =>
+        await uploadDirectusFile({
+            file: uploadFile,
             title: requestedTitle || undefined,
-            uploaded_by: ownerUserId,
+            folder: typeof folderRaw === "string" ? folderRaw : undefined,
         });
+    const uploaded =
+        purpose === "registration-avatar"
+            ? await runWithDirectusServiceAccess(uploadTask)
+            : await runWithDirectusUserAccess(userAccessToken, uploadTask);
+    if (uploaded.id && (requestedTitle || ownerUserId)) {
+        const metadataTask = async (): Promise<void> => {
+            await updateDirectusFileMetadata(uploaded.id, {
+                title: requestedTitle || undefined,
+                uploaded_by: ownerUserId,
+                app_owner_user_id: ownerUserId,
+                app_visibility: resolveInitialFileVisibility(purpose),
+            });
+        };
+        if (purpose === "registration-avatar") {
+            await runWithDirectusServiceAccess(metadataTask);
+        } else {
+            await runWithDirectusUserAccess(userAccessToken, metadataTask);
+        }
     }
     return ok({ file: uploaded });
 }

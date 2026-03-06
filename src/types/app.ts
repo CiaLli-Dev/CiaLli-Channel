@@ -10,6 +10,14 @@ export type CommentStatus = "published" | "hidden" | "archived";
 
 export type AppRole = "admin" | "member";
 
+export type AppPermissionKey =
+    | "can_publish_articles"
+    | "can_comment_articles"
+    | "can_manage_diaries"
+    | "can_comment_diaries"
+    | "can_manage_albums"
+    | "can_upload_files";
+
 export type AppProfile = {
     id: string;
     user_id: string;
@@ -48,14 +56,11 @@ export type SidebarProfileData = {
 };
 
 export type AppPermissions = {
-    id: string;
-    user_id: string;
     app_role: AppRole;
     can_publish_articles: boolean;
     can_comment_articles: boolean;
     can_manage_diaries: boolean;
     can_comment_diaries: boolean;
-    can_manage_anime: boolean;
     can_manage_albums: boolean;
     can_upload_files: boolean;
 };
@@ -244,9 +249,9 @@ export type AppUserRegistrationRequest = {
     username: string;
     display_name: string;
     avatar_file: string | null;
-    registration_password: string | null;
     registration_reason: string;
     request_status: RegistrationRequestStatus;
+    pending_user_id: string | null;
     reviewed_by: string | null;
     reviewed_at: string | null;
     reject_reason: string | null;
@@ -265,7 +270,11 @@ export type AppUser = {
     first_name: string | null;
     last_name: string | null;
     avatar: string | null;
+    status?: string | null;
     role: string | { id?: string; name?: string } | null;
+    policies?: Array<
+        string | { id?: string; name?: string; policy?: string }
+    > | null;
 };
 
 export type AppFile = {
@@ -273,6 +282,8 @@ export type AppFile = {
     title: string | null;
     type: string | null;
     filename_download: string | null;
+    app_owner_user_id?: string | { id?: string } | null;
+    app_visibility?: "private" | "public" | null;
     uploaded_by?: string | { id?: string } | null;
     modified_by?: string | { id?: string } | null;
 };

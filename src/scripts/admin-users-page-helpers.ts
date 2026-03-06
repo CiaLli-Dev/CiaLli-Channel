@@ -9,6 +9,23 @@ const getStr = (value: unknown, fallback = ""): string =>
 const getStrOrNone = (value: unknown): string =>
     getStr(value) || t(I18nKey.adminUsersNone);
 
+function renderCapabilityToggle(params: {
+    userId: string;
+    field:
+        | "can_publish_articles"
+        | "can_comment_articles"
+        | "can_manage_diaries"
+        | "can_comment_diaries"
+        | "can_manage_albums"
+        | "can_upload_files";
+    checked: boolean;
+    disabled: boolean;
+}): string {
+    return `<label class="inline-flex items-center">
+        <input type="checkbox" data-user-id="${params.userId}" data-field="${params.field}" ${params.checked ? "checked" : ""} ${params.disabled ? "disabled" : ""} />
+    </label>`;
+}
+
 export const renderUsersRows = (
     rows: UnknownRecord[],
     getUsersTableBody: () => HTMLTableSectionElement | null,
@@ -16,7 +33,7 @@ export const renderUsersRows = (
     const usersTableBody = getUsersTableBody();
     if (!usersTableBody) return;
     if (!Array.isArray(rows) || rows.length === 0) {
-        usersTableBody.innerHTML = `<tr><td colspan="4" class="py-4 text-60">${t(I18nKey.adminUsersNoUserData)}</td></tr>`;
+        usersTableBody.innerHTML = `<tr><td colspan="10" class="py-4 text-60">${t(I18nKey.adminUsersNoUserData)}</td></tr>`;
         return;
     }
     usersTableBody.innerHTML = rows
@@ -38,19 +55,30 @@ export const renderUsersRows = (
             const userEmail = String(userRecord.email || "");
             const username = String(profileRecord.username || "");
             const appRole = String(permissionsRecord.app_role || "member");
+            const isPlatformAdmin = Boolean(entry.is_platform_admin);
+            const readOnly = isPlatformAdmin;
+            const roleCell = isPlatformAdmin
+                ? `<span class="inline-flex items-center rounded-full px-2 py-1 text-xs bg-amber-500/12 text-amber-600">platform admin</span>`
+                : `<select data-user-id="${userId}" data-field="app_role" class="rounded border border-(--line-divider) px-2 py-1 bg-black/5 dark:bg-white/5 text-75">
+								<option value="member" ${appRole === "member" ? "selected" : ""}>member</option>
+								<option value="admin" ${appRole === "admin" ? "selected" : ""}>site admin</option>
+							</select>`;
             return `
 					<tr class="border-b border-(--line-divider) text-75">
 						<td class="py-2 pr-2">${userEmail}</td>
 						<td class="py-2 pr-2">${username}</td>
 						<td class="py-2 pr-2">
-							<select data-user-id="${userId}" data-field="app_role" class="rounded border border-(--line-divider) px-2 py-1 bg-black/5 dark:bg-white/5 text-75">
-								<option value="member" ${appRole === "member" ? "selected" : ""}>member</option>
-								<option value="admin" ${appRole === "admin" ? "selected" : ""}>admin</option>
-							</select>
+							${roleCell}
 						</td>
+						<td class="py-2 pr-2">${renderCapabilityToggle({ userId, field: "can_publish_articles", checked: Boolean(permissionsRecord.can_publish_articles), disabled: readOnly })}</td>
+						<td class="py-2 pr-2">${renderCapabilityToggle({ userId, field: "can_comment_articles", checked: Boolean(permissionsRecord.can_comment_articles), disabled: readOnly })}</td>
+						<td class="py-2 pr-2">${renderCapabilityToggle({ userId, field: "can_manage_diaries", checked: Boolean(permissionsRecord.can_manage_diaries), disabled: readOnly })}</td>
+						<td class="py-2 pr-2">${renderCapabilityToggle({ userId, field: "can_comment_diaries", checked: Boolean(permissionsRecord.can_comment_diaries), disabled: readOnly })}</td>
+						<td class="py-2 pr-2">${renderCapabilityToggle({ userId, field: "can_manage_albums", checked: Boolean(permissionsRecord.can_manage_albums), disabled: readOnly })}</td>
+						<td class="py-2 pr-2">${renderCapabilityToggle({ userId, field: "can_upload_files", checked: Boolean(permissionsRecord.can_upload_files), disabled: readOnly })}</td>
 						<td class="py-2 pr-2">
 							<div class="flex items-center gap-2">
-								<button class="text-xs text-(--primary) hover:underline" data-action="save" data-user-id="${userId}">${t(I18nKey.interactionCommonSave)}</button>
+								<button class="text-xs text-(--primary) hover:underline ${readOnly ? "opacity-50 pointer-events-none" : ""}" data-action="save" data-user-id="${userId}">${t(I18nKey.interactionCommonSave)}</button>
 								<button class="text-xs text-red-500 hover:underline" data-action="delete" data-user-id="${userId}" data-username="${username}">${t(I18nKey.adminUsersDeleteAccount)}</button>
 							</div>
 						</td>

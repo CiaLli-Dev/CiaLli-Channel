@@ -1,7 +1,13 @@
 import type { APIContext } from "astro";
 
 import { assertCan, assertOwnerOrAdmin } from "@/server/auth/acl";
-import { createOne, readOneById, updateOne } from "@/server/directus/client";
+import {
+    createOne,
+    readOneById,
+    runWithDirectusPublicAccess,
+    runWithDirectusUserAccess,
+    updateOne,
+} from "@/server/directus/client";
 import { fail, ok } from "@/server/api/response";
 import { awaitCacheInvalidations } from "@/server/cache/invalidation";
 import { cacheManager } from "@/server/cache/manager";
@@ -24,6 +30,11 @@ import {
     renderCommentItem,
     validateReplyParent,
 } from "./comments-shared";
+import {
+    cleanupOrphanDirectusFiles,
+    extractDirectusFileIdsFromUnknown,
+} from "./shared/file-cleanup";
+import { syncMarkdownFilesToVisibility } from "./me/_helpers";
 
 async function handleArticleCommentGet(
     context: APIContext,
@@ -103,6 +114,11 @@ async function handleArticleCommentPost(
         is_public: input.is_public,
         show_on_profile: input.show_on_profile,
     });
+    await syncMarkdownFilesToVisibility(
+        created.body,
+        access.user.id,
+        created.is_public ? "public" : "private",
+    );
     await awaitCacheInvalidations(
         [
             cacheManager.invalidate("article-detail", articleId),
@@ -146,8 +162,27 @@ async function handleArticleCommentPatch(
 
     const body = await parseJsonBody(context.request);
     const input = validateBody(UpdateCommentSchema, body);
+    const prevBodyFileIds = extractDirectusFileIdsFromUnknown(comment.body);
     const payload = buildCommentUpdatePayload(input);
     const updated = await updateOne("app_article_comments", commentId, payload);
+    if (input.body !== undefined || input.is_public !== undefined) {
+        await syncMarkdownFilesToVisibility(
+            input.body ?? updated.body,
+            access.user.id,
+            (input.is_public ?? updated.is_public) ? "public" : "private",
+        );
+    }
+    if (input.body !== undefined && prevBodyFileIds.length > 0) {
+        const nextBodyFileIds = new Set(
+            extractDirectusFileIdsFromUnknown(input.body),
+        );
+        const removedBodyFileIds = prevBodyFileIds.filter(
+            (id) => !nextBodyFileIds.has(id),
+        );
+        if (removedBodyFileIds.length > 0) {
+            await cleanupOrphanDirectusFiles(removedBodyFileIds);
+        }
+    }
     await awaitCacheInvalidations(
         [
             cacheManager.invalidate("article-detail", comment.article_id),
@@ -210,7 +245,13 @@ export async function handleArticleComments(
         segments[1] === "comments" &&
         segments[2] === "preview"
     ) {
-        return handleCommentPreview(context, "can_comment_articles");
+        const required = await requireAccess(context);
+        if ("response" in required) {
+            return required.response;
+        }
+        return await runWithDirectusUserAccess(required.accessToken, async () =>
+            handleCommentPreview(context, "can_comment_articles"),
+        );
     }
 
     if (segments.length === 3 && segments[2] === "comments") {
@@ -218,7 +259,18 @@ export async function handleArticleComments(
         if (!articleId) {
             return fail("缺少文章 ID", 400);
         }
-        return handleArticleCommentListOrCreate(context, articleId);
+        if (context.request.method === "GET") {
+            return await runWithDirectusPublicAccess(async () =>
+                handleArticleCommentListOrCreate(context, articleId),
+            );
+        }
+        const required = await requireAccess(context);
+        if ("response" in required) {
+            return required.response;
+        }
+        return await runWithDirectusUserAccess(required.accessToken, async () =>
+            handleArticleCommentListOrCreate(context, articleId),
+        );
     }
 
     if (segments.length === 3 && segments[1] === "comments") {
@@ -226,7 +278,13 @@ export async function handleArticleComments(
         if (!commentId) {
             return fail("缺少评论 ID", 400);
         }
-        return handleArticleCommentById(context, commentId);
+        const required = await requireAccess(context);
+        if ("response" in required) {
+            return required.response;
+        }
+        return await runWithDirectusUserAccess(required.accessToken, async () =>
+            handleArticleCommentById(context, commentId),
+        );
     }
 
     return fail("未找到接口", 404);

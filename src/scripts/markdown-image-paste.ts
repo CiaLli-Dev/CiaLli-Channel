@@ -223,7 +223,7 @@ export class MarkdownImagePasteUploader {
     private resolveRemoteUrl(fileId: string): string {
         return (
             this.buildAssetUrl?.(fileId) ||
-            `/api/v1/public/assets/${encodeURIComponent(fileId)}`
+            `/api/v1/assets/${encodeURIComponent(fileId)}`
         );
     }
 

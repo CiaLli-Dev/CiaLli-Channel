@@ -147,7 +147,7 @@ export function buildDirectusAssetPreview(fileId: string): string {
     if (!normalized) {
         return "";
     }
-    return `/api/v1/public/assets/${encodeURIComponent(normalized)}?width=960&height=540&fit=cover`;
+    return `/api/v1/assets/${encodeURIComponent(normalized)}?width=960&height=540&fit=cover`;
 }
 
 export function isToolbarAction(value: string): value is ToolbarAction {

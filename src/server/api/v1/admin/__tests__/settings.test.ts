@@ -20,6 +20,10 @@ vi.mock("@/server/site-settings/service", () => ({
 vi.mock("@/server/directus/client", () => ({
     createOne: vi.fn(),
     readMany: vi.fn(),
+    runWithDirectusUserAccess: vi.fn(
+        async (_token: string, task: () => Promise<unknown>) => await task(),
+    ),
+    updateDirectusFileMetadata: vi.fn(),
     updateOne: vi.fn(),
 }));
 
@@ -82,6 +86,7 @@ describe("handleAdminSettings /bulletin", () => {
                     id: "admin-1",
                 },
             },
+            accessToken: "test-access-token",
         } as never);
     });
 
@@ -236,6 +241,7 @@ describe("handleAdminSettings /about", () => {
                     id: "admin-1",
                 },
             },
+            accessToken: "test-access-token",
         } as never);
     });
 

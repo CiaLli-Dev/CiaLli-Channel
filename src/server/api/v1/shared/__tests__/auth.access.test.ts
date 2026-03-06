@@ -5,6 +5,7 @@ import { createMockAPIContext } from "@/__tests__/helpers/mock-api-context";
 import { createMemberAccess } from "@/__tests__/helpers/mock-access";
 
 vi.mock("@/server/auth/session", () => ({
+    getSessionAccessToken: vi.fn(() => "test-access-token"),
     getSessionUser: vi.fn(),
 }));
 

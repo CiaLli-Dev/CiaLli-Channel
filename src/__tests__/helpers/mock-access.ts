@@ -21,6 +21,8 @@ export function createMemberAccess(
         profile: mockProfile(),
         permissions: mockPermissions(),
         isAdmin: false,
+        isSiteAdmin: false,
+        isPlatformAdmin: false,
         ...overrides,
     };
 }
@@ -37,11 +39,11 @@ export function createAdminAccess(
             display_name: "Admin",
         }),
         permissions: mockPermissions({
-            id: "admin-perm-1",
-            user_id: "admin-1",
             app_role: "admin",
         }),
         isAdmin: true,
+        isSiteAdmin: true,
+        isPlatformAdmin: false,
         ...overrides,
     };
 }

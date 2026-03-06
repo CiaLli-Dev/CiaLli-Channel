@@ -22,8 +22,12 @@ import {
   loadPublicArticleByShortId,
   loadPublicArticleBySlug,
 } from "@/server/api/v1/shared";
+import {
+  runWithDirectusPublicAccess,
+  runWithDirectusUserAccess,
+} from "@/server/directus/client";
 import { isShortId } from "@/server/utils/short-id";
-import { getSessionUser } from "@/server/auth/session";
+import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
 
 export const prerender = false;
 
@@ -38,14 +42,23 @@ try {
   } else {
     const sessionUser = await getSessionUser(Astro);
     viewerId = sessionUser?.id ?? null;
-    result = await loadUserHomeData(username, { viewerId });
+    result = viewerId
+      ? await runWithDirectusUserAccess(
+          getSessionAccessToken(Astro),
+          async () => await loadUserHomeData(username, { viewerId }),
+        )
+      : await runWithDirectusPublicAccess(
+          async () => await loadUserHomeData(username, { viewerId }),
+        );
     if (result.status === "not_found") {
       // 用户不存在，尝试作为文章短链接解析
-      const article = isShortId(username)
-        ? await loadPublicArticleByShortId(username)
-        : isSpecialArticleSlug(username)
-          ? await loadPublicArticleBySlug(username)
-          : null;
+      const article = await runWithDirectusPublicAccess(async () =>
+        isShortId(username)
+          ? await loadPublicArticleByShortId(username)
+          : isSpecialArticleSlug(username)
+            ? await loadPublicArticleBySlug(username)
+            : null,
+      );
       if (article?.short_id) {
         return Astro.redirect(`/posts/${article.short_id}`, 302);
       }
@@ -53,7 +66,14 @@ try {
     } else if (result.status === "permission_denied") {
       Astro.response.status = 404;
     } else {
-      const sidebarProfile = await loadProfileForViewer(username, viewerId);
+      const sidebarProfile = viewerId
+        ? await runWithDirectusUserAccess(
+            getSessionAccessToken(Astro),
+            async () => await loadProfileForViewer(username, viewerId),
+          )
+        : await runWithDirectusPublicAccess(
+            async () => await loadProfileForViewer(username, viewerId),
+          );
       if (sidebarProfile) {
         // 个人主页侧栏优先显示当前主页用户资料，避免回退到官方账户
         Astro.locals.sidebarProfile = profileToSidebarData(sidebarProfile);

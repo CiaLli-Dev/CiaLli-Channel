@@ -1,9 +1,17 @@
 import type { APIContext } from "astro";
 
 import type { JsonObject } from "@/types/json";
-import { createOne, readMany, updateOne } from "@/server/directus/client";
+import {
+    createDirectusUser,
+    createOne,
+    deleteDirectusUser,
+    readMany,
+    updateOne,
+} from "@/server/directus/client";
 import { fail, ok } from "@/server/api/response";
 import { parseJsonBody, toStringValue } from "@/server/api/utils";
+import { DIRECTUS_ROLE_NAME } from "@/server/auth/directus-access";
+import { loadDirectusAccessRegistry } from "@/server/auth/directus-registry";
 import {
     normalizeRequestedUsername,
     validateDisplayName,
@@ -284,15 +292,29 @@ async function handleRegistrationCreate(
         assertRegistrationUsernameAvailable(username),
     ]);
 
+    const registry = await loadDirectusAccessRegistry();
+    const memberRoleId = registry.roleIdByName.get(DIRECTUS_ROLE_NAME.member);
+    if (!memberRoleId) {
+        throw notFound("DIRECTUS_MEMBER_ROLE_MISSING", "缺少 Member 角色");
+    }
+    const pendingUser = await createDirectusUser({
+        email,
+        password: registrationPassword,
+        first_name: displayName || undefined,
+        status: "draft",
+        role: memberRoleId,
+        policies: [],
+    });
+
     const created = await createOne("app_user_registration_requests", {
         status: "published",
         email,
         username,
         display_name: displayName,
-        registration_password: registrationPassword,
         avatar_file: avatarFile,
         registration_reason: registrationReason,
         request_status: "pending",
+        pending_user_id: pendingUser.id,
         reviewed_by: null,
         reviewed_at: null,
         reject_reason: null,
@@ -335,7 +357,7 @@ async function handleRegistrationCancel(
     const rows = await readMany("app_user_registration_requests", {
         filter: { id: { _eq: requestId } } as JsonObject,
         limit: 1,
-        fields: ["id", "request_status"],
+        fields: ["id", "request_status", "pending_user_id"],
     });
     const target = rows[0];
     if (!target) {
@@ -347,6 +369,14 @@ async function handleRegistrationCancel(
             "申请状态冲突，请刷新后重试",
         );
     }
+    const pendingUserId = parseRouteId(
+        String(target.pending_user_id || "").trim(),
+    );
+    if (pendingUserId) {
+        await deleteDirectusUser(pendingUserId).catch((error) => {
+            console.warn("[registration] delete pending user failed:", error);
+        });
+    }
 
     const updated = await updateOne(
         "app_user_registration_requests",
@@ -355,7 +385,7 @@ async function handleRegistrationCancel(
             request_status: "cancelled",
             reviewed_by: null,
             reviewed_at: new Date().toISOString(),
-            registration_password: null,
+            pending_user_id: null,
             reject_reason: null,
         },
     );

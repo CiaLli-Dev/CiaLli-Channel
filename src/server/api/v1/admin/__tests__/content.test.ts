@@ -18,6 +18,9 @@ vi.mock("@/server/api/v1/shared", async (importOriginal) => {
 vi.mock("@/server/directus/client", () => ({
     deleteOne: vi.fn(),
     readMany: vi.fn(),
+    runWithDirectusUserAccess: vi.fn(
+        async (_token: string, task: () => Promise<unknown>) => await task(),
+    ),
     updateOne: vi.fn(),
 }));
 
@@ -73,6 +76,7 @@ describe("handleAdminContent diaries 权限收敛", () => {
                     id: "admin-1",
                 },
             },
+            accessToken: "test-access-token",
         } as never);
     });
 

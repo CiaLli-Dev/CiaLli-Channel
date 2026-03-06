@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 相册与照片编辑链路共用单文件以维持上下文一致 */
 import type { APIContext } from "astro";
 
 import type { AppAlbum, AppAlbumPhoto } from "@/types/app";
@@ -102,7 +103,12 @@ async function createAlbumWithSlugRetry(
         }
     }
     if (created?.cover_file) {
-        await bindFileOwnerToUser(created.cover_file, userId);
+        await bindFileOwnerToUser(
+            created.cover_file,
+            userId,
+            undefined,
+            created.is_public ? "public" : "private",
+        );
     }
     return created!;
 }
@@ -237,6 +243,7 @@ function buildAlbumPatchPayload(
     return { payload, nextCoverFile };
 }
 
+// eslint-disable-next-line complexity -- 需同时维护封面、照片与相册公开性联动
 async function handleAlbumPatch(
     context: APIContext,
     access: AppAccess,
@@ -267,7 +274,12 @@ async function handleAlbumPatch(
     const updated = await updateOne("app_albums", id, payload);
 
     if (hasOwn(body as JsonObject, "cover_file") && nextCoverFile) {
-        await bindFileOwnerToUser(nextCoverFile, access.user.id);
+        await bindFileOwnerToUser(
+            nextCoverFile,
+            access.user.id,
+            undefined,
+            updated.is_public ? "public" : "private",
+        );
     }
     if (
         hasOwn(body as JsonObject, "cover_file") &&
@@ -275,6 +287,37 @@ async function handleAlbumPatch(
         prevCoverFile !== nextCoverFile
     ) {
         await cleanupOrphanDirectusFiles([prevCoverFile]);
+    }
+    if (
+        input.is_public !== undefined &&
+        prevCoverFile &&
+        !hasOwn(body as JsonObject, "cover_file")
+    ) {
+        await bindFileOwnerToUser(
+            prevCoverFile,
+            access.user.id,
+            undefined,
+            updated.is_public ? "public" : "private",
+        );
+    }
+    if (input.is_public !== undefined) {
+        const photoRows = await readMany("app_album_photos", {
+            filter: { album_id: { _eq: id } } as JsonObject,
+            fields: ["file_id", "is_public"],
+            limit: 300,
+        });
+        for (const photo of photoRows) {
+            const fileId = normalizeDirectusFileId(photo.file_id);
+            if (!fileId) {
+                continue;
+            }
+            await bindFileOwnerToUser(
+                fileId,
+                access.user.id,
+                undefined,
+                updated.is_public && photo.is_public ? "public" : "private",
+            );
+        }
     }
     await awaitCacheInvalidations(
         [
@@ -384,7 +427,12 @@ async function handlePhotoPost(
         show_on_profile: input.show_on_profile,
     });
     if (created.file_id) {
-        await bindFileOwnerToUser(created.file_id, access.user.id);
+        await bindFileOwnerToUser(
+            created.file_id,
+            access.user.id,
+            undefined,
+            created.is_public && album.is_public ? "public" : "private",
+        );
     }
     await awaitCacheInvalidations(
         [cacheManager.invalidate("album-detail", albumId)],
@@ -455,9 +503,17 @@ async function handlePhotoPatch(
     );
 
     const updated = await updateOne("app_album_photos", photoId, payload);
+    const album = await readOneById("app_albums", photo.album_id);
 
     if (hasOwn(body as JsonObject, "file_id") && nextFileId) {
-        await bindFileOwnerToUser(nextFileId, access.user.id);
+        await bindFileOwnerToUser(
+            nextFileId,
+            access.user.id,
+            undefined,
+            (updated.is_public ?? photo.is_public) && Boolean(album?.is_public)
+                ? "public"
+                : "private",
+        );
     }
     if (
         hasOwn(body as JsonObject, "file_id") &&

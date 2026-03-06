@@ -6,8 +6,16 @@ import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import { systemSiteConfig } from "@/config";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
-import { buildPublicAssetUrl } from "@/server/directus-auth";
-import { countItems, readMany } from "@/server/directus/client";
+import {
+  buildDirectusAssetUrl,
+  buildPublicAssetUrl,
+} from "@/server/directus-auth";
+import {
+  countItems,
+  readMany,
+  runWithDirectusPublicAccess,
+  runWithDirectusUserAccess,
+} from "@/server/directus/client";
 import { renderMarkdown } from "@/server/markdown/render";
 import {
   loadProfileForViewer,
@@ -18,7 +26,7 @@ import type {
   ContentLoadResult,
   DiaryDetail,
 } from "@/server/api/v1/public-data";
-import { getSessionUser } from "@/server/auth/session";
+import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
 import type { JsonObject } from "@/types/json";
 import DetailActionFloat from "@components/control/DetailActionFloat.astro";
 
@@ -32,6 +40,8 @@ let html = "";
 let diaryLikeCount = 0;
 let diaryCommentCount = 0;
 let diaryLikedByViewer = false;
+let viewerOwnsDiary = false;
+let diaryData = null as DiaryDetail | null;
 
 type DiaryGalleryItem = {
   thumb: string;
@@ -48,20 +58,23 @@ function resolveDiaryGallery(diary: DiaryDetail | null): DiaryGalleryItem[] {
   if (!diary) {
     return [];
   }
+  const buildAssetUrl = viewerOwnsDiary
+    ? buildDirectusAssetUrl
+    : buildPublicAssetUrl;
 
   const gallery: DiaryGalleryItem[] = [];
   const seen = new Set<string>();
 
   for (const image of Array.isArray(diary.images) ? diary.images : []) {
     const preview = image.file_id
-      ? buildPublicAssetUrl(image.file_id, { width: 1920 })
+      ? buildAssetUrl(image.file_id, { width: 1920 })
       : String(image.image_url || "").trim();
     if (!preview || seen.has(preview)) {
       continue;
     }
 
     const thumb = image.file_id
-      ? buildPublicAssetUrl(image.file_id, {
+      ? buildAssetUrl(image.file_id, {
           width: 720,
           height: 720,
           fit: "cover",
@@ -88,22 +101,27 @@ if (!username || !id) {
   try {
     const sessionUser = await getSessionUser(Astro);
     const viewerId = sessionUser?.id ?? null;
-    result = await loadUserDiaryDetail(username, id, { viewerId });
-    if (result.status === "ok") {
-      html = await renderMarkdown(stripMarkdownImages(result.data.content), {
+    const loadWithViewerAccess = async (): Promise<void> => {
+      result = await loadUserDiaryDetail(username, id, { viewerId });
+      if (result.status !== "ok") {
+        return;
+      }
+      diaryData = result.data as DiaryDetail;
+
+      html = await renderMarkdown(stripMarkdownImages(diaryData.content), {
         target: "page",
       });
 
       const [likeCount, commentCount, likedRows] = await Promise.all([
         countItems("app_diary_likes", {
           _and: [
-            { diary_id: { _eq: result.data.id } },
+            { diary_id: { _eq: diaryData.id } },
             { status: { _eq: "published" } },
           ],
         } as JsonObject),
         countItems("app_diary_comments", {
           _and: [
-            { diary_id: { _eq: result.data.id } },
+            { diary_id: { _eq: diaryData.id } },
             { status: { _eq: "published" } },
             { is_public: { _eq: true } },
           ],
@@ -112,7 +130,7 @@ if (!username || !id) {
           ? readMany("app_diary_likes", {
               filter: {
                 _and: [
-                  { diary_id: { _eq: result.data.id } },
+                  { diary_id: { _eq: diaryData.id } },
                   { user_id: { _eq: viewerId } },
                   { status: { _eq: "published" } },
                 ],
@@ -130,10 +148,25 @@ if (!username || !id) {
       if (sidebarProfile) {
         Astro.locals.sidebarProfile = profileToSidebarData(sidebarProfile);
       }
-    } else if (result.status === "permission_denied") {
+      viewerOwnsDiary = Boolean(viewerId) && diaryData.author_id === viewerId;
+    };
+
+    if (viewerId) {
+      await runWithDirectusUserAccess(
+        getSessionAccessToken(Astro),
+        loadWithViewerAccess,
+      );
+    } else {
+      await runWithDirectusPublicAccess(loadWithViewerAccess);
+    }
+    if (
+      (result as ContentLoadResult<DiaryDetail>).status === "permission_denied"
+    ) {
       Astro.response.status = 404;
     } else {
-      Astro.response.status = 404;
+      if ((result as ContentLoadResult<DiaryDetail>).status === "not_found") {
+        Astro.response.status = 404;
+      }
     }
   } catch (error) {
     console.error("[diary] failed to load detail:", error);
@@ -141,7 +174,7 @@ if (!username || !id) {
   }
 }
 
-const diary = result.status === "ok" ? result.data : null;
+const diary = diaryData;
 const diaryGallery = resolveDiaryGallery(diary);
 const diaryGalleryCount = diaryGallery.length;
 
@@ -210,8 +243,10 @@ const diaryMetaText = formatDiaryMetaDate(diary?.date_created);
                     {i18n(I18nKey.contentDiaryDetailTitle)}
                   </h1>
                   <div class="text-sm text-60 flex flex-wrap items-center gap-3">
-                    {diary.date_created && diaryMetaText && (
-                      <time datetime={diary.date_created}>{diaryMetaText}</time>
+                    {diary!.date_created && diaryMetaText && (
+                      <time datetime={diary!.date_created}>
+                        {diaryMetaText}
+                      </time>
                     )}
                   </div>
                 </header>
@@ -324,15 +359,15 @@ const diaryMetaText = formatDiaryMetaDate(diary?.date_created);
 
             <DetailActionFloat
               contentType="diary"
-              contentId={diary.id}
-              authorId={diary.author?.id || ""}
+              contentId={diary!.id}
+              authorId={diary!.author?.id || ""}
               likeCount={diaryLikeCount}
               commentCount={diaryCommentCount}
               likedByViewer={diaryLikedByViewer}
               dockToBackTop={true}
-              editHref={`/${username}/diary/${encodeURIComponent(diary.short_id || diary.id)}/edit`}
-              deleteEndpoint={`/api/v1/me/diaries/${encodeURIComponent(diary.id)}`}
-              adminDeleteEndpoint={`/api/v1/admin/content/diaries/${encodeURIComponent(diary.id)}`}
+              editHref={`/${username}/diary/${encodeURIComponent(diary!.short_id || diary!.id)}/edit`}
+              deleteEndpoint={`/api/v1/me/diaries/${encodeURIComponent(diary!.id)}`}
+              adminDeleteEndpoint={`/api/v1/admin/content/diaries/${encodeURIComponent(diary!.id)}`}
               deleteConfirmMessage={i18n(I18nKey.contentDiaryDeleteConfirm)}
               adminDeleteConfirmMessage={i18n(
                 I18nKey.interactionPostDeleteConfirmAdminDiary,
@@ -342,10 +377,10 @@ const diaryMetaText = formatDiaryMetaDate(diary?.date_created);
 
             <Comment
               module="diaries"
-              contentId={diary.id}
-              contentShortId={diary.short_id || ""}
-              contentAuthorId={diary?.author?.id || ""}
-              allowComments={diary.allow_comments}
+              contentId={diary!.id}
+              contentShortId={diary!.short_id || ""}
+              contentAuthorId={diary!.author?.id || ""}
+              allowComments={diary!.allow_comments}
             />
           </div>
           <div class="home-sidebar-placeholder" data-detail-float-slot />

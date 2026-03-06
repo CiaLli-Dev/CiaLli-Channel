@@ -215,6 +215,7 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
     button.textContent = label;
   }
 
+  // eslint-disable-next-line complexity -- 该组件需在单一绑定点整合多种交互状态
   function bindDetailRoot(rootEl: HTMLElement): void {
     rootEl.dataset.bound = "1";
     const dockToBackTop = rootEl.dataset.dockToBackTop === "1";
@@ -274,6 +275,7 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
       }
     }
 
+    // eslint-disable-next-line complexity -- 需同步 owner/admin 双模式按钮显隐与文案
     function applyActionVisibility(state: AuthState): void {
       currentAuthState = state;
       const isOwner =

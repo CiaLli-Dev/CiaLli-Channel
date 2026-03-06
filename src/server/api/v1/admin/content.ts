@@ -1,7 +1,12 @@
 import type { APIContext } from "astro";
 
 import type { JsonObject } from "@/types/json";
-import { deleteOne, readMany, updateOne } from "@/server/directus/client";
+import {
+    deleteOne,
+    readMany,
+    runWithDirectusUserAccess,
+    updateOne,
+} from "@/server/directus/client";
 import { fail, ok } from "@/server/api/response";
 import {
     parseJsonBody,
@@ -414,13 +419,15 @@ export async function handleAdminContent(
         return required.response;
     }
 
-    if (segments.length === 1 && context.request.method === "GET") {
-        return handleContentList(context);
-    }
+    return await runWithDirectusUserAccess(required.accessToken, async () => {
+        if (segments.length === 1 && context.request.method === "GET") {
+            return handleContentList(context);
+        }
 
-    if (segments.length === 3) {
-        return handleContentItem(context, segments);
-    }
+        if (segments.length === 3) {
+            return handleContentItem(context, segments);
+        }
 
-    return fail("未找到接口", 404);
+        return fail("未找到接口", 404);
+    });
 }

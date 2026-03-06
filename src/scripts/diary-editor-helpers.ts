@@ -319,10 +319,10 @@ export function buildImageOrderItemFromEntry(
     const fileId = toStringValue(image.file_id);
     const imageUrl = toStringValue(image.image_url);
     const previewUrl = fileId
-        ? `/api/v1/public/assets/${encodeURIComponent(fileId)}?width=1920`
+        ? `/api/v1/assets/${encodeURIComponent(fileId)}?width=1920`
         : imageUrl;
     const thumbUrl = fileId
-        ? `/api/v1/public/assets/${encodeURIComponent(fileId)}?width=720&height=720&fit=cover`
+        ? `/api/v1/assets/${encodeURIComponent(fileId)}?width=720&height=720&fit=cover`
         : imageUrl;
     const label =
         caption ||

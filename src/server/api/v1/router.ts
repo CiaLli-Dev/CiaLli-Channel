@@ -1,6 +1,7 @@
 import type { APIContext } from "astro";
 
 import { fail, ok } from "@/server/api/response";
+import { runWithDirectusPublicAccess } from "@/server/directus/client";
 import { getClientIp } from "@/server/directus-auth";
 import { withErrorHandler } from "@/server/middleware/error-handler";
 import { assertCsrfToken } from "@/server/security/csrf";
@@ -16,6 +17,7 @@ import {
     handleAdminSettings,
     handleAdminUsers,
 } from "./admin";
+import { handleAuthenticatedAsset } from "./assets";
 import { handleArticleComments, handleDiaryComments } from "./comments";
 import { handleMe } from "./me";
 import { handlePublic, handleUserHome } from "./public";
@@ -86,8 +88,13 @@ async function dispatchRoute(
 
     const first = segments[0];
 
-    if (first === "public") return handlePublic(context, segments);
+    if (first === "public") {
+        return await runWithDirectusPublicAccess(async () =>
+            handlePublic(context, segments),
+        );
+    }
     if (first === "users") return handleUserHome(context, segments);
+    if (first === "assets") return handleAuthenticatedAsset(context, segments);
     if (first === "me") return handleMe(context, segments.slice(1));
     if (first === "articles") return handleArticleComments(context, segments);
     if (first === "diaries") return handleDiaryComments(context, segments);

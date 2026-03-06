@@ -8,11 +8,15 @@ import {
   loadUserAlbumList,
   profileToSidebarData,
 } from "@/server/api/v1/public-data";
+import {
+  runWithDirectusPublicAccess,
+  runWithDirectusUserAccess,
+} from "@/server/directus/client";
 import type {
   ContentLoadResult,
   PaginatedResult,
 } from "@/server/api/v1/public-data";
-import { getSessionUser } from "@/server/auth/session";
+import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
 import {
   resolveAlbumCoverUrl,
   formatAlbumDate,
@@ -56,16 +60,37 @@ try {
   } else {
     const sessionUser = await getSessionUser(Astro);
     const viewerId = sessionUser?.id ?? null;
-    result = (await loadUserAlbumList(username, {
-      limit: 100,
-      viewerId,
-    })) as ContentLoadResult<PaginatedResult<AlbumListItem>>;
+    result = (
+      viewerId
+        ? await runWithDirectusUserAccess(
+            getSessionAccessToken(Astro),
+            async () =>
+              await loadUserAlbumList(username, {
+                limit: 100,
+                viewerId,
+              }),
+          )
+        : await runWithDirectusPublicAccess(
+            async () =>
+              await loadUserAlbumList(username, {
+                limit: 100,
+                viewerId,
+              }),
+          )
+    ) as ContentLoadResult<PaginatedResult<AlbumListItem>>;
     if (result.status === "not_found") {
       Astro.response.status = 404;
     } else if (result.status === "permission_denied") {
       Astro.response.status = 404;
     } else {
-      const sidebarProfile = await loadProfileForViewer(username, viewerId);
+      const sidebarProfile = viewerId
+        ? await runWithDirectusUserAccess(
+            getSessionAccessToken(Astro),
+            async () => await loadProfileForViewer(username, viewerId),
+          )
+        : await runWithDirectusPublicAccess(
+            async () => await loadProfileForViewer(username, viewerId),
+          );
       if (sidebarProfile) {
         Astro.locals.sidebarProfile = profileToSidebarData(sidebarProfile);
         isOwner = Boolean(viewerId) && viewerId === sidebarProfile.user_id;
@@ -84,7 +109,7 @@ const enrichedItems = items.map((item) => {
   return {
     ...item,
     author,
-    coverSrc: resolveAlbumCoverUrl(item),
+    coverSrc: resolveAlbumCoverUrl(item, isOwner),
     formattedDate: formatAlbumDate(item.date),
     mapsUrl: item.location ? buildGoogleMapsSearchUrl(item.location) : null,
     albumHref: `/${username}/albums/${item.short_id ?? item.id}`,

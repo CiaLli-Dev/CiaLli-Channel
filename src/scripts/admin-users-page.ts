@@ -265,6 +265,23 @@ const handleSaveUserRole = async (
             `select[data-user-id="${userId}"][data-field="app_role"]`,
         ) as HTMLSelectElement | null
     )?.value;
+    const getToggleValue = (
+        field:
+            | "can_publish_articles"
+            | "can_comment_articles"
+            | "can_manage_diaries"
+            | "can_comment_diaries"
+            | "can_manage_albums"
+            | "can_upload_files",
+    ): boolean | undefined => {
+        const input = row.querySelector(
+            `input[data-user-id="${userId}"][data-field="${field}"]`,
+        ) as HTMLInputElement | null;
+        if (!input) {
+            return undefined;
+        }
+        return input.checked;
+    };
     await runWithTask(
         {
             title: t(I18nKey.adminUsersSavingRoleTitle),
@@ -278,6 +295,19 @@ const handleSaveUserRole = async (
                     method: "PATCH",
                     body: JSON.stringify({
                         app_role: appRole,
+                        can_publish_articles: getToggleValue(
+                            "can_publish_articles",
+                        ),
+                        can_comment_articles: getToggleValue(
+                            "can_comment_articles",
+                        ),
+                        can_manage_diaries:
+                            getToggleValue("can_manage_diaries"),
+                        can_comment_diaries: getToggleValue(
+                            "can_comment_diaries",
+                        ),
+                        can_manage_albums: getToggleValue("can_manage_albums"),
+                        can_upload_files: getToggleValue("can_upload_files"),
                     }),
                 },
             );

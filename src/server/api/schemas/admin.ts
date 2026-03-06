@@ -40,7 +40,6 @@ export const AdminUpdateUserSchema = z
         can_comment_articles: z.boolean(),
         can_manage_diaries: z.boolean(),
         can_comment_diaries: z.boolean(),
-        can_manage_anime: z.boolean(),
         can_manage_albums: z.boolean(),
         can_upload_files: z.boolean(),
     })

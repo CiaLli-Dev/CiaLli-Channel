@@ -116,6 +116,7 @@ function buildPatchPayload(body: JsonObject, input: ProfileInput): JsonObject {
     return payload;
 }
 
+// eslint-disable-next-line complexity -- 头像文件、外链头像与公开性需要联动处理
 async function applyAvatarFileBindings(
     body: JsonObject,
     input: ProfileInput,
@@ -130,9 +131,16 @@ async function applyAvatarFileBindings(
     const nextAvatarUrl = hasAvatarUrlPatch
         ? (input.avatar_url ?? null)
         : access.profile.avatar_url;
+    const nextProfilePublic =
+        input.profile_public ?? access.profile.profile_public;
 
     if (hasAvatarFilePatch && nextAvatarFile) {
-        await bindFileOwnerToUser(nextAvatarFile, access.user.id);
+        await bindFileOwnerToUser(
+            nextAvatarFile,
+            access.user.id,
+            undefined,
+            nextProfilePublic ? "public" : "private",
+        );
     }
     if (
         hasAvatarFilePatch &&
@@ -155,14 +163,21 @@ async function applyHeaderFileBindings(
     input: ProfileInput,
     userId: string,
     prevHeaderFile: string | null | undefined,
+    currentProfilePublic: boolean,
 ): Promise<void> {
     const hasHeaderFilePatch = hasOwn(body, "header_file");
     const nextHeaderFile = hasHeaderFilePatch
         ? (input.header_file ?? null)
         : prevHeaderFile;
+    const nextProfilePublic = input.profile_public ?? currentProfilePublic;
 
     if (hasHeaderFilePatch && nextHeaderFile) {
-        await bindFileOwnerToUser(nextHeaderFile, userId);
+        await bindFileOwnerToUser(
+            nextHeaderFile,
+            userId,
+            undefined,
+            nextProfilePublic ? "public" : "private",
+        );
     }
     if (
         hasHeaderFilePatch &&
@@ -181,7 +196,32 @@ async function applyFileBindingsAndCleanup(
     prevHeaderFile: string | null | undefined,
 ): Promise<void> {
     await applyAvatarFileBindings(body, input, access, prevAvatarFile);
-    await applyHeaderFileBindings(body, input, access.user.id, prevHeaderFile);
+    await applyHeaderFileBindings(
+        body,
+        input,
+        access.user.id,
+        prevHeaderFile,
+        access.profile.profile_public,
+    );
+    if (input.profile_public !== undefined) {
+        const visibility = input.profile_public ? "public" : "private";
+        if (prevAvatarFile && !hasOwn(body, "avatar_file")) {
+            await bindFileOwnerToUser(
+                prevAvatarFile,
+                access.user.id,
+                undefined,
+                visibility,
+            );
+        }
+        if (prevHeaderFile && !hasOwn(body, "header_file")) {
+            await bindFileOwnerToUser(
+                prevHeaderFile,
+                access.user.id,
+                undefined,
+                visibility,
+            );
+        }
+    }
 }
 
 async function handleGet(access: AppAccess): Promise<Response> {

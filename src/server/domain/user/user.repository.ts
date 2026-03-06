@@ -4,7 +4,7 @@
  * 将散落在 auth/acl.ts、shared/loaders.ts 中的用户/档案查询模式集中到此处。
  */
 
-import type { AppProfile, AppPermissions } from "@/types/app";
+import type { AppProfile } from "@/types/app";
 import type { JsonObject } from "@/types/json";
 import { readMany, readOneById, updateOne } from "@/server/directus/client";
 import { cacheManager } from "@/server/cache/manager";
@@ -51,25 +51,6 @@ export async function updateProfile(
         invalidateAuthorCache(userId);
     }
     return updated;
-}
-
-// ── Permissions 查询 ──
-
-export async function findPermissionsByUserId(
-    userId: string,
-): Promise<AppPermissions | null> {
-    const rows = await readMany("app_user_permissions", {
-        filter: { user_id: { _eq: userId } } as JsonObject,
-        limit: 1,
-    });
-    return rows[0] || null;
-}
-
-export async function updatePermissions(
-    permissionsId: string,
-    payload: JsonObject,
-): Promise<AppPermissions> {
-    return await updateOne("app_user_permissions", permissionsId, payload);
 }
 
 // ── 用户名唯一性检查 ──

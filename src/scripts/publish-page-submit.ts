@@ -233,7 +233,7 @@ export async function materializePendingUploads(
         if (pending.purpose === "cover") {
             coverFileId = fileId;
         } else {
-            const remoteUrl = `/api/v1/public/assets/${encodeURIComponent(fileId)}`;
+            const remoteUrl = `/api/v1/assets/${encodeURIComponent(fileId)}`;
             nextBody = nextBody.split(localUrl).join(remoteUrl);
         }
 

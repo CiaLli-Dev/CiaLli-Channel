@@ -70,7 +70,7 @@ export const buildAssetUrl = (fileId: string): string => {
     if (!normalized) {
         return "";
     }
-    return `/api/v1/public/assets/${encodeURIComponent(normalized)}`;
+    return `/api/v1/assets/${encodeURIComponent(normalized)}`;
 };
 
 export const buildLoginRedirectHref = (): string => {

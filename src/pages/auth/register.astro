@@ -7,7 +7,7 @@ import { i18n } from "@i18n/translation";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
 import { Icon } from "astro-icon/components";
 import { readMany } from "@/server/directus/client";
-import { buildDirectusAssetUrl } from "@/server/directus-auth";
+import { buildPublicAssetUrl } from "@/server/directus-auth";
 import { getSessionUser } from "@/server/auth/session";
 import {
   normalizeRegistrationRequestId,
@@ -99,7 +99,7 @@ const currentRegistrationStatus = currentRegistration
   : null;
 const currentRegistrationAvatarFile = currentRegistration?.avatar_file;
 const currentRegistrationAvatar = currentRegistrationAvatarFile
-  ? buildDirectusAssetUrl(currentRegistrationAvatarFile, {
+  ? buildPublicAssetUrl(currentRegistrationAvatarFile, {
       width: 160,
       height: 160,
       fit: "cover",

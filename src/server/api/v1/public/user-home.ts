@@ -1,7 +1,11 @@
 import type { APIContext } from "astro";
 
+import {
+    runWithDirectusPublicAccess,
+    runWithDirectusUserAccess,
+} from "@/server/directus/client";
+import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
 import type { BangumiCollectionStatus } from "@/server/bangumi/types";
-import { getSessionUser } from "@/server/auth/session";
 import { fail, ok } from "@/server/api/response";
 import { parsePagination } from "@/server/api/utils";
 
@@ -228,12 +232,26 @@ export async function handleUserHome(
     const viewerId = sessionUser?.id ?? null;
     const detailId = rawDetailId ?? "";
 
-    const response = await dispatchModule(
-        context,
-        moduleKey as ModuleKey,
-        username,
-        detailId,
-        viewerId,
-    );
+    const response = viewerId
+        ? await runWithDirectusUserAccess(
+              getSessionAccessToken(context),
+              async () =>
+                  await dispatchModule(
+                      context,
+                      moduleKey as ModuleKey,
+                      username,
+                      detailId,
+                      viewerId,
+                  ),
+          )
+        : await runWithDirectusPublicAccess(async () =>
+              dispatchModule(
+                  context,
+                  moduleKey as ModuleKey,
+                  username,
+                  detailId,
+                  viewerId,
+              ),
+          );
     return applyUserHomeCachePolicy(viewerId, response);
 }

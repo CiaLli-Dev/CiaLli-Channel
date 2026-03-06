@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 日记主体与图片子资源共用文件以保证行为一致 */
 import type { APIContext } from "astro";
 import { performance } from "node:perf_hooks";
 
@@ -243,6 +244,27 @@ async function handleDiaryPatch(
     const updated = await updateOne("app_diaries", diaryId, payload, {
         fields: [...DIARY_FIELDS],
     });
+    if (input.praviate !== undefined) {
+        const imageRows = await readMany("app_diary_images", {
+            filter: { diary_id: { _eq: diaryId } } as JsonObject,
+            fields: ["file_id", "is_public", "sort"],
+            limit: 200,
+        });
+        for (const image of imageRows) {
+            const fileId = normalizeDirectusFileId(image.file_id);
+            if (!fileId) {
+                continue;
+            }
+            await bindFileOwnerToUser(
+                fileId,
+                updated.author_id,
+                buildDiaryFileTitle(updated.short_id, image.sort),
+                updated.praviate === true && image.is_public
+                    ? "public"
+                    : "private",
+            );
+        }
+    }
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("diary-list"),
@@ -360,6 +382,7 @@ async function handleDiaryImageCreate(
             created.file_id,
             access.user.id,
             buildDiaryFileTitle(diary.short_id, created.sort),
+            created.is_public && diary.praviate === true ? "public" : "private",
         );
     }
     await awaitCacheInvalidations(
@@ -424,6 +447,9 @@ async function handleDiaryImagePatch(
             nextFileId,
             access.user.id,
             buildDiaryFileTitle(diary.short_id, updated.sort),
+            (updated.is_public ?? image.is_public) && diary.praviate === true
+                ? "public"
+                : "private",
         );
     }
     if (hasOwn(body, "file_id") && prevFileId && prevFileId !== nextFileId) {

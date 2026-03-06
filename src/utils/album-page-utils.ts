@@ -1,4 +1,7 @@
-import { buildPublicAssetUrl } from "@/server/directus-auth";
+import {
+    buildDirectusAssetUrl,
+    buildPublicAssetUrl,
+} from "@/server/directus-auth";
 import { resolveAuthorIdentity } from "@/utils/author-identity";
 import {
     ALBUM_MASONRY_WIDTH,
@@ -6,19 +9,25 @@ import {
     ALBUM_GRID_HEIGHT,
 } from "@/constants/image";
 
-export function resolveAlbumCoverUrl(item: {
-    cover_file: string | null;
-    cover_url: string | null;
-    layout: "grid" | "masonry";
-}): string | null {
+export function resolveAlbumCoverUrl(
+    item: {
+        cover_file: string | null;
+        cover_url: string | null;
+        layout: "grid" | "masonry";
+    },
+    privateAccess = false,
+): string | null {
     if (item.cover_url) {
         return item.cover_url;
     }
     if (item.cover_file) {
+        const buildAssetUrl = privateAccess
+            ? buildDirectusAssetUrl
+            : buildPublicAssetUrl;
         if (item.layout === "masonry") {
-            return buildPublicAssetUrl(item.cover_file, { width: 960 });
+            return buildAssetUrl(item.cover_file, { width: 960 });
         }
-        return buildPublicAssetUrl(item.cover_file, {
+        return buildAssetUrl(item.cover_file, {
             width: 960,
             height: 640,
             fit: "cover",
@@ -73,17 +82,21 @@ export function resolveAlbumAuthor(item: {
 export function resolvePhotoUrl(
     photo: { file_id: string | null; image_url: string | null },
     layout: "grid" | "masonry",
+    privateAccess = false,
 ): string | null {
     if (photo.image_url) {
         return photo.image_url;
     }
     if (photo.file_id) {
+        const buildAssetUrl = privateAccess
+            ? buildDirectusAssetUrl
+            : buildPublicAssetUrl;
         if (layout === "masonry") {
-            return buildPublicAssetUrl(photo.file_id, {
+            return buildAssetUrl(photo.file_id, {
                 width: ALBUM_MASONRY_WIDTH,
             });
         }
-        return buildPublicAssetUrl(photo.file_id, {
+        return buildAssetUrl(photo.file_id, {
             width: ALBUM_GRID_WIDTH,
             height: ALBUM_GRID_HEIGHT,
             fit: "cover",
@@ -92,15 +105,21 @@ export function resolvePhotoUrl(
     return null;
 }
 
-export function resolvePhotoPreviewUrl(photo: {
-    file_id: string | null;
-    image_url: string | null;
-}): string | null {
+export function resolvePhotoPreviewUrl(
+    photo: {
+        file_id: string | null;
+        image_url: string | null;
+    },
+    privateAccess = false,
+): string | null {
     if (photo.image_url) {
         return photo.image_url;
     }
     if (photo.file_id) {
-        return buildPublicAssetUrl(photo.file_id, {
+        const buildAssetUrl = privateAccess
+            ? buildDirectusAssetUrl
+            : buildPublicAssetUrl;
+        return buildAssetUrl(photo.file_id, {
             width: ALBUM_MASONRY_WIDTH,
         });
     }

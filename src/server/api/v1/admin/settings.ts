@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 管理设置入口暂集中处理 site/bulletin/about 三类配置 */
 import type { APIContext } from "astro";
 import { performance } from "node:perf_hooks";
 
@@ -6,7 +7,13 @@ import type {
     SiteSettingsPayload,
 } from "@/types/site-settings";
 import type { JsonObject } from "@/types/json";
-import { createOne, readMany, updateOne } from "@/server/directus/client";
+import {
+    createOne,
+    readMany,
+    runWithDirectusUserAccess,
+    updateDirectusFileMetadata,
+    updateOne,
+} from "@/server/directus/client";
 import { fail, ok } from "@/server/api/response";
 import { parseJsonBody } from "@/server/api/utils";
 import { validateBody } from "@/server/api/validate";
@@ -309,7 +316,10 @@ async function handleAdminSiteGet(): Promise<Response> {
     });
 }
 
-async function handleAdminSitePatch(context: APIContext): Promise<Response> {
+async function handleAdminSitePatch(
+    context: APIContext,
+    adminUserId: string,
+): Promise<Response> {
     const body = await parseJsonBody(context.request);
     const patch = body as Partial<EditableSiteSettings>;
     const current = await getResolvedSiteSettings();
@@ -320,6 +330,13 @@ async function handleAdminSitePatch(context: APIContext): Promise<Response> {
         (fileId) => !nextFileIds.has(fileId),
     );
     const { updatedAt } = await upsertSiteSettings(settings);
+    for (const fileId of nextFileIds) {
+        await updateDirectusFileMetadata(fileId, {
+            uploaded_by: adminUserId,
+            app_owner_user_id: adminUserId,
+            app_visibility: "public",
+        });
+    }
     invalidateSiteSettingsCache();
     await cleanupOrphanDirectusFiles(removedFileIds);
     return ok({
@@ -328,12 +345,15 @@ async function handleAdminSitePatch(context: APIContext): Promise<Response> {
     });
 }
 
-async function handleAdminSite(context: APIContext): Promise<Response> {
+async function handleAdminSite(
+    context: APIContext,
+    adminUserId: string,
+): Promise<Response> {
     if (context.request.method === "GET") {
         return handleAdminSiteGet();
     }
     if (context.request.method === "PATCH") {
-        return handleAdminSitePatch(context);
+        return handleAdminSitePatch(context, adminUserId);
     }
     return fail("方法不允许", 405);
 }
@@ -506,37 +526,39 @@ export async function handleAdminSettings(
         return required.response;
     }
 
-    if (segments.length < 2) {
+    return await runWithDirectusUserAccess(required.accessToken, async () => {
+        if (segments.length < 2) {
+            return fail("未找到接口", 404);
+        }
+
+        if (segments[1] === "site" && segments.length === 2) {
+            return handleAdminSite(context, required.access.user.id);
+        }
+
+        if (
+            segments[1] === "bulletin" &&
+            segments.length === 3 &&
+            segments[2] === "preview"
+        ) {
+            return handleAdminBulletinPreview(context);
+        }
+
+        if (segments[1] === "bulletin" && segments.length === 2) {
+            return handleAdminBulletin(context);
+        }
+
+        if (
+            segments[1] === "about" &&
+            segments.length === 3 &&
+            segments[2] === "preview"
+        ) {
+            return handleAdminAboutPreview(context);
+        }
+
+        if (segments[1] === "about" && segments.length === 2) {
+            return handleAdminAbout(context, required.access.user.id);
+        }
+
         return fail("未找到接口", 404);
-    }
-
-    if (segments[1] === "site" && segments.length === 2) {
-        return handleAdminSite(context);
-    }
-
-    if (
-        segments[1] === "bulletin" &&
-        segments.length === 3 &&
-        segments[2] === "preview"
-    ) {
-        return handleAdminBulletinPreview(context);
-    }
-
-    if (segments[1] === "bulletin" && segments.length === 2) {
-        return handleAdminBulletin(context);
-    }
-
-    if (
-        segments[1] === "about" &&
-        segments.length === 3 &&
-        segments[2] === "preview"
-    ) {
-        return handleAdminAboutPreview(context);
-    }
-
-    if (segments[1] === "about" && segments.length === 2) {
-        return handleAdminAbout(context, required.access.user.id);
-    }
-
-    return fail("未找到接口", 404);
+    });
 }

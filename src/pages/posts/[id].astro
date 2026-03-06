@@ -30,7 +30,11 @@ import {
   loadProfileForViewerByUserId,
   profileToSidebarData,
 } from "@/server/api/v1/public-data";
-import { getSessionUser } from "@/server/auth/session";
+import {
+  runWithDirectusPublicAccess,
+  runWithDirectusUserAccess,
+} from "@/server/directus/client";
+import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
 import type { AppArticle } from "@/types/app";
 import { buildOwnerArticlePasswordStorageKeys } from "@/utils/protected-content";
 import DetailActionFloat from "@components/control/DetailActionFloat.astro";
@@ -96,7 +100,9 @@ if (rawId) {
   try {
     // 会话与公开文章查询并行启动，减少首段串行等待。
     const sessionUserPromise = getSessionUser(Astro);
-    const publicArticlePromise = resolvePublicArticleByRoute(rawId);
+    const publicArticlePromise = runWithDirectusPublicAccess(
+      async () => await resolvePublicArticleByRoute(rawId),
+    );
     const [sessionUser, publicArticle] = await Promise.all([
       sessionUserPromise,
       publicArticlePromise,
@@ -107,38 +113,48 @@ if (rawId) {
 
     // 公开查询失败且已登录时，才触发 owner 回退查询。
     if (!rawArticle && sessionUser) {
-      const candidate = await resolveOwnerArticleByRoute(rawId);
+      const candidate = await runWithDirectusUserAccess(
+        getSessionAccessToken(Astro),
+        async () => await resolveOwnerArticleByRoute(rawId),
+      );
       if (candidate && candidate.author_id === sessionUser.id) {
         rawArticle = candidate;
       }
     }
 
     if (rawArticle) {
-      const authorMapPromise = getAuthorBundle([rawArticle.author_id]);
-      const interactionPromise = loadArticleInteractionSnapshot({
-        articleId: rawArticle.id,
-        viewerId: sessionUserId,
-      });
-      const authorProfilePromise = loadProfileForViewerByUserId(
-        rawArticle.author_id,
-        sessionUserId,
-      );
-
       const rawBodyMarkdown = String(rawArticle.body_markdown || "");
       const isEncryptedBody = rawBodyMarkdown.trim().startsWith("CL2:");
-      const articleHtmlPromise = isEncryptedBody
-        ? Promise.resolve("")
-        : renderMarkdown(rawBodyMarkdown, {
-            target: "page",
-          });
-
-      const [authorMap, interaction, authorProfile, renderedArticleHtml] =
-        await Promise.all([
+      const loadArticleViewData = async () => {
+        const authorMapPromise = getAuthorBundle([rawArticle!.author_id]);
+        const interactionPromise = loadArticleInteractionSnapshot({
+          articleId: rawArticle!.id,
+          viewerId: sessionUserId,
+        });
+        const authorProfilePromise = loadProfileForViewerByUserId(
+          rawArticle!.author_id,
+          sessionUserId,
+        );
+        const articleHtmlPromise = isEncryptedBody
+          ? Promise.resolve("")
+          : renderMarkdown(rawBodyMarkdown, {
+              target: "page",
+            });
+        return await Promise.all([
           authorMapPromise,
           interactionPromise,
           authorProfilePromise,
           articleHtmlPromise,
         ]);
+      };
+
+      const [authorMap, interaction, authorProfile, renderedArticleHtml] =
+        sessionUserId
+          ? await runWithDirectusUserAccess(
+              getSessionAccessToken(Astro),
+              loadArticleViewData,
+            )
+          : await runWithDirectusPublicAccess(loadArticleViewData);
 
       article = {
         ...rawArticle,

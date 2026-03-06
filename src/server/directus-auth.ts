@@ -177,7 +177,7 @@ export function buildDirectusAssetUrl(
     },
 ): string {
     const url = new URL(
-        `/api/v1/public/assets/${encodeURIComponent(fileId)}`,
+        `/api/v1/assets/${encodeURIComponent(fileId)}`,
         "http://localhost",
     );
 

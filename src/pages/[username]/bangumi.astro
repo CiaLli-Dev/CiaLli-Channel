@@ -8,7 +8,11 @@ import {
   loadUserBangumiList,
   profileToSidebarData,
 } from "@/server/api/v1/public-data";
-import { getSessionUser } from "@/server/auth/session";
+import {
+  runWithDirectusPublicAccess,
+  runWithDirectusUserAccess,
+} from "@/server/directus/client";
+import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
 
 export const prerender = false;
 
@@ -26,16 +30,35 @@ try {
   } else {
     const sessionUser = await getSessionUser(Astro);
     const viewerId = sessionUser?.id ?? null;
-    result = await loadUserBangumiList(username, {
-      limit: 200,
-      viewerId,
-    });
+    result = viewerId
+      ? await runWithDirectusUserAccess(
+          getSessionAccessToken(Astro),
+          async () =>
+            await loadUserBangumiList(username, {
+              limit: 200,
+              viewerId,
+            }),
+        )
+      : await runWithDirectusPublicAccess(
+          async () =>
+            await loadUserBangumiList(username, {
+              limit: 200,
+              viewerId,
+            }),
+        );
     if (result.status === "not_found") {
       Astro.response.status = 404;
     } else if (result.status === "permission_denied") {
       Astro.response.status = 404;
     } else {
-      const sidebarProfile = await loadProfileForViewer(username, viewerId);
+      const sidebarProfile = viewerId
+        ? await runWithDirectusUserAccess(
+            getSessionAccessToken(Astro),
+            async () => await loadProfileForViewer(username, viewerId),
+          )
+        : await runWithDirectusPublicAccess(
+            async () => await loadProfileForViewer(username, viewerId),
+          );
       if (sidebarProfile) {
         Astro.locals.sidebarProfile = profileToSidebarData(sidebarProfile);
       }

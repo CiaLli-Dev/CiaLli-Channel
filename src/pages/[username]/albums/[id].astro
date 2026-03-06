@@ -10,7 +10,11 @@ import {
   profileToSidebarData,
 } from "@/server/api/v1/public-data";
 import type { ContentLoadResult } from "@/server/api/v1/public-data";
-import { getSessionUser } from "@/server/auth/session";
+import {
+  runWithDirectusPublicAccess,
+  runWithDirectusUserAccess,
+} from "@/server/directus/client";
+import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
 import {
   resolvePhotoUrl,
   resolvePhotoPreviewUrl,
@@ -63,15 +67,35 @@ if (!username || !id) {
   try {
     const sessionUser = await getSessionUser(Astro);
     const viewerId = sessionUser?.id ?? null;
-    result = (await loadUserAlbumDetail(username, id, {
-      viewerId,
-    })) as ContentLoadResult<AlbumPageData>;
+    result = (
+      viewerId
+        ? await runWithDirectusUserAccess(
+            getSessionAccessToken(Astro),
+            async () =>
+              await loadUserAlbumDetail(username, id, {
+                viewerId,
+              }),
+          )
+        : await runWithDirectusPublicAccess(
+            async () =>
+              await loadUserAlbumDetail(username, id, {
+                viewerId,
+              }),
+          )
+    ) as ContentLoadResult<AlbumPageData>;
     if (result.status === "not_found") {
       Astro.response.status = 404;
     } else if (result.status === "permission_denied") {
       Astro.response.status = 404;
     } else {
-      const profile = await loadProfileForViewer(username, viewerId);
+      const profile = viewerId
+        ? await runWithDirectusUserAccess(
+            getSessionAccessToken(Astro),
+            async () => await loadProfileForViewer(username, viewerId),
+          )
+        : await runWithDirectusPublicAccess(
+            async () => await loadProfileForViewer(username, viewerId),
+          );
       if (profile) {
         Astro.locals.sidebarProfile = profileToSidebarData(profile);
         isOwner = Boolean(viewerId) && viewerId === profile.user_id;
@@ -88,8 +112,8 @@ const album = result.status === "ok" ? result.data : null;
 
 const enrichedPhotos = album
   ? album.photos.map((photo) => {
-      const thumbSrc = resolvePhotoUrl(photo, album.layout);
-      const previewSrc = resolvePhotoPreviewUrl(photo) ?? thumbSrc;
+      const thumbSrc = resolvePhotoUrl(photo, album.layout, isOwner);
+      const previewSrc = resolvePhotoPreviewUrl(photo, isOwner) ?? thumbSrc;
       const hasCaption = Boolean(photo.title || photo.description);
       return {
         ...photo,

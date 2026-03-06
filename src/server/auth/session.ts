@@ -3,6 +3,11 @@ import type { APIContext } from "astro";
 
 import type { AppUser } from "@/types/app";
 import { cacheManager } from "@/server/cache/manager";
+import {
+    extractDirectusPolicyIds,
+    resolvePolicyNames,
+} from "@/server/auth/directus-access";
+import { loadDirectusAccessRegistry } from "@/server/auth/directus-registry";
 import { readOneById } from "@/server/directus/client";
 import {
     DIRECTUS_ACCESS_COOKIE_NAME,
@@ -24,6 +29,8 @@ export type SessionUser = {
     avatarUrl?: string;
     roleId?: string;
     roleName?: string;
+    policyIds: string[];
+    policyNames: string[];
     isSystemAdmin: boolean;
 };
 
@@ -42,7 +49,6 @@ const refreshResultCache = new Map<
 >();
 const REFRESH_RESULT_CACHE_TTL_MS = 5000;
 const SESSION_USER_CACHE_TTL_VERSION = "v1";
-
 function hashAccessToken(accessToken: string): string {
     return createHash("sha256").update(accessToken).digest("hex");
 }
@@ -121,6 +127,11 @@ function extractRole(
     return { roleId, roleName };
 }
 
+async function loadPolicyNameMap(): Promise<Map<string, string>> {
+    const registry = await loadDirectusAccessRegistry();
+    return new Map(registry.policyNameById);
+}
+
 function decodeBase64Url(value: string): string | null {
     const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
     const padded = normalized.padEnd(
@@ -189,11 +200,11 @@ function resolveAvatarUrl(
     });
 }
 
-function buildSessionUser(
+async function buildSessionUser(
     me: DirectusMe,
     accessToken: string,
     fallbackUser?: AppUser | null,
-): SessionUser | null {
+): Promise<SessionUser | null> {
     const id = String(me.id || fallbackUser?.id || "").trim();
     if (!id) {
         return null;
@@ -202,6 +213,11 @@ function buildSessionUser(
     const avatarUrl = resolveAvatarUrl(me, fallbackUser);
     const { roleId, roleName } = extractRole(me.role, fallbackUser?.role);
     const isSystemAdmin = readAdminAccessFromToken(accessToken);
+    const policyIds = extractDirectusPolicyIds(fallbackUser?.policies);
+    const policyMap = await loadPolicyNameMap().catch(
+        () => new Map<string, string>(),
+    );
+    const policyNames = resolvePolicyNames(policyIds, policyMap);
 
     return {
         id,
@@ -215,6 +231,8 @@ function buildSessionUser(
         avatarUrl,
         roleId,
         roleName,
+        policyIds,
+        policyNames,
         isSystemAdmin,
     };
 }
@@ -228,7 +246,10 @@ async function loadDirectusUserById(userId: string): Promise<AppUser | null> {
                 "first_name",
                 "last_name",
                 "avatar",
-                "role",
+                "status",
+                "role.id",
+                "role.name",
+                "policies.*",
             ],
         });
     } catch (error) {
@@ -286,7 +307,7 @@ async function loadUserByAccessToken(
     try {
         const me = await directusGetMe({ accessToken });
         const fallbackUser = me.id ? await loadDirectusUserById(me.id) : null;
-        return buildSessionUser(me, accessToken, fallbackUser);
+        return await buildSessionUser(me, accessToken, fallbackUser);
     } catch (error) {
         const isAuthError =
             error instanceof DirectusAuthError &&
@@ -407,6 +428,12 @@ export async function getSessionUser(
         }
         return null;
     }
+}
+
+export function getSessionAccessToken(context: APIContext): string {
+    return (
+        context.cookies.get(DIRECTUS_ACCESS_COOKIE_NAME)?.value?.trim() || ""
+    );
 }
 
 export function clearSession(context: APIContext): void {

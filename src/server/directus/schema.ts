@@ -12,7 +12,6 @@ import type {
     AppDiaryImage,
     AppFile,
     AppFriend,
-    AppPermissions,
     AppProfile,
     AppUserRegistrationRequest,
     AppUserBlock,
@@ -22,7 +21,6 @@ import type { AppSiteSettings } from "@/types/site-settings";
 
 export type DirectusSchema = {
     app_user_profiles: AppProfile[];
-    app_user_permissions: AppPermissions[];
     app_articles: AppArticle[];
     app_article_comments: AppArticleComment[];
     app_article_comment_likes: AppArticleCommentLike[];

@@ -41,14 +41,11 @@ export function mockPermissions(
     overrides: Partial<AppPermissions> = {},
 ): AppPermissions {
     return {
-        id: "perm-1",
-        user_id: "user-1",
         app_role: "member",
         can_publish_articles: true,
         can_comment_articles: true,
         can_manage_diaries: true,
         can_comment_diaries: true,
-        can_manage_anime: true,
         can_manage_albums: true,
         can_upload_files: true,
         ...overrides,
@@ -62,6 +59,8 @@ export function mockSessionUser(
         id: "user-1",
         email: "test@example.com",
         name: "Test User",
+        policyIds: [],
+        policyNames: [],
         isSystemAdmin: false,
         ...overrides,
     };

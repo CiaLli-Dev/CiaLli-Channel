@@ -1,18 +1,17 @@
-import type { AppPermissions, AppProfile, AppRole, AppUser } from "@/types/app";
+import type { AppPermissionKey, AppPermissions, AppProfile } from "@/types/app";
 import type { JsonObject } from "@/types/json";
+import { conflict, forbidden } from "@/server/api/errors";
 import { cacheManager } from "@/server/cache/manager";
+import { createOne, readMany, updateOne } from "@/server/directus/client";
 import {
-    createOne,
-    readMany,
-    readOneById,
-    updateOne,
-} from "@/server/directus/client";
+    buildPermissionsFromDirectus,
+    isSiteAdminRoleName,
+} from "@/server/auth/directus-access";
 import {
     composeUsernameWithSuffix,
     normalizeAutoUsername,
     normalizeRequestedUsername,
 } from "@/server/auth/username";
-import { conflict, forbidden } from "@/server/api/errors";
 
 import type { SessionUser } from "./session";
 
@@ -21,6 +20,8 @@ export type AppAccessContext = {
     profile: AppProfile;
     permissions: AppPermissions;
     isAdmin: boolean;
+    isSiteAdmin: boolean;
+    isPlatformAdmin: boolean;
 };
 
 function toCsvArray(input: string | string[] | null | undefined): string[] {
@@ -127,21 +128,6 @@ function normalizeProfile(raw: Partial<AppProfile>): AppProfile {
     };
 }
 
-function normalizePermissions(raw: Partial<AppPermissions>): AppPermissions {
-    return {
-        id: raw.id || "",
-        user_id: raw.user_id || "",
-        app_role: (raw.app_role || "member") as AppRole,
-        can_publish_articles: raw.can_publish_articles ?? true,
-        can_comment_articles: raw.can_comment_articles ?? true,
-        can_manage_diaries: raw.can_manage_diaries ?? true,
-        can_comment_diaries: raw.can_comment_diaries ?? true,
-        can_manage_anime: raw.can_manage_anime ?? true,
-        can_manage_albums: raw.can_manage_albums ?? true,
-        can_upload_files: raw.can_upload_files ?? true,
-    };
-}
-
 async function userExistsByUsername(username: string): Promise<boolean> {
     const rows = await readMany("app_user_profiles", {
         filter: {
@@ -172,137 +158,76 @@ export async function createUniqueUsername(
     );
 }
 
-async function getDirectusUserById(userId: string): Promise<AppUser | null> {
-    return await readOneById("directus_users", userId, {
-        fields: [
-            "id",
-            "email",
-            "first_name",
-            "last_name",
-            "avatar",
-            "status",
-            "role",
-        ],
-    });
-}
-
-export async function ensureAppIdentity(
-    user: SessionUser,
-): Promise<{ profile: AppProfile; permissions: AppPermissions }> {
-    const profileRows = await readMany("app_user_profiles", {
+async function ensureProfile(user: SessionUser): Promise<AppProfile> {
+    const rows = await readMany("app_user_profiles", {
         filter: {
             user_id: { _eq: user.id },
         } as JsonObject,
         limit: 1,
     });
-    const permRows = await readMany("app_user_permissions", {
-        filter: {
-            user_id: { _eq: user.id },
-        } as JsonObject,
-        limit: 1,
+    if (rows.length > 0) {
+        return normalizeProfile(rows[0]);
+    }
+
+    const baseName = user.name || user.email.split("@")[0] || user.id;
+    const username = await createUniqueUsername(baseName);
+    const created = await createOne("app_user_profiles", {
+        status: "published",
+        user_id: user.id,
+        username,
+        display_name: username,
+        bio: null,
+        bio_typewriter_enable: true,
+        bio_typewriter_speed: 80,
+        avatar_file: null,
+        avatar_url: user.avatarUrl || null,
+        header_file: null,
+        profile_public: true,
+        show_articles_on_profile: true,
+        show_diaries_on_profile: true,
+        show_bangumi_on_profile: true,
+        show_albums_on_profile: true,
+        show_comments_on_profile: true,
+        bangumi_username: null,
+        bangumi_include_private: false,
+        bangumi_access_token_encrypted: null,
+        social_links: null,
+        home_section_order: null,
+        is_official: false,
     });
-
-    const directusUser = await getDirectusUserById(user.id);
-    const baseName =
-        user.name ||
-        directusUser?.first_name ||
-        directusUser?.email ||
-        user.email;
-
-    let profile: AppProfile;
-    if (profileRows.length > 0) {
-        profile = normalizeProfile(profileRows[0]);
-    } else {
-        const username = await createUniqueUsername(
-            baseName || user.email.split("@")[0] || user.id,
-        );
-        const created = await createOne("app_user_profiles", {
-            status: "published",
-            user_id: user.id,
-            username,
-            display_name: username,
-            bio: null,
-            bio_typewriter_enable: true,
-            bio_typewriter_speed: 80,
-            avatar_file: null,
-            avatar_url: user.avatarUrl || null,
-            profile_public: true,
-            show_articles_on_profile: true,
-            show_diaries_on_profile: true,
-            show_bangumi_on_profile: true,
-            show_albums_on_profile: true,
-            show_comments_on_profile: true,
-            bangumi_username: null,
-            bangumi_include_private: false,
-            bangumi_access_token_encrypted: null,
-        });
-        profile = normalizeProfile(created);
-    }
-
-    let permissions: AppPermissions;
-    if (permRows.length > 0) {
-        permissions = normalizePermissions(permRows[0]);
-    } else {
-        const created = await createOne("app_user_permissions", {
-            user_id: user.id,
-            app_role: user.isSystemAdmin ? "admin" : "member",
-            can_publish_articles: true,
-            can_comment_articles: true,
-            can_manage_diaries: true,
-            can_comment_diaries: true,
-            can_manage_anime: true,
-            can_manage_albums: true,
-            can_upload_files: true,
-        });
-        permissions = normalizePermissions(created);
-    }
-
-    // 系统管理员必须在应用层保持 admin 角色，避免双因子判定出现角色漂移。
-    if (user.isSystemAdmin && permissions.app_role !== "admin") {
-        if (permissions.id) {
-            const synced = await updateOne(
-                "app_user_permissions",
-                permissions.id,
-                {
-                    app_role: "admin",
-                },
-            );
-            permissions = normalizePermissions(synced);
-        } else {
-            permissions = {
-                ...permissions,
-                app_role: "admin",
-            };
-        }
-    }
-
-    return { profile, permissions };
+    return normalizeProfile(created);
 }
 
 export async function getAppAccessContext(
     user: SessionUser,
 ): Promise<AppAccessContext> {
-    const { profile, permissions } = await ensureAppIdentity(user);
+    const profile = await ensureProfile(user);
+    const permissions = buildPermissionsFromDirectus({
+        roleName: user.roleName,
+        policyNames: user.policyNames,
+        isPlatformAdmin: user.isSystemAdmin,
+    });
+    const isPlatformAdmin = user.isSystemAdmin;
+    const isSiteAdmin = isSiteAdminRoleName(user.roleName);
     return {
         user,
         profile,
         permissions,
-        isAdmin: user.isSystemAdmin && permissions.app_role === "admin",
+        isAdmin: isPlatformAdmin || isSiteAdmin,
+        isSiteAdmin,
+        isPlatformAdmin,
     };
 }
 
 export function assertCan(
     access: AppAccessContext,
-    permission: keyof AppPermissions,
+    permission: AppPermissionKey,
 ): void {
     if (access.isAdmin) {
         return;
     }
-    if (permission in access.permissions) {
-        const flag = access.permissions[permission];
-        if (typeof flag === "boolean" && !flag) {
-            throw forbidden();
-        }
+    if (!access.permissions[permission]) {
+        throw forbidden();
     }
 }
 

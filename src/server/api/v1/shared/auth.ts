@@ -3,13 +3,14 @@ import type { APIContext } from "astro";
 import type { JsonObject } from "@/types/json";
 import { getAppAccessContext } from "@/server/auth/acl";
 import { fail } from "@/server/api/response";
-import { getSessionUser } from "@/server/auth/session";
+import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
 
 import type { AppAccess } from "./types";
 
 export async function requireAccess(context: APIContext): Promise<
     | {
           access: AppAccess;
+          accessToken: string;
       }
     | {
           response: Response;
@@ -22,7 +23,11 @@ export async function requireAccess(context: APIContext): Promise<
 
     try {
         const access = await getAppAccessContext(user);
-        return { access };
+        const accessToken = getSessionAccessToken(context);
+        if (!accessToken) {
+            return { response: fail("未登录", 401) };
+        }
+        return { access, accessToken };
     } catch (error) {
         void error;
         return { response: fail("权限不足", 403) };
@@ -32,6 +37,7 @@ export async function requireAccess(context: APIContext): Promise<
 export async function requireAdmin(context: APIContext): Promise<
     | {
           access: AppAccess;
+          accessToken: string;
       }
     | {
           response: Response;

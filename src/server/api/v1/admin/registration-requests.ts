@@ -9,16 +9,28 @@ import type {
 import type { JsonObject } from "@/types/json";
 
 import {
+    buildPermissionsFromDirectus,
+    DIRECTUS_POLICY_NAME,
+    DIRECTUS_ROLE_NAME,
+} from "@/server/auth/directus-access";
+import {
+    invalidateDirectusAccessRegistry,
+    loadDirectusAccessRegistry,
+} from "@/server/auth/directus-registry";
+import {
     normalizeRequestedUsername,
     validateDisplayName,
 } from "@/server/auth/username";
 import {
     countItems,
-    createDirectusUser,
-    createOne,
+    deleteDirectusUser,
     readMany,
+    syncDirectusUserPolicies,
+    runWithDirectusUserAccess,
     updateDirectusFileMetadata,
+    updateDirectusUser,
     updateOne,
+    createOne,
 } from "@/server/directus/client";
 import { badRequest, conflict, notFound } from "@/server/api/errors";
 import { fail, ok } from "@/server/api/response";
@@ -52,94 +64,123 @@ function parseOptionalRegistrationReason(raw: unknown): string | null {
     return reason;
 }
 
-function parseNormalizedEmail(raw: unknown): string {
-    const email = String(raw || "")
-        .trim()
-        .toLowerCase();
-    if (!email) {
-        throw badRequest("EMAIL_EMPTY", "邮箱不能为空");
-    }
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(email)) {
-        throw badRequest("EMAIL_INVALID", "邮箱格式不正确");
-    }
-    return email;
-}
-
-async function assertDirectusEmailAvailable(email: string): Promise<void> {
-    const rows = await readMany("directus_users", {
-        filter: { email: { _eq: email } } as JsonObject,
-        limit: 1,
-        fields: ["id"],
-    });
-    if (rows.length > 0) {
-        throw conflict("EMAIL_EXISTS", "邮箱已存在");
-    }
-}
-
-type ManagedUserCreateInput = {
-    email: string;
-    password: string;
-    requestedUsername: string;
-    displayName: string;
-    avatarFile?: string | null;
-    appRole?: AppPermissions["app_role"];
-};
-
-type ManagedUserCreateResult = {
+type ManagedUserActivateResult = {
     user: { id: string };
     profile: AppProfile;
     permissions: AppPermissions;
 };
 
-async function createManagedUser(
-    input: ManagedUserCreateInput,
-): Promise<ManagedUserCreateResult> {
-    await Promise.all([
-        assertDirectusEmailAvailable(input.email),
-        ensureUsernameAvailable(input.requestedUsername),
-    ]);
+function buildDefaultApprovedPolicyNames(): string[] {
+    return [
+        DIRECTUS_POLICY_NAME.publishArticles,
+        DIRECTUS_POLICY_NAME.commentArticles,
+        DIRECTUS_POLICY_NAME.manageDiaries,
+        DIRECTUS_POLICY_NAME.commentDiaries,
+        DIRECTUS_POLICY_NAME.manageAlbums,
+        DIRECTUS_POLICY_NAME.uploadFiles,
+    ];
+}
 
-    const createdUser = await createDirectusUser({
-        email: input.email,
-        password: input.password,
-        first_name: input.displayName || undefined,
-        status: "active",
-    });
-
-    const profile = await createOne("app_user_profiles", {
+async function ensureManagedProfile(params: {
+    userId: string;
+    requestedUsername: string;
+    displayName: string;
+    avatarFile?: string | null;
+}): Promise<AppProfile> {
+    await ensureUsernameAvailable(params.requestedUsername);
+    return await createOne("app_user_profiles", {
         status: "published",
-        user_id: createdUser.id,
-        username: input.requestedUsername,
-        display_name: input.displayName,
+        user_id: params.userId,
+        username: params.requestedUsername,
+        display_name: params.displayName,
         bio: null,
         bio_typewriter_enable: true,
         bio_typewriter_speed: 80,
-        avatar_file: input.avatarFile || null,
+        avatar_file: params.avatarFile || null,
         avatar_url: null,
+        header_file: null,
         profile_public: true,
         show_articles_on_profile: true,
         show_diaries_on_profile: true,
         show_bangumi_on_profile: true,
         show_albums_on_profile: true,
         show_comments_on_profile: true,
+        bangumi_username: null,
+        bangumi_include_private: false,
+        bangumi_access_token_encrypted: null,
+        social_links: null,
+        home_section_order: null,
+        is_official: false,
+    });
+}
+
+async function activateManagedUser(params: {
+    pendingUserId: string;
+    requestedUsername: string;
+    displayName: string;
+    avatarFile?: string | null;
+    appRole?: AppPermissions["app_role"];
+}): Promise<ManagedUserActivateResult> {
+    const registry = await loadDirectusAccessRegistry();
+    const targetRoleName =
+        normalizeAppRole(params.appRole || "member") === "admin"
+            ? DIRECTUS_ROLE_NAME.siteAdmin
+            : DIRECTUS_ROLE_NAME.member;
+    const targetRoleId = registry.roleIdByName.get(targetRoleName);
+    if (!targetRoleId) {
+        throw badRequest(
+            "DIRECTUS_ROLE_MISSING",
+            `缺少 Directus 角色：${targetRoleName}`,
+        );
+    }
+    const desiredPolicyIds =
+        targetRoleName === DIRECTUS_ROLE_NAME.siteAdmin
+            ? [
+                  registry.policyIdByName.get(DIRECTUS_POLICY_NAME.siteAdmin) ||
+                      "",
+              ].filter(Boolean)
+            : buildDefaultApprovedPolicyNames()
+                  .map((name) => registry.policyIdByName.get(name) || "")
+                  .filter(Boolean);
+
+    const directusPayload: JsonObject = {
+        status: "active",
+        role: targetRoleId,
+    };
+    if (params.displayName) {
+        directusPayload.first_name = params.displayName;
+    }
+    await updateDirectusUser(params.pendingUserId, directusPayload);
+    await syncDirectusUserPolicies({
+        userId: params.pendingUserId,
+        currentAssignments: [],
+        desiredPolicyIds,
     });
 
-    const permissions = await createOne("app_user_permissions", {
-        user_id: createdUser.id,
-        app_role: normalizeAppRole(input.appRole || "member"),
-        can_publish_articles: true,
-        can_comment_articles: true,
-        can_manage_diaries: true,
-        can_comment_diaries: true,
-        can_manage_anime: true,
-        can_manage_albums: true,
-        can_upload_files: true,
+    const profile = await ensureManagedProfile({
+        userId: params.pendingUserId,
+        requestedUsername: params.requestedUsername,
+        displayName: params.displayName,
+        avatarFile: params.avatarFile,
     });
 
-    invalidateAuthorCache(createdUser.id);
+    const permissions = buildPermissionsFromDirectus({
+        roleName: targetRoleName,
+        policyNames:
+            targetRoleName === DIRECTUS_ROLE_NAME.siteAdmin
+                ? [DIRECTUS_POLICY_NAME.siteAdmin]
+                : buildDefaultApprovedPolicyNames(),
+        isPlatformAdmin: false,
+    });
+
+    invalidateAuthorCache(params.pendingUserId);
     invalidateOfficialSidebarCache();
-    return { user: createdUser, profile, permissions };
+    invalidateDirectusAccessRegistry();
+    return {
+        user: { id: params.pendingUserId },
+        profile,
+        permissions,
+    };
 }
 
 async function readRegistrationRequestById(
@@ -154,9 +195,9 @@ async function readRegistrationRequestById(
             "username",
             "display_name",
             "avatar_file",
-            "registration_password",
             "registration_reason",
             "request_status",
+            "pending_user_id",
             "reviewed_by",
             "reviewed_at",
             "reject_reason",
@@ -182,8 +223,6 @@ function ensurePendingRegistrationStatus(
         );
     }
 }
-
-// ── handleAdminRegistrationRequests 辅助函数 ──────────────────────────────────
 
 async function handleRegistrationRequestsGet(
     context: APIContext,
@@ -222,6 +261,7 @@ async function handleRegistrationRequestsGet(
                 "avatar_file",
                 "registration_reason",
                 "request_status",
+                "pending_user_id",
                 "reviewed_by",
                 "reviewed_at",
                 "reject_reason",
@@ -245,17 +285,18 @@ async function handleRegistrationApprove(
     reviewedBy: string,
     reviewedAt: string,
 ): Promise<Response> {
-    const password = String(target.registration_password || "");
-    if (!password) {
+    const pendingUserId = parseRouteId(
+        String(target.pending_user_id || "").trim(),
+    );
+    if (!pendingUserId) {
         throw badRequest(
-            "REGISTRATION_PASSWORD_MISSING",
-            "申请缺少密码，请让用户重新提交申请",
+            "REGISTRATION_PENDING_USER_MISSING",
+            "申请缺少待激活账号，请让用户重新提交申请",
         );
     }
 
-    const created = await createManagedUser({
-        email: parseNormalizedEmail(target.email),
-        password,
+    const created = await activateManagedUser({
+        pendingUserId,
         requestedUsername: normalizeRequestedUsername(target.username),
         displayName: validateDisplayName(target.display_name),
         avatarFile: target.avatar_file,
@@ -267,6 +308,8 @@ async function handleRegistrationApprove(
     if (registrationAvatarFileId) {
         await updateDirectusFileMetadata(registrationAvatarFileId, {
             uploaded_by: created.user.id,
+            app_owner_user_id: created.user.id,
+            app_visibility: "public",
         });
     }
 
@@ -277,8 +320,8 @@ async function handleRegistrationApprove(
             request_status: "approved",
             reviewed_by: reviewedBy,
             reviewed_at: reviewedAt,
+            pending_user_id: null,
             approved_user_id: created.user.id,
-            registration_password: null,
             reject_reason: null,
         },
     );
@@ -301,6 +344,17 @@ async function handleRegistrationRejectOrCancel(
         action === "reject"
             ? parseOptionalRegistrationReason(body.reason)
             : null;
+    const pendingUserId = parseRouteId(
+        String(target.pending_user_id || "").trim(),
+    );
+    if (pendingUserId) {
+        await deleteDirectusUser(pendingUserId).catch((error) => {
+            console.warn(
+                "[admin/registration-requests] delete pending user failed:",
+                error,
+            );
+        });
+    }
     const updated = await updateOne(
         "app_user_registration_requests",
         target.id,
@@ -308,7 +362,7 @@ async function handleRegistrationRejectOrCancel(
             request_status: action === "reject" ? "rejected" : "cancelled",
             reviewed_by: reviewedBy,
             reviewed_at: reviewedAt,
-            registration_password: null,
+            pending_user_id: null,
             reject_reason: action === "reject" ? reason : null,
         },
     );
@@ -361,17 +415,19 @@ export async function handleAdminRegistrationRequests(
         return required.response;
     }
 
-    if (segments.length === 1 && context.request.method === "GET") {
-        return handleRegistrationRequestsGet(context);
-    }
+    return await runWithDirectusUserAccess(required.accessToken, async () => {
+        if (segments.length === 1 && context.request.method === "GET") {
+            return handleRegistrationRequestsGet(context);
+        }
 
-    if (segments.length === 2 && context.request.method === "PATCH") {
-        return handleRegistrationRequestPatch(
-            context,
-            required.access.user.id,
-            segments,
-        );
-    }
+        if (segments.length === 2 && context.request.method === "PATCH") {
+            return handleRegistrationRequestPatch(
+                context,
+                required.access.user.id,
+                segments,
+            );
+        }
 
-    return fail("未找到接口", 404);
+        return fail("未找到接口", 404);
+    });
 }

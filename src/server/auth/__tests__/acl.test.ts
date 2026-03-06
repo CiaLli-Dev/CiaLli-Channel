@@ -1,108 +1,76 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { mockProfile, mockSessionUser } from "@/__tests__/helpers/mock-data";
 import {
-    mockPermissions,
-    mockProfile,
-    mockSessionUser,
-} from "@/__tests__/helpers/mock-data";
+    DIRECTUS_POLICY_NAME,
+    DIRECTUS_ROLE_NAME,
+} from "@/server/auth/directus-access";
 
 vi.mock("@/server/directus/client", () => ({
     createOne: vi.fn(),
     readMany: vi.fn(),
-    readOneById: vi.fn(),
     updateOne: vi.fn(),
 }));
 
-import { readMany, readOneById, updateOne } from "@/server/directus/client";
+import { readMany } from "@/server/directus/client";
 import { getAppAccessContext } from "@/server/auth/acl";
 
 const mockedReadMany = vi.mocked(readMany);
-const mockedReadOneById = vi.mocked(readOneById);
-const mockedUpdateOne = vi.mocked(updateOne);
 
-function setupIdentity(appRole: "admin" | "member"): void {
+function setupProfile(): void {
     mockedReadMany.mockImplementation(async (collection) => {
         if (collection === "app_user_profiles") {
             return [mockProfile({ user_id: "user-1" })] as never;
         }
-        if (collection === "app_user_permissions") {
-            return [
-                mockPermissions({
-                    id: "perm-1",
-                    user_id: "user-1",
-                    app_role: appRole,
-                }),
-            ] as never;
-        }
         return [] as never;
     });
-    mockedReadOneById.mockResolvedValue({
-        id: "user-1",
-        email: "user-1@example.com",
-        first_name: null,
-        last_name: null,
-        avatar: null,
-        role: null,
-    } as never);
 }
 
-describe("getAppAccessContext 双因子管理员", () => {
+describe("getAppAccessContext 原生 Directus 权限映射", () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        mockedUpdateOne.mockResolvedValue(
-            mockPermissions({
-                id: "perm-1",
-                user_id: "user-1",
-                app_role: "admin",
-            }) as never,
-        );
+        setupProfile();
     });
 
-    it("admin_access=false + app_role=admin 时不授予管理员权限", async () => {
-        setupIdentity("admin");
+    it("Site Admin 角色应授予管理员权限", async () => {
         const access = await getAppAccessContext(
             mockSessionUser({
                 id: "user-1",
-                isSystemAdmin: false,
+                roleName: DIRECTUS_ROLE_NAME.siteAdmin,
             }),
         );
 
         expect(access.permissions.app_role).toBe("admin");
+        expect(access.isSiteAdmin).toBe(true);
+        expect(access.isAdmin).toBe(true);
+    });
+
+    it("平台管理员应自动具备站点管理员权限", async () => {
+        const access = await getAppAccessContext(
+            mockSessionUser({
+                id: "user-1",
+                roleName: DIRECTUS_ROLE_NAME.administrator,
+                isSystemAdmin: true,
+            }),
+        );
+
+        expect(access.permissions.app_role).toBe("admin");
+        expect(access.isPlatformAdmin).toBe(true);
+        expect(access.isAdmin).toBe(true);
+    });
+
+    it("Member 角色按策略映射能力", async () => {
+        const access = await getAppAccessContext(
+            mockSessionUser({
+                id: "user-1",
+                roleName: DIRECTUS_ROLE_NAME.member,
+                policyNames: [DIRECTUS_POLICY_NAME.publishArticles],
+            }),
+        );
+
+        expect(access.permissions.app_role).toBe("member");
+        expect(access.permissions.can_publish_articles).toBe(true);
+        expect(access.permissions.can_manage_diaries).toBe(false);
         expect(access.isAdmin).toBe(false);
-        expect(mockedUpdateOne).not.toHaveBeenCalled();
-    });
-
-    it("admin_access=true + app_role=admin 时授予管理员权限", async () => {
-        setupIdentity("admin");
-        const access = await getAppAccessContext(
-            mockSessionUser({
-                id: "user-1",
-                isSystemAdmin: true,
-            }),
-        );
-
-        expect(access.permissions.app_role).toBe("admin");
-        expect(access.isAdmin).toBe(true);
-        expect(mockedUpdateOne).not.toHaveBeenCalled();
-    });
-
-    it("admin_access=true + app_role=member 时自动同步为 admin", async () => {
-        setupIdentity("member");
-        const access = await getAppAccessContext(
-            mockSessionUser({
-                id: "user-1",
-                isSystemAdmin: true,
-            }),
-        );
-
-        expect(mockedUpdateOne).toHaveBeenCalledWith(
-            "app_user_permissions",
-            "perm-1",
-            {
-                app_role: "admin",
-            },
-        );
-        expect(access.permissions.app_role).toBe("admin");
-        expect(access.isAdmin).toBe(true);
     });
 });
