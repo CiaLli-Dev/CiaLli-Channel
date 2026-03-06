@@ -27,6 +27,8 @@ export type SessionUser = {
     email: string;
     name: string;
     avatarUrl?: string;
+    avatarFileId?: string;
+    description?: string | null;
     roleId?: string;
     roleName?: string;
     policyIds: string[];
@@ -200,6 +202,7 @@ function resolveAvatarUrl(
     });
 }
 
+// eslint-disable-next-line complexity -- 会话用户需要一次性合并 token、Directus 用户与策略快照
 async function buildSessionUser(
     me: DirectusMe,
     accessToken: string,
@@ -229,6 +232,11 @@ async function buildSessionUser(
             lastName: me.last_name ?? fallbackUser?.last_name,
         }),
         avatarUrl,
+        avatarFileId: fallbackUser?.avatar || me.avatarId || undefined,
+        description:
+            typeof fallbackUser?.description === "string"
+                ? fallbackUser.description
+                : null,
         roleId,
         roleName,
         policyIds,
@@ -245,6 +253,7 @@ async function loadDirectusUserById(userId: string): Promise<AppUser | null> {
                 "email",
                 "first_name",
                 "last_name",
+                "description",
                 "avatar",
                 "status",
                 "role.id",

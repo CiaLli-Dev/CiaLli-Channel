@@ -1,5 +1,4 @@
 ---
-/* eslint-disable max-lines -- 文件行数较长，按页面驱动与模块边界保留当前结构 */
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
@@ -135,15 +134,7 @@ try {
                   alt="avatar"
                   loading="lazy"
                 />
-                <div class="flex-1 space-y-2">
-                  <label for="me-avatar-url" class="sr-only">
-                    {i18n(I18nKey.meSettingsAvatarUrlLabel)}
-                  </label>
-                  <input
-                    id="me-avatar-url"
-                    placeholder={i18n(I18nKey.meSettingsAvatarUrlPlaceholder)}
-                    class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
-                  />
+                <div class="flex-1">
                   <div class="flex flex-wrap items-center gap-2">
                     <button
                       type="button"

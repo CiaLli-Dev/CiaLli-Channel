@@ -57,7 +57,6 @@ export interface ProfileSnapshot {
     bio: string;
     bio_typewriter_enable: boolean;
     bio_typewriter_speed: number;
-    avatar_url: string;
     avatar_file_id: string;
     avatar_pending_upload: boolean;
 }
@@ -128,7 +127,6 @@ export interface MePageDom {
     socialSaveBtn: HTMLElement | null;
     socialMsg: HTMLElement | null;
     avatarPreviewEl: HTMLImageElement | null;
-    avatarUrlInput: HTMLInputElement | null;
     avatarUploadBtn: HTMLElement | null;
     avatarClearBtn: HTMLElement | null;
     avatarCropModal: HTMLElement | null;

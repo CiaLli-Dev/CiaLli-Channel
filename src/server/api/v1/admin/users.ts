@@ -1,7 +1,12 @@
 /* eslint-disable max-lines -- 用户管理聚合了角色、策略、资料与删除清理编排 */
 import type { APIContext } from "astro";
 
-import type { AppPermissions, AppProfile, AppUser } from "@/types/app";
+import type {
+    AppPermissions,
+    AppProfile,
+    AppProfileView,
+    AppUser,
+} from "@/types/app";
 import type { JsonObject } from "@/types/json";
 import {
     buildPermissionsFromDirectus,
@@ -17,6 +22,7 @@ import {
     loadDirectusAccessRegistry,
 } from "@/server/auth/directus-registry";
 import { createUniqueUsername } from "@/server/auth/acl";
+import { toAppProfileView } from "@/server/profile-view";
 import {
     normalizeRequestedUsername,
     validateDisplayName,
@@ -54,9 +60,10 @@ import {
 import {
     DEFAULT_LIST_LIMIT,
     ensureUsernameAvailable,
-    normalizeAppRole,
     hasOwn,
+    normalizeAppRole,
     parseRouteId,
+    parseProfileBioField,
     requireAdmin,
 } from "../shared";
 import { invalidateAuthorCache } from "../shared/author-cache";
@@ -78,7 +85,7 @@ const MANAGED_POLICY_NAMES = [
 
 type AdminUserRow = {
     user: AppUser;
-    profile: AppProfile | null;
+    profile: AppProfileView | null;
     permissions: AppPermissions;
     is_platform_admin: boolean;
     is_site_admin: boolean;
@@ -140,11 +147,8 @@ async function ensureUserProfile(
             user_id: userId,
             username: normalizedUsername,
             display_name: normalizedUsername,
-            bio: null,
             bio_typewriter_enable: true,
             bio_typewriter_speed: 80,
-            avatar_file: null,
-            avatar_url: null,
             header_file: null,
             profile_public: true,
             show_articles_on_profile: true,
@@ -206,7 +210,7 @@ function buildProfileVisibilityPayload(
 
 function buildProfilePayload(
     input: AdminUpdateUserInput,
-    body: JsonObject,
+    _body: JsonObject,
 ): JsonObject {
     const payload: JsonObject = {};
     if (input.display_name !== undefined) {
@@ -215,20 +219,11 @@ function buildProfilePayload(
     if (input.social_links !== undefined) {
         payload.social_links = input.social_links;
     }
-    if (input.bio !== undefined) {
-        payload.bio = input.bio;
-    }
     if (input.bio_typewriter_enable !== undefined) {
         payload.bio_typewriter_enable = input.bio_typewriter_enable;
     }
     if (input.bio_typewriter_speed !== undefined) {
         payload.bio_typewriter_speed = input.bio_typewriter_speed;
-    }
-    if (hasOwn(body, "avatar_file")) {
-        payload.avatar_file = input.avatar_file ?? null;
-    }
-    if (input.avatar_url !== undefined) {
-        payload.avatar_url = input.avatar_url;
     }
     return { ...payload, ...buildProfileVisibilityPayload(input) };
 }
@@ -240,7 +235,8 @@ async function applyAvatarFileChange(
     nextAvatarFile: string | null,
     nextProfilePublic: boolean,
 ): Promise<void> {
-    if (!hasOwn(body, "avatar_file")) {
+    const hasAvatarPatch = hasOwn(body, "avatar_file");
+    if (!hasAvatarPatch && !hasOwn(body, "profile_public")) {
         return;
     }
     if (nextAvatarFile) {
@@ -250,7 +246,7 @@ async function applyAvatarFileChange(
             app_visibility: nextProfilePublic ? "public" : "private",
         });
     }
-    if (prevAvatarFile && prevAvatarFile !== nextAvatarFile) {
+    if (hasAvatarPatch && prevAvatarFile && prevAvatarFile !== nextAvatarFile) {
         await cleanupOrphanDirectusFiles([prevAvatarFile]);
     }
 }
@@ -270,6 +266,13 @@ function extractSnapshot(
             isPlatformAdministratorRoleName(roleName) ||
             policyNames.includes(DIRECTUS_ROLE_NAME.administrator),
     };
+}
+
+function buildProfileView(profile: AppProfile, user: AppUser): AppProfileView {
+    return toAppProfileView(profile, {
+        avatar: user.avatar,
+        description: user.description ?? null,
+    });
 }
 
 function buildPermissionSnapshot(
@@ -376,6 +379,7 @@ async function loadDirectusUserForAdmin(
             "email",
             "first_name",
             "last_name",
+            "description",
             "avatar",
             "status",
             "role.id",
@@ -412,9 +416,10 @@ async function handleUsersList(context: APIContext): Promise<Response> {
 
     const items: AdminUserRow[] = users.map((user) => {
         const snapshot = extractSnapshot(user, registry);
+        const profile = profileMap.get(user.id) || null;
         return {
             user,
-            profile: profileMap.get(user.id) || null,
+            profile: profile ? buildProfileView(profile, user) : null,
             permissions: buildPermissionsFromDirectus({
                 roleName: snapshot.roleName,
                 policyNames: snapshot.policyNames,
@@ -468,6 +473,12 @@ async function handleUserPatch(
     }
     if (input.password !== undefined) {
         directusPayload.password = input.password;
+    }
+    if (input.bio !== undefined) {
+        directusPayload.description = parseProfileBioField(input.bio);
+    }
+    if (hasOwn(body as JsonObject, "avatar_file")) {
+        directusPayload.avatar = input.avatar_file ?? null;
     }
 
     const currentPermissions = buildPermissionSnapshot(targetUser, registry);
@@ -523,7 +534,7 @@ async function handleUserPatch(
     }
 
     const profile = await ensureUserProfile(userId, input.username || "Member");
-    const prevAvatarFile = normalizeDirectusFileId(profile.avatar_file);
+    const prevAvatarFile = normalizeDirectusFileId(targetUser.avatar);
     const nextAvatarFile = hasOwn(body as JsonObject, "avatar_file")
         ? normalizeDirectusFileId(input.avatar_file)
         : prevAvatarFile;
@@ -558,7 +569,7 @@ async function handleUserPatch(
     return ok({
         id: userId,
         user: refreshedUser,
-        profile: updatedProfile,
+        profile: buildProfileView(updatedProfile, refreshedUser),
         permissions: buildPermissionSnapshot(refreshedUser, registry),
         is_platform_admin: extractSnapshot(refreshedUser, registry)
             .isPlatformAdmin,

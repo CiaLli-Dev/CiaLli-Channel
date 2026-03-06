@@ -1,7 +1,11 @@
-import type { AppProfile, AppUser } from "@/types/app";
+import type { AppProfileView, AppUser } from "@/types/app";
 import type { JsonObject } from "@/types/json";
 import { cacheManager } from "@/server/cache/manager";
 import { readMany } from "@/server/directus/client";
+import {
+    toAppProfileView,
+    type AppProfileWithUser,
+} from "@/server/profile-view";
 import { buildPublicAssetUrl } from "@/server/directus-auth";
 
 export type AuthorBundleItem = {
@@ -10,10 +14,6 @@ export type AuthorBundleItem = {
     display_name?: string;
     username?: string;
     avatar_url?: string;
-};
-
-type ProfileWithRelationUser = AppProfile & {
-    user?: Partial<AppUser> | null;
 };
 
 function computeDisplayName(
@@ -55,12 +55,9 @@ function normalizeUsername(
 }
 
 function resolveAvatarUrl(
-    profile: AppProfile | null,
+    profile: AppProfileView | null,
     user: Partial<AppUser> | null,
 ): string | undefined {
-    if (profile?.avatar_url?.trim()) {
-        return profile.avatar_url;
-    }
     if (profile?.avatar_file) {
         return buildPublicAssetUrl(profile.avatar_file, {
             width: 96,
@@ -80,7 +77,7 @@ function resolveAvatarUrl(
 
 function toAuthorBundle(
     userId: string,
-    profile: AppProfile | null,
+    profile: AppProfileView | null,
     user: Partial<AppUser> | null,
 ): AuthorBundleItem {
     const username = normalizeUsername(profile?.username, userId);
@@ -103,28 +100,42 @@ function uniqueUserIds(userIds: string[]): string[] {
     );
 }
 
-async function readProfiles(
-    userIds: string[],
-): Promise<ProfileWithRelationUser[]> {
+async function readProfiles(userIds: string[]): Promise<AppProfileWithUser[]> {
     try {
         return (await readMany("app_user_profiles", {
             filter: {
                 user_id: { _in: userIds },
             } as JsonObject,
             fields: [
+                "id",
                 "user_id",
                 "username",
                 "display_name",
-                "avatar_url",
-                "avatar_file",
+                "bio_typewriter_enable",
+                "bio_typewriter_speed",
+                "header_file",
+                "profile_public",
+                "show_articles_on_profile",
+                "show_diaries_on_profile",
+                "show_bangumi_on_profile",
+                "show_albums_on_profile",
+                "show_comments_on_profile",
+                "bangumi_username",
+                "bangumi_include_private",
+                "bangumi_access_token_encrypted",
+                "social_links",
+                "home_section_order",
+                "is_official",
+                "status",
                 "user.id",
                 "user.email",
                 "user.first_name",
                 "user.last_name",
                 "user.avatar",
+                "user.description",
             ],
             limit: Math.max(userIds.length, 20),
-        })) as ProfileWithRelationUser[];
+        })) as AppProfileWithUser[];
     } catch (error) {
         console.warn(
             "[api/v1/author-cache] profile relation query failed, fallback:",
@@ -135,14 +146,29 @@ async function readProfiles(
                 user_id: { _in: userIds },
             } as JsonObject,
             fields: [
+                "id",
                 "user_id",
                 "username",
                 "display_name",
-                "avatar_url",
-                "avatar_file",
+                "bio_typewriter_enable",
+                "bio_typewriter_speed",
+                "header_file",
+                "profile_public",
+                "show_articles_on_profile",
+                "show_diaries_on_profile",
+                "show_bangumi_on_profile",
+                "show_albums_on_profile",
+                "show_comments_on_profile",
+                "bangumi_username",
+                "bangumi_include_private",
+                "bangumi_access_token_encrypted",
+                "social_links",
+                "home_section_order",
+                "is_official",
+                "status",
             ],
             limit: Math.max(userIds.length, 20),
-        })) as ProfileWithRelationUser[];
+        })) as AppProfileWithUser[];
     }
 }
 
@@ -155,14 +181,17 @@ async function fetchAuthorsForUsers(
     }
 
     const profiles = await readProfiles(userIds);
-    const profileMap = new Map<string, ProfileWithRelationUser>();
+    const profileMap = new Map<string, AppProfileView>();
     const relationUserMap = new Map<string, Partial<AppUser>>();
 
     for (const profile of profiles) {
         if (!profile.user_id) {
             continue;
         }
-        profileMap.set(profile.user_id, profile);
+        profileMap.set(
+            profile.user_id,
+            toAppProfileView(profile, profile.user),
+        );
         if (profile.user) {
             relationUserMap.set(profile.user_id, profile.user);
         }

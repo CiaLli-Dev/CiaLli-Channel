@@ -26,7 +26,6 @@ export const AdminUpdateUserSchema = z
         bio_typewriter_enable: z.boolean(),
         bio_typewriter_speed: z.number().int().min(10).max(500),
         avatar_file: OptionalStringSchema,
-        avatar_url: OptionalStringSchema,
         social_links: SocialLinksSchema,
         profile_public: z.boolean(),
         show_articles_on_profile: z.boolean(),

@@ -85,9 +85,6 @@ export function queryDom(): MePageDom | null {
         avatarPreviewEl: document.getElementById(
             "me-avatar-preview",
         ) as HTMLImageElement | null,
-        avatarUrlInput: document.getElementById(
-            "me-avatar-url",
-        ) as HTMLInputElement | null,
         avatarUploadBtn: document.getElementById("me-avatar-upload-btn"),
         avatarClearBtn: document.getElementById("me-avatar-clear-btn"),
         avatarCropModal: document.getElementById("me-avatar-crop-modal"),
@@ -143,9 +140,6 @@ export function captureProfileSnapshot(
                 ),
             ),
         ),
-        avatar_url: dom.avatarUrlInput
-            ? String(dom.avatarUrlInput.value || "").trim()
-            : "",
         avatar_file_id: state.currentAvatarFileId,
         avatar_pending_upload: Boolean(state.pendingAvatarUpload),
     };
@@ -187,7 +181,6 @@ export function checkProfileDirty(dom: MePageDom, state: MePageState): void {
         changed.push(t(I18nKey.meSettingsBioTypewriter));
     }
     if (
-        current.avatar_url !== snap.avatar_url ||
         current.avatar_file_id !== snap.avatar_file_id ||
         current.avatar_pending_upload !== snap.avatar_pending_upload
     ) {
@@ -255,11 +248,7 @@ export function updateAvatarPreview(dom: MePageDom, state: MePageState): void {
     if (!dom.avatarPreviewEl) {
         return;
     }
-    const avatarUrl = dom.avatarUrlInput
-        ? String(dom.avatarUrlInput.value || "").trim()
-        : "";
     const src =
-        avatarUrl ||
         state.pendingAvatarUpload?.previewUrl ||
         buildAssetUrl(state.currentAvatarFileId) ||
         state.currentAvatarFallbackUrl;

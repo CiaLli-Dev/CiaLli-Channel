@@ -318,9 +318,6 @@ export async function applyAvatarFromCrop(
         };
         state.currentAvatarFileId = "";
         state.currentAvatarFallbackUrl = "";
-        if (dom.avatarUrlInput) {
-            dom.avatarUrlInput.value = "";
-        }
         updateAvatarPreview(dom, state);
         closeAvatarCropModal(dom, state);
         checkProfileDirty(dom, state);
@@ -335,10 +332,7 @@ export async function uploadPendingAvatarIfNeeded(
     state: MePageState,
     taskHandle?: ProgressTaskHandle,
 ): Promise<boolean> {
-    const avatarUrl = dom.avatarUrlInput
-        ? String(dom.avatarUrlInput.value || "").trim()
-        : "";
-    if (avatarUrl || !state.pendingAvatarUpload) {
+    if (!state.pendingAvatarUpload) {
         return true;
     }
     setProfileMessage(dom, t(I18nKey.meSettingsAvatarUploading));

@@ -1,8 +1,14 @@
-import type { AppPermissionKey, AppPermissions, AppProfile } from "@/types/app";
+import type {
+    AppPermissionKey,
+    AppPermissions,
+    AppProfile,
+    AppProfileView,
+} from "@/types/app";
 import type { JsonObject } from "@/types/json";
 import { conflict, forbidden } from "@/server/api/errors";
 import { cacheManager } from "@/server/cache/manager";
 import { createOne, readMany, updateOne } from "@/server/directus/client";
+import { toAppProfileView } from "@/server/profile-view";
 import {
     buildPermissionsFromDirectus,
     isSiteAdminRoleName,
@@ -17,7 +23,7 @@ import type { SessionUser } from "./session";
 
 export type AppAccessContext = {
     user: SessionUser;
-    profile: AppProfile;
+    profile: AppProfileView;
     permissions: AppPermissions;
     isAdmin: boolean;
     isSiteAdmin: boolean;
@@ -68,10 +74,8 @@ function normalizeProfileIdentity(
 
 function normalizeProfileMedia(
     raw: Partial<AppProfile>,
-): Pick<AppProfile, "avatar_file" | "avatar_url" | "header_file"> {
+): Pick<AppProfile, "header_file"> {
     return {
-        avatar_file: raw.avatar_file ?? null,
-        avatar_url: raw.avatar_url ?? null,
         header_file: raw.header_file ?? null,
     };
 }
@@ -116,7 +120,6 @@ function normalizeProfileBangumi(
 function normalizeProfile(raw: Partial<AppProfile>): AppProfile {
     return {
         ...normalizeProfileIdentity(raw),
-        bio: raw.bio ?? null,
         bio_typewriter_enable: raw.bio_typewriter_enable ?? true,
         bio_typewriter_speed: clampTypingSpeed(raw),
         ...normalizeProfileMedia(raw),
@@ -176,11 +179,8 @@ async function ensureProfile(user: SessionUser): Promise<AppProfile> {
         user_id: user.id,
         username,
         display_name: username,
-        bio: null,
         bio_typewriter_enable: true,
         bio_typewriter_speed: 80,
-        avatar_file: null,
-        avatar_url: user.avatarUrl || null,
         header_file: null,
         profile_public: true,
         show_articles_on_profile: true,
@@ -202,6 +202,10 @@ export async function getAppAccessContext(
     user: SessionUser,
 ): Promise<AppAccessContext> {
     const profile = await ensureProfile(user);
+    const profileView = toAppProfileView(profile, {
+        avatar: user.avatarFileId ?? null,
+        description: user.description ?? null,
+    });
     const permissions = buildPermissionsFromDirectus({
         roleName: user.roleName,
         policyNames: user.policyNames,
@@ -211,7 +215,7 @@ export async function getAppAccessContext(
     const isSiteAdmin = isSiteAdminRoleName(user.roleName);
     return {
         user,
-        profile,
+        profile: profileView,
         permissions,
         isAdmin: isPlatformAdmin || isSiteAdmin,
         isSiteAdmin,

@@ -3,6 +3,7 @@ import type {
     AppArticle,
     AppDiary,
     AppProfile,
+    AppProfileView,
     SidebarProfileData,
 } from "@/types/app";
 import type { JsonObject } from "@/types/json";
@@ -15,6 +16,10 @@ import { loadBangumiCollections } from "@/server/bangumi/service";
 import { decryptBangumiAccessToken } from "@/server/bangumi/token";
 import { normalizeBangumiId } from "@/server/bangumi/username";
 import { countItemsGroupedByField, readMany } from "@/server/directus/client";
+import {
+    toAppProfileView,
+    type AppProfileWithUser,
+} from "@/server/profile-view";
 import { buildPublicAssetUrl } from "@/server/directus-auth";
 
 import type { AuthorBundleItem } from "./shared/author-cache";
@@ -119,14 +124,16 @@ export async function fetchDiaryLikeCountMap(
 // profile 公共资料
 // ---------------------------------------------------------------------------
 
-export function profileToSidebarData(profile: AppProfile): SidebarProfileData {
+export function profileToSidebarData(
+    profile: AppProfileView,
+): SidebarProfileData {
     const avatarUrl = profile.avatar_file
         ? buildPublicAssetUrl(profile.avatar_file)
-        : profile.avatar_url || null;
+        : null;
 
     return {
         display_name: profile.display_name || profile.username || "user",
-        bio: profile.bio ?? null,
+        bio: profile.bio,
         bio_typewriter_enable: profile.bio_typewriter_enable ?? true,
         bio_typewriter_speed: Math.max(
             10,
@@ -228,7 +235,7 @@ export async function loadHomeDataInParallel(
 
 type OwnerDataOptions = {
     targetUserId: string;
-    profile: AppProfile;
+    profile: AppProfileView;
     author: AuthorBundleItem;
 };
 
@@ -244,15 +251,13 @@ export function buildOwnerData(opts: OwnerDataOptions): {
         id: targetUserId,
         name: profile.display_name || profile.username || author.name || "user",
         username: profile.username || author.username,
-        avatar_url:
-            profile.avatar_url ||
-            (profile.avatar_file
-                ? buildPublicAssetUrl(profile.avatar_file, {
-                      width: 128,
-                      height: 128,
-                      fit: "cover",
-                  })
-                : author.avatar_url),
+        avatar_url: profile.avatar_file
+            ? buildPublicAssetUrl(profile.avatar_file, {
+                  width: 128,
+                  height: 128,
+                  fit: "cover",
+              })
+            : author.avatar_url,
         header_url: profile.header_file
             ? buildPublicAssetUrl(profile.header_file, {
                   width: 1200,
@@ -275,6 +280,76 @@ export function invalidateOfficialSidebarCache(): void {
     void invalidateOfficialSidebarCacheAsync();
 }
 
+async function loadProfileViewByFilter(
+    filter: JsonObject,
+): Promise<AppProfileView | null> {
+    try {
+        const rows = (await readMany("app_user_profiles", {
+            filter,
+            limit: 1,
+            fields: [
+                "id",
+                "user_id",
+                "username",
+                "display_name",
+                "bio_typewriter_enable",
+                "bio_typewriter_speed",
+                "header_file",
+                "profile_public",
+                "show_articles_on_profile",
+                "show_diaries_on_profile",
+                "show_bangumi_on_profile",
+                "show_albums_on_profile",
+                "show_comments_on_profile",
+                "bangumi_username",
+                "bangumi_include_private",
+                "bangumi_access_token_encrypted",
+                "social_links",
+                "home_section_order",
+                "is_official",
+                "status",
+                "user.id",
+                "user.email",
+                "user.first_name",
+                "user.last_name",
+                "user.avatar",
+                "user.description",
+            ],
+        })) as AppProfileWithUser[];
+        const profile = rows[0];
+        if (!profile) {
+            return null;
+        }
+        return toAppProfileView(profile, profile.user);
+    } catch (error) {
+        console.warn(
+            "[public-data] profile relation query failed, fallback:",
+            error,
+        );
+        const rows = (await readMany("app_user_profiles", {
+            filter,
+            limit: 1,
+        })) as AppProfile[];
+        const profile = rows[0];
+        if (!profile) {
+            return null;
+        }
+        const users = await readMany("directus_users", {
+            filter: { id: { _eq: profile.user_id } } as JsonObject,
+            limit: 1,
+            fields: [
+                "id",
+                "email",
+                "first_name",
+                "last_name",
+                "avatar",
+                "description",
+            ],
+        }).catch(() => []);
+        return toAppProfileView(profile, users[0]);
+    }
+}
+
 export async function loadOfficialSidebarProfile(): Promise<SidebarProfileData> {
     const cached = await cacheManager.get<SidebarProfileData>(
         "sidebar",
@@ -284,17 +359,12 @@ export async function loadOfficialSidebarProfile(): Promise<SidebarProfileData> 
         return cached;
     }
 
-    const rows = await readMany("app_user_profiles", {
-        filter: {
-            _and: [
-                { is_official: { _eq: true } },
-                { profile_public: { _eq: true } },
-            ],
-        } as JsonObject,
-        limit: 1,
-    });
-
-    const profile = rows[0] as AppProfile | undefined;
+    const profile = await loadProfileViewByFilter({
+        _and: [
+            { is_official: { _eq: true } },
+            { profile_public: { _eq: true } },
+        ],
+    } as JsonObject);
     if (!profile) {
         return {
             display_name: "CiaLli",
@@ -340,7 +410,7 @@ export { safeCsv };
 
 export async function loadPublicProfileByUserId(
     userId: string,
-): Promise<AppProfile | null> {
+): Promise<AppProfileView | null> {
     const normalizedUserId = String(userId || "").trim();
     if (!normalizedUserId) {
         return null;
@@ -348,22 +418,18 @@ export async function loadPublicProfileByUserId(
     const cacheKey = `public:${normalizedUserId}`;
     const cached = await cacheManager.get<{
         exists: boolean;
-        profile: AppProfile | null;
+        profile: AppProfileView | null;
     }>("profile-viewer", cacheKey);
     if (cached) {
         return cached.profile;
     }
 
-    const rows = await readMany("app_user_profiles", {
-        filter: {
-            _and: [
-                { user_id: { _eq: normalizedUserId } },
-                { profile_public: { _eq: true } },
-            ],
-        } as JsonObject,
-        limit: 1,
-    });
-    const profile = rows[0] || null;
+    const profile = await loadProfileViewByFilter({
+        _and: [
+            { user_id: { _eq: normalizedUserId } },
+            { profile_public: { _eq: true } },
+        ],
+    } as JsonObject);
     void cacheManager.set("profile-viewer", cacheKey, {
         exists: true,
         profile,
@@ -378,7 +444,7 @@ export async function loadPublicProfileByUserId(
 export async function loadProfileForViewerByUserId(
     userId: string,
     viewerId?: string | null,
-): Promise<AppProfile | null> {
+): Promise<AppProfileView | null> {
     const normalizedUserId = String(userId || "").trim();
     if (!normalizedUserId) {
         return null;
@@ -390,16 +456,14 @@ export async function loadProfileForViewerByUserId(
         const cacheKey = `owner:${normalizedUserId}`;
         const cached = await cacheManager.get<{
             exists: boolean;
-            profile: AppProfile | null;
+            profile: AppProfileView | null;
         }>("profile-viewer", cacheKey);
         if (cached) {
             return cached.profile;
         }
-        const rows = await readMany("app_user_profiles", {
-            filter: { user_id: { _eq: normalizedUserId } } as JsonObject,
-            limit: 1,
-        });
-        const profile = (rows[0] as AppProfile | undefined) ?? null;
+        const profile = await loadProfileViewByFilter({
+            user_id: { _eq: normalizedUserId },
+        } as JsonObject);
         void cacheManager.set("profile-viewer", cacheKey, {
             exists: true,
             profile,

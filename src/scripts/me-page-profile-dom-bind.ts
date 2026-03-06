@@ -7,8 +7,6 @@
 import { DATA_BOUND } from "@/scripts/me-page-types";
 import type { MePageDom, MePageState } from "@/scripts/me-page-types";
 import {
-    clearPendingAvatarUpload,
-    updateAvatarPreview,
     updateUsernameCounter,
     updateUsernameDisplay,
     updateBioCounter,
@@ -75,17 +73,6 @@ export function buildOutsideClickHandler(
 // ---------------------------------------------------------------------------
 
 export function bindAllInputControls(dom: MePageDom, state: MePageState): void {
-    if (dom.avatarUrlInput && !dom.avatarUrlInput.hasAttribute(DATA_BOUND)) {
-        dom.avatarUrlInput.setAttribute(DATA_BOUND, "");
-        dom.avatarUrlInput.addEventListener("input", () => {
-            if (String(dom.avatarUrlInput!.value || "").trim()) {
-                clearPendingAvatarUpload(state, true);
-            }
-            updateAvatarPreview(dom, state);
-            checkProfileDirty(dom, state);
-        });
-    }
-
     if (dom.usernameInput && !dom.usernameInput.hasAttribute(DATA_BOUND)) {
         dom.usernameInput.setAttribute(DATA_BOUND, "");
         dom.usernameInput.addEventListener("input", () => {

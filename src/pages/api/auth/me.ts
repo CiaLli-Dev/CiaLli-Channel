@@ -35,15 +35,13 @@ export async function GET(context: APIContext): Promise<Response> {
         const displayName = String(profile.display_name || "").trim();
         const name =
             displayName || username || user.name || user.email || "Member";
-        const avatarUrl =
-            profile.avatar_url ||
-            (profile.avatar_file
-                ? buildDirectusAssetUrl(profile.avatar_file, {
-                      width: 128,
-                      height: 128,
-                      fit: "cover",
-                  })
-                : user.avatarUrl);
+        const avatarUrl = profile.avatar_file
+            ? buildDirectusAssetUrl(profile.avatar_file, {
+                  width: 128,
+                  height: 128,
+                  fit: "cover",
+              })
+            : user.avatarUrl;
 
         return json({
             ok: true,

@@ -32,9 +32,10 @@ vi.mock("@/server/api/v1/me/_helpers", () => ({
     bindFileOwnerToUser: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { updateOne } from "@/server/directus/client";
+import { updateDirectusUser, updateOne } from "@/server/directus/client";
 import { handleMeProfile } from "@/server/api/v1/me/profile";
 
+const mockedUpdateDirectusUser = vi.mocked(updateDirectusUser);
 const mockedUpdateOne = vi.mocked(updateOne);
 
 describe("/me/profile bangumi fields", () => {
@@ -135,6 +136,68 @@ describe("/me/profile bangumi fields", () => {
             unknown
         >;
         expect(payload.bangumi_access_token_encrypted).toBeNull();
+    });
+
+    it("PATCH writes bio and avatar_file to directus_users", async () => {
+        const access = createMemberAccess({
+            profile: {
+                ...createMemberAccess().profile,
+                bio: "旧简介",
+                avatar_file: "old-avatar-id",
+            },
+        });
+        mockedUpdateOne.mockResolvedValue({
+            ...access.profile,
+            profile_public: false,
+        });
+
+        const ctx = createMockAPIContext({
+            method: "PATCH",
+            url: "http://localhost:4321/api/v1/me/profile",
+            body: {
+                bio: "新简介",
+                avatar_file: "new-avatar-id",
+            },
+        });
+
+        const response = await handleMeProfile(
+            ctx as unknown as APIContext,
+            access,
+        );
+
+        expect(response.status).toBe(200);
+        expect(mockedUpdateDirectusUser).toHaveBeenCalledWith("user-1", {
+            description: "新简介",
+            avatar: "new-avatar-id",
+        });
+    });
+
+    it("PATCH clears avatar on directus_users when avatar_file is null", async () => {
+        const access = createMemberAccess({
+            profile: {
+                ...createMemberAccess().profile,
+                avatar_file: "old-avatar-id",
+            },
+        });
+        mockedUpdateOne.mockResolvedValue(access.profile);
+
+        const ctx = createMockAPIContext({
+            method: "PATCH",
+            url: "http://localhost:4321/api/v1/me/profile",
+            body: {
+                avatar_file: null,
+            },
+        });
+
+        const response = await handleMeProfile(
+            ctx as unknown as APIContext,
+            access,
+        );
+
+        expect(response.status).toBe(200);
+        expect(mockedUpdateDirectusUser).toHaveBeenCalledWith("user-1", {
+            avatar: null,
+        });
     });
 
     it("PATCH rejects non-digit bangumi id", async () => {

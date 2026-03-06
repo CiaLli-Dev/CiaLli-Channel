@@ -23,11 +23,8 @@ export type AppProfile = {
     user_id: string;
     username: string;
     display_name: string;
-    bio: string | null;
     bio_typewriter_enable: boolean;
     bio_typewriter_speed: number;
-    avatar_file: string | null;
-    avatar_url: string | null;
     header_file: string | null;
     profile_public: boolean;
     show_articles_on_profile: boolean;
@@ -42,6 +39,11 @@ export type AppProfile = {
     home_section_order: string[] | null;
     is_official: boolean;
     status: AppStatus;
+};
+
+export type AppProfileView = AppProfile & {
+    bio: string | null;
+    avatar_file: string | null;
 };
 
 export type SidebarProfileData = {
@@ -269,6 +271,7 @@ export type AppUser = {
     email: string;
     first_name: string | null;
     last_name: string | null;
+    description?: string | null;
     avatar: string | null;
     status?: string | null;
     role: string | { id?: string; name?: string } | null;

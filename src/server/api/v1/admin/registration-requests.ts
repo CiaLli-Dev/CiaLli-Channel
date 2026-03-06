@@ -93,11 +93,8 @@ async function ensureManagedProfile(params: {
         user_id: params.userId,
         username: params.requestedUsername,
         display_name: params.displayName,
-        bio: null,
         bio_typewriter_enable: true,
         bio_typewriter_speed: 80,
-        avatar_file: params.avatarFile || null,
-        avatar_url: null,
         header_file: null,
         profile_public: true,
         show_articles_on_profile: true,
@@ -149,6 +146,9 @@ async function activateManagedUser(params: {
     };
     if (params.displayName) {
         directusPayload.first_name = params.displayName;
+    }
+    if (params.avatarFile) {
+        directusPayload.avatar = params.avatarFile;
     }
     await updateDirectusUser(params.pendingUserId, directusPayload);
     await syncDirectusUserPolicies({

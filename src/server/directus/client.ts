@@ -534,6 +534,7 @@ export async function listDirectusUsers(params?: {
                 "email",
                 "first_name",
                 "last_name",
+                "description",
                 "avatar",
                 "status",
                 "role.id",

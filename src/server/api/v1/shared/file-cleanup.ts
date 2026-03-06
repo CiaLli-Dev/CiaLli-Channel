@@ -22,7 +22,6 @@ type ReferenceTarget = {
 };
 
 const REFERENCE_TARGETS: ReferenceTarget[] = [
-    { collection: "app_user_profiles", field: "avatar_file" },
     { collection: "app_user_profiles", field: "header_file" },
     { collection: "app_articles", field: "cover_file" },
     { collection: "app_albums", field: "cover_file" },
@@ -346,15 +345,11 @@ export async function collectUserOwnedFileIds(
     userId: string,
 ): Promise<string[]> {
     const [
-        profileFiles,
         profileHeaderFiles,
         directusAvatarFiles,
         articleCoverFiles,
         albumCoverFiles,
     ] = await Promise.all([
-        collectFileIdsFromCollection("app_user_profiles", "avatar_file", {
-            user_id: { _eq: userId },
-        } as JsonObject),
         collectFileIdsFromCollection("app_user_profiles", "header_file", {
             user_id: { _eq: userId },
         } as JsonObject),
@@ -388,7 +383,6 @@ export async function collectUserOwnedFileIds(
     ]);
 
     return toUniqueFileIds([
-        ...profileFiles,
         ...profileHeaderFiles,
         ...directusAvatarFiles,
         ...articleCoverFiles,

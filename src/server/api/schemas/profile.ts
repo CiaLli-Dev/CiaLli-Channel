@@ -22,7 +22,6 @@ export const UpdateProfileSchema = z
         bio_typewriter_enable: z.boolean(),
         bio_typewriter_speed: z.number().int().min(10).max(500),
         avatar_file: OptionalStringSchema,
-        avatar_url: OptionalStringSchema,
         header_file: OptionalStringSchema,
         social_links: SocialLinksSchema,
         home_section_order: z.array(z.string()).nullable(),

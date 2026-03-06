@@ -97,7 +97,6 @@ describe("handleUserHome route modules", () => {
                     bio_typewriter_enable: true,
                     bio_typewriter_speed: 80,
                     avatar_file: null,
-                    avatar_url: null,
                     header_file: null,
                     profile_public: true,
                     show_articles_on_profile: true,

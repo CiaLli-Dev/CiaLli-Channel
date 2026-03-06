@@ -1,10 +1,12 @@
 import type { APIContext } from "astro";
 
+import type { AppProfile, AppProfileView } from "@/types/app";
 import type { JsonObject } from "@/types/json";
 import { updateProfileUsername } from "@/server/auth/acl";
 import { validateDisplayName } from "@/server/auth/username";
 import { encryptBangumiAccessToken } from "@/server/bangumi/token";
 import { normalizeBangumiId } from "@/server/bangumi/username";
+import { toAppProfileView } from "@/server/profile-view";
 import { updateDirectusUser, updateOne } from "@/server/directus/client";
 import { fail, ok } from "@/server/api/response";
 import { parseJsonBody } from "@/server/api/utils";
@@ -21,7 +23,7 @@ import { bindFileOwnerToUser } from "./_helpers";
 
 type ProfileInput = UpdateProfileInput;
 
-function toProfileResponse(profile: AppAccess["profile"]): JsonObject {
+function toProfileResponse(profile: AppProfileView): JsonObject {
     const { bangumi_access_token_encrypted, ...safeProfile } = profile;
     return {
         ...safeProfile,
@@ -42,9 +44,9 @@ function buildHomeSectionOrder(
         return null;
     }
     const deduped = [...new Set(order.filter((s) => VALID_SECTIONS.has(s)))];
-    for (const s of VALID_SECTIONS) {
-        if (!deduped.includes(s)) {
-            deduped.push(s);
+    for (const section of VALID_SECTIONS) {
+        if (!deduped.includes(section)) {
+            deduped.push(section);
         }
     }
     return deduped;
@@ -55,20 +57,11 @@ function applyBasicFields(
     input: ProfileInput,
     payload: JsonObject,
 ): void {
-    if (input.bio !== undefined) {
-        payload.bio = parseProfileBioField(input.bio);
-    }
     if (input.bio_typewriter_enable !== undefined) {
         payload.bio_typewriter_enable = input.bio_typewriter_enable;
     }
     if (input.bio_typewriter_speed !== undefined) {
         payload.bio_typewriter_speed = input.bio_typewriter_speed;
-    }
-    if (hasOwn(body, "avatar_file")) {
-        payload.avatar_file = input.avatar_file ?? null;
-    }
-    if (hasOwn(body, "avatar_url")) {
-        payload.avatar_url = input.avatar_url ?? null;
     }
     if (hasOwn(body, "header_file")) {
         payload.header_file = input.header_file ?? null;
@@ -109,28 +102,40 @@ function applyBangumiFields(
     }
 }
 
-function buildPatchPayload(body: JsonObject, input: ProfileInput): JsonObject {
+function buildProfilePatchPayload(
+    body: JsonObject,
+    input: ProfileInput,
+): JsonObject {
     const payload: JsonObject = {};
     applyBasicFields(body, input, payload);
     applyBangumiFields(body, input, payload);
     return payload;
 }
 
-// eslint-disable-next-line complexity -- 头像文件、外链头像与公开性需要联动处理
+function buildDirectusUserPatchPayload(
+    body: JsonObject,
+    input: ProfileInput,
+): JsonObject {
+    const payload: JsonObject = {};
+    if (input.bio !== undefined) {
+        payload.description = parseProfileBioField(input.bio);
+    }
+    if (hasOwn(body, "avatar_file")) {
+        payload.avatar = input.avatar_file ?? null;
+    }
+    return payload;
+}
+
 async function applyAvatarFileBindings(
     body: JsonObject,
     input: ProfileInput,
     access: AppAccess,
-    prevAvatarFile: string | null | undefined,
+    prevAvatarFile: string | null,
 ): Promise<void> {
     const hasAvatarFilePatch = hasOwn(body, "avatar_file");
-    const hasAvatarUrlPatch = hasOwn(body, "avatar_url");
     const nextAvatarFile = hasAvatarFilePatch
         ? (input.avatar_file ?? null)
         : prevAvatarFile;
-    const nextAvatarUrl = hasAvatarUrlPatch
-        ? (input.avatar_url ?? null)
-        : access.profile.avatar_url;
     const nextProfilePublic =
         input.profile_public ?? access.profile.profile_public;
 
@@ -149,20 +154,13 @@ async function applyAvatarFileBindings(
     ) {
         await cleanupOrphanDirectusFiles([prevAvatarFile]);
     }
-    const shouldClearDirectusAvatar =
-        (hasAvatarFilePatch || hasAvatarUrlPatch) &&
-        !nextAvatarFile &&
-        !nextAvatarUrl;
-    if (shouldClearDirectusAvatar) {
-        await updateDirectusUser(access.user.id, { avatar: null });
-    }
 }
 
 async function applyHeaderFileBindings(
     body: JsonObject,
     input: ProfileInput,
     userId: string,
-    prevHeaderFile: string | null | undefined,
+    prevHeaderFile: string | null,
     currentProfilePublic: boolean,
 ): Promise<void> {
     const hasHeaderFilePatch = hasOwn(body, "header_file");
@@ -192,8 +190,8 @@ async function applyFileBindingsAndCleanup(
     body: JsonObject,
     input: ProfileInput,
     access: AppAccess,
-    prevAvatarFile: string | null | undefined,
-    prevHeaderFile: string | null | undefined,
+    prevAvatarFile: string | null,
+    prevHeaderFile: string | null,
 ): Promise<void> {
     await applyAvatarFileBindings(body, input, access, prevAvatarFile);
     await applyHeaderFileBindings(
@@ -224,6 +222,24 @@ async function applyFileBindingsAndCleanup(
     }
 }
 
+function buildUpdatedProfileView(params: {
+    access: AppAccess;
+    updatedProfile: AppProfile;
+    input: ProfileInput;
+    body: JsonObject;
+}): AppProfileView {
+    const { access, updatedProfile, input, body } = params;
+    return toAppProfileView(updatedProfile, {
+        avatar: hasOwn(body, "avatar_file")
+            ? (input.avatar_file ?? null)
+            : access.profile.avatar_file,
+        description:
+            input.bio !== undefined
+                ? parseProfileBioField(input.bio)
+                : access.profile.bio,
+    });
+}
+
 async function handleGet(access: AppAccess): Promise<Response> {
     return ok({
         profile: toProfileResponse(access.profile),
@@ -236,27 +252,57 @@ async function handlePatch(
 ): Promise<Response> {
     const body = await parseJsonBody(context.request);
     const input = validateBody(UpdateProfileSchema, body);
-    const payload = buildPatchPayload(body, input);
+    const profilePayload = buildProfilePatchPayload(body, input);
+    const directusUserPayload = buildDirectusUserPatchPayload(body, input);
 
     if (input.username !== undefined) {
         const normalized = await updateProfileUsername(
             access.profile.id,
             input.username,
         );
-        payload.username = normalized;
+        profilePayload.username = normalized;
     }
     if (input.display_name !== undefined) {
-        payload.display_name = validateDisplayName(input.display_name);
+        profilePayload.display_name = validateDisplayName(input.display_name);
     }
 
     const prevAvatarFile = access.profile.avatar_file;
     const prevHeaderFile = access.profile.header_file;
+    const currentProfile: AppProfile = {
+        id: access.profile.id,
+        user_id: access.profile.user_id,
+        username: access.profile.username,
+        display_name: access.profile.display_name,
+        bio_typewriter_enable: access.profile.bio_typewriter_enable,
+        bio_typewriter_speed: access.profile.bio_typewriter_speed,
+        header_file: access.profile.header_file,
+        profile_public: access.profile.profile_public,
+        show_articles_on_profile: access.profile.show_articles_on_profile,
+        show_diaries_on_profile: access.profile.show_diaries_on_profile,
+        show_bangumi_on_profile: access.profile.show_bangumi_on_profile,
+        show_albums_on_profile: access.profile.show_albums_on_profile,
+        show_comments_on_profile: access.profile.show_comments_on_profile,
+        bangumi_username: access.profile.bangumi_username,
+        bangumi_include_private: access.profile.bangumi_include_private,
+        bangumi_access_token_encrypted:
+            access.profile.bangumi_access_token_encrypted,
+        social_links: access.profile.social_links,
+        home_section_order: access.profile.home_section_order,
+        is_official: access.profile.is_official,
+        status: access.profile.status,
+    };
 
-    const updated = await updateOne(
-        "app_user_profiles",
-        access.profile.id,
-        payload,
-    );
+    const updatedProfile =
+        Object.keys(profilePayload).length > 0
+            ? await updateOne(
+                  "app_user_profiles",
+                  access.profile.id,
+                  profilePayload,
+              )
+            : currentProfile;
+    if (Object.keys(directusUserPayload).length > 0) {
+        await updateDirectusUser(access.user.id, directusUserPayload);
+    }
 
     await applyFileBindingsAndCleanup(
         body,
@@ -266,10 +312,17 @@ async function handlePatch(
         prevHeaderFile,
     );
 
+    const profileView = buildUpdatedProfileView({
+        access,
+        updatedProfile,
+        input,
+        body,
+    });
+
     invalidateAuthorCache(access.user.id);
     invalidateOfficialSidebarCache();
     return ok({
-        profile: toProfileResponse(updated),
+        profile: toProfileResponse(profileView),
     });
 }
 

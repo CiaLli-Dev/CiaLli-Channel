@@ -4,6 +4,7 @@ import type {
     AppDiary,
     AppDiaryImage,
     AppProfile,
+    AppProfileView,
 } from "@/types/app";
 import type { JsonObject } from "@/types/json";
 import type {
@@ -11,6 +12,10 @@ import type {
     BangumiCollectionStatus,
 } from "@/server/bangumi/types";
 import { countItems, readMany } from "@/server/directus/client";
+import {
+    toAppProfileView,
+    type AppProfileWithUser,
+} from "@/server/profile-view";
 import { isShortId } from "@/server/utils/short-id";
 
 import type { AuthorBundleItem } from "./shared/author-cache";
@@ -51,7 +56,7 @@ export {
 // Re-export types for backward compatibility
 export type { ContentLoadResult, ViewerOptions } from "./public-data-helpers";
 
-type PublicProfile = Omit<AppProfile, "bangumi_access_token_encrypted">;
+type PublicProfile = Omit<AppProfileView, "bangumi_access_token_encrypted">;
 
 // ---------------------------------------------------------------------------
 // 内部工具：按用户名读取资料，不附带 profile_public 限制
@@ -59,12 +64,69 @@ type PublicProfile = Omit<AppProfile, "bangumi_access_token_encrypted">;
 
 async function loadProfileByUsername(
     username: string,
-): Promise<AppProfile | null> {
-    const rows = await readMany("app_user_profiles", {
-        filter: { username: { _eq: username } } as JsonObject,
-        limit: 1,
-    });
-    return (rows[0] as AppProfile | undefined) ?? null;
+): Promise<AppProfileView | null> {
+    try {
+        const rows = (await readMany("app_user_profiles", {
+            filter: { username: { _eq: username } } as JsonObject,
+            limit: 1,
+            fields: [
+                "id",
+                "user_id",
+                "username",
+                "display_name",
+                "bio_typewriter_enable",
+                "bio_typewriter_speed",
+                "header_file",
+                "profile_public",
+                "show_articles_on_profile",
+                "show_diaries_on_profile",
+                "show_bangumi_on_profile",
+                "show_albums_on_profile",
+                "show_comments_on_profile",
+                "bangumi_username",
+                "bangumi_include_private",
+                "bangumi_access_token_encrypted",
+                "social_links",
+                "home_section_order",
+                "is_official",
+                "status",
+                "user.id",
+                "user.email",
+                "user.first_name",
+                "user.last_name",
+                "user.avatar",
+                "user.description",
+            ],
+        })) as AppProfileWithUser[];
+        const profile = rows[0];
+        if (!profile) {
+            return null;
+        }
+        return toAppProfileView(profile, profile.user);
+    } catch (error) {
+        console.warn("[public-data] loadProfileByUsername fallback:", error);
+        const rows = (await readMany("app_user_profiles", {
+            filter: { username: { _eq: username } } as JsonObject,
+            limit: 1,
+        })) as AppProfile[];
+        const profile = rows[0];
+        if (!profile) {
+            return null;
+        }
+        const users = await readMany("directus_users", {
+            filter: { id: { _eq: profile.user_id } } as JsonObject,
+            limit: 1,
+            fields: [
+                "id",
+                "email",
+                "first_name",
+                "last_name",
+                "avatar",
+                "description",
+            ],
+        }).catch(() => []);
+        return toAppProfileView(profile, users[0]);
+    }
 }
 
 function toAuthorFallback(userId: string): AuthorBundleItem {
@@ -86,17 +148,12 @@ export function readAuthor(
 
 export async function loadPublicProfileByUsername(
     username: string,
-): Promise<AppProfile | null> {
-    const rows = await readMany("app_user_profiles", {
-        filter: {
-            _and: [
-                { username: { _eq: username } },
-                { profile_public: { _eq: true } },
-            ],
-        } as JsonObject,
-        limit: 1,
-    });
-    return rows[0] || null;
+): Promise<AppProfileView | null> {
+    const profile = await loadProfileByUsername(username);
+    if (!profile?.profile_public) {
+        return null;
+    }
+    return profile;
 }
 
 /**
@@ -106,7 +163,7 @@ export async function loadPublicProfileByUsername(
 export async function loadProfileForViewer(
     username: string,
     viewerId?: string | null,
-): Promise<AppProfile | null> {
+): Promise<AppProfileView | null> {
     const profile = await loadProfileByUsername(username);
     if (!profile) {
         return null;
@@ -133,7 +190,7 @@ export type UserHomeData = {
     albums: Array<AppAlbum & { tags: string[] }>;
 };
 
-function toPublicProfile(profile: AppProfile): PublicProfile {
+function toPublicProfile(profile: AppProfileView): PublicProfile {
     const { bangumi_access_token_encrypted: _token, ...rest } = profile;
     return rest;
 }

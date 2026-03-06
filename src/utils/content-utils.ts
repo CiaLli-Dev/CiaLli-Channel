@@ -180,16 +180,6 @@ function resolveAvatarUrl(
     profile: AppProfile | undefined,
     user: AuthorUser | undefined,
 ): string | undefined {
-    if (profile?.avatar_url?.trim()) {
-        return profile.avatar_url;
-    }
-    if (profile?.avatar_file) {
-        return buildPublicAssetUrl(profile.avatar_file, {
-            width: 96,
-            height: 96,
-            fit: "cover",
-        });
-    }
     if (user?.avatar) {
         return buildPublicAssetUrl(user.avatar, {
             width: 96,

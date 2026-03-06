@@ -166,9 +166,6 @@ function fillAvatarInfo(
     profile: Record<string, unknown> | null | undefined,
     fallbackAvatarUrl: string,
 ): void {
-    if (dom.avatarUrlInput) {
-        dom.avatarUrlInput.value = (profile?.avatar_url as string) || "";
-    }
     state.currentAvatarFileId = extractFileId(profile?.avatar_file);
     state.currentAvatarFallbackUrl = String(fallbackAvatarUrl || "").trim();
     updateAvatarPreview(dom, state);
@@ -291,9 +288,6 @@ function buildProfilePayload(
     dom: MePageDom,
     state: MePageState,
 ): Record<string, unknown> {
-    const avatarUrl = dom.avatarUrlInput
-        ? String(dom.avatarUrlInput.value || "").trim()
-        : "";
     const bioTypewriterSpeed = Math.max(
         PROFILE_BIO_TYPEWRITER_SPEED_MIN,
         Math.min(
@@ -307,8 +301,7 @@ function buildProfilePayload(
         bio: dom.bioInput ? dom.bioInput.value : "",
         bio_typewriter_enable: dom.bioTypewriterEnableInput?.checked ?? true,
         bio_typewriter_speed: bioTypewriterSpeed,
-        avatar_url: avatarUrl || null,
-        avatar_file: avatarUrl ? null : state.currentAvatarFileId || null,
+        avatar_file: state.currentAvatarFileId || null,
     };
 }
 

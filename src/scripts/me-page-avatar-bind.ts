@@ -195,9 +195,6 @@ function bindAvatarClearBtn(dom: MePageDom, state: MePageState): void {
             clearPendingAvatarUpload(state, true);
             state.currentAvatarFileId = "";
             state.currentAvatarFallbackUrl = "";
-            if (dom.avatarUrlInput) {
-                dom.avatarUrlInput.value = "";
-            }
             if (dom.avatarCropFileInput) {
                 dom.avatarCropFileInput.value = "";
             }
