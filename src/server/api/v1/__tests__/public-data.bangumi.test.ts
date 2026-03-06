@@ -5,6 +5,9 @@ import { mockProfile } from "@/__tests__/helpers/mock-data";
 vi.mock("@/server/directus/client", () => ({
     readMany: vi.fn(),
     countItems: vi.fn(),
+    runWithDirectusServiceAccess: vi.fn(
+        async (task: () => Promise<unknown>) => await task(),
+    ),
 }));
 
 vi.mock("@/server/api/v1/shared/author-cache", () => ({

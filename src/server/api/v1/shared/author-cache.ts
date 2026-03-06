@@ -1,7 +1,10 @@
 import type { AppProfileView, AppUser } from "@/types/app";
 import type { JsonObject } from "@/types/json";
 import { cacheManager } from "@/server/cache/manager";
-import { readMany } from "@/server/directus/client";
+import {
+    readMany,
+    runWithDirectusServiceAccess,
+} from "@/server/directus/client";
 import {
     toAppProfileView,
     type AppProfileWithUser,
@@ -206,13 +209,22 @@ async function fetchAuthorsForUsers(
     }
 
     if (missingUserIds.length > 0) {
-        const users = await readMany("directus_users", {
-            filter: {
-                id: { _in: missingUserIds },
-            } as JsonObject,
-            fields: ["id", "email", "first_name", "last_name", "avatar"],
-            limit: Math.max(missingUserIds.length, 20),
-        });
+        const users = await runWithDirectusServiceAccess(
+            async () =>
+                await readMany("directus_users", {
+                    filter: {
+                        id: { _in: missingUserIds },
+                    } as JsonObject,
+                    fields: [
+                        "id",
+                        "email",
+                        "first_name",
+                        "last_name",
+                        "avatar",
+                    ],
+                    limit: Math.max(missingUserIds.length, 20),
+                }),
+        );
         for (const user of users) {
             userMap.set(user.id, user);
         }

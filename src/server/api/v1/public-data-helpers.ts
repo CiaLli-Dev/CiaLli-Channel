@@ -15,11 +15,12 @@ import { cacheManager } from "@/server/cache/manager";
 import { loadBangumiCollections } from "@/server/bangumi/service";
 import { decryptBangumiAccessToken } from "@/server/bangumi/token";
 import { normalizeBangumiId } from "@/server/bangumi/username";
-import { countItemsGroupedByField, readMany } from "@/server/directus/client";
 import {
-    toAppProfileView,
-    type AppProfileWithUser,
-} from "@/server/profile-view";
+    countItemsGroupedByField,
+    readMany,
+    runWithDirectusServiceAccess,
+} from "@/server/directus/client";
+import { toAppProfileView } from "@/server/profile-view";
 import { buildPublicAssetUrl } from "@/server/directus-auth";
 
 import type { AuthorBundleItem } from "./shared/author-cache";
@@ -283,71 +284,30 @@ export function invalidateOfficialSidebarCache(): void {
 async function loadProfileViewByFilter(
     filter: JsonObject,
 ): Promise<AppProfileView | null> {
-    try {
-        const rows = (await readMany("app_user_profiles", {
-            filter,
-            limit: 1,
-            fields: [
-                "id",
-                "user_id",
-                "username",
-                "display_name",
-                "bio_typewriter_enable",
-                "bio_typewriter_speed",
-                "header_file",
-                "profile_public",
-                "show_articles_on_profile",
-                "show_diaries_on_profile",
-                "show_bangumi_on_profile",
-                "show_albums_on_profile",
-                "show_comments_on_profile",
-                "bangumi_username",
-                "bangumi_include_private",
-                "bangumi_access_token_encrypted",
-                "social_links",
-                "home_section_order",
-                "is_official",
-                "status",
-                "user.id",
-                "user.email",
-                "user.first_name",
-                "user.last_name",
-                "user.avatar",
-                "user.description",
-            ],
-        })) as AppProfileWithUser[];
-        const profile = rows[0];
-        if (!profile) {
-            return null;
-        }
-        return toAppProfileView(profile, profile.user);
-    } catch (error) {
-        console.warn(
-            "[public-data] profile relation query failed, fallback:",
-            error,
-        );
-        const rows = (await readMany("app_user_profiles", {
-            filter,
-            limit: 1,
-        })) as AppProfile[];
-        const profile = rows[0];
-        if (!profile) {
-            return null;
-        }
-        const users = await readMany("directus_users", {
-            filter: { id: { _eq: profile.user_id } } as JsonObject,
-            limit: 1,
-            fields: [
-                "id",
-                "email",
-                "first_name",
-                "last_name",
-                "avatar",
-                "description",
-            ],
-        }).catch(() => []);
-        return toAppProfileView(profile, users[0]);
+    const rows = (await readMany("app_user_profiles", {
+        filter,
+        limit: 1,
+    })) as AppProfile[];
+    const profile = rows[0];
+    if (!profile) {
+        return null;
     }
+    const users = await runWithDirectusServiceAccess(
+        async () =>
+            await readMany("directus_users", {
+                filter: { id: { _eq: profile.user_id } } as JsonObject,
+                limit: 1,
+                fields: [
+                    "id",
+                    "email",
+                    "first_name",
+                    "last_name",
+                    "avatar",
+                    "description",
+                ],
+            }).catch(() => []),
+    );
+    return toAppProfileView(profile, users[0]);
 }
 
 export async function loadOfficialSidebarProfile(): Promise<SidebarProfileData> {

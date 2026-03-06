@@ -177,7 +177,7 @@ function resolveDisplayName(
 }
 
 function resolveAvatarUrl(
-    profile: AppProfile | undefined,
+    _profile: AppProfile | undefined,
     user: AuthorUser | undefined,
 ): string | undefined {
     if (user?.avatar) {

@@ -11,11 +11,12 @@ import type {
     BangumiCollectionItem,
     BangumiCollectionStatus,
 } from "@/server/bangumi/types";
-import { countItems, readMany } from "@/server/directus/client";
 import {
-    toAppProfileView,
-    type AppProfileWithUser,
-} from "@/server/profile-view";
+    countItems,
+    readMany,
+    runWithDirectusServiceAccess,
+} from "@/server/directus/client";
+import { toAppProfileView } from "@/server/profile-view";
 import { isShortId } from "@/server/utils/short-id";
 
 import type { AuthorBundleItem } from "./shared/author-cache";
@@ -65,68 +66,30 @@ type PublicProfile = Omit<AppProfileView, "bangumi_access_token_encrypted">;
 async function loadProfileByUsername(
     username: string,
 ): Promise<AppProfileView | null> {
-    try {
-        const rows = (await readMany("app_user_profiles", {
-            filter: { username: { _eq: username } } as JsonObject,
-            limit: 1,
-            fields: [
-                "id",
-                "user_id",
-                "username",
-                "display_name",
-                "bio_typewriter_enable",
-                "bio_typewriter_speed",
-                "header_file",
-                "profile_public",
-                "show_articles_on_profile",
-                "show_diaries_on_profile",
-                "show_bangumi_on_profile",
-                "show_albums_on_profile",
-                "show_comments_on_profile",
-                "bangumi_username",
-                "bangumi_include_private",
-                "bangumi_access_token_encrypted",
-                "social_links",
-                "home_section_order",
-                "is_official",
-                "status",
-                "user.id",
-                "user.email",
-                "user.first_name",
-                "user.last_name",
-                "user.avatar",
-                "user.description",
-            ],
-        })) as AppProfileWithUser[];
-        const profile = rows[0];
-        if (!profile) {
-            return null;
-        }
-        return toAppProfileView(profile, profile.user);
-    } catch (error) {
-        console.warn("[public-data] loadProfileByUsername fallback:", error);
-        const rows = (await readMany("app_user_profiles", {
-            filter: { username: { _eq: username } } as JsonObject,
-            limit: 1,
-        })) as AppProfile[];
-        const profile = rows[0];
-        if (!profile) {
-            return null;
-        }
-        const users = await readMany("directus_users", {
-            filter: { id: { _eq: profile.user_id } } as JsonObject,
-            limit: 1,
-            fields: [
-                "id",
-                "email",
-                "first_name",
-                "last_name",
-                "avatar",
-                "description",
-            ],
-        }).catch(() => []);
-        return toAppProfileView(profile, users[0]);
+    const rows = (await readMany("app_user_profiles", {
+        filter: { username: { _eq: username } } as JsonObject,
+        limit: 1,
+    })) as AppProfile[];
+    const profile = rows[0];
+    if (!profile) {
+        return null;
     }
+    const users = await runWithDirectusServiceAccess(
+        async () =>
+            await readMany("directus_users", {
+                filter: { id: { _eq: profile.user_id } } as JsonObject,
+                limit: 1,
+                fields: [
+                    "id",
+                    "email",
+                    "first_name",
+                    "last_name",
+                    "avatar",
+                    "description",
+                ],
+            }).catch(() => []),
+    );
+    return toAppProfileView(profile, users[0]);
 }
 
 function toAuthorFallback(userId: string): AuthorBundleItem {
