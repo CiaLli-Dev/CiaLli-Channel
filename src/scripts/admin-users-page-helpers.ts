@@ -3,6 +3,14 @@ import { t } from "@/scripts/i18n-runtime";
 
 export type UnknownRecord = Record<string, unknown>;
 
+const escapeHtml = (raw: unknown): string =>
+    String(raw || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
 const getStr = (value: unknown, fallback = ""): string =>
     String(value || fallback).trim();
 
@@ -68,14 +76,19 @@ export const renderUsersRows = (
                     "member",
             );
             const roleLabel = resolveRoleLabel(userRecord, appRole);
-            const roleCell = `<span class="inline-flex items-center rounded-full px-2 py-1 text-xs ${resolveRoleBadgeClass(roleLabel)}">${roleLabel}</span>`;
+            // 关键渲染字段统一进行 HTML 转义，避免拼接 innerHTML 时出现注入。
+            const safeUserId = escapeHtml(userId);
+            const safeUserEmail = escapeHtml(userEmail);
+            const safeUsername = escapeHtml(username);
+            const safeRoleLabel = escapeHtml(roleLabel);
+            const roleCell = `<span class="inline-flex items-center rounded-full px-2 py-1 text-xs ${resolveRoleBadgeClass(roleLabel)}">${safeRoleLabel}</span>`;
             return `
 					<tr class="border-b border-(--line-divider) text-75">
-						<td class="py-2 pr-2">${userEmail}</td>
-						<td class="py-2 pr-2">${username}</td>
+						<td class="py-2 pr-2">${safeUserEmail}</td>
+						<td class="py-2 pr-2">${safeUsername}</td>
 						<td class="py-2 pr-2">${roleCell}</td>
 						<td class="py-2 pr-2">
-							<button class="text-xs text-red-500 hover:underline" data-action="delete" data-user-id="${userId}" data-username="${username}" data-email="${userEmail}">${t(I18nKey.adminUsersDeleteAccount)}</button>
+							<button class="text-xs text-red-500 hover:underline" data-action="delete" data-user-id="${safeUserId}" data-username="${safeUsername}" data-email="${safeUserEmail}">${t(I18nKey.adminUsersDeleteAccount)}</button>
 						</td>
 					</tr>
 				`;
