@@ -26,7 +26,10 @@ async function handleDiaryList(context: APIContext): Promise<Response> {
     const cached = await cacheManager.get<unknown>("diary-list", cacheKey);
     if (cached) return ok(cached);
 
-    const filter = filterPublicStatus();
+    // 日记公开列表除通用发布状态外，还必须显式限制为公开日记，避免私密内容泄露。
+    const filter: JsonObject = {
+        _and: [filterPublicStatus(), { praviate: { _eq: true } }],
+    };
     const [rows, total] = await Promise.all([
         readMany("app_diaries", {
             filter,
