@@ -50,6 +50,8 @@ export enum ContentKey {
     contentCopied = "contentCopied",
     contentCopyLink = "contentCopyLink",
     contentSavePoster = "contentSavePoster",
+    contentShareCopyFailed = "contentShareCopyFailed",
+    contentSharePosterFailed = "contentSharePosterFailed",
     contentScanToRead = "contentScanToRead",
     contentShareOnSocial = "contentShareOnSocial",
     contentShareOnSocialDescription = "contentShareOnSocialDescription",

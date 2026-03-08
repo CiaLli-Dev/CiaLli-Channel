@@ -5,6 +5,7 @@ import { getCsrfToken } from "@/utils/csrf";
 export type DetailElements = {
     likeBtn: HTMLButtonElement | null;
     commentBtn: HTMLButtonElement | null;
+    shareBtn: HTMLButtonElement | null;
     manageBtn: HTMLButtonElement | null;
     panel: HTMLElement | null;
     editBtn: HTMLButtonElement | null;
@@ -23,6 +24,7 @@ export function queryDetailElements(rootEl: HTMLElement): DetailElements {
         commentBtn: rootEl.querySelector<HTMLButtonElement>(
             ".detail-comment-btn",
         ),
+        shareBtn: rootEl.querySelector<HTMLButtonElement>(".detail-share-btn"),
         manageBtn: rootEl.querySelector<HTMLButtonElement>(
             ".detail-manage-toggle",
         ),

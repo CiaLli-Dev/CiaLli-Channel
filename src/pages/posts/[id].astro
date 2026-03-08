@@ -1,12 +1,13 @@
 ---
 import Comment from "@components/comment/index.astro";
 import ContentNotVisible from "@components/misc/ContentNotVisible.astro";
+import ArticleShareDialog from "@components/misc/ArticleShareDialog.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import Markdown from "@components/misc/Markdown.astro";
 import PasswordProtection from "@components/PasswordProtection.astro";
 import ResponsiveImage from "@components/misc/ResponsiveImage.astro";
-import { systemSiteConfig } from "@/config";
+import { defaultSiteSettings, systemSiteConfig } from "@/config";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
 import { renderMarkdown } from "@/server/markdown/render";
 import {
@@ -38,6 +39,7 @@ import {
 import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
 import type { AppArticle } from "@/types/app";
 import { buildOwnerArticlePasswordStorageKeys } from "@/utils/protected-content";
+import type { SharePosterPayload } from "@/utils/share-poster";
 import DetailActionFloat from "@components/control/DetailActionFloat.astro";
 
 export const prerender = false;
@@ -60,7 +62,12 @@ let article: {
   is_public: boolean;
   date_created: string | null;
   date_updated: string | null;
-  author?: { id?: string; name?: string };
+  author?: {
+    id?: string;
+    name?: string;
+    display_name?: string;
+    avatar_url?: string;
+  };
 } | null = null;
 let articleHtml = "";
 let encryptedBody = "";
@@ -283,6 +290,25 @@ function formatArticleMetaDate(input: string | null | undefined): string {
 const lastEditedAt = article?.date_updated || article?.date_created || null;
 const lastEditedMetaText = formatArticleMetaDate(lastEditedAt);
 const createdMetaText = formatArticleMetaDate(article?.date_created);
+const articleSharePayload: SharePosterPayload | undefined =
+  articleSupportsPublicInteraction && article
+    ? {
+        title: article.title || i18n(I18nKey.contentUntitled),
+        author:
+          article.author?.display_name ||
+          article.author?.name ||
+          defaultSiteSettings.profile.name,
+        description: article.summary || "",
+        pubDate: article.date_created || article.date_updated || "",
+        coverImage: coverUrl,
+        url: Astro.url.toString(),
+        siteTitle:
+          Astro.locals.siteSettings?.settings.site.title ||
+          defaultSiteSettings.site.title,
+        avatar: article.author?.avatar_url || null,
+        hiddenUntilDecrypt: Boolean(encryptedBody),
+      }
+    : undefined;
 ---
 
 <MainGridLayout
@@ -452,6 +478,7 @@ const createdMetaText = formatArticleMetaDate(article?.date_created);
           dockToBackTop={true}
           showLikeAction={articleSupportsPublicInteraction}
           showCommentAction={articleSupportsPublicInteraction}
+          sharePayload={articleSharePayload}
           editHref={`/posts/${encodeURIComponent(article.short_id || rawId)}/edit`}
           deleteEndpoint={`/api/v1/me/articles/${encodeURIComponent(article.id)}`}
           adminDeleteEndpoint={`/api/v1/admin/content/articles/${encodeURIComponent(article.id)}`}
@@ -472,6 +499,16 @@ const createdMetaText = formatArticleMetaDate(article?.date_created);
           }
         />
       </>
+    )
+  }
+  {
+    articleSharePayload && (
+      <ArticleShareDialog slot="modal" payload={articleSharePayload} />
+    )
+  }
+  {
+    articleSharePayload && (
+      <script>import "@/scripts/article-share-dialog";</script>
     )
   }
 </MainGridLayout>

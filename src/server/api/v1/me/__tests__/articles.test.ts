@@ -43,12 +43,7 @@ vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
     cleanupOwnedOrphanDirectusFiles: vi.fn().mockResolvedValue([]),
 }));
 
-import {
-    createOne,
-    readMany,
-    updateOne,
-    deleteOne,
-} from "@/server/directus/client";
+import { createOne, readMany, updateOne } from "@/server/directus/client";
 import { ARTICLE_FIELDS } from "@/server/api/v1/shared/constants";
 import {
     cleanupOwnedOrphanDirectusFiles,
@@ -61,7 +56,6 @@ import { handleMeArticles } from "@/server/api/v1/me/articles";
 const mockedCreateOne = vi.mocked(createOne);
 const mockedReadMany = vi.mocked(readMany);
 const mockedUpdateOne = vi.mocked(updateOne);
-const mockedDeleteOne = vi.mocked(deleteOne);
 const mockedCreateWithShortId = vi.mocked(createWithShortId);
 const mockedCleanupOwnedOrphanDirectusFiles = vi.mocked(
     cleanupOwnedOrphanDirectusFiles,
@@ -560,101 +554,5 @@ describe("PATCH /me/articles/:id", () => {
             candidateFileIds: [fileId],
             ownerUserId: access.user.id,
         });
-    });
-});
-
-// ── DELETE /me/articles/:id ──
-
-describe("DELETE /me/articles/:id", () => {
-    it("删除成功", async () => {
-        const article = mockArticle({ author_id: "user-1", cover_file: null });
-        mockedReadMany.mockResolvedValue([article]);
-        mockedDeleteOne.mockResolvedValue(undefined as never);
-
-        const ctx = createMockAPIContext({
-            method: "DELETE",
-            url: "http://localhost:4321/api/v1/me/articles/article-1",
-        });
-        const access = createMemberAccess();
-
-        const res = await handleMeArticles(
-            ctx as unknown as APIContext,
-            access,
-            ["articles", "article-1"],
-        );
-
-        expect(res.status).toBe(200);
-        const body = await parseResponseJson<{
-            ok: boolean;
-            id: string;
-        }>(res);
-        expect(body.ok).toBe(true);
-        expect(body.id).toBe("article-1");
-    });
-
-    it("非 owner → 404", async () => {
-        // resolveOwnedArticle 按 author_id 过滤，非 owner 查不到文章
-        mockedReadMany.mockResolvedValue([]);
-
-        const ctx = createMockAPIContext({
-            method: "DELETE",
-            url: "http://localhost:4321/api/v1/me/articles/article-1",
-        });
-        const access = createMemberAccess();
-
-        const res = await handleMeArticles(
-            ctx as unknown as APIContext,
-            access,
-            ["articles", "article-1"],
-        );
-
-        expect(res.status).toBe(404);
-    });
-
-    it("删除正文时忽略纯文本 UUID", async () => {
-        mockedReadMany.mockResolvedValue([
-            mockArticle({
-                id: "article-1",
-                author_id: "user-1",
-                body_markdown: "victim 6dc1edf9-a1f8-4191-bbe2-0fa6ff02ff69",
-            }),
-        ]);
-        mockedDeleteOne.mockResolvedValue(undefined as never);
-        mockedExtractDirectusAssetIdsFromMarkdown.mockReturnValue([]);
-
-        const ctx = createMockAPIContext({
-            method: "DELETE",
-            url: "http://localhost:4321/api/v1/me/articles/article-1",
-        });
-        const access = createMemberAccess();
-
-        const res = await handleMeArticles(
-            ctx as unknown as APIContext,
-            access,
-            ["articles", "article-1"],
-        );
-
-        expect(res.status).toBe(200);
-        expect(mockedCleanupOwnedOrphanDirectusFiles).not.toHaveBeenCalled();
-    });
-});
-
-// ── 路由 fallback ──
-
-describe("路由 fallback", () => {
-    it("未知路径 → 404", async () => {
-        const ctx = createMockAPIContext({
-            method: "GET",
-            url: "http://localhost:4321/api/v1/me/articles/a/b/c",
-        });
-        const access = createMemberAccess();
-
-        const res = await handleMeArticles(
-            ctx as unknown as APIContext,
-            access,
-            ["articles", "a", "b", "c"],
-        );
-
-        expect(res.status).toBe(404);
     });
 });

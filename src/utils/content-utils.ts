@@ -16,6 +16,13 @@ import {
 } from "@/server/api/v1/shared";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
+import {
+    buildPostUrl,
+    isProtectedContentBody,
+    normalizeTags,
+    resolvePublishedAt,
+    resolveUpdatedAt,
+} from "@/utils/content-post-helpers";
 import { getCategoryUrl } from "@utils/url-utils";
 
 type PostAuthor = {
@@ -90,33 +97,6 @@ export function buildVisiblePostsFilter(viewerId?: string | null): JsonObject {
             },
         ],
     } satisfies JsonObject;
-}
-
-function normalizeTags(tags: AppArticle["tags"]): string[] {
-    if (!tags || !Array.isArray(tags)) return [];
-    return tags.map((s) => String(s).trim()).filter(Boolean);
-}
-
-function isProtectedContentBody(value: string | null | undefined): boolean {
-    return String(value || "")
-        .trim()
-        .startsWith("CL2:");
-}
-
-function resolvePublishedAt(post: AppArticle): Date {
-    const raw = post.date_updated || post.date_created;
-    const parsed = raw ? new Date(raw) : new Date();
-    return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
-}
-
-function resolveUpdatedAt(post: AppArticle): Date {
-    const raw = post.date_updated || post.date_created;
-    const parsed = raw ? new Date(raw) : new Date();
-    return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
-}
-
-function buildPostUrl(shortId: string | null, articleId: string): string {
-    return `/posts/${shortId || articleId}`;
 }
 
 function resolveCoverImageForViewer(

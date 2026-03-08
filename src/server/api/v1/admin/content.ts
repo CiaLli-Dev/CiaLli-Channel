@@ -191,6 +191,93 @@ async function invalidatePatchCache(
 }
 
 type AdminCollection = (typeof ADMIN_MODULE_COLLECTION)[AdminModuleKey];
+type DeleteFileIdResult = {
+    fileIds: string[];
+    ownerUserId: string | null;
+};
+
+async function collectArticleDeleteFileIds(
+    id: string,
+): Promise<DeleteFileIdResult> {
+    const rows = await readMany("app_articles", {
+        filter: { id: { _eq: id } } as JsonObject,
+        fields: ["cover_file", "body_markdown", "author_id"],
+        limit: 1,
+    });
+    const ownerUserId = toOptionalString(rows[0]?.author_id);
+    const fileIds = extractDirectusAssetIdsFromMarkdown(
+        toOptionalString(rows[0]?.body_markdown) ?? "",
+    );
+    const coverFile = normalizeDirectusFileId(rows[0]?.cover_file);
+    if (coverFile) {
+        fileIds.unshift(coverFile);
+    }
+    return { fileIds, ownerUserId };
+}
+
+async function collectAlbumDeleteFileIds(
+    id: string,
+): Promise<DeleteFileIdResult> {
+    const rows = await readMany("app_albums", {
+        filter: { id: { _eq: id } } as JsonObject,
+        fields: ["cover_file", "author_id"],
+        limit: 1,
+    });
+    return {
+        fileIds: await collectAlbumFileIds(id, rows[0]?.cover_file),
+        ownerUserId: toOptionalString(rows[0]?.author_id),
+    };
+}
+
+async function collectDiaryDeleteFileIds(
+    id: string,
+): Promise<DeleteFileIdResult> {
+    const rows = await readMany("app_diaries", {
+        filter: { id: { _eq: id } } as JsonObject,
+        fields: ["author_id", "content"],
+        limit: 1,
+    });
+    const fileIds = await collectDiaryFileIds(id);
+    fileIds.push(
+        ...extractDirectusAssetIdsFromMarkdown(
+            toOptionalString(rows[0]?.content) ?? "",
+        ),
+    );
+    return {
+        fileIds,
+        ownerUserId: toOptionalString(rows[0]?.author_id),
+    };
+}
+
+async function collectCommentDeleteFileIds(
+    collection: "app_article_comments" | "app_diary_comments",
+    id: string,
+): Promise<DeleteFileIdResult> {
+    const rows = await readMany(collection, {
+        filter: { id: { _eq: id } } as JsonObject,
+        fields: ["author_id", "body"],
+        limit: 1,
+    });
+    return {
+        fileIds: extractDirectusAssetIdsFromMarkdown(
+            toOptionalString(rows[0]?.body) ?? "",
+        ),
+        ownerUserId: toOptionalString(rows[0]?.author_id),
+    };
+}
+
+const DELETE_FILE_ID_COLLECTORS: Record<
+    AdminModuleKey,
+    (id: string) => Promise<DeleteFileIdResult>
+> = {
+    articles: collectArticleDeleteFileIds,
+    albums: collectAlbumDeleteFileIds,
+    diaries: collectDiaryDeleteFileIds,
+    "article-comments": (id) =>
+        collectCommentDeleteFileIds("app_article_comments", id),
+    "diary-comments": (id) =>
+        collectCommentDeleteFileIds("app_diary_comments", id),
+};
 
 async function handleContentPatch(
     context: APIContext,
@@ -241,79 +328,11 @@ async function collectDeleteFileIds(
     deletedDiaryShortId: string | null;
     ownerUserId: string | null;
 }> {
-    const candidateFileIds: string[] = [];
-    let ownerUserId: string | null = null;
-    if (module === "articles") {
-        const rows = await readMany("app_articles", {
-            filter: { id: { _eq: id } } as JsonObject,
-            fields: ["cover_file", "body_markdown", "author_id"],
-            limit: 1,
-        });
-        ownerUserId = toOptionalString(rows[0]?.author_id);
-        const coverFile = normalizeDirectusFileId(rows[0]?.cover_file);
-        if (coverFile) {
-            candidateFileIds.push(coverFile);
-        }
-        candidateFileIds.push(
-            ...extractDirectusAssetIdsFromMarkdown(
-                toOptionalString(rows[0]?.body_markdown) ?? "",
-            ),
-        );
-    }
-    if (module === "albums") {
-        const rows = await readMany("app_albums", {
-            filter: { id: { _eq: id } } as JsonObject,
-            fields: ["cover_file", "author_id"],
-            limit: 1,
-        });
-        ownerUserId = toOptionalString(rows[0]?.author_id);
-        const fileIds = await collectAlbumFileIds(id, rows[0]?.cover_file);
-        candidateFileIds.push(...fileIds);
-    }
-    if (module === "diaries") {
-        const rows = await readMany("app_diaries", {
-            filter: { id: { _eq: id } } as JsonObject,
-            fields: ["author_id", "content"],
-            limit: 1,
-        });
-        ownerUserId = toOptionalString(rows[0]?.author_id);
-        const fileIds = await collectDiaryFileIds(id);
-        candidateFileIds.push(...fileIds);
-        candidateFileIds.push(
-            ...extractDirectusAssetIdsFromMarkdown(
-                toOptionalString(rows[0]?.content) ?? "",
-            ),
-        );
-    }
-    if (module === "article-comments") {
-        const rows = await readMany("app_article_comments", {
-            filter: { id: { _eq: id } } as JsonObject,
-            fields: ["author_id", "body"],
-            limit: 1,
-        });
-        ownerUserId = toOptionalString(rows[0]?.author_id);
-        candidateFileIds.push(
-            ...extractDirectusAssetIdsFromMarkdown(
-                toOptionalString(rows[0]?.body) ?? "",
-            ),
-        );
-    }
-    if (module === "diary-comments") {
-        const rows = await readMany("app_diary_comments", {
-            filter: { id: { _eq: id } } as JsonObject,
-            fields: ["author_id", "body"],
-            limit: 1,
-        });
-        ownerUserId = toOptionalString(rows[0]?.author_id);
-        candidateFileIds.push(
-            ...extractDirectusAssetIdsFromMarkdown(
-                toOptionalString(rows[0]?.body) ?? "",
-            ),
-        );
-    }
+    const { fileIds, ownerUserId } =
+        await DELETE_FILE_ID_COLLECTORS[module](id);
     const deletedDiaryShortId =
         module === "diaries" ? (adminVisibleDiary?.short_id ?? null) : null;
-    return { fileIds: candidateFileIds, deletedDiaryShortId, ownerUserId };
+    return { fileIds, deletedDiaryShortId, ownerUserId };
 }
 
 async function invalidateDeleteCache(

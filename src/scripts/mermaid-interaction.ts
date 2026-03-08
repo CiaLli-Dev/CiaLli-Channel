@@ -156,26 +156,25 @@ const measureContentSize = (
 ): { width: number; height: number } => {
     const contentElement = wrapper.firstElementChild;
     const safeScale = scale > 0 ? scale : 1;
-    if (
+    const measuredElement =
         contentElement &&
         "getBoundingClientRect" in contentElement &&
         "scrollWidth" in contentElement &&
         "scrollHeight" in contentElement
-    ) {
-        const measuredElement = contentElement as HTMLElement;
+            ? (contentElement as HTMLElement)
+            : null;
+    if (measuredElement) {
         const rect = measuredElement.getBoundingClientRect();
-        const width =
-            Math.max(
-                0,
-                (Number(rect.width) || 0) / safeScale,
-                Number(measuredElement.scrollWidth) || 0,
-            ) || 0;
-        const height =
-            Math.max(
-                0,
-                (Number(rect.height) || 0) / safeScale,
-                Number(measuredElement.scrollHeight) || 0,
-            ) || 0;
+        const width = Math.max(
+            0,
+            (Number(rect.width) || 0) / safeScale,
+            Number(measuredElement.scrollWidth) || 0,
+        );
+        const height = Math.max(
+            0,
+            (Number(rect.height) || 0) / safeScale,
+            Number(measuredElement.scrollHeight) || 0,
+        );
         if (width > 0 && height > 0) {
             return { width, height };
         }

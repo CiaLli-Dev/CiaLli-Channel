@@ -110,6 +110,8 @@ export default defineConfig({
         build: {
             // 静态资源处理优化，防止小图片转 base64 导致 HTML 体积过大（可选，根据需要调整）
             assetsInlineLimit: 4096,
+            // Monaco 仅在发布编辑器页面按需加载，放宽提示阈值，避免对已知的大型惰性 chunk 反复报警。
+            chunkSizeWarningLimit: 3000,
 
             rollupOptions: {
                 output: {

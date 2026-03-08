@@ -57,6 +57,10 @@ export const jaContent: Record<string, string> = {
     [Key.contentCopied]: "コピーしました",
     [Key.contentCopyLink]: "リンクをコピー",
     [Key.contentSavePoster]: "ポスターを保存",
+    [Key.contentShareCopyFailed]:
+        "リンクのコピーに失敗しました。しばらくしてから再度お試しください。",
+    [Key.contentSharePosterFailed]:
+        "ポスターの生成に失敗しました。しばらくしてから再度お試しください。",
     [Key.contentScanToRead]: "スキャンで読み込む",
     [Key.contentShareOnSocial]: "共有",
     [Key.contentShareOnSocialDescription]:
