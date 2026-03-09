@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+    MERMAID_MIN_SCALE,
+    MERMAID_SCALE_STEP,
     MERMAID_MAX_SCALE,
     MermaidInteractionController,
     clampMermaidOffsets,
@@ -128,10 +130,19 @@ class FakeElement {
         }
     }
 
-    addEventListener(type: string, listener: (event: unknown) => void): void {
+    addEventListener(
+        type: string,
+        listener: (event: unknown) => void,
+        _options?: AddEventListenerOptions,
+    ): void {
         const existing = this.listeners.get(type) ?? [];
         existing.push(listener);
         this.listeners.set(type, existing);
+    }
+
+    dispatch(type: string, event: unknown): void {
+        const listeners = this.listeners.get(type) ?? [];
+        listeners.forEach((listener) => listener(event));
     }
 
     closest(selector: string): FakeElement | null {
@@ -198,6 +209,10 @@ class FakeElement {
         return this.rectHeight;
     }
 
+    get firstElementChild(): FakeElement | null {
+        return this.children[0] ?? null;
+    }
+
     getBoundingClientRect(): DOMRect {
         const width =
             this.rectWidth ||
@@ -255,7 +270,7 @@ const labels = {
     reset: "Reset",
 };
 
-describe("mermaid-interaction", () => {
+const setupMermaidInteractionTestEnvironment = (): void => {
     beforeEach(() => {
         vi.stubGlobal("document", createFakeDocument() as unknown as Document);
         vi.stubGlobal("window", {
@@ -266,6 +281,10 @@ describe("mermaid-interaction", () => {
     afterEach(() => {
         vi.unstubAllGlobals();
     });
+};
+
+describe("mermaid-interaction mount", () => {
+    setupMermaidInteractionTestEnvironment();
 
     it("opt-in 容器首次注入控件，重复挂载不重复创建", () => {
         const host = createDiagramRoot(true);
@@ -300,6 +319,10 @@ describe("mermaid-interaction", () => {
         expect(controller).toBeNull();
         expect(mermaid.querySelector(".mermaid-zoom-controls")).toBeNull();
     });
+});
+
+describe("mermaid-interaction state", () => {
+    setupMermaidInteractionTestEnvironment();
 
     it("Zoom In / Zoom Out / Reset 收敛在 1x 到 3x 之间", () => {
         const host = createDiagramRoot(true);
@@ -325,7 +348,7 @@ describe("mermaid-interaction", () => {
         expect(Number.isFinite(controller.getState().offsetY)).toBe(true);
     });
 
-    it("锚点缩放时横向仍保持居中", () => {
+    it("锚点缩放时保留锚点，不再强制横向居中", () => {
         const nextState = zoomMermaidState(
             {
                 scale: 1,
@@ -349,7 +372,7 @@ describe("mermaid-interaction", () => {
         );
 
         expect(nextState.scale).toBe(1.1);
-        expect(nextState.offsetX).toBeCloseTo(-32);
+        expect(nextState.offsetX).toBeCloseTo(-16);
         expect(nextState.offsetY).toBeCloseTo(-8);
     });
 
@@ -370,16 +393,44 @@ describe("mermaid-interaction", () => {
         controller.zoomIn();
         expect(controller.startDrag(1, 50, 50)).toBe(true);
         controller.moveDrag(1, 1000, 1000);
-        expect(controller.getState().offsetX).toBeLessThanOrEqual(0);
+        expect(controller.getState().offsetX).toBe(0);
         expect(Number.isFinite(controller.getState().offsetX)).toBe(true);
         expect(controller.getState().offsetY).toBe(0);
 
         controller.moveDrag(1, -1000, -1000);
-        expect(controller.getState().offsetX).toBeLessThanOrEqual(0);
+        expect(controller.getState().offsetX).toBeGreaterThanOrEqual(-64);
+        expect(controller.getState().offsetX).toBe(-64);
         expect(Number.isFinite(controller.getState().offsetX)).toBe(true);
         expect(controller.getState().offsetY).toBeGreaterThanOrEqual(-32);
         controller.endDrag(1);
         expect(controller.getState().pointerId).toBeNull();
+    });
+
+    it("按钮缩放会保持当前视角，不会每次重新居中", () => {
+        const host = createDiagramRoot(true);
+        const mermaid = host.children[0];
+        const controller = mountMermaidInteraction(
+            mermaid as unknown as HTMLElement,
+            labels,
+        );
+        expect(controller).not.toBeNull();
+        if (!controller) {
+            return;
+        }
+
+        controller.zoomIn();
+        expect(controller.startDrag(1, 50, 50)).toBe(true);
+        controller.moveDrag(1, -200, 50);
+        controller.endDrag(1);
+
+        const beforeZoom = controller.getState();
+        expect(beforeZoom.offsetX).toBe(-64);
+
+        controller.zoomIn();
+
+        const afterZoom = controller.getState();
+        expect(afterZoom.scale).toBeCloseTo(1 + MERMAID_SCALE_STEP * 2);
+        expect(afterZoom.offsetX).toBeLessThan(-64);
     });
 
     it("主题重渲染时保留控件并重置缩放状态", () => {
@@ -429,7 +480,58 @@ describe("mermaid-interaction", () => {
             },
         );
 
-        expect(offsets.offsetX).toBe(-160);
+        expect(offsets.offsetX).toBe(-320);
         expect(offsets.offsetY).toBe(0);
+    });
+});
+
+describe("mermaid-interaction controller", () => {
+    setupMermaidInteractionTestEnvironment();
+
+    it("悬停滚轮会以鼠标位置为锚点缩放并阻止页面滚动穿透", () => {
+        const host = createDiagramRoot(true);
+        const mermaid = host.children[0];
+        const controller = mountMermaidInteraction(
+            mermaid as unknown as HTMLElement,
+            labels,
+        );
+        expect(controller).not.toBeNull();
+        if (!controller) {
+            return;
+        }
+
+        const viewport = mermaid.querySelector(".mermaid-viewport");
+        expect(viewport).not.toBeNull();
+        if (!viewport) {
+            return;
+        }
+
+        let defaultPrevented = false;
+        viewport.dispatch("wheel", {
+            deltaY: -100,
+            clientX: 100,
+            clientY: 80,
+            preventDefault: () => {
+                defaultPrevented = true;
+            },
+        });
+
+        const afterZoomIn = controller.getState();
+        expect(defaultPrevented).toBe(true);
+        expect(afterZoomIn.scale).toBeCloseTo(1 + MERMAID_SCALE_STEP);
+        expect(afterZoomIn.offsetX).toBeCloseTo(-10);
+        expect(afterZoomIn.offsetY).toBeCloseTo(-8);
+
+        viewport.dispatch("wheel", {
+            deltaY: 100,
+            clientX: 100,
+            clientY: 80,
+            preventDefault: () => undefined,
+        });
+
+        const afterZoomOut = controller.getState();
+        expect(afterZoomOut.scale).toBe(MERMAID_MIN_SCALE);
+        expect(afterZoomOut.offsetX).toBe(0);
+        expect(afterZoomOut.offsetY).toBe(0);
     });
 });
