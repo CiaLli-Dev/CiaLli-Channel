@@ -67,10 +67,7 @@ export function withErrorHandler(
                     status: error.status,
                     code: error.code,
                     latency,
-                    // 开发环境附加 details
-                    ...(!import.meta.env.PROD && error.details
-                        ? { details: error.details }
-                        : {}),
+                    ...(error.details ? { details: error.details } : {}),
                 });
             } else {
                 // 未预期的异常统一按 500 处理

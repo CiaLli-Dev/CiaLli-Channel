@@ -6,6 +6,7 @@ import { getAuthorBundle } from "@/server/api/v1/shared/author-cache";
 import { cacheManager } from "@/server/cache/manager";
 import { hashParams } from "@/server/cache/key-utils";
 import { readMany } from "@/server/directus/client";
+import { createSingleFlightRunner } from "@/server/utils/single-flight";
 import type { JsonObject } from "@/types/json";
 import type { AppArticle, AppDiary, AppDiaryImage } from "@/types/app";
 import type { DirectusPostEntry } from "@/utils/content-utils";
@@ -213,98 +214,119 @@ export async function loadPreferenceProfile(
         return hydratePreferenceProfile(cached);
     }
 
-    const lookbackStartIso = new Date(
-        now.getTime() - lookbackDays * 24 * 60 * 60 * 1000,
-    ).toISOString();
-
-    const [articleLikes, diaryLikes] = await Promise.all([
-        readMany("app_article_likes", {
-            filter: {
-                _and: [
-                    { user_id: { _eq: normalizedViewerId } },
-                    { status: { _eq: "published" } },
-                    { date_created: { _gte: lookbackStartIso } },
-                ],
-            } as JsonObject,
-            fields: ["article_id"],
-            limit: -1,
-        }),
-        readMany("app_diary_likes", {
-            filter: {
-                _and: [
-                    { user_id: { _eq: normalizedViewerId } },
-                    { status: { _eq: "published" } },
-                    { date_created: { _gte: lookbackStartIso } },
-                ],
-            } as JsonObject,
-            fields: ["diary_id"],
-            limit: -1,
-        }),
-    ]);
-
-    const articleIds = Array.from(
-        new Set(
-            (articleLikes as Array<Record<string, unknown>>)
-                .map((like) => normalizeIdentity(String(like.article_id || "")))
-                .filter(Boolean),
-        ),
-    );
-    const diaryIds = Array.from(
-        new Set(
-            (diaryLikes as Array<Record<string, unknown>>)
-                .map((like) => normalizeIdentity(String(like.diary_id || "")))
-                .filter(Boolean),
-        ),
-    );
-
-    const [likedArticles, likedDiaries] = await Promise.all([
-        articleIds.length > 0
-            ? readMany("app_articles", {
-                  filter: { id: { _in: articleIds } } as JsonObject,
-                  fields: ["id", "author_id", "tags", "category"],
-                  limit: Math.max(articleIds.length, 20),
-              })
-            : Promise.resolve([] as AppArticle[]),
-        diaryIds.length > 0
-            ? readMany("app_diaries", {
-                  filter: { id: { _in: diaryIds } } as JsonObject,
-                  fields: ["id", "author_id"],
-                  limit: Math.max(diaryIds.length, 20),
-              })
-            : Promise.resolve([] as AppDiary[]),
-    ]);
-
-    const authorCounts = new Map<string, number>();
-    const tagCounts = new Map<string, number>();
-    const categoryCounts = new Map<string, number>();
-
-    for (const article of likedArticles) {
-        incrementMapCounter(authorCounts, article.author_id);
-        for (const tag of article.tags ?? []) {
-            incrementMapCounter(tagCounts, normalizePreferenceKey(tag));
-        }
-        const category = normalizePreferenceKey(article.category);
-        if (category) {
-            incrementMapCounter(categoryCounts, category);
-        }
-    }
-
-    for (const diary of likedDiaries) {
-        incrementMapCounter(authorCounts, diary.author_id);
-    }
-
-    const profile = {
-        authorWeights: normalizeWeightMap(authorCounts),
-        tagWeights: normalizeWeightMap(tagCounts),
-        categoryWeights: normalizeWeightMap(categoryCounts),
-    } satisfies HomeFeedPreferenceProfile;
-    void cacheManager.set(
-        "home-feed-profile",
+    return await loadPreferenceProfileSingleFlight(
         cacheKey,
-        serializePreferenceProfile(profile),
+        normalizedViewerId,
+        now,
+        lookbackDays,
     );
-    return profile;
 }
+
+const loadPreferenceProfileSingleFlight = createSingleFlightRunner(
+    async (
+        cacheKey: string,
+        normalizedViewerId: string,
+        now: Date,
+        lookbackDays: number,
+    ): Promise<HomeFeedPreferenceProfile> => {
+        const lookbackStartIso = new Date(
+            now.getTime() - lookbackDays * 24 * 60 * 60 * 1000,
+        ).toISOString();
+
+        const [articleLikes, diaryLikes] = await Promise.all([
+            readMany("app_article_likes", {
+                filter: {
+                    _and: [
+                        { user_id: { _eq: normalizedViewerId } },
+                        { status: { _eq: "published" } },
+                        { date_created: { _gte: lookbackStartIso } },
+                    ],
+                } as JsonObject,
+                fields: ["article_id"],
+                limit: -1,
+            }),
+            readMany("app_diary_likes", {
+                filter: {
+                    _and: [
+                        { user_id: { _eq: normalizedViewerId } },
+                        { status: { _eq: "published" } },
+                        { date_created: { _gte: lookbackStartIso } },
+                    ],
+                } as JsonObject,
+                fields: ["diary_id"],
+                limit: -1,
+            }),
+        ]);
+
+        const articleIds = Array.from(
+            new Set(
+                (articleLikes as Array<Record<string, unknown>>)
+                    .map((like) =>
+                        normalizeIdentity(String(like.article_id || "")),
+                    )
+                    .filter(Boolean),
+            ),
+        );
+        const diaryIds = Array.from(
+            new Set(
+                (diaryLikes as Array<Record<string, unknown>>)
+                    .map((like) =>
+                        normalizeIdentity(String(like.diary_id || "")),
+                    )
+                    .filter(Boolean),
+            ),
+        );
+
+        const [likedArticles, likedDiaries] = await Promise.all([
+            articleIds.length > 0
+                ? readMany("app_articles", {
+                      filter: { id: { _in: articleIds } } as JsonObject,
+                      fields: ["id", "author_id", "tags", "category"],
+                      limit: Math.max(articleIds.length, 20),
+                  })
+                : Promise.resolve([] as AppArticle[]),
+            diaryIds.length > 0
+                ? readMany("app_diaries", {
+                      filter: { id: { _in: diaryIds } } as JsonObject,
+                      fields: ["id", "author_id"],
+                      limit: Math.max(diaryIds.length, 20),
+                  })
+                : Promise.resolve([] as AppDiary[]),
+        ]);
+
+        const authorCounts = new Map<string, number>();
+        const tagCounts = new Map<string, number>();
+        const categoryCounts = new Map<string, number>();
+
+        for (const article of likedArticles) {
+            incrementMapCounter(authorCounts, article.author_id);
+            for (const tag of article.tags ?? []) {
+                incrementMapCounter(tagCounts, normalizePreferenceKey(tag));
+            }
+            const category = normalizePreferenceKey(article.category);
+            if (category) {
+                incrementMapCounter(categoryCounts, category);
+            }
+        }
+
+        for (const diary of likedDiaries) {
+            incrementMapCounter(authorCounts, diary.author_id);
+        }
+
+        const profile = {
+            authorWeights: normalizeWeightMap(authorCounts),
+            tagWeights: normalizeWeightMap(tagCounts),
+            categoryWeights: normalizeWeightMap(categoryCounts),
+        } satisfies HomeFeedPreferenceProfile;
+        void cacheManager.set(
+            "home-feed-profile",
+            cacheKey,
+            serializePreferenceProfile(profile),
+        );
+        return profile;
+    },
+    (cacheKey: string) => cacheKey,
+);
 
 export async function buildHomeFeedCandidatePool(options: {
     articleCandidateLimit: number;
@@ -366,9 +388,12 @@ export async function buildHomeFeedCandidatePool(options: {
         options.now.getTime() - options.engagementWindowHours * 60 * 60 * 1000,
     ).toISOString();
 
+    const allAuthorIds = Array.from(
+        new Set([...articleAuthorIds, ...diaryAuthorIds].filter(Boolean)),
+    );
+
     const [
-        articleAuthorMap,
-        diaryAuthorMap,
+        authorMap,
         articleLikeCountMap,
         articleCommentCountMap,
         articleLike72hMap,
@@ -379,8 +404,7 @@ export async function buildHomeFeedCandidatePool(options: {
         diaryLike72hMap,
         diaryComment72hMap,
     ] = await Promise.all([
-        getAuthorBundle(articleAuthorIds),
-        getAuthorBundle(diaryAuthorIds),
+        getAuthorBundle(allAuthorIds),
         fetchInteractionCountMap("app_article_likes", "article_id", articleIds),
         fetchInteractionCountMap(
             "app_article_comments",
@@ -430,7 +454,7 @@ export async function buildHomeFeedCandidatePool(options: {
         .map((row) =>
             buildArticleFeedEntry(
                 row,
-                articleAuthorMap,
+                authorMap,
                 articleLikeCountMap,
                 articleCommentCountMap,
             ),
@@ -454,7 +478,7 @@ export async function buildHomeFeedCandidatePool(options: {
     const diaryImageMap = buildDiaryImageMap(diaryImages);
     const diaryEntries: HomeFeedDiaryEntry[] = diaryRows.map((row) => ({
         ...row,
-        author: readAuthorFromMap(diaryAuthorMap, row.author_id),
+        author: readAuthorFromMap(authorMap, row.author_id),
         images: diaryImageMap.get(row.id) || [],
         comment_count: diaryCommentCountMap.get(row.id) || 0,
         like_count: diaryLikeCountMap.get(row.id) || 0,
@@ -516,12 +540,27 @@ export async function loadHomeFeedCandidatePool(options: {
         return hydrateHomeFeedCandidatePool(cached);
     }
 
-    const payload = await buildHomeFeedCandidatePool({
+    return await loadHomeFeedCandidatePoolSingleFlight(candidateCacheKey, {
         articleCandidateLimit: options.articleCandidateLimit,
         diaryCandidateLimit: options.diaryCandidateLimit,
         engagementWindowHours: options.engagementWindowHours,
         now: options.now,
     });
-    void cacheManager.set("home-feed-candidates", candidateCacheKey, payload);
-    return payload;
 }
+
+const loadHomeFeedCandidatePoolSingleFlight = createSingleFlightRunner(
+    async (
+        cacheKey: string,
+        options: {
+            articleCandidateLimit: number;
+            diaryCandidateLimit: number;
+            engagementWindowHours: number;
+            now: Date;
+        },
+    ): Promise<HomeFeedCandidatePoolCachePayload> => {
+        const payload = await buildHomeFeedCandidatePool(options);
+        void cacheManager.set("home-feed-candidates", cacheKey, payload);
+        return payload;
+    },
+    (cacheKey: string) => cacheKey,
+);

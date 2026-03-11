@@ -1,6 +1,7 @@
 import { defaultSiteSettings, systemSiteConfig } from "@/config";
 import { cacheManager } from "@/server/cache/manager";
 import { readMany } from "@/server/directus/client";
+import { createSingleFlightRunner } from "@/server/utils/single-flight";
 import type {
     EditableSiteSettings,
     PublicSiteSettings,
@@ -33,6 +34,15 @@ type SiteSettingsCacheValue = {
     resolved: ResolvedSiteSettings;
     updatedAt: string | null;
 };
+
+type SiteSettingsFailureFallback = {
+    expiresAt: number;
+    resolved: ResolvedSiteSettings;
+};
+
+const SITE_SETTINGS_FAILURE_BACKOFF_MS = 5_000;
+
+let recentFailureFallback: SiteSettingsFailureFallback | null = null;
 
 function cloneSettings(settings: SiteSettingsPayload): SiteSettingsPayload {
     return structuredClone(settings);
@@ -154,6 +164,24 @@ function buildDefaultResolvedSettings(): ResolvedSiteSettings {
     };
 }
 
+function readRecentFailureFallback(): ResolvedSiteSettings | null {
+    if (!recentFailureFallback) {
+        return null;
+    }
+    if (recentFailureFallback.expiresAt <= Date.now()) {
+        recentFailureFallback = null;
+        return null;
+    }
+    return recentFailureFallback.resolved;
+}
+
+function writeRecentFailureFallback(resolved: ResolvedSiteSettings): void {
+    recentFailureFallback = {
+        expiresAt: Date.now() + SITE_SETTINGS_FAILURE_BACKOFF_MS,
+        resolved,
+    };
+}
+
 async function readSiteSettingsRow(): Promise<{
     settings: unknown;
     updatedAt: string | null;
@@ -186,27 +214,45 @@ export function resolveSiteSettingsPayload(
     return normalizeSettings(raw, base);
 }
 
-/**
- * 执行一次站点设置拉取，失败时立即重试 1 次。
- *
- * Directus 客户端全局超时 30s/次，Vercel Serverless 执行窗口约 60s，重试上限为 1 次，避免函数执行溢出。
- */
-async function fetchSiteSettingsWithRetry(): Promise<{
-    settings: unknown;
-    updatedAt: string | null;
-} | null> {
-    try {
-        return await readSiteSettingsRow();
-    } catch (firstError) {
-        console.warn(
-            "[site-settings] 首次拉取失败，立即重试一次:",
-            firstError instanceof Error
-                ? firstError.message
-                : String(firstError),
-        );
-        return await readSiteSettingsRow();
-    }
-}
+const loadResolvedSiteSettingsSingleFlight = createSingleFlightRunner(
+    async (): Promise<ResolvedSiteSettings> => {
+        const defaultResolved = buildDefaultResolvedSettings();
+        try {
+            const row = await readSiteSettingsRow();
+            if (!row) {
+                const value: SiteSettingsCacheValue = {
+                    resolved: defaultResolved,
+                    updatedAt: null,
+                };
+                recentFailureFallback = null;
+                void cacheManager.set("site-settings", "default", value);
+                return defaultResolved;
+            }
+
+            const settings = normalizeSettings(
+                row.settings,
+                defaultSiteSettings,
+            );
+            const resolved: ResolvedSiteSettings = {
+                system: buildSystemSiteConfig(settings),
+                settings,
+            };
+            const value: SiteSettingsCacheValue = {
+                resolved,
+                updatedAt: row.updatedAt,
+            };
+            recentFailureFallback = null;
+            void cacheManager.set("site-settings", "default", value);
+            return resolved;
+        } catch (error) {
+            // 短暂上游抖动时，使用短 TTL 退避，避免多个实例同时击穿 Directus。
+            console.error("[site-settings] 拉取设置失败，进入短暂退避:", error);
+            writeRecentFailureFallback(defaultResolved);
+            return defaultResolved;
+        }
+    },
+    () => "default",
+);
 
 export async function getResolvedSiteSettings(): Promise<ResolvedSiteSettings> {
     const cached = await cacheManager.get<SiteSettingsCacheValue>(
@@ -217,34 +263,12 @@ export async function getResolvedSiteSettings(): Promise<ResolvedSiteSettings> {
         return cached.resolved;
     }
 
-    const defaultResolved = buildDefaultResolvedSettings();
-    try {
-        const row = await fetchSiteSettingsWithRetry();
-        if (!row) {
-            const value: SiteSettingsCacheValue = {
-                resolved: defaultResolved,
-                updatedAt: null,
-            };
-            void cacheManager.set("site-settings", "default", value);
-            return defaultResolved;
-        }
-
-        const settings = normalizeSettings(row.settings, defaultSiteSettings);
-        const resolved: ResolvedSiteSettings = {
-            system: buildSystemSiteConfig(settings),
-            settings,
-        };
-        const value: SiteSettingsCacheValue = {
-            resolved,
-            updatedAt: row.updatedAt,
-        };
-        void cacheManager.set("site-settings", "default", value);
-        return resolved;
-    } catch (error) {
-        // 错误路径（含重试后仍失败）：不缓存，让下次请求重新尝试 Directus
-        console.error("[site-settings] 拉取设置失败（含重试）:", error);
-        return defaultResolved;
+    const fallback = readRecentFailureFallback();
+    if (fallback) {
+        return fallback;
     }
+
+    return await loadResolvedSiteSettingsSingleFlight();
 }
 
 export async function getPublicSiteSettings(): Promise<{

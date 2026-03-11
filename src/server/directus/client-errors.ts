@@ -7,6 +7,13 @@ import { isDirectusError } from "@directus/sdk";
 
 import { AppError, internal } from "@/server/api/errors";
 
+type DirectusErrorContext = {
+    action?: string;
+    scope?: string;
+    targetHost?: string;
+    timeoutMs?: number;
+};
+
 export function getDirectusErrorStatus(error: unknown): number | null {
     if (!isDirectusError(error)) {
         return null;
@@ -29,14 +36,91 @@ export function getDirectusErrorCodes(error: unknown): string[] {
         );
 }
 
-export function toDirectusError(action: string, error: unknown): AppError {
+function readErrorText(value: unknown): string | undefined {
+    return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function extractErrorLikeDetails(error: unknown): Record<string, unknown> {
+    if (!(error instanceof Error)) {
+        return {};
+    }
+
+    const details: Record<string, unknown> = {
+        errorName: error.name,
+        errorMessage: error.message,
+    };
+    const code = readErrorText((error as Error & { code?: unknown }).code);
+    if (code) {
+        details.errorCode = code;
+    }
+
+    const cause = (error as Error & { cause?: unknown }).cause;
+    if (cause instanceof Error) {
+        details.causeName = cause.name;
+        details.causeMessage = cause.message;
+        const causeCode = readErrorText(
+            (cause as Error & { code?: unknown }).code,
+        );
+        if (causeCode) {
+            details.causeCode = causeCode;
+        }
+    } else {
+        const causeText = readErrorText(cause);
+        if (causeText) {
+            details.causeMessage = causeText;
+        }
+    }
+
+    return details;
+}
+
+function mergeDirectusErrorDetails(
+    error: unknown,
+    context?: DirectusErrorContext,
+): Record<string, unknown> {
+    const details: Record<string, unknown> = {
+        ...extractErrorLikeDetails(error),
+    };
+
+    if (context?.action) {
+        details.action = context.action;
+    }
+    if (context?.scope) {
+        details.scope = context.scope;
+    }
+    if (context?.targetHost) {
+        details.targetHost = context.targetHost;
+    }
+    if (typeof context?.timeoutMs === "number") {
+        details.timeoutMs = context.timeoutMs;
+    }
+
+    return details;
+}
+
+export function toDirectusError(
+    action: string,
+    error: unknown,
+    context?: Omit<DirectusErrorContext, "action">,
+): AppError {
+    const details = mergeDirectusErrorDetails(error, {
+        ...context,
+        action,
+    });
+
     if (!isDirectusError(error)) {
         if (error instanceof AppError) {
             return error;
         }
         return error instanceof Error
-            ? internal(`[directus/client] ${action}失败: ${error.message}`)
-            : internal(`[directus/client] ${action}失败: ${String(error)}`);
+            ? internal(
+                  `[directus/client] ${action}失败: ${error.message}`,
+                  details,
+              )
+            : internal(
+                  `[directus/client] ${action}失败: ${String(error)}`,
+                  details,
+              );
     }
 
     const status = getDirectusErrorStatus(error);
@@ -55,12 +139,12 @@ export function toDirectusError(action: string, error: unknown): AppError {
     const message = `[directus/client] ${action}失败 ${statusText}${suffix}: ${detail}`;
 
     if (status === 403) {
-        return new AppError("DIRECTUS_FORBIDDEN", message, 403);
+        return new AppError("DIRECTUS_FORBIDDEN", message, 403, details);
     }
     if (status === 404) {
-        return new AppError("DIRECTUS_NOT_FOUND", message, 404);
+        return new AppError("DIRECTUS_NOT_FOUND", message, 404, details);
     }
-    return new AppError("DIRECTUS_ERROR", message, status || 500);
+    return new AppError("DIRECTUS_ERROR", message, status || 500, details);
 }
 
 export function isDirectusItemNotFound(error: unknown): boolean {

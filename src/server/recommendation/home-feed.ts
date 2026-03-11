@@ -3,6 +3,7 @@ import { hashParams } from "@/server/cache/key-utils";
 import { permalinkConfig } from "@/config";
 import { getAuthorBundle } from "@/server/api/v1/shared/author-cache";
 import { readMany } from "@/server/directus/client";
+import { createSingleFlightRunner } from "@/server/utils/single-flight";
 import type { JsonObject } from "@/types/json";
 import { initPostIdMap } from "@/utils/permalink-utils";
 import { excludeSpecialArticleSlugFilter } from "@/server/api/v1/shared";
@@ -83,6 +84,85 @@ const HOME_FEED_OWNER_DRAFT_FIELDS = [
 ] as const;
 
 let permalinkMapInitialized = false;
+
+const buildHomeFeedSingleFlight = createSingleFlightRunner(
+    async (
+        cacheKey: string,
+        params: {
+            viewerId: string | null;
+            limit: number;
+            outputLimit: number;
+            articleCandidateLimit: number;
+            diaryCandidateLimit: number;
+            engagementWindowHours: number;
+            personalizationLookbackDays: number;
+            algoVersion: string;
+            now: Date;
+        },
+    ): Promise<HomeFeedBuildResult> => {
+        const [candidatePool, preferenceProfile] = await Promise.all([
+            loadHomeFeedCandidatePool({
+                articleCandidateLimit: params.articleCandidateLimit,
+                diaryCandidateLimit: params.diaryCandidateLimit,
+                engagementWindowHours: params.engagementWindowHours,
+                algoVersion: params.algoVersion,
+                now: params.now,
+            }),
+            params.viewerId
+                ? loadPreferenceProfile(
+                      params.viewerId,
+                      params.now,
+                      params.personalizationLookbackDays,
+                  )
+                : Promise.resolve(createEmptyPreferenceProfile()),
+        ]);
+
+        const isLoggedIn = Boolean(params.viewerId);
+        const finalCandidates = params.viewerId
+            ? applyPreferenceProfileToCandidates(
+                  candidatePool.candidates,
+                  preferenceProfile,
+              )
+            : candidatePool.candidates;
+        const scoredCandidates = scoreHomeFeedCandidates(finalCandidates, {
+            now: params.now,
+            isLoggedIn,
+        });
+        const mixedItems = mixHomeFeedCandidates(
+            scoredCandidates,
+            params.limit,
+        );
+        const ownerDraft = params.viewerId
+            ? await loadOwnerWorkingDraftCandidate(params.viewerId)
+            : null;
+        const items = prependOwnerDraftToHomeFeed(
+            mixedItems,
+            ownerDraft,
+            params.limit,
+        );
+
+        const result: HomeFeedBuildResult = {
+            items,
+            generatedAt: params.now.toISOString(),
+            meta: {
+                viewerId: params.viewerId,
+                limit: params.limit,
+                outputLimit: params.outputLimit,
+                articleCandidateLimit: params.articleCandidateLimit,
+                diaryCandidateLimit: params.diaryCandidateLimit,
+                articleCandidateCount: candidatePool.articleCandidateCount,
+                diaryCandidateCount: candidatePool.diaryCandidateCount,
+                engagementWindowHours: params.engagementWindowHours,
+                personalizationLookbackDays: params.personalizationLookbackDays,
+                algoVersion: params.algoVersion,
+            },
+        };
+
+        void cacheManager.set("home-feed", cacheKey, result);
+        return result;
+    },
+    (cacheKey: string) => cacheKey,
+);
 
 async function ensurePermalinkPostIdMapInitialized(): Promise<void> {
     if (!permalinkConfig.enable || permalinkMapInitialized) {
@@ -358,53 +438,15 @@ export async function buildHomeFeed(
         return hydrateHomeFeedResult(cached);
     }
 
-    const [candidatePool, preferenceProfile] = await Promise.all([
-        loadHomeFeedCandidatePool({
-            articleCandidateLimit,
-            diaryCandidateLimit,
-            engagementWindowHours,
-            algoVersion,
-            now,
-        }),
-        viewerId
-            ? loadPreferenceProfile(viewerId, now, personalizationLookbackDays)
-            : Promise.resolve(createEmptyPreferenceProfile()),
-    ]);
-
-    const isLoggedIn = Boolean(viewerId);
-    const finalCandidates = viewerId
-        ? applyPreferenceProfileToCandidates(
-              candidatePool.candidates,
-              preferenceProfile,
-          )
-        : candidatePool.candidates;
-    const scoredCandidates = scoreHomeFeedCandidates(finalCandidates, {
+    return await buildHomeFeedSingleFlight(cacheKey, {
+        viewerId,
+        limit,
+        outputLimit,
+        articleCandidateLimit,
+        diaryCandidateLimit,
+        engagementWindowHours,
+        personalizationLookbackDays,
+        algoVersion,
         now,
-        isLoggedIn,
     });
-    const mixedItems = mixHomeFeedCandidates(scoredCandidates, limit);
-    const ownerDraft = viewerId
-        ? await loadOwnerWorkingDraftCandidate(viewerId)
-        : null;
-    const items = prependOwnerDraftToHomeFeed(mixedItems, ownerDraft, limit);
-
-    const result: HomeFeedBuildResult = {
-        items,
-        generatedAt: now.toISOString(),
-        meta: {
-            viewerId,
-            limit,
-            outputLimit,
-            articleCandidateLimit,
-            diaryCandidateLimit,
-            articleCandidateCount: candidatePool.articleCandidateCount,
-            diaryCandidateCount: candidatePool.diaryCandidateCount,
-            engagementWindowHours,
-            personalizationLookbackDays,
-            algoVersion,
-        },
-    };
-
-    void cacheManager.set("home-feed", cacheKey, result);
-    return result;
 }

@@ -149,6 +149,14 @@ function getCurrentScope(): DirectusRequestScope {
     return directusScopeStorage.getStore() ?? { kind: "service" };
 }
 
+function getDirectusTargetHost(): string | undefined {
+    try {
+        return new URL(getDirectusUrl()).host;
+    } catch {
+        return undefined;
+    }
+}
+
 export async function runWithDirectusPublicAccess<T>(
     task: () => Promise<T>,
 ): Promise<T> {
@@ -179,8 +187,8 @@ async function executeDirectusRequest<T>(
     action: string,
     request: unknown,
 ): Promise<T> {
+    const scope = getCurrentScope();
     try {
-        const scope = getCurrentScope();
         if (scope.kind === "service") {
             return await getServiceClient().request(request as never);
         }
@@ -191,7 +199,11 @@ async function executeDirectusRequest<T>(
             withToken(scope.accessToken, request as never),
         );
     } catch (error) {
-        throw toDirectusError(action, error);
+        throw toDirectusError(action, error, {
+            scope: scope.kind,
+            targetHost: getDirectusTargetHost(),
+            timeoutMs: DATA_FETCH_TIMEOUT_MS,
+        });
     }
 }
 

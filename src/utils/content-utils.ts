@@ -14,6 +14,7 @@ import {
     excludeSpecialArticleSlugFilter,
     filterPublicStatus,
 } from "@/server/api/v1/shared";
+import { createSingleFlightRunner } from "@/server/utils/single-flight";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import {
@@ -31,6 +32,17 @@ type PostAuthor = {
     display_name?: string;
     username?: string;
     avatar_url?: string;
+};
+
+export type Tag = {
+    name: string;
+    count: number;
+};
+
+export type Category = {
+    name: string;
+    count: number;
+    url: string;
 };
 
 export type DirectusPostEntry = {
@@ -334,6 +346,44 @@ type PostIds = {
     routeId: string;
 };
 
+type DerivedBlogData = {
+    posts: DirectusPostEntry[];
+    tags: Tag[];
+    categories: Category[];
+};
+
+type DerivedBlogDataCacheEntry = {
+    expiresAt: number;
+    data: DerivedBlogData;
+};
+
+const DERIVED_BLOG_DATA_CACHE_TTL_MS = 15_000;
+const derivedBlogDataCache = new Map<string, DerivedBlogDataCacheEntry>();
+
+function buildDerivedBlogDataCacheKey(viewerId?: string | null): string {
+    const normalizedViewerId = String(viewerId || "").trim();
+    return normalizedViewerId ? `viewer:${normalizedViewerId}` : "viewer:guest";
+}
+
+function readDerivedBlogDataCache(key: string): DerivedBlogData | null {
+    const cached = derivedBlogDataCache.get(key);
+    if (!cached) {
+        return null;
+    }
+    if (cached.expiresAt <= Date.now()) {
+        derivedBlogDataCache.delete(key);
+        return null;
+    }
+    return cached.data;
+}
+
+function writeDerivedBlogDataCache(key: string, data: DerivedBlogData): void {
+    derivedBlogDataCache.set(key, {
+        expiresAt: Date.now() + DERIVED_BLOG_DATA_CACHE_TTL_MS,
+        data,
+    });
+}
+
 function extractPostIds(post: AppArticle): PostIds {
     const normalizedSlug = String(post.slug || "").trim();
     const slug = normalizedSlug || null;
@@ -442,50 +492,24 @@ async function loadDirectusPosts(
     }
 }
 
-export async function getSortedPosts(
-    viewerId?: string | null,
-): Promise<DirectusPostEntry[]> {
-    const sorted = await loadDirectusPosts(viewerId);
-
-    for (let i = 1; i < sorted.length; i += 1) {
-        sorted[i].data.nextSlug = sorted[i - 1].id;
-        sorted[i].data.nextTitle = sorted[i - 1].data.title;
+function withAdjacentPostLinks(
+    posts: DirectusPostEntry[],
+): DirectusPostEntry[] {
+    for (let i = 1; i < posts.length; i += 1) {
+        posts[i].data.nextSlug = posts[i - 1].id;
+        posts[i].data.nextTitle = posts[i - 1].data.title;
     }
-    for (let i = 0; i < sorted.length - 1; i += 1) {
-        sorted[i].data.prevSlug = sorted[i + 1].id;
-        sorted[i].data.prevTitle = sorted[i + 1].data.title;
+    for (let i = 0; i < posts.length - 1; i += 1) {
+        posts[i].data.prevSlug = posts[i + 1].id;
+        posts[i].data.prevTitle = posts[i + 1].data.title;
     }
-
-    return sorted;
+    return posts;
 }
 
-export type PostForList = {
-    id: string;
-    data: DirectusPostEntry["data"];
-    url?: string;
-};
-
-export async function getSortedPostsList(
-    viewerId?: string | null,
-): Promise<PostForList[]> {
-    const sortedFullPosts = await loadDirectusPosts(viewerId);
-    return sortedFullPosts.map((post) => ({
-        id: post.id,
-        data: post.data,
-        url: post.url,
-    }));
-}
-
-export type Tag = {
-    name: string;
-    count: number;
-};
-
-export async function getTagList(viewerId?: string | null): Promise<Tag[]> {
-    const allBlogPosts = await loadDirectusPosts(viewerId);
+function buildTagListFromPosts(posts: DirectusPostEntry[]): Tag[] {
     const countMap: Record<string, number> = {};
 
-    for (const post of allBlogPosts) {
+    for (const post of posts) {
         for (const tag of post.data.tags ?? []) {
             if (!countMap[tag]) {
                 countMap[tag] = 0;
@@ -501,19 +525,10 @@ export async function getTagList(viewerId?: string | null): Promise<Tag[]> {
     return keys.map((key) => ({ name: key, count: countMap[key] }));
 }
 
-export type Category = {
-    name: string;
-    count: number;
-    url: string;
-};
-
-export async function getCategoryList(
-    viewerId?: string | null,
-): Promise<Category[]> {
-    const allBlogPosts = await loadDirectusPosts(viewerId);
+function buildCategoryListFromPosts(posts: DirectusPostEntry[]): Category[] {
     const count: Record<string, number> = {};
 
-    for (const post of allBlogPosts) {
+    for (const post of posts) {
         if (!post.data.category) {
             const uncategorizedKey = i18n(I18nKey.contentUncategorized);
             count[uncategorizedKey] = (count[uncategorizedKey] || 0) + 1;
@@ -532,4 +547,65 @@ export async function getCategoryList(
         count: count[category],
         url: getCategoryUrl(category),
     }));
+}
+
+const loadDerivedBlogDataSingleFlight = createSingleFlightRunner(
+    async (
+        cacheKey: string,
+        viewerId?: string | null,
+    ): Promise<DerivedBlogData> => {
+        const posts = withAdjacentPostLinks(await loadDirectusPosts(viewerId));
+        const data: DerivedBlogData = {
+            posts,
+            tags: buildTagListFromPosts(posts),
+            categories: buildCategoryListFromPosts(posts),
+        };
+        writeDerivedBlogDataCache(cacheKey, data);
+        return data;
+    },
+    (cacheKey: string) => cacheKey,
+);
+
+async function loadDerivedBlogData(
+    viewerId?: string | null,
+): Promise<DerivedBlogData> {
+    const cacheKey = buildDerivedBlogDataCacheKey(viewerId);
+    const cached = readDerivedBlogDataCache(cacheKey);
+    if (cached) {
+        return cached;
+    }
+    return await loadDerivedBlogDataSingleFlight(cacheKey, viewerId);
+}
+
+export async function getSortedPosts(
+    viewerId?: string | null,
+): Promise<DirectusPostEntry[]> {
+    return (await loadDerivedBlogData(viewerId)).posts;
+}
+
+export type PostForList = {
+    id: string;
+    data: DirectusPostEntry["data"];
+    url?: string;
+};
+
+export async function getSortedPostsList(
+    viewerId?: string | null,
+): Promise<PostForList[]> {
+    const sortedFullPosts = (await loadDerivedBlogData(viewerId)).posts;
+    return sortedFullPosts.map((post) => ({
+        id: post.id,
+        data: post.data,
+        url: post.url,
+    }));
+}
+
+export async function getTagList(viewerId?: string | null): Promise<Tag[]> {
+    return (await loadDerivedBlogData(viewerId)).tags;
+}
+
+export async function getCategoryList(
+    viewerId?: string | null,
+): Promise<Category[]> {
+    return (await loadDerivedBlogData(viewerId)).categories;
 }

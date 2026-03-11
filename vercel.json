@@ -3,6 +3,7 @@
   "outputDirectory": "dist",
   "installCommand": "pnpm install",
   "framework": "astro",
+  "regions": ["hkg1"],
   "headers": [
     {
       "source": "/(.*)",
