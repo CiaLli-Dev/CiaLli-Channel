@@ -409,7 +409,7 @@ describe("PATCH /me/articles/:id", () => {
         expect(mockedUpdateOne).toHaveBeenCalledWith(
             "app_articles",
             "article-1",
-            { title: "Updated Title", tags: [] },
+            { title: "Updated Title" },
             { fields: [...ARTICLE_FIELDS] },
         );
     });

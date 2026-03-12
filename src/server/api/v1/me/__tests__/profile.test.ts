@@ -172,6 +172,45 @@ describe("/me/profile bangumi fields", () => {
         });
     });
 
+    it("PATCH 更新基础资料时不会隐式清空 social_links", async () => {
+        const access = createMemberAccess({
+            profile: {
+                ...createMemberAccess().profile,
+                social_links: [
+                    {
+                        platform: "github",
+                        url: "https://github.com/test",
+                        enabled: true,
+                    },
+                ],
+            },
+        });
+        mockedUpdateOne.mockResolvedValue({
+            ...access.profile,
+            display_name: "新昵称",
+        });
+
+        const ctx = createMockAPIContext({
+            method: "PATCH",
+            url: "http://localhost:4321/api/v1/me/profile",
+            body: {
+                display_name: "新昵称",
+            },
+        });
+
+        const response = await handleMeProfile(
+            ctx as unknown as APIContext,
+            access,
+        );
+
+        expect(response.status).toBe(200);
+        expect(mockedUpdateOne).toHaveBeenCalledWith(
+            "app_user_profiles",
+            access.profile.id,
+            { display_name: "新昵称" },
+        );
+    });
+
     it("PATCH clears avatar on directus_users when avatar_file is null", async () => {
         const access = createMemberAccess({
             profile: {

@@ -55,15 +55,16 @@ export const SocialLinkSchema = z.object({
     enabled: z.boolean().default(true),
 });
 
-export const SocialLinksSchema = z
-    .array(SocialLinkSchema)
-    .max(20)
-    .nullable()
-    .default(null);
+/**
+ * PATCH 场景必须使用无默认值 schema，避免 default 在 partial() 下把缺省字段误解析成显式写入。
+ */
+export const SocialLinksSchema = z.array(SocialLinkSchema).max(20).nullable();
+export const SocialLinksDefaultSchema = SocialLinksSchema.default(null);
 
 // ── 标签 ──
 
-export const TagsSchema = z.array(z.string().max(100)).max(20).default([]);
+export const TagsSchema = z.array(z.string().max(100)).max(20);
+export const TagsDefaultSchema = TagsSchema.default([]);
 
 // ── 通用字段 ──
 

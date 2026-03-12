@@ -8,6 +8,7 @@ import {
     AppStatusSchema,
     OptionalIntSchema,
     OptionalStringSchema,
+    TagsDefaultSchema,
     TagsSchema,
 } from "./common";
 
@@ -23,7 +24,7 @@ export const CreateAlbumSchema = z.object({
     cover_url: OptionalStringSchema,
     date: OptionalStringSchema,
     location: OptionalStringSchema,
-    tags: TagsSchema,
+    tags: TagsDefaultSchema,
     category: OptionalStringSchema,
     layout: AlbumLayoutSchema.default("grid"),
     columns: z.number().int().min(1).max(10).default(3),
@@ -60,7 +61,7 @@ export const CreateAlbumPhotoSchema = z.object({
     image_url: OptionalStringSchema,
     title: OptionalStringSchema,
     description: OptionalStringSchema,
-    tags: TagsSchema,
+    tags: TagsDefaultSchema,
     taken_at: OptionalStringSchema,
     location: OptionalStringSchema,
     sort: OptionalIntSchema,

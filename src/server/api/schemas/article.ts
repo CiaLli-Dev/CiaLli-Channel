@@ -5,7 +5,12 @@ import * as z from "zod";
 
 import { ARTICLE_TITLE_MAX, weightedCharLength } from "@/constants/text-limits";
 
-import { AppStatusSchema, OptionalStringSchema, TagsSchema } from "./common";
+import {
+    AppStatusSchema,
+    OptionalStringSchema,
+    TagsDefaultSchema,
+    TagsSchema,
+} from "./common";
 
 const ArticleTitleLengthSchema = z
     .string()
@@ -31,7 +36,7 @@ export const CreateArticleSchema = z.object({
     summary: OptionalStringSchema,
     cover_file: OptionalStringSchema,
     cover_url: OptionalStringSchema,
-    tags: TagsSchema,
+    tags: TagsDefaultSchema,
     category: OptionalStringSchema,
     allow_comments: z.boolean().default(true),
     is_public: z.boolean().default(true),

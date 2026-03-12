@@ -74,10 +74,10 @@ describe("CreateArticleSchema", () => {
 describe("UpdateArticleSchema", () => {
     it("空对象 → 通过（all partial）", () => {
         const result = UpdateArticleSchema.parse({});
-        // tags 有 default([])，partial 后仍触发默认值
         expect(result.title).toBeUndefined();
         expect(result.body_markdown).toBeUndefined();
         expect(result.status).toBeUndefined();
+        expect(result.tags).toBeUndefined();
     });
 
     it("部分更新", () => {

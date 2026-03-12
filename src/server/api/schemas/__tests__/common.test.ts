@@ -4,6 +4,9 @@ import * as z from "zod";
 import {
     AppStatusSchema,
     PaginationSchema,
+    SocialLinksDefaultSchema,
+    SocialLinksSchema,
+    TagsDefaultSchema,
     TagsSchema,
 } from "@/server/api/schemas/common";
 
@@ -48,11 +51,33 @@ describe("TagsSchema", () => {
     it("正常数组", () => {
         expect(TagsSchema.parse(["a", "b"])).toEqual(["a", "b"]);
     });
-    it("未提供 → 默认 []", () => {
-        expect(TagsSchema.parse(undefined)).toEqual([]);
+    it("未提供 → 失败", () => {
+        expect(() => TagsSchema.parse(undefined)).toThrow(z.ZodError);
     });
     it("超 20 个 → 失败", () => {
         const tags = Array.from({ length: 21 }, (_, i) => `tag${i}`);
         expect(() => TagsSchema.parse(tags)).toThrow(z.ZodError);
+    });
+});
+
+describe("TagsDefaultSchema", () => {
+    it("未提供 → 默认 []", () => {
+        expect(TagsDefaultSchema.parse(undefined)).toEqual([]);
+    });
+});
+
+describe("SocialLinksSchema", () => {
+    it("允许 null", () => {
+        expect(SocialLinksSchema.parse(null)).toBeNull();
+    });
+
+    it("未提供 → 失败", () => {
+        expect(() => SocialLinksSchema.parse(undefined)).toThrow(z.ZodError);
+    });
+});
+
+describe("SocialLinksDefaultSchema", () => {
+    it("未提供 → 默认 null", () => {
+        expect(SocialLinksDefaultSchema.parse(undefined)).toBeNull();
     });
 });
