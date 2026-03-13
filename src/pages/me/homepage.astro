@@ -1,0 +1,390 @@
+---
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { getSessionUser } from "@/server/auth/session";
+import {
+  loadProfileForViewerByUserId,
+  profileToSidebarData,
+} from "@/server/api/v1/public-data";
+
+export const prerender = false;
+
+try {
+  const user = await getSessionUser(Astro);
+  if (user) {
+    const profile = await loadProfileForViewerByUserId(user.id, user.id);
+    if (profile) {
+      Astro.locals.sidebarProfile = profileToSidebarData(profile);
+    }
+  }
+} catch {
+  // 未登录时不设置 sidebarProfile
+}
+---
+
+<MainGridLayout
+  title={i18n(I18nKey.meHomepageTitle)}
+  description={i18n(I18nKey.meHomepageDescription)}
+>
+  <div
+    data-enter-skeleton-page="me-homepage"
+    data-enter-skeleton-target="me-homepage"
+  >
+    <div data-enter-skeleton-inline-content class="space-y-4 text-75">
+      <section class="card-base px-9 py-6 rounded-(--radius-large)">
+        <h1
+          class="text-4xl font-bold text-black/90 dark:text-white/90 mb-2 relative
+          before:w-1 before:h-8 before:rounded-md before:bg-(--primary)
+          before:absolute before:top-1/2 before:-translate-y-1/2 before:-left-4"
+        >
+          {i18n(I18nKey.meHomepageTitle)}
+        </h1>
+        <p class="text-base text-70">{i18n(I18nKey.meHomepageDescription)}</p>
+      </section>
+
+      <div id="homepage-editor-sections" class="hidden space-y-4">
+        {/* ── 头图设置 ── */}
+        <section class="card-base p-8 rounded-(--radius-large) space-y-4">
+          <h2 class="text-2xl font-semibold text-90">
+            {i18n(I18nKey.meHomepageHeaderSectionTitle)}
+          </h2>
+          <div
+            id="homepage-header-preview-area"
+            class="relative w-full aspect-[3/1] rounded-xl overflow-hidden border-2 border-dashed border-(--line-divider) cursor-pointer group"
+          >
+            <img
+              id="homepage-header-preview"
+              class="w-full h-full object-cover hidden"
+              alt={i18n(I18nKey.meHomepageHeaderPreviewAlt)}
+              loading="lazy"
+            />
+            <div
+              id="homepage-header-empty"
+              class="absolute inset-0 grid place-items-center text-sm text-60"
+            >
+              <div class="text-center space-y-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="w-8 h-8 mx-auto text-40"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><rect width="18" height="18" x="3" y="3" rx="2" ry="2"
+                  ></rect><circle cx="9" cy="9" r="2"></circle><path
+                    d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path></svg
+                >
+                <p>{i18n(I18nKey.meHomepageHeaderUploadHint)}</p>
+              </div>
+            </div>
+            <div
+              class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors grid place-items-center opacity-0 group-hover:opacity-100"
+            >
+              <span class="text-white text-sm font-medium">
+                {i18n(I18nKey.meHomepageHeaderChangeHint)}
+              </span>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              id="homepage-header-change-btn"
+              class="px-4 h-9 rounded-lg text-sm font-medium cursor-pointer bg-(--primary) text-white hover:opacity-90 transition flex items-center gap-1.5"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                ><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"
+                ></path><polyline points="17 8 12 3 7 8"></polyline><line
+                  x1="12"
+                  y1="3"
+                  x2="12"
+                  y2="15"></line></svg
+              >
+              {i18n(I18nKey.meHomepageHeaderChangeBtn)}
+            </button>
+            <button
+              type="button"
+              id="homepage-header-remove-btn"
+              class="px-4 py-2.5 rounded-lg border border-(--line-divider) text-sm text-75"
+            >
+              {i18n(I18nKey.meHomepageHeaderRemoveBtn)}
+            </button>
+            <div class="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                id="homepage-header-save-btn"
+                class="px-4 py-2 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm"
+              >
+                {i18n(I18nKey.interactionCommonSave)}
+              </button>
+              <span id="homepage-header-msg" class="text-sm text-60"></span>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 模块排序 ── */}
+        <section class="card-base p-8 rounded-(--radius-large) space-y-4">
+          <h2 class="text-2xl font-semibold text-90">
+            {i18n(I18nKey.meHomepageSectionOrderTitle)}
+          </h2>
+          <div id="homepage-section-order-list" class="space-y-2"></div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              id="homepage-section-reset-btn"
+              class="px-4 py-2.5 rounded-lg border border-(--line-divider) text-sm text-75"
+            >
+              {i18n(I18nKey.meHomepageSectionResetBtn)}
+            </button>
+            <div class="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                id="homepage-section-save-btn"
+                class="px-4 py-2 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm"
+              >
+                {i18n(I18nKey.interactionCommonSave)}
+              </button>
+              <span id="homepage-section-msg" class="text-sm text-60"></span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card-base p-8 rounded-(--radius-large) space-y-4">
+          <h2 class="text-2xl font-semibold text-90">
+            {i18n(I18nKey.meHomepageBangumiConfigTitle)}
+          </h2>
+          <p class="text-sm text-60">
+            {i18n(I18nKey.meHomepageBangumiConfigDescription)}
+          </p>
+          <form
+            id="homepage-bangumi-form"
+            class="grid grid-cols-2 gap-4 text-base"
+          >
+            <label
+              class="flex items-center gap-3 text-75 cursor-pointer select-none"
+            >
+              <input
+                type="checkbox"
+                id="homepage-bangumi-show"
+                class="toggle-checkbox"
+              />
+              <span class="toggle-track"><span class="toggle-knob"></span></span
+              >
+              {i18n(I18nKey.meHomepageBangumiShowLabel)}
+            </label>
+            <label
+              class="flex items-center gap-3 text-75 cursor-pointer select-none"
+            >
+              <input
+                type="checkbox"
+                id="homepage-bangumi-private"
+                class="toggle-checkbox"
+              />
+              <span class="toggle-track"><span class="toggle-knob"></span></span
+              >
+              {i18n(I18nKey.meHomepageBangumiIncludePrivateLabel)}
+            </label>
+            <label class="space-y-1.5 col-span-2">
+              <span class="text-sm text-60">
+                {i18n(I18nKey.meHomepageBangumiUsernameLabel)}
+              </span>
+              <input
+                id="homepage-bangumi-username"
+                inputmode="numeric"
+                pattern="[0-9]+"
+                class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
+                placeholder={i18n(I18nKey.meHomepageBangumiUsernamePlaceholder)}
+              />
+            </label>
+            <label class="space-y-1.5 col-span-2">
+              <span class="text-sm text-60">
+                {i18n(I18nKey.meHomepageBangumiAccessTokenLabel)}
+              </span>
+              <input
+                id="homepage-bangumi-token"
+                type="password"
+                autocomplete="new-password"
+                class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
+                placeholder={i18n(
+                  I18nKey.meHomepageBangumiAccessTokenPlaceholder,
+                )}
+              />
+            </label>
+            <div class="col-span-2 flex flex-wrap items-center gap-2">
+              <span id="homepage-bangumi-token-state" class="text-sm text-60"
+              ></span>
+              <button
+                type="button"
+                id="homepage-bangumi-clear-token-btn"
+                class="px-4 py-2.5 rounded-lg border border-(--line-divider) text-sm text-75"
+              >
+                {i18n(I18nKey.meHomepageBangumiClearTokenBtn)}
+              </button>
+              <div class="ml-auto flex items-center gap-2">
+                <button
+                  type="submit"
+                  id="homepage-bangumi-save-btn"
+                  class="px-4 py-2 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm"
+                >
+                  {i18n(I18nKey.interactionCommonSave)}
+                </button>
+                <span id="homepage-bangumi-msg" class="text-sm text-60"></span>
+              </div>
+            </div>
+          </form>
+        </section>
+      </div>
+    </div>
+    <div
+      data-enter-skeleton-inline-placeholder
+      aria-hidden="true"
+      class="space-y-4"
+    >
+      <section class="card-base px-9 py-6 rounded-(--radius-large) space-y-3">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 26%; --skeleton-height: 2rem;"
+        >
+        </div>
+        <div class="md3-skeleton-text" style="--skeleton-width: 48%;"></div>
+      </section>
+      <section class="card-base p-8 rounded-(--radius-large) space-y-4">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 22%; --skeleton-height: 1.6rem;"
+        >
+        </div>
+        <div class="md3-skeleton-block h-48 rounded-xl"></div>
+        <div class="md3-skeleton-block h-10 w-48 rounded-lg"></div>
+      </section>
+      <section class="card-base p-8 rounded-(--radius-large) space-y-4">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 20%; --skeleton-height: 1.6rem;"
+        >
+        </div>
+        {
+          Array.from({ length: 4 }).map(() => (
+            <div class="md3-skeleton-block h-12 rounded-lg" />
+          ))
+        }
+        <div class="md3-skeleton-block h-10 w-32 rounded-lg"></div>
+      </section>
+    </div>
+  </div>
+
+  {/* ── 裁剪弹窗 ── */}
+  <div
+    slot="modal"
+    id="homepage-header-crop-modal"
+    class="overlay-dialog hidden px-4 py-5"
+    tabindex="-1"
+  >
+    <div
+      class="overlay-dialog-card overlay-dialog-card-crop w-full max-w-2xl border border-(--line-divider) text-75"
+      style="text-align: left;"
+    >
+      <div class="overlay-dialog-body">
+        <div class="flex items-center gap-2">
+          <h3 class="text-lg text-xl font-semibold text-90">
+            {i18n(I18nKey.meHomepageCropTitle)}
+          </h3>
+        </div>
+        <p class="text-sm text-60">
+          {i18n(I18nKey.meHomepageCropHint)}
+        </p>
+        <div
+          id="homepage-header-crop-viewport"
+          class="relative mx-auto w-full aspect-[3/1] overflow-hidden rounded-2xl border border-(--line-divider) bg-black/15 dark:bg-white/10 select-none touch-none"
+        >
+          <img
+            id="homepage-header-crop-image"
+            class="absolute left-0 top-0 max-w-none pointer-events-none hidden"
+            alt={i18n(I18nKey.meHomepageCropAlt)}
+          />
+          <div
+            id="homepage-header-crop-empty"
+            class="absolute inset-0 grid place-items-center text-sm text-60 pointer-events-none"
+          >
+            {i18n(I18nKey.interactionCommonSelectImage)}
+          </div>
+          <div
+            class="absolute inset-0 pointer-events-none rounded-2xl ring-2 ring-white/80"
+          >
+          </div>
+        </div>
+        <div class="space-y-1">
+          <label for="homepage-header-crop-zoom" class="text-sm text-60"
+            >{i18n(I18nKey.interactionCommonZoom)}</label
+          >
+          <input
+            id="homepage-header-crop-zoom"
+            type="range"
+            min="100"
+            max="300"
+            step="1"
+            value="100"
+            class="w-full"
+          />
+        </div>
+        <span id="homepage-header-crop-msg" class="text-sm text-red-500"></span>
+      </div>
+
+      <div class="overlay-dialog-actions overlay-dialog-actions-crop">
+        <input
+          id="homepage-header-crop-file"
+          type="file"
+          accept="image/*"
+          class="hidden"
+        />
+        <button
+          type="button"
+          id="homepage-header-crop-select-btn"
+          class="px-4 h-9 rounded-lg text-sm font-medium cursor-pointer bg-(--primary) text-white hover:opacity-90 transition flex items-center gap-1.5"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path><polyline
+              points="17 8 12 3 7 8"></polyline><line
+              x1="12"
+              y1="3"
+              x2="12"
+              y2="15"></line></svg
+          >
+          {i18n(I18nKey.interactionCommonChooseFile)}
+        </button>
+        <button
+          type="button"
+          id="homepage-header-crop-apply-btn"
+          class="px-4 py-2.5 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm"
+        >
+          {i18n(I18nKey.interactionCommonApplyCrop)}
+        </button>
+        <button
+          type="button"
+          id="homepage-header-crop-cancel-btn"
+          class="overlay-dialog-actions-end px-4 py-2.5 rounded-lg border border-(--line-divider) text-sm text-75"
+        >
+          {i18n(I18nKey.interactionCommonCancel)}
+        </button>
+      </div>
+    </div>
+  </div>
+</MainGridLayout>

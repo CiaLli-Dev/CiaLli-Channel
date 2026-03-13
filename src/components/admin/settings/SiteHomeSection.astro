@@ -1,0 +1,226 @@
+---
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+---
+
+<!-- ===== Section 3: 首页设置 ===== -->
+<section class="card-base p-8 rounded-(--radius-large) space-y-4">
+  <h2 class="text-2xl font-semibold text-90">
+    {i18n(I18nKey.adminSiteSettingsSectionHome)}
+  </h2>
+  <form id="ss-home-form" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <h3 class="text-lg font-medium text-75 col-span-2">
+      {i18n(I18nKey.adminSiteSettingsCarouselWallpaper)}
+    </h3>
+    <label class="space-y-1.5">
+      <span class="text-sm text-60">
+        {i18n(I18nKey.adminSiteSettingsWallpaperMode)}
+      </span>
+      <select
+        id="ss-wallpaper-mode"
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
+      >
+        <option value="banner">banner</option>
+        <option value="none">none</option>
+      </select>
+    </label>
+    <label class="space-y-1.5">
+      <span class="text-sm text-60">
+        {i18n(I18nKey.adminSiteSettingsBannerAlignment)}
+      </span>
+      <select
+        id="ss-banner-position"
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
+      >
+        <option value="top">top</option>
+        <option value="center">center</option>
+        <option value="bottom">bottom</option>
+      </select>
+    </label>
+    <label
+      class="flex items-center gap-3 text-75 cursor-pointer select-none col-span-2"
+    >
+      <input
+        type="checkbox"
+        id="ss-banner-carousel-enable"
+        class="toggle-checkbox"
+      />
+      <span class="toggle-track"><span class="toggle-knob"></span></span>
+      {i18n(I18nKey.adminSiteSettingsEnableWallpaperCarousel)}
+    </label>
+    <label class="space-y-1.5">
+      <span class="text-sm text-60">
+        {i18n(I18nKey.adminSiteSettingsCarouselIntervalSeconds)}
+      </span>
+      <input
+        id="ss-banner-carousel-interval"
+        type="number"
+        min="1"
+        max="120"
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
+        placeholder="5"
+      />
+    </label>
+    <hr class="border-(--line-divider) col-span-2" />
+    <h3 class="text-lg font-medium text-75 col-span-2">
+      {i18n(I18nKey.adminSiteSettingsImageSourceAndCopy)}
+    </h3>
+    <label
+      class="flex items-center gap-3 text-75 cursor-pointer select-none col-span-2"
+    >
+      <input
+        type="checkbox"
+        id="ss-banner-image-api-enable"
+        class="toggle-checkbox"
+      />
+      <span class="toggle-track"><span class="toggle-knob"></span></span>
+      {i18n(I18nKey.adminSiteSettingsEnableBannerApi)}
+    </label>
+    <label class="space-y-1.5 col-span-2">
+      <span class="text-sm text-60">
+        {i18n(I18nKey.adminSiteSettingsBannerApiUrl)}
+      </span>
+      <input
+        id="ss-banner-image-api-url"
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+        placeholder="https://example.com/api/banner"
+      />
+    </label>
+    <label
+      class="flex items-center gap-3 text-75 cursor-pointer select-none col-span-2"
+    >
+      <input
+        type="checkbox"
+        id="ss-banner-home-text-enable"
+        class="toggle-checkbox"
+      />
+      <span class="toggle-track"><span class="toggle-knob"></span></span>
+      {i18n(I18nKey.adminSiteSettingsShowBannerCopy)}
+    </label>
+    <label class="space-y-1.5">
+      <span class="text-sm text-60">
+        {i18n(I18nKey.adminSiteSettingsHomeTitle)}
+      </span>
+      <input
+        id="ss-banner-home-text-title"
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+        placeholder={i18n(I18nKey.adminSiteSettingsHomeTitlePlaceholder)}
+      />
+    </label>
+    <label class="space-y-1.5">
+      <span class="text-sm text-60">
+        {i18n(I18nKey.adminSiteSettingsHomeSubtitleLines)}
+      </span>
+      <textarea
+        id="ss-banner-home-text-subtitle"
+        class="w-full min-h-24 rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+        placeholder={i18n(I18nKey.adminSiteSettingsHomeSubtitlePlaceholder)}
+      ></textarea>
+    </label>
+    <label
+      class="flex items-center gap-3 text-75 cursor-pointer select-none col-span-2"
+    >
+      <input
+        type="checkbox"
+        id="ss-banner-home-typewriter-enable"
+        class="toggle-checkbox"
+      />
+      <span class="toggle-track"><span class="toggle-knob"></span></span>
+      {i18n(I18nKey.adminSiteSettingsEnableTypewriter)}
+    </label>
+    <label class="space-y-1.5">
+      <span class="text-sm text-60">
+        {i18n(I18nKey.adminSiteSettingsTypeSpeedMs)}
+      </span>
+      <input
+        id="ss-banner-home-typewriter-speed"
+        type="number"
+        min="10"
+        max="500"
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
+      />
+    </label>
+    <label class="space-y-1.5">
+      <span class="text-sm text-60">
+        {i18n(I18nKey.adminSiteSettingsDeleteSpeedMs)}
+      </span>
+      <input
+        id="ss-banner-home-typewriter-delete-speed"
+        type="number"
+        min="10"
+        max="500"
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
+      />
+    </label>
+    <label class="space-y-1.5">
+      <span class="text-sm text-60">
+        {i18n(I18nKey.adminSiteSettingsPauseTimeMs)}
+      </span>
+      <input
+        id="ss-banner-home-typewriter-pause-time"
+        type="number"
+        min="100"
+        max="10000"
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
+      />
+    </label>
+    <label class="flex items-center gap-3 text-75 cursor-pointer select-none">
+      <input
+        type="checkbox"
+        id="ss-banner-waves-enable"
+        class="toggle-checkbox"
+      />
+      <span class="toggle-track"><span class="toggle-knob"></span></span>
+      {i18n(I18nKey.adminSiteSettingsEnableWaveEffect)}
+    </label>
+    <label class="flex items-center gap-3 text-75 cursor-pointer select-none">
+      <input
+        type="checkbox"
+        id="ss-banner-waves-performance"
+        class="toggle-checkbox"
+      />
+      <span class="toggle-track"><span class="toggle-knob"></span></span>
+      {i18n(I18nKey.adminSiteSettingsOptimizeWavePerformance)}
+    </label>
+    <div class="col-span-2 space-y-2">
+      <h4 class="text-base font-medium text-75">
+        {i18n(I18nKey.adminSiteSettingsDesktopWallpaper)}
+      </h4>
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          id="ss-banner-desktop-upload-btn"
+          class="px-4 h-9 rounded-lg text-sm font-medium cursor-pointer bg-(--primary) text-white hover:opacity-90 transition flex items-center gap-1.5"
+          ><svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path><polyline
+              points="17 8 12 3 7 8"></polyline><line
+              x1="12"
+              y1="3"
+              x2="12"
+              y2="15"></line></svg
+          >{i18n(I18nKey.interactionCommonUploadImage)}</button
+        >
+        <span class="text-xs text-50">
+          {i18n(I18nKey.meSettingsDragSort)}
+        </span>
+      </div>
+      <div id="ss-banner-desktop-list" class="space-y-2"></div>
+    </div>
+    <div class="col-span-2 flex items-center gap-2 pt-2">
+      <button
+        type="submit"
+        class="px-4 py-2 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm"
+        >{i18n(I18nKey.adminSiteSettingsSaveHome)}</button
+      >
+      <span id="ss-home-msg" class="text-sm text-60"></span>
+    </div>
+  </form>
+</section>

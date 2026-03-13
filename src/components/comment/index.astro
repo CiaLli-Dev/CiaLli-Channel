@@ -1,0 +1,370 @@
+---
+import { Icon } from "astro-icon/components";
+import "../../styles/markdown.css";
+import "../../styles/markdown-extend.styl";
+
+interface Props {
+  module?: "articles" | "diaries";
+  contentId?: string;
+  contentShortId?: string;
+  contentAuthorId?: string;
+  allowComments?: boolean;
+  loadStrategy?: "nearby" | "eager";
+  pageSize?: number;
+}
+
+const moduleName = Astro.props.module;
+const contentId = Astro.props.contentId;
+const contentShortId = Astro.props.contentShortId;
+const contentAuthorId = Astro.props.contentAuthorId;
+const loadStrategy = Astro.props.loadStrategy === "eager" ? "eager" : "nearby";
+const pageSizeRaw = Number(Astro.props.pageSize);
+const pageSize =
+  Number.isFinite(pageSizeRaw) && pageSizeRaw > 0
+    ? Math.min(50, Math.floor(pageSizeRaw))
+    : 20;
+const enabled =
+  typeof Astro.props.allowComments === "boolean"
+    ? Astro.props.allowComments
+    : true;
+
+const hasDirectusTarget = Boolean(moduleName && contentId);
+---
+
+{
+  enabled && (
+    <div
+      class="card-base p-6 mb-4 relative overflow-visible"
+      id="comment-root"
+      data-module={moduleName || ""}
+      data-content-id={contentId || ""}
+      data-content-short-id={contentShortId || ""}
+      data-content-author-id={contentAuthorId || ""}
+      data-directus-enabled={hasDirectusTarget ? "1" : "0"}
+      data-load-strategy={loadStrategy}
+      data-page-size={String(pageSize)}
+    >
+      <div class="flex items-center justify-between mb-4 gap-3">
+        <h3 class="text-xl font-semibold text-90">评论</h3>
+        {hasDirectusTarget && (
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              id="comment-sort-created-at"
+              class="px-3 py-1.5 rounded-lg text-xs border border-(--line-divider) text-90 bg-(--btn-plain-bg-hover)"
+              aria-pressed="true"
+            >
+              发布时间 <span id="comment-sort-created-at-direction">↑</span>
+            </button>
+            <button
+              type="button"
+              id="comment-sort-like-count"
+              class="px-3 py-1.5 rounded-lg text-xs border border-(--line-divider) text-60"
+              aria-pressed="false"
+            >
+              最多点赞
+            </button>
+          </div>
+        )}
+      </div>
+
+      {!hasDirectusTarget && (
+        <p class="text-sm text-70 rounded-xl border border-(--line-divider) px-4 py-3">
+          旧评论系统已移除。该页面未绑定 Directus 评论对象。
+        </p>
+      )}
+
+      {hasDirectusTarget && (
+        <>
+          <div class="mb-6">
+            <button
+              type="button"
+              id="comment-open-editor"
+              class="px-4 py-2 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm"
+            >
+              发布评论
+            </button>
+          </div>
+
+          <div id="comment-list" class="space-y-4" />
+          <div
+            id="comment-empty"
+            class="hidden text-sm text-60 rounded-xl border border-(--line-divider) px-4 py-3"
+          >
+            暂无评论，来抢沙发吧。
+          </div>
+          <div class="mt-4 hidden" id="comment-load-more-wrapper">
+            <button
+              type="button"
+              id="comment-load-more"
+              class="px-4 py-2 rounded-lg border border-(--line-divider) text-75 text-sm hover:text-90"
+            >
+              加载更多
+            </button>
+          </div>
+
+          <div
+            id="comment-editor-overlay"
+            class="comment-editor-overlay hidden"
+            aria-hidden="true"
+            tabindex="-1"
+          >
+            <div
+              class="comment-editor-overlay-card card-base rounded-(--radius-large)"
+              role="dialog"
+              aria-modal="true"
+              aria-label="评论编辑器"
+            >
+              <form id="comment-create-form" class="space-y-3">
+                <input type="hidden" id="comment-parent-id" value="" />
+
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    id="comment-mode-edit"
+                    class="px-3 py-1.5 rounded-lg text-xs border border-(--line-divider) text-60"
+                    aria-pressed="true"
+                  >
+                    编辑
+                  </button>
+                  <button
+                    type="button"
+                    id="comment-mode-preview"
+                    class="px-3 py-1.5 rounded-lg text-xs border border-(--line-divider) text-60"
+                    aria-pressed="false"
+                  >
+                    预览
+                  </button>
+                </div>
+
+                <div id="comment-editor-panel" class="space-y-3">
+                  <label for="comment-body" class="sr-only">
+                    评论内容
+                  </label>
+                  <textarea
+                    id="comment-body"
+                    rows="6"
+                    class="w-full rounded-xl border border-(--line-divider) bg-transparent px-4 py-3 text-90 font-mono focus:outline-none focus:border-(--primary)"
+                    placeholder="期待你的评论…"
+                  />
+
+                  <div class="flex w-full items-center gap-2">
+                    <div
+                      id="comment-toolbar"
+                      class="flex flex-nowrap items-center gap-2 overflow-x-auto min-w-0 pr-1 flex-1"
+                    >
+                      <button
+                        type="button"
+                        class="comment-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
+                        data-md-action="bold"
+                        aria-label="加粗"
+                        title="加粗"
+                      >
+                        <Icon
+                          name="material-symbols:format-bold"
+                          class="text-[1.1rem]"
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        class="comment-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
+                        data-md-action="italic"
+                        aria-label="斜体"
+                        title="斜体"
+                      >
+                        <Icon
+                          name="material-symbols:format-italic"
+                          class="text-[1.1rem]"
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        class="comment-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
+                        data-md-action="underline"
+                        aria-label="下划线"
+                        title="下划线"
+                      >
+                        <Icon
+                          name="material-symbols:format-underlined"
+                          class="text-[1.1rem]"
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        class="comment-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
+                        data-md-action="strike"
+                        aria-label="删除线"
+                        title="删除线"
+                      >
+                        <Icon
+                          name="material-symbols:format-strikethrough"
+                          class="text-[1.1rem]"
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        class="comment-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
+                        data-md-action="quote"
+                        aria-label="引用"
+                        title="引用"
+                      >
+                        <Icon
+                          name="material-symbols:format-quote"
+                          class="text-[1.1rem]"
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        class="comment-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
+                        data-md-action="inline-code"
+                        aria-label="行内代码"
+                        title="行内代码"
+                      >
+                        <Icon
+                          name="material-symbols:code"
+                          class="text-[1.1rem]"
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        class="comment-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
+                        data-md-action="code-block"
+                        aria-label="代码块"
+                        title="代码块"
+                      >
+                        <Icon
+                          name="material-symbols:terminal"
+                          class="text-[1.1rem]"
+                        />
+                      </button>
+                    </div>
+                    <div class="ml-auto flex shrink-0 items-center gap-2">
+                      <button
+                        type="button"
+                        id="comment-overlay-close"
+                        class="shrink-0 px-4 py-2 rounded-lg border border-(--line-divider) text-75 text-sm"
+                      >
+                        取消回复
+                      </button>
+                      <button
+                        type="submit"
+                        id="comment-submit"
+                        class="shrink-0 px-4 py-2 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm"
+                      >
+                        发布评论
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  id="comment-preview-panel"
+                  class="hidden rounded-xl border border-(--line-divider) p-4"
+                >
+                  <div
+                    id="comment-preview-loading"
+                    class="hidden text-xs text-60"
+                  >
+                    预览渲染中...
+                  </div>
+                  <p
+                    id="comment-preview-error"
+                    class="hidden text-sm text-red-500"
+                  />
+                  <div id="comment-preview-empty" class="text-sm text-60">
+                    暂无预览内容～
+                  </div>
+                  <div
+                    id="comment-preview-content"
+                    class="hidden prose prose-base dark:prose-invert max-w-none! custom-md text-90"
+                  />
+                </div>
+
+                <div class="flex items-center justify-between gap-2">
+                  <div class="text-xs text-60" id="comment-reply-hint" />
+                </div>
+                <p
+                  id="comment-form-error"
+                  class="hidden text-sm text-red-500"
+                />
+              </form>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+<script>
+  import { initComments } from "@/scripts/comments-init";
+
+  type CommentInitRuntimeWindow = Window &
+    typeof globalThis & {
+      __commentSettledInitBound?: boolean;
+    };
+
+  const runtimeWindow = window as CommentInitRuntimeWindow;
+  const NAVIGATION_SETTLED_EVENT = "cialli:navigation:settled";
+
+  const runCommentInit = () => {
+    initComments();
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", runCommentInit, {
+      once: true,
+    });
+  } else {
+    runCommentInit();
+  }
+
+  if (!runtimeWindow.__commentSettledInitBound) {
+    runtimeWindow.__commentSettledInitBound = true;
+    // 等待布局过渡与骨架揭幕后再初始化评论，避免出现“二次加载”体感。
+    document.addEventListener(NAVIGATION_SETTLED_EVENT, runCommentInit);
+  }
+</script>
+
+<style is:global>
+  body.dc-comment-editor-overlay-lock {
+    overflow: hidden;
+  }
+
+  .comment-editor-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  .comment-editor-overlay.hidden {
+    display: none !important;
+  }
+
+  .comment-editor-overlay-card {
+    width: min(100%, 920px);
+    max-height: min(92vh, 980px);
+    overflow-y: auto;
+    border: 1px solid var(--line-divider);
+    padding: clamp(1rem, 2vw, 1.25rem);
+    border-radius: clamp(1rem, 2vw, var(--radius-large));
+  }
+
+  #comment-root .custom-md img {
+    width: 30%;
+    max-width: 30%;
+    height: auto;
+  }
+
+  #comment-root .comment-node-child {
+    margin-top: 0.75rem;
+    margin-left: 2rem;
+    padding-left: 1rem;
+    border-left: 1px solid var(--line-divider);
+  }
+</style>

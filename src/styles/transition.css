@@ -1,0 +1,132 @@
+/* Page transition animations - View Transitions API */
+
+:root {
+  --page-transition-duration: 280ms;
+  --page-transition-easing: cubic-bezier(0.22, 1, 0.36, 1);
+  --page-reveal-shift-distance: 0.625rem;
+  --theme-view-transition-duration: 220ms;
+  --theme-view-transition-easing: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 主要内容区域的过渡动画 */
+.transition-main {
+  transition:
+    opacity var(--page-transition-duration) var(--page-transition-easing),
+    transform var(--page-transition-duration) var(--page-transition-easing);
+}
+
+/* 离开动画 */
+.transition-leaving {
+  transition:
+    transform var(--page-transition-duration) var(--page-transition-easing),
+    opacity var(--page-transition-duration) var(--page-transition-easing);
+}
+
+/* 增强的淡入动画 */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, var(--page-reveal-shift-distance), 0) scale(0.996);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/* 页面加载动画 */
+.onload-animation {
+  opacity: 0;
+  animation: fade-in-up var(--page-transition-duration) var(--page-transition-easing) forwards;
+}
+
+/* 高风险容器在首屏与切页都不播放 onload 位移动画，避免侧栏/TOC 二次揭幕 */
+#sidebar.onload-animation,
+#right-sidebar-slot.onload-animation,
+#toc-wrapper.onload-animation {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: translate3d(0, 0, 0) scale(1) !important;
+}
+
+/* 客户端导航过渡窗口期不再播放 onload 位移动画，避免切页抖动抽动 */
+html[data-astro-transition] .onload-animation,
+html.enter-skeleton-active .onload-animation {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: translate3d(0, 0, 0) scale(1) !important;
+}
+
+/* 特殊元素的动画 */
+.transition-slide-in {
+  opacity: 0;
+  transform: translateY(20px) translateX(8px);
+  transition: all 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.transition-slide-in.active {
+  opacity: 1;
+  transform: translateY(0) translateX(0);
+}
+
+/* 卡片动画 */
+.card-animation {
+  opacity: 0;
+  transform: translateY(30px) translateX(10px) scale(0.98);
+  transition: all 350ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.card-animation.visible {
+  opacity: 1;
+  transform: translateY(0) translateX(0) scale(1);
+}
+
+/* 导航动画 */
+.nav-animation {
+  opacity: 0;
+  transform: translateX(-20px);
+  transition: all 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.nav-animation.loaded {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* 性能优化 */
+.transition-main,
+.transition-leaving,
+.onload-animation,
+.transition-slide-in,
+.card-animation {
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Banner-to-spec 过渡：关闭默认 root VT，由 incoming 文档的 live DOM 单次形变接管 */
+html.layout-banner-to-spec-transition::view-transition-group(root),
+html.layout-banner-to-spec-transition::view-transition-old(root),
+html.layout-banner-to-spec-transition::view-transition-new(root) {
+  animation: none;
+}
+
+/* spec-to-banner 回场：关闭默认 root 交叉淡化，避免整屏瞬时闪烁 */
+html.layout-spec-to-banner-transition::view-transition-group(root),
+html.layout-spec-to-banner-transition::view-transition-old(root),
+html.layout-spec-to-banner-transition::view-transition-new(root) {
+  animation: none;
+}
+
+/* 减少动画的用户偏好设置 */
+@media (prefers-reduced-motion: reduce) {
+  .transition-main,
+  .transition-leaving,
+  .onload-animation,
+  .transition-slide-in,
+  .card-animation,
+  .nav-animation {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

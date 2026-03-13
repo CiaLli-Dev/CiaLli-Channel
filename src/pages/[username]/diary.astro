@@ -1,0 +1,224 @@
+---
+import ContentNotVisible from "@components/misc/ContentNotVisible.astro";
+import DiaryCard from "@components/DiaryCard.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import {
+  loadProfileForViewer,
+  loadUserDiaryList,
+  profileToSidebarData,
+} from "@/server/api/v1/public-data";
+import {
+  runWithDirectusPublicAccess,
+  runWithDirectusUserAccess,
+} from "@/server/directus/client";
+import type {
+  ContentLoadResult,
+  PaginatedResult,
+} from "@/server/api/v1/public-data";
+import type { AppDiary, AppDiaryImage } from "@/types/app";
+import type { AuthorBundleItem } from "@/server/api/v1/shared/author-cache";
+import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
+
+export const prerender = false;
+
+const username = (Astro.params.username || "").trim();
+
+type DiaryListItem = AppDiary & {
+  author: AuthorBundleItem;
+  images: AppDiaryImage[];
+  comment_count: number;
+  like_count: number;
+};
+
+let result: ContentLoadResult<PaginatedResult<DiaryListItem>> = {
+  status: "not_found",
+};
+let isOwner = false;
+
+try {
+  if (!username) {
+    Astro.response.status = 404;
+  } else {
+    const sessionUser = await getSessionUser(Astro);
+    const viewerId = sessionUser?.id ?? null;
+    result = (
+      viewerId
+        ? await runWithDirectusUserAccess(
+            getSessionAccessToken(Astro),
+            async () =>
+              await loadUserDiaryList(username, {
+                limit: 100,
+                viewerId,
+              }),
+          )
+        : await runWithDirectusPublicAccess(
+            async () =>
+              await loadUserDiaryList(username, {
+                limit: 100,
+                viewerId,
+              }),
+          )
+    ) as ContentLoadResult<PaginatedResult<DiaryListItem>>;
+    if (result.status === "not_found") {
+      Astro.response.status = 404;
+    } else if (result.status === "permission_denied") {
+      Astro.response.status = 404;
+    } else {
+      const sidebarProfile = viewerId
+        ? await runWithDirectusUserAccess(
+            getSessionAccessToken(Astro),
+            async () => await loadProfileForViewer(username, viewerId),
+          )
+        : await runWithDirectusPublicAccess(
+            async () => await loadProfileForViewer(username, viewerId),
+          );
+      if (sidebarProfile) {
+        Astro.locals.sidebarProfile = profileToSidebarData(sidebarProfile);
+        isOwner = Boolean(viewerId) && sidebarProfile.user_id === viewerId;
+      }
+    }
+  }
+} catch (error) {
+  console.error("[diary] failed to load entries:", error);
+  Astro.response.status = 500;
+}
+
+const items = result.status === "ok" ? result.data.items : [];
+---
+
+<MainGridLayout
+  title={i18n(I18nKey.contentDiary)}
+  description={i18n(I18nKey.contentDiaryPublicSubtitle)}
+>
+  {
+    result.status === "not_found" || result.status === "permission_denied" ? (
+      <ContentNotVisible
+        mode="not_found"
+        title={i18n(I18nKey.contentUserNotFoundTitle)}
+        description={i18n(I18nKey.contentUserNotFoundDescription)}
+        backHref="/"
+        backLabel={i18n(I18nKey.contentUserBackToHome)}
+      />
+    ) : (
+      <div
+        data-enter-skeleton-page="user-diary"
+        data-enter-skeleton-target="user-diary"
+      >
+        <div data-enter-skeleton-inline-content>
+          <section class="card-base px-9 py-6 rounded-(--radius-large) mb-4 text-90 flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <h1
+                class="text-4xl font-bold text-black/90 dark:text-white/90 mb-2 relative
+					before:w-1 before:h-8 before:rounded-md before:bg-(--primary)
+					before:absolute before:top-1/2 before:-translate-y-1/2 before:-left-4"
+              >
+                {i18n(I18nKey.contentDiary)}
+              </h1>
+              <p class="text-base text-70">
+                {i18n(I18nKey.contentDiaryPublicSubtitle)}
+              </p>
+            </div>
+            {isOwner && (
+              <a
+                href={`/${username}/diary/new`}
+                class="px-5 h-10 rounded-lg bg-(--primary) text-white font-medium
+							hover:opacity-90 active:opacity-80 transition
+							flex items-center gap-1.5 text-sm shrink-0"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                {i18n(I18nKey.contentDiaryWriteNew)}
+              </a>
+            )}
+          </section>
+
+          {items.length === 0 ? (
+            <div class="card-base p-8 rounded-(--radius-large) text-70">
+              {i18n(I18nKey.contentDiaryNoPublic)}
+            </div>
+          ) : (
+            <div class="space-y-4">
+              {items.map((item) => (
+                <div class="diary-list-item">
+                  <DiaryCard entry={item} username={username} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div
+          data-enter-skeleton-inline-placeholder
+          aria-hidden="true"
+          class="space-y-4"
+        >
+          <section class="card-base px-9 py-6 rounded-(--radius-large) mb-4">
+            <div class="space-y-3">
+              <div
+                class="md3-skeleton-text"
+                style="--skeleton-width: 24%; --skeleton-height: 2rem;"
+              />
+              <div
+                class="md3-skeleton-text"
+                style="--skeleton-width: 44%; --skeleton-height: 0.92rem;"
+              />
+            </div>
+          </section>
+          <div class="space-y-4">
+            {Array.from({ length: 3 }).map(() => (
+              <article class="card-base flex flex-col w-full rounded-(--radius-large) overflow-hidden">
+                <div class="pl-6 pr-6 pt-6 pb-6 space-y-4">
+                  <div>
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 44%; --skeleton-height: 2rem;"
+                    />
+                  </div>
+                  <div class="grid grid-cols-3 gap-2">
+                    <div class="md3-skeleton-block h-20 rounded-lg" />
+                    <div class="md3-skeleton-block h-20 rounded-lg" />
+                  </div>
+                  <div class="flex items-center justify-between gap-3 mt-4">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                      <div
+                        class="md3-skeleton-text"
+                        style="--skeleton-width: 10.5rem; --skeleton-height: 1.45rem;"
+                      />
+                      <div class="md3-skeleton-circle h-1.5 w-1.5" />
+                      <div
+                        class="md3-skeleton-text"
+                        style="--skeleton-width: 7.5rem; --skeleton-height: 1.45rem;"
+                      />
+                    </div>
+                    <div class="flex items-center gap-3">
+                      <div class="md3-skeleton-block h-6 w-8 rounded-lg" />
+                      <div class="md3-skeleton-block h-6 w-8 rounded-lg" />
+                      <div class="md3-skeleton-circle h-6 w-6 rounded-lg" />
+                    </div>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+</MainGridLayout>
+
+<script>
+  import { initPostInteractions } from "@/scripts/post-interactions";
+  initPostInteractions();
+</script>

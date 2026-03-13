@@ -1,0 +1,386 @@
+---
+import Comment from "@components/comment/index.astro";
+import ContentNotVisible from "@components/misc/ContentNotVisible.astro";
+import ExternalImage from "@components/misc/ExternalImage.astro";
+import Markdown from "@components/misc/Markdown.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import {
+  buildDirectusAssetUrl,
+  buildPublicAssetUrl,
+} from "@/server/directus-auth";
+import {
+  countItems,
+  readMany,
+  runWithDirectusPublicAccess,
+  runWithDirectusUserAccess,
+} from "@/server/directus/client";
+import { renderMarkdown } from "@/server/markdown/render";
+import { getResolvedSiteSettings } from "@/server/site-settings/service";
+import {
+  loadProfileForViewer,
+  loadUserDiaryDetail,
+  profileToSidebarData,
+} from "@/server/api/v1/public-data";
+import type {
+  ContentLoadResult,
+  DiaryDetail,
+} from "@/server/api/v1/public-data";
+import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
+import type { JsonObject } from "@/types/json";
+import {
+  buildSiteDateFormatContext,
+  formatSiteDateTime,
+} from "@/utils/date-utils";
+import DetailActionFloat from "@components/control/DetailActionFloat.astro";
+
+export const prerender = false;
+
+const username = (Astro.params.username || "").trim();
+const id = (Astro.params.id || "").trim();
+
+let result: ContentLoadResult<DiaryDetail> = { status: "not_found" };
+let html = "";
+let diaryLikeCount = 0;
+let diaryCommentCount = 0;
+let diaryLikedByViewer = false;
+let viewerOwnsDiary = false;
+let diaryData = null as DiaryDetail | null;
+const resolvedSiteSettings =
+  Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
+const siteDateContext = buildSiteDateFormatContext(resolvedSiteSettings);
+
+type DiaryGalleryItem = {
+  thumb: string;
+  preview: string;
+  caption: string;
+};
+
+function stripMarkdownImages(content: string): string {
+  const source = String(content || "");
+  return source.replace(/!\[[^\]]*\]\((?:[^)(]+|\([^)(]*\))*\)/g, "");
+}
+
+function resolveDiaryGallery(diary: DiaryDetail | null): DiaryGalleryItem[] {
+  if (!diary) {
+    return [];
+  }
+  const buildAssetUrl = viewerOwnsDiary
+    ? buildDirectusAssetUrl
+    : buildPublicAssetUrl;
+
+  const gallery: DiaryGalleryItem[] = [];
+  const seen = new Set<string>();
+
+  for (const image of Array.isArray(diary.images) ? diary.images : []) {
+    const preview = image.file_id
+      ? buildAssetUrl(image.file_id, { width: 1920 })
+      : String(image.image_url || "").trim();
+    if (!preview || seen.has(preview)) {
+      continue;
+    }
+
+    const thumb = image.file_id
+      ? buildAssetUrl(image.file_id, {
+          width: 720,
+          height: 720,
+          fit: "cover",
+        })
+      : preview;
+
+    gallery.push({
+      thumb,
+      preview,
+      caption: String(image.caption || "").trim(),
+    });
+    seen.add(preview);
+    if (gallery.length >= 9) {
+      return gallery;
+    }
+  }
+
+  return gallery;
+}
+
+if (!username || !id) {
+  Astro.response.status = 404;
+} else {
+  try {
+    const sessionUser = await getSessionUser(Astro);
+    const viewerId = sessionUser?.id ?? null;
+    const loadWithViewerAccess = async (): Promise<void> => {
+      result = await loadUserDiaryDetail(username, id, { viewerId });
+      if (result.status !== "ok") {
+        return;
+      }
+      diaryData = result.data as DiaryDetail;
+
+      html = await renderMarkdown(stripMarkdownImages(diaryData.content), {
+        target: "page",
+      });
+
+      const [likeCount, commentCount, likedRows] = await Promise.all([
+        countItems("app_diary_likes", {
+          _and: [
+            { diary_id: { _eq: diaryData.id } },
+            { status: { _eq: "published" } },
+          ],
+        } as JsonObject),
+        countItems("app_diary_comments", {
+          _and: [
+            { diary_id: { _eq: diaryData.id } },
+            { status: { _eq: "published" } },
+            { is_public: { _eq: true } },
+          ],
+        } as JsonObject),
+        viewerId
+          ? readMany("app_diary_likes", {
+              filter: {
+                _and: [
+                  { diary_id: { _eq: diaryData.id } },
+                  { user_id: { _eq: viewerId } },
+                  { status: { _eq: "published" } },
+                ],
+              } as JsonObject,
+              limit: 1,
+              fields: ["id"],
+            })
+          : Promise.resolve([]),
+      ]);
+      diaryLikeCount = likeCount;
+      diaryCommentCount = commentCount;
+      diaryLikedByViewer = likedRows.length > 0;
+
+      const sidebarProfile = await loadProfileForViewer(username, viewerId);
+      if (sidebarProfile) {
+        Astro.locals.sidebarProfile = profileToSidebarData(sidebarProfile);
+      }
+      viewerOwnsDiary = Boolean(viewerId) && diaryData.author_id === viewerId;
+    };
+
+    if (viewerId) {
+      await runWithDirectusUserAccess(
+        getSessionAccessToken(Astro),
+        loadWithViewerAccess,
+      );
+    } else {
+      await runWithDirectusPublicAccess(loadWithViewerAccess);
+    }
+    if (
+      (result as ContentLoadResult<DiaryDetail>).status === "permission_denied"
+    ) {
+      Astro.response.status = 404;
+    } else {
+      if ((result as ContentLoadResult<DiaryDetail>).status === "not_found") {
+        Astro.response.status = 404;
+      }
+    }
+  } catch (error) {
+    console.error("[diary] failed to load detail:", error);
+    Astro.response.status = 500;
+  }
+}
+
+const diary = diaryData;
+const diaryGallery = resolveDiaryGallery(diary);
+const diaryGalleryCount = diaryGallery.length;
+
+const diaryMetaText = formatSiteDateTime(diary?.date_created, siteDateContext);
+---
+
+<MainGridLayout
+  title={i18n(I18nKey.contentDiaryDetailTitle)}
+  description={diary?.content || ""}
+>
+  {
+    !diary ? (
+      <ContentNotVisible
+        mode="not_found"
+        title={i18n(I18nKey.contentDiaryNotFoundTitle)}
+        description={i18n(I18nKey.contentDiaryNotFoundDescription)}
+        backHref={`/${username}/diary`}
+        backLabel={i18n(I18nKey.contentDiaryBackToList)}
+      />
+    ) : (
+      <>
+        <div class="home-layout">
+          <div class="min-w-0">
+            <article
+              id="post-container"
+              data-enter-skeleton-target="post-detail"
+              class="card-base p-6 rounded-(--radius-large) mb-4 text-90 relative"
+            >
+              <div data-enter-skeleton-content>
+                <a
+                  href={`/${username}/diary`}
+                  class="inline-block text-sm text-(--primary) hover:underline mb-4"
+                >
+                  {i18n(I18nKey.contentDiaryBackToList)}
+                </a>
+                <header class="mb-4 space-y-2">
+                  <h1 class="text-3xl font-bold text-90">
+                    {i18n(I18nKey.contentDiaryDetailTitle)}
+                  </h1>
+                  <div class="text-sm text-60 flex flex-wrap items-center gap-3">
+                    {diary!.date_created && diaryMetaText && (
+                      <time datetime={diary!.date_created}>
+                        {diaryMetaText}
+                      </time>
+                    )}
+                  </div>
+                </header>
+
+                <Markdown class="markdown-content mb-6 prose-lg">
+                  <Fragment set:html={html} />
+                </Markdown>
+
+                {diaryGalleryCount > 0 && (
+                  <section class="w-[60%]">
+                    {diaryGalleryCount === 1 ? (
+                      <a
+                        href={diaryGallery[0].preview}
+                        data-fancybox="diary-photo-preview"
+                        data-caption={diaryGallery[0].caption || undefined}
+                        class="block overflow-hidden rounded-xl border border-(--line-divider) bg-(--card-bg)"
+                      >
+                        <ExternalImage
+                          src={diaryGallery[0].preview}
+                          alt={diaryGallery[0].caption || "diary image"}
+                          class="w-full h-auto"
+                          loading="lazy"
+                        />
+                      </a>
+                    ) : (
+                      <div
+                        class:list={[
+                          "grid gap-3",
+                          diaryGalleryCount === 4
+                            ? "grid-cols-2"
+                            : "grid-cols-3",
+                        ]}
+                      >
+                        {diaryGallery.map((image) => (
+                          <a
+                            href={image.preview}
+                            data-fancybox="diary-photo-preview"
+                            data-caption={image.caption || undefined}
+                            class="block aspect-square overflow-hidden rounded-xl border border-(--line-divider) bg-(--card-bg)"
+                          >
+                            <ExternalImage
+                              src={image.thumb}
+                              alt={image.caption || "diary image"}
+                              class="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                )}
+              </div>
+              <div
+                data-enter-skeleton-placeholder
+                aria-hidden="true"
+                class="absolute inset-0 z-20 pointer-events-none p-6"
+              >
+                <div class="space-y-4">
+                  <div
+                    class="md3-skeleton-text"
+                    style="--skeleton-width: 7.5rem; --skeleton-height: 0.95rem;"
+                  />
+                  <div class="space-y-2">
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 54%; --skeleton-height: 2rem;"
+                    />
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 42%; --skeleton-height: 0.95rem;"
+                    />
+                  </div>
+                  <div class="space-y-3 pt-2">
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 98%;"
+                    />
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 95%;"
+                    />
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 92%;"
+                    />
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 88%;"
+                    />
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 96%;"
+                    />
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 80%;"
+                    />
+                  </div>
+                  {diaryGalleryCount > 0 && (
+                    <div class="grid grid-cols-3 gap-3 pt-1">
+                      <div class="md3-skeleton-block h-32 rounded-xl" />
+                      <div class="md3-skeleton-block h-32 rounded-xl" />
+                      <div class="md3-skeleton-block h-32 rounded-xl" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </article>
+
+            <DetailActionFloat
+              contentType="diary"
+              contentId={diary!.id}
+              authorId={diary!.author?.id || ""}
+              likeCount={diaryLikeCount}
+              commentCount={diaryCommentCount}
+              likedByViewer={diaryLikedByViewer}
+              dockToBackTop={true}
+              editHref={`/${username}/diary/${encodeURIComponent(diary!.short_id || diary!.id)}/edit`}
+              deleteEndpoint={`/api/v1/me/diaries/${encodeURIComponent(diary!.id)}`}
+              adminDeleteEndpoint={`/api/v1/admin/content/diaries/${encodeURIComponent(diary!.id)}`}
+              deleteConfirmMessage={i18n(I18nKey.contentDiaryDeleteConfirm)}
+              adminDeleteConfirmMessage={i18n(
+                I18nKey.interactionPostDeleteConfirmAdminDiary,
+              )}
+              deleteSuccessHref={`/${username}/diary`}
+            />
+
+            <Comment
+              module="diaries"
+              contentId={diary!.id}
+              contentShortId={diary!.short_id || ""}
+              contentAuthorId={diary!.author?.id || ""}
+              allowComments={diary!.allow_comments}
+            />
+          </div>
+          <div class="home-sidebar-placeholder" data-detail-float-slot />
+        </div>
+      </>
+    )
+  }
+</MainGridLayout>
+
+<style>
+  .home-layout {
+    display: grid;
+    grid-template-columns: 1fr 17.5rem;
+    gap: 1rem;
+    align-items: start;
+  }
+  .home-sidebar-placeholder {
+    position: sticky;
+    top: 5.5rem;
+    align-self: start;
+    min-height: 1px;
+  }
+</style>

@@ -1,0 +1,71 @@
+---
+import type { MarkdownHeading } from "astro";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import ContentNotVisible from "@components/misc/ContentNotVisible.astro";
+import { getSessionUser } from "@/server/auth/session";
+import { getAppAccessContext } from "@/server/auth/acl";
+
+interface Props {
+  title?: string;
+  banner?: string;
+  description?: string;
+  lang?: string;
+  setOGTypeArticle?: boolean;
+  headings?: MarkdownHeading[];
+}
+
+const props = Astro.props;
+
+const user = await getSessionUser(Astro);
+const loginUrl = `/auth/login?redirect=${encodeURIComponent(Astro.url.pathname)}`;
+
+let isAdmin = false;
+if (user) {
+  const ctx = await getAppAccessContext(user);
+  isAdmin = ctx.isAdmin;
+}
+---
+
+{
+  !user ? (
+    <html>
+      <head>
+        <title>正在跳转登录</title>
+        <meta charset="utf-8" />
+        <meta http-equiv="refresh" content={`0;url=${loginUrl}`} />
+        <meta name="robots" content="noindex" />
+      </head>
+      <body>
+        <script is:inline define:vars={{ loginUrl }}>
+          window.location.replace(loginUrl);
+        </script>
+      </body>
+    </html>
+  ) : isAdmin ? (
+    <MainGridLayout
+      title={props.title}
+      banner={props.banner}
+      description={props.description}
+      lang={props.lang}
+      setOGTypeArticle={props.setOGTypeArticle}
+      headings={props.headings}
+    >
+      <slot />
+      <slot name="modal" slot="modal" />
+    </MainGridLayout>
+  ) : (
+    <MainGridLayout
+      title="权限不足"
+      banner={props.banner}
+      description="您没有权限访问此页面"
+      lang={props.lang}
+    >
+      <ContentNotVisible
+        mode="permission_denied"
+        title="权限不足"
+        description="仅管理员可访问管理台。"
+      />
+      <slot name="modal" slot="modal" />
+    </MainGridLayout>
+  )
+}

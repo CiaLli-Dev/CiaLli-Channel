@@ -1,0 +1,432 @@
+---
+import ContentNotVisible from "@components/misc/ContentNotVisible.astro";
+import ExternalImage from "@components/misc/ExternalImage.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import {
+  loadProfileForViewer,
+  loadUserBangumiList,
+  profileToSidebarData,
+} from "@/server/api/v1/public-data";
+import {
+  runWithDirectusPublicAccess,
+  runWithDirectusUserAccess,
+} from "@/server/directus/client";
+import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
+
+export const prerender = false;
+
+const username = (Astro.params.username || "").trim();
+
+type BangumiListResult = Awaited<ReturnType<typeof loadUserBangumiList>>;
+
+let result: BangumiListResult = {
+  status: "not_found",
+};
+
+try {
+  if (!username) {
+    Astro.response.status = 404;
+  } else {
+    const sessionUser = await getSessionUser(Astro);
+    const viewerId = sessionUser?.id ?? null;
+    result = viewerId
+      ? await runWithDirectusUserAccess(
+          getSessionAccessToken(Astro),
+          async () =>
+            await loadUserBangumiList(username, {
+              limit: 200,
+              viewerId,
+            }),
+        )
+      : await runWithDirectusPublicAccess(
+          async () =>
+            await loadUserBangumiList(username, {
+              limit: 200,
+              viewerId,
+            }),
+        );
+    if (result.status === "not_found") {
+      Astro.response.status = 404;
+    } else if (result.status === "permission_denied") {
+      Astro.response.status = 404;
+    } else {
+      const sidebarProfile = viewerId
+        ? await runWithDirectusUserAccess(
+            getSessionAccessToken(Astro),
+            async () => await loadProfileForViewer(username, viewerId),
+          )
+        : await runWithDirectusPublicAccess(
+            async () => await loadProfileForViewer(username, viewerId),
+          );
+      if (sidebarProfile) {
+        Astro.locals.sidebarProfile = profileToSidebarData(sidebarProfile);
+      }
+    }
+  }
+} catch (error) {
+  console.error("[bangumi] failed to load entries:", error);
+  Astro.response.status = 500;
+}
+
+const items = result.status === "ok" ? result.data.items : [];
+const STATUS_ORDER = [
+  "watching",
+  "completed",
+  "planned",
+  "onhold",
+  "dropped",
+] as const;
+type BangumiStatus = (typeof STATUS_ORDER)[number];
+
+function isBangumiStatus(value: string): value is BangumiStatus {
+  return STATUS_ORDER.includes(value as BangumiStatus);
+}
+
+function statusLabel(status: string): string {
+  switch (status) {
+    case "watching":
+      return i18n(I18nKey.contentAnimeStatusWatching);
+    case "completed":
+      return i18n(I18nKey.contentAnimeStatusCompleted);
+    case "planned":
+      return i18n(I18nKey.contentAnimeStatusPlanned);
+    case "onhold":
+      return i18n(I18nKey.contentAnimeStatusOnHold);
+    case "dropped":
+      return i18n(I18nKey.contentAnimeStatusDropped);
+    default:
+      return status || i18n(I18nKey.contentAnimeUnknownStatus);
+  }
+}
+
+const categoryCountMap = new Map<BangumiStatus, number>();
+const tagCountMap = new Map<string, number>();
+
+for (const item of items) {
+  if (isBangumiStatus(item.watch_status)) {
+    categoryCountMap.set(
+      item.watch_status,
+      (categoryCountMap.get(item.watch_status) || 0) + 1,
+    );
+  }
+  for (const tag of item.genres) {
+    const normalizedTag = String(tag || "").trim();
+    if (!normalizedTag) {
+      continue;
+    }
+    tagCountMap.set(normalizedTag, (tagCountMap.get(normalizedTag) || 0) + 1);
+  }
+}
+
+const categoryList = STATUS_ORDER.map((status) => ({
+  value: status,
+  label: statusLabel(status),
+  count: categoryCountMap.get(status) || 0,
+})).filter((item) => item.count > 0);
+
+const tagList = Array.from(tagCountMap.entries())
+  .map(([name, count]) => ({ name, count }))
+  .sort((a, b) => {
+    if (b.count !== a.count) {
+      return b.count - a.count;
+    }
+    return a.name.localeCompare(b.name, "zh-Hans");
+  });
+
+const hasSidebarContent = categoryList.length > 0 || tagList.length > 0;
+---
+
+<MainGridLayout
+  title={i18n(I18nKey.contentAnime)}
+  description={i18n(I18nKey.contentAnimePublicSubtitle)}
+>
+  {
+    result.status === "not_found" || result.status === "permission_denied" ? (
+      <ContentNotVisible
+        mode="not_found"
+        title={i18n(I18nKey.contentUserNotFoundTitle)}
+        description={i18n(I18nKey.contentUserNotFoundDescription)}
+        backHref="/"
+        backLabel={i18n(I18nKey.contentUserBackToHome)}
+      />
+    ) : (
+      <div
+        class="bangumi-list-root"
+        data-enter-skeleton-page="user-bangumi"
+        data-enter-skeleton-target="user-bangumi"
+        data-tags-label={i18n(I18nKey.contentTags)}
+        data-category-label={i18n(I18nKey.interactionCommonCategory)}
+      >
+        <div data-enter-skeleton-inline-content>
+          <section class="card-base px-9 py-6 rounded-(--radius-large) mb-4 text-90">
+            <h1
+              class="text-4xl font-bold text-black/90 dark:text-white/90 mb-2 relative
+					before:w-1 before:h-8 before:rounded-md before:bg-(--primary)
+					before:absolute before:top-1/2 before:-translate-y-1/2 before:-left-4"
+            >
+              {i18n(I18nKey.contentAnime)}
+            </h1>
+            <p class="text-base text-70">
+              {i18n(I18nKey.contentAnimePublicSubtitle)}
+            </p>
+          </section>
+
+          {items.length === 0 ? (
+            <div class="card-base p-8 rounded-(--radius-large) text-70">
+              {i18n(I18nKey.contentAnimeNoPublic)}
+            </div>
+          ) : (
+            <>
+              <div class="grid grid-cols-2 gap-4">
+                {items.map((item) => (
+                  <article
+                    class="bangumi-list-item card-base p-4 rounded-(--radius-large) border border-(--line-divider) h-full text-90"
+                    data-category={item.watch_status}
+                    data-tags={JSON.stringify(item.genres)}
+                  >
+                    <div class="flex gap-4 h-full">
+                      {item.cover_url && (
+                        <ExternalImage
+                          src={item.cover_url}
+                          alt={item.title}
+                          class="w-24 h-32 rounded-lg object-cover border border-(--line-divider) shrink-0"
+                          loading="lazy"
+                        />
+                      )}
+                      <div class="min-w-0 space-y-2 flex-1">
+                        <h2 class="text-lg font-semibold line-clamp-2">
+                          {item.title}
+                        </h2>
+                        <div class="text-xs text-60 flex flex-wrap gap-2">
+                          <span>{statusLabel(item.watch_status)}</span>
+                          {item.year && <span>{item.year}</span>}
+                        </div>
+                        <div class="text-xs text-70">
+                          {i18n(I18nKey.contentAnimeProgressLabel)}：
+                          {item.progress ?? 0}/{item.total_episodes ?? "?"}
+                          {typeof item.rating === "number" && (
+                            <span class="ml-2">
+                              {i18n(I18nKey.contentAnimeRatingLabel)}：
+                              {item.rating}
+                            </span>
+                          )}
+                        </div>
+                        {item.description && (
+                          <p class="text-sm text-75 line-clamp-3">
+                            {item.description}
+                          </p>
+                        )}
+                        {item.genres.length > 0 && (
+                          <div class="flex flex-wrap gap-2">
+                            {item.genres.slice(0, 4).map((genre) => (
+                              <span class="btn-regular h-6 text-xs px-2 rounded-lg">
+                                {genre}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {item.link && (
+                          <a
+                            href={item.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="text-xs text-(--primary) hover:underline"
+                          >
+                            {i18n(I18nKey.interactionCommonViewLink)}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <div
+                id="bangumi-no-results"
+                class="hidden card-base p-8 rounded-(--radius-large) text-70 mt-4"
+              >
+                {i18n(I18nKey.contentAnimeNoMatch)}
+              </div>
+            </>
+          )}
+        </div>
+        <div
+          data-enter-skeleton-inline-placeholder
+          aria-hidden="true"
+          class="space-y-4"
+        >
+          <section class="card-base px-9 py-6 rounded-(--radius-large) mb-4">
+            <div class="space-y-3">
+              <div
+                class="md3-skeleton-text"
+                style="--skeleton-width: 28%; --skeleton-height: 2rem;"
+              />
+              <div
+                class="md3-skeleton-text"
+                style="--skeleton-width: 46%; --skeleton-height: 0.92rem;"
+              />
+            </div>
+          </section>
+          <div class="grid grid-cols-2 gap-4">
+            {Array.from({ length: 6 }).map(() => (
+              <article class="card-base p-4 rounded-(--radius-large) border border-(--line-divider) h-full">
+                <div class="flex gap-4 h-full">
+                  <div class="md3-skeleton-block h-32 w-24 rounded-lg shrink-0" />
+                  <div class="flex-1 space-y-2.5 pt-1">
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 82%; --skeleton-height: 2.45rem;"
+                    />
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 62%; --skeleton-height: 0.9rem;"
+                    />
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 68%; --skeleton-height: 0.9rem;"
+                    />
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 90%; --skeleton-height: 2.9rem;"
+                    />
+                    <div class="flex gap-2 pt-1">
+                      <div class="md3-skeleton-block h-6 w-16 rounded-lg" />
+                      <div class="md3-skeleton-block h-6 w-[4.5rem] rounded-lg" />
+                    </div>
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 34%; --skeleton-height: 0.85rem;"
+                    />
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+  {
+    result.status === "ok" && hasSidebarContent && (
+      <div
+        slot="sidebar-right"
+        class="bangumi-filter-panel max-h-[calc(100vh-6.5rem)] overflow-y-auto flex flex-col gap-4 self-start"
+      >
+        {categoryList.length > 0 && (
+          <div class="card-base rounded-(--radius-large) pb-4">
+            <div
+              class="font-bold transition text-lg text-neutral-900 dark:text-neutral-100 relative ml-8 mt-4 mb-2 flex items-center
+						before:w-1 before:h-4 before:rounded-md before:bg-(--primary)
+						before:absolute before:left-[-16px] before:top-[5.5px]"
+            >
+              {i18n(I18nKey.interactionCommonCategory)}
+            </div>
+            <div class="px-4 flex flex-col gap-0.5" id="bangumi-categories">
+              {categoryList.map((category) => (
+                <button
+                  data-filter="category"
+                  data-value={category.value}
+                  class="bangumi-filter-btn w-full h-10 rounded-lg bg-none
+									hover:bg-(--btn-plain-bg-hover) active:bg-(--btn-plain-bg-active)
+									transition-all pl-2 hover:pl-3 text-left
+									text-neutral-700 hover:text-(--primary)
+									dark:text-neutral-300 dark:hover:text-(--primary)
+									cursor-pointer"
+                >
+                  <span class="flex items-center justify-between mr-2">
+                    <span class="overflow-hidden whitespace-nowrap text-ellipsis">
+                      {category.label}
+                    </span>
+                    <span
+                      class="transition px-2 h-7 ml-4 min-w-[2rem] rounded-lg text-sm font-bold
+										text-(--btn-content) dark:text-(--deep-text)
+										bg-[oklch(0.95_0.025_var(--hue))] dark:bg-(--primary)
+										flex items-center justify-center shrink-0"
+                    >
+                      {category.count}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {tagList.length > 0 && (
+          <div class="card-base rounded-(--radius-large) pb-4">
+            <div
+              class="font-bold transition text-lg text-neutral-900 dark:text-neutral-100 relative ml-8 mt-4 mb-2 flex items-center
+						before:w-1 before:h-4 before:rounded-md before:bg-(--primary)
+						before:absolute before:left-[-16px] before:top-[5.5px]"
+            >
+              {i18n(I18nKey.contentTags)}
+            </div>
+            <div
+              class="px-4 flex gap-2 flex-wrap max-h-100 overflow-y-auto bangumi-tags-scroll"
+              id="bangumi-tags"
+            >
+              {tagList.map((tag) => (
+                <button
+                  data-filter="tag"
+                  data-value={tag.name}
+                  class="bangumi-filter-btn btn-regular h-8 text-sm px-3 rounded-lg cursor-pointer"
+                >
+                  {tag.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div
+          id="bangumi-filter-status"
+          class="hidden card-base rounded-(--radius-large) px-4 py-3 items-center justify-between gap-2"
+        >
+          <span
+            id="bangumi-filter-status-label"
+            class="text-sm text-75 truncate"
+          />
+          <button
+            id="bangumi-filter-clear-btn"
+            class="shrink-0 text-sm text-(--primary) hover:underline cursor-pointer"
+          >
+            {i18n(I18nKey.interactionCommonClear)}
+          </button>
+        </div>
+      </div>
+    )
+  }
+</MainGridLayout>
+
+<style>
+  .bangumi-filter-panel::-webkit-scrollbar {
+    width: 4px;
+  }
+  .bangumi-filter-panel::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .bangumi-filter-panel::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.3);
+    border-radius: 2px;
+  }
+  .bangumi-tags-scroll::-webkit-scrollbar {
+    width: 4px;
+  }
+  .bangumi-tags-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .bangumi-tags-scroll::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.3);
+    border-radius: 2px;
+  }
+
+  :global(.bangumi-filter-btn.active) {
+    background-color: var(--primary) !important;
+    color: white !important;
+  }
+  :global(.bangumi-filter-btn.active .flex span:last-child) {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+  }
+</style>

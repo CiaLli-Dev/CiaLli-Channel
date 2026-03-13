@@ -1,0 +1,208 @@
+---
+import { Icon } from "astro-icon/components";
+
+import ExternalImage from "@components/misc/ExternalImage.astro";
+import type { AppDiary, AppDiaryImage } from "@/types/app";
+import type { AuthorBundleItem } from "@/server/api/v1/shared/author-cache";
+import { buildPublicAssetUrl } from "@/server/directus-auth";
+import { getResolvedSiteSettings } from "@/server/site-settings/service";
+import { resolveAuthorIdentity } from "@/utils/author-identity";
+import { buildSiteDateFormatContext, formatSiteDate } from "@/utils/date-utils";
+
+interface Props {
+  class?: string;
+  entry: AppDiary & {
+    author: AuthorBundleItem;
+    images: AppDiaryImage[];
+    comment_count: number;
+    like_count: number;
+  };
+  username: string;
+}
+
+const { entry, username } = Astro.props;
+const className = Astro.props.class;
+const resolvedSiteSettings =
+  Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
+const siteDateContext = buildSiteDateFormatContext(resolvedSiteSettings);
+
+const {
+  id,
+  short_id,
+  content,
+  date_created,
+  author,
+  author_id,
+  images,
+  comment_count,
+  like_count,
+} = entry;
+
+const diaryUrl = `/${username}/diary/${short_id || id}`;
+const { displayName: authorDisplayName, username: authorHandle } =
+  resolveAuthorIdentity(
+    {
+      id: author?.id,
+      name: author?.name,
+      username: author?.username,
+      display_name: author?.display_name,
+    },
+    author_id,
+  );
+
+const bodyText = String(content || "")
+  .replace(/<[^>]+>/g, " ")
+  .replace(/\s+/g, " ")
+  .trim();
+const excerpt =
+  bodyText.length > 180 ? `${bodyText.slice(0, 180)}...` : bodyText;
+
+const publishedDate = date_created
+  ? (() => {
+      const formattedDate = formatSiteDate(date_created, siteDateContext);
+      return formattedDate || "1970/01/01";
+    })()
+  : "1970/01/01";
+
+const visibleImages = (images || [])
+  .filter((img) => img.image_url || img.file_id)
+  .slice(0, 4);
+
+function resolveDiaryImageSrc(image: AppDiaryImage): string {
+  const imageUrl = String(image.image_url || "").trim();
+  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+    return imageUrl;
+  }
+  if (imageUrl.startsWith("/")) {
+    return imageUrl;
+  }
+  const assetId = String(image.file_id || imageUrl).trim();
+  if (!assetId) {
+    return "";
+  }
+  return buildPublicAssetUrl(assetId, {
+    width: 200,
+    height: 200,
+    fit: "cover",
+  });
+}
+---
+
+<div
+  class:list={[
+    "card-base flex flex-col w-full rounded-(--radius-large) overflow-hidden relative",
+    className,
+  ]}
+  data-diary-card
+  data-diary-id={id}
+  data-author-id={author_id}
+  data-author-handle={authorHandle}
+>
+  <div class="pl-9 pr-2 pt-7 pb-6 relative">
+    <a href={diaryUrl} class="block space-y-3">
+      <p class="transition text-75 pr-4 line-clamp-2 text-base leading-7">
+        {excerpt}
+      </p>
+      {
+        visibleImages.length > 0 && (
+          <div class="grid grid-cols-4 gap-2">
+            {visibleImages.map((img) => (
+              <ExternalImage
+                src={resolveDiaryImageSrc(img)}
+                alt="日记配图"
+                class="w-full h-24 object-cover rounded-lg border border-(--line-divider)"
+                loading="lazy"
+              />
+            ))}
+          </div>
+        )
+      }
+    </a>
+
+    <div class="flex items-center justify-between gap-3 mt-4">
+      <div
+        class="flex min-w-0 items-center gap-1.5 text-50 text-sm font-medium leading-none"
+      >
+        <div class="max-w-[14rem] min-w-0 inline-flex items-baseline gap-1">
+          <a
+            href={`/${authorHandle}`}
+            class="truncate text-90 border-b border-transparent hover:border-current"
+          >
+            {authorDisplayName}
+          </a>
+          <a
+            href={`/${authorHandle}`}
+            class="shrink-0 text-60 hover:text-(--primary) transition-colors"
+          >
+            @{authorHandle}
+          </a>
+        </div>
+        <span class="text-(--meta-divider)" aria-hidden="true">&middot;</span>
+        <span>{publishedDate}</span>
+      </div>
+      <div
+        class="flex items-center gap-4 ml-3 mr-2 shrink-0 post-card-actions leading-none"
+      >
+        <button
+          type="button"
+          class="inline-flex h-6 items-center gap-1.5 text-50 text-base font-medium hover:text-(--primary) transition-colors post-card-action-btn"
+          data-action="toggle-like"
+          aria-label="切换点赞"
+        >
+          <Icon name="material-symbols:thumb-up-rounded" class="text-xl" />
+          <span data-like-count>{like_count}</span>
+        </button>
+        <a
+          href={`${diaryUrl}#comment-root`}
+          class="inline-flex h-6 items-center gap-1.5 text-50 text-base font-medium hover:text-(--primary) transition-colors"
+        >
+          <Icon name="material-symbols:comment-rounded" class="text-xl" />
+          <span>{comment_count}</span>
+        </a>
+        <details class="relative post-card-menu">
+          <summary
+            class="list-none cursor-pointer inline-flex items-center justify-center w-8 h-8 rounded-lg text-50 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) active:bg-(--btn-plain-bg-active) transition-colors"
+            aria-label="更多操作"
+          >
+            <Icon name="material-symbols:more-horiz" class="text-xl" />
+          </summary>
+          <div
+            class="absolute right-0 bottom-full mb-2 z-30 min-w-[10rem] rounded-xl border border-black/5 dark:border-white/10 bg-(--float-panel-bg) p-1.5 shadow-xl dark:shadow-none"
+          >
+            <button
+              type="button"
+              class="hidden w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors"
+              data-action="delete-own-diary"
+            >
+              删除日记
+            </button>
+            <button
+              type="button"
+              class="hidden w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors"
+              data-action="delete-admin-diary"
+            >
+              删除此日记(管理员)
+            </button>
+            <button
+              type="button"
+              class="w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors"
+              data-action="block-user"
+            >
+              屏蔽用户
+            </button>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+</div>
+<div
+  class="transition border-t border-dashed mx-6 border-black/10 dark:border-white/15 last:border-t-0 hidden"
+>
+</div>
+
+<style>
+  .post-card-menu summary::-webkit-details-marker {
+    display: none;
+  }
+</style>

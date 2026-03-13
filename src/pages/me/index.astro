@@ -1,0 +1,505 @@
+---
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { getSessionUser } from "@/server/auth/session";
+import {
+  loadProfileForViewerByUserId,
+  profileToSidebarData,
+} from "@/server/api/v1/public-data";
+
+export const prerender = false;
+
+try {
+  const user = await getSessionUser(Astro);
+  if (user) {
+    const profile = await loadProfileForViewerByUserId(user.id, user.id);
+    if (profile) {
+      Astro.locals.sidebarProfile = profileToSidebarData(profile);
+    }
+  }
+} catch {
+  // 未登录时不设置 sidebarProfile，Profile.astro 会回退到官方账户
+}
+---
+
+<MainGridLayout
+  title={i18n(I18nKey.meSettingsTitle)}
+  description={i18n(I18nKey.meSettingsDescription)}
+>
+  <div
+    data-enter-skeleton-page="me-settings"
+    data-enter-skeleton-target="me-settings"
+  >
+    <div data-enter-skeleton-inline-content class="space-y-4 text-75">
+      <section class="card-base px-9 py-6 rounded-(--radius-large)">
+        <h1
+          class="text-4xl font-bold text-black/90 dark:text-white/90 mb-2 relative
+				before:w-1 before:h-8 before:rounded-md before:bg-(--primary)
+				before:absolute before:top-1/2 before:-translate-y-1/2 before:-left-4"
+        >
+          {i18n(I18nKey.meSettingsTitle)}
+        </h1>
+        <p class="text-base text-70">{i18n(I18nKey.meSettingsDescription)}</p>
+      </section>
+
+      <div id="me-authenticated-sections" class="hidden space-y-4">
+        <section class="card-base p-8 rounded-(--radius-large) space-y-4">
+          <h2 class="text-2xl font-semibold text-90">
+            {i18n(I18nKey.meSettingsProfileSection)}
+          </h2>
+          <form id="me-profile-form" class="grid grid-cols-2 gap-4">
+            <label class="space-y-1.5">
+              <span class="text-sm text-60">{i18n(I18nKey.authEmailLabel)}</span
+              >
+              <input
+                id="me-email"
+                class="w-full h-11 block appearance-none rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-black/5 dark:bg-white/5 text-70 leading-normal"
+                disabled
+              />
+            </label>
+            <label class="space-y-1.5">
+              <span class="text-sm text-60"
+                >{i18n(I18nKey.meSettingsUsernameLabel)}</span
+              >
+              <span class="h-11 block">
+                <button
+                  type="button"
+                  id="me-username-display-btn"
+                  class="w-full h-full block appearance-none rounded-lg border border-(--line-divider) px-3.5 py-2.5 text-left text-70 bg-black/5 dark:bg-white/5 leading-normal"
+                >
+                  <span id="me-username-display" class="block truncate text-70"
+                    >{i18n(I18nKey.meSettingsUsernameClickEdit)}</span
+                  >
+                </button>
+                <span
+                  id="me-username-editor"
+                  class="relative h-full hidden block"
+                >
+                  <input
+                    id="me-username"
+                    pattern="[A-Za-z0-9_-]+"
+                    title={i18n(I18nKey.meSettingsUsernameRule)}
+                    class="w-full h-full block appearance-none rounded-lg border border-(--line-divider) px-3.5 py-2.5 pr-16 text-70 leading-normal bg-transparent"
+                  />
+                  <span
+                    id="me-username-counter"
+                    class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-60 tabular-nums"
+                    >0/14</span
+                  >
+                </span>
+              </span>
+            </label>
+            <label class="space-y-1.5">
+              <span class="text-sm text-60"
+                >{i18n(I18nKey.meSettingsDisplayNameLabel)}</span
+              >
+              <span class="h-11 block">
+                <button
+                  type="button"
+                  id="me-displayname-display-btn"
+                  class="w-full h-full block appearance-none rounded-lg border border-(--line-divider) px-3.5 py-2.5 text-left text-70 bg-black/5 dark:bg-white/5 leading-normal"
+                >
+                  <span
+                    id="me-displayname-display"
+                    class="block truncate text-70"
+                    >{i18n(I18nKey.meSettingsDisplayNameClickEdit)}</span
+                  >
+                </button>
+                <span
+                  id="me-displayname-editor"
+                  class="relative h-full hidden block"
+                >
+                  <input
+                    id="me-displayname"
+                    class="w-full h-full block appearance-none rounded-lg border border-(--line-divider) px-3.5 py-2.5 pr-16 text-70 leading-normal bg-transparent"
+                  />
+                  <span
+                    id="me-displayname-counter"
+                    class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-60 tabular-nums"
+                    >0/20</span
+                  >
+                </span>
+              </span>
+            </label>
+            <div class="space-y-2 col-span-2">
+              <span class="text-sm text-60"
+                >{i18n(I18nKey.meSettingsAvatarLabel)}</span
+              >
+              <div class="flex flex-col items-start gap-4">
+                <img
+                  id="me-avatar-preview"
+                  src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
+                  class="w-20 h-20 rounded-full object-cover border border-(--line-divider) bg-black/10 dark:bg-white/10"
+                  alt="avatar"
+                  loading="lazy"
+                />
+                <div class="flex-1">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      id="me-avatar-upload-btn"
+                      class="px-4 h-9 rounded-lg text-sm font-medium cursor-pointer bg-(--primary) text-white hover:opacity-90 transition flex items-center gap-1.5"
+                      ><svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="w-4 h-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"
+                        ></path><polyline points="17 8 12 3 7 8"
+                        ></polyline><line x1="12" y1="3" x2="12" y2="15"
+                        ></line></svg
+                      >{i18n(I18nKey.interactionCommonUploadImage)}</button
+                    >
+                    <button
+                      type="button"
+                      id="me-avatar-clear-btn"
+                      class="px-4 py-2.5 rounded-lg border border-(--line-divider) text-sm text-75"
+                    >
+                      {i18n(I18nKey.meSettingsAvatarClear)}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <label class="space-y-1.5 col-span-2">
+              <span class="text-sm text-60"
+                >{i18n(I18nKey.meSettingsBioLabel)}</span
+              >
+              <button
+                type="button"
+                id="me-bio-display-btn"
+                class="w-full h-28 rounded-lg border border-(--line-divider) text-left bg-black/5 dark:bg-white/5"
+              >
+                <span
+                  id="me-bio-display"
+                  class="block h-full w-full overflow-y-auto px-3.5 py-2.5 pr-16 text-base leading-7 text-60 whitespace-pre-wrap wrap-break-word"
+                  >{i18n(I18nKey.meSettingsBioClickEdit)}</span
+                >
+              </button>
+              <span id="me-bio-editor" class="hidden block">
+                <span class="relative block">
+                  <textarea
+                    id="me-bio"
+                    rows="3"
+                    class="w-full h-28 resize-none rounded-lg border border-(--line-divider) px-3.5 py-2.5 pr-16 text-base leading-7 bg-transparent text-75 placeholder:text-50"
+                  ></textarea>
+                  <span
+                    id="me-bio-counter"
+                    class="pointer-events-none absolute right-3 bottom-2 text-sm text-60 tabular-nums"
+                  >
+                    0/30
+                  </span>
+                </span>
+              </span>
+            </label>
+            <h3 class="text-lg font-medium text-75 col-span-2">
+              {i18n(I18nKey.meSettingsBioTypewriter)}
+            </h3>
+            <label
+              class="flex items-center gap-3 text-75 cursor-pointer select-none"
+            >
+              <input
+                type="checkbox"
+                id="me-bio-typewriter-enable"
+                class="toggle-checkbox"
+              />
+              <span class="toggle-track"><span class="toggle-knob"></span></span
+              >
+              {i18n(I18nKey.meSettingsBioTypewriterEnable)}
+            </label>
+            <label class="space-y-1.5">
+              <span class="text-sm text-60">
+                {i18n(I18nKey.meSettingsBioTypewriterSpeed)}
+              </span>
+              <input
+                id="me-bio-typewriter-speed"
+                type="number"
+                min="10"
+                max="500"
+                class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
+                placeholder="80"
+              />
+            </label>
+            <div class="col-span-2 flex items-center gap-2">
+              <button
+                type="submit"
+                class="px-4 py-2 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm"
+                >{i18n(I18nKey.meSettingsSaveProfile)}</button
+              >
+              <span id="me-profile-msg" class="text-sm text-60"></span>
+            </div>
+          </form>
+        </section>
+
+        <section class="card-base p-8 rounded-(--radius-large) space-y-4">
+          <h2 class="text-2xl font-semibold text-90">
+            {i18n(I18nKey.meSettingsSocialLinks)}
+          </h2>
+          <div id="me-social-links-list" class="space-y-4"></div>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              id="me-social-save-btn"
+              class="px-4 py-2 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm"
+            >
+              {i18n(I18nKey.meSettingsSaveSocialLinks)}
+            </button>
+            <span id="me-social-msg" class="text-sm text-60"></span>
+          </div>
+        </section>
+
+        <section class="card-base p-8 rounded-(--radius-large) space-y-4">
+          <h2 class="text-2xl font-semibold text-90">
+            {i18n(I18nKey.meSettingsPrivacySection)}
+          </h2>
+          <div class="space-y-4">
+            <h3 class="text-xl font-medium text-75">
+              {i18n(I18nKey.meSettingsPrivacyContent)}
+            </h3>
+            <form id="me-privacy-form" class="grid grid-cols-2 gap-4 text-base">
+              <label
+                class="flex items-center gap-3 text-75 cursor-pointer select-none"
+              >
+                <input
+                  type="checkbox"
+                  id="pv-profile-public"
+                  class="toggle-checkbox"
+                />
+                <span class="toggle-track"
+                  ><span class="toggle-knob"></span></span
+                >
+                {i18n(I18nKey.meSettingsPrivacyProfilePublic)}
+              </label>
+              <label
+                class="flex items-center gap-3 text-75 cursor-pointer select-none"
+              >
+                <input
+                  type="checkbox"
+                  id="pv-show-articles"
+                  class="toggle-checkbox"
+                />
+                <span class="toggle-track"
+                  ><span class="toggle-knob"></span></span
+                >
+                {i18n(I18nKey.meSettingsPrivacyShowArticles)}
+              </label>
+              <label
+                class="flex items-center gap-3 text-75 cursor-pointer select-none"
+              >
+                <input
+                  type="checkbox"
+                  id="pv-show-diaries"
+                  class="toggle-checkbox"
+                />
+                <span class="toggle-track"
+                  ><span class="toggle-knob"></span></span
+                >
+                {i18n(I18nKey.meSettingsPrivacyShowDiaries)}
+              </label>
+              <label
+                class="flex items-center gap-3 text-75 cursor-pointer select-none"
+              >
+                <input
+                  type="checkbox"
+                  id="pv-show-albums"
+                  class="toggle-checkbox"
+                />
+                <span class="toggle-track"
+                  ><span class="toggle-knob"></span></span
+                >
+                {i18n(I18nKey.meSettingsPrivacyShowAlbums)}
+              </label>
+              <label
+                class="flex items-center gap-3 text-75 cursor-pointer select-none"
+              >
+                <input
+                  type="checkbox"
+                  id="pv-show-comments"
+                  class="toggle-checkbox"
+                />
+                <span class="toggle-track"
+                  ><span class="toggle-knob"></span></span
+                >
+                {i18n(I18nKey.meSettingsPrivacyShowComments)}
+              </label>
+              <div class="col-span-2 flex items-center gap-2 pt-4">
+                <button
+                  type="submit"
+                  class="px-4 py-2 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm"
+                  >{i18n(I18nKey.meSettingsSavePrivacy)}</button
+                >
+                <span id="me-privacy-msg" class="text-sm text-60"></span>
+              </div>
+            </form>
+          </div>
+        </section>
+      </div>
+    </div>
+    <div
+      data-enter-skeleton-inline-placeholder
+      aria-hidden="true"
+      class="space-y-4"
+    >
+      <section class="card-base px-9 py-6 rounded-(--radius-large) space-y-3">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 26%; --skeleton-height: 2rem;"
+        >
+        </div>
+        <div class="md3-skeleton-text" style="--skeleton-width: 48%;"></div>
+      </section>
+      <section class="card-base p-8 rounded-(--radius-large) space-y-4">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 22%; --skeleton-height: 1.6rem;"
+        >
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          {
+            Array.from({ length: 6 }).map(() => (
+              <div class="md3-skeleton-block h-10 rounded-lg" />
+            ))
+          }
+          <div class="md3-skeleton-block h-28 rounded-lg col-span-2"></div>
+          <div class="md3-skeleton-block h-10 rounded-lg col-span-2"></div>
+        </div>
+      </section>
+      <section class="card-base p-8 rounded-(--radius-large) space-y-4">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 20%; --skeleton-height: 1.6rem;"
+        >
+        </div>
+        <div class="space-y-3">
+          {
+            Array.from({ length: 4 }).map(() => (
+              <div class="md3-skeleton-block h-10 rounded-lg" />
+            ))
+          }
+          <div class="md3-skeleton-block h-10 w-32 rounded-lg"></div>
+        </div>
+      </section>
+      <section class="card-base p-8 rounded-(--radius-large) space-y-4">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 18%; --skeleton-height: 1.6rem;"
+        >
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          {
+            Array.from({ length: 6 }).map(() => (
+              <div class="md3-skeleton-block h-10 rounded-lg" />
+            ))
+          }
+          <div class="md3-skeleton-block h-10 rounded-lg col-span-2"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div
+    slot="modal"
+    id="me-avatar-crop-modal"
+    class="overlay-dialog hidden px-4 py-5"
+    tabindex="-1"
+  >
+    <div
+      class="overlay-dialog-card overlay-dialog-card-crop w-full max-w-xl border border-(--line-divider) text-75"
+      style="text-align: left;"
+    >
+      <div class="overlay-dialog-body">
+        <div class="flex items-center gap-2">
+          <h3 class="text-lg font-semibold text-90">
+            {i18n(I18nKey.meSettingsCropAvatarTitle)}
+          </h3>
+        </div>
+        <p class="text-sm text-60">{i18n(I18nKey.meSettingsCropAvatarHint)}</p>
+        <div
+          id="me-avatar-crop-viewport"
+          class="relative mx-auto w-full max-w-[360px] aspect-square overflow-hidden rounded-2xl border border-(--line-divider) bg-black/15 dark:bg-white/10 select-none touch-none"
+        >
+          <img
+            id="me-avatar-crop-image"
+            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
+            class="absolute left-0 top-0 max-w-none pointer-events-none hidden"
+            alt={i18n(I18nKey.meSettingsCropAvatarAlt)}
+          />
+          <div
+            id="me-avatar-crop-empty"
+            class="absolute inset-0 grid place-items-center text-sm text-60 pointer-events-none"
+          >
+            {i18n(I18nKey.interactionCommonSelectImage)}
+          </div>
+          <div
+            class="absolute inset-0 pointer-events-none rounded-2xl ring-2 ring-white/80"
+          >
+          </div>
+        </div>
+        <div class="space-y-1">
+          <label for="me-avatar-crop-zoom" class="text-sm text-60">
+            {i18n(I18nKey.interactionCommonZoom)}
+          </label>
+          <input
+            id="me-avatar-crop-zoom"
+            type="range"
+            min="100"
+            max="300"
+            step="1"
+            value="100"
+            class="w-full"
+          />
+        </div>
+        <span id="me-avatar-crop-msg" class="text-sm text-red-500"></span>
+      </div>
+
+      <div class="overlay-dialog-actions overlay-dialog-actions-crop">
+        <input
+          id="me-avatar-crop-file"
+          type="file"
+          accept="image/*"
+          class="hidden"
+        />
+        <button
+          type="button"
+          id="me-avatar-crop-select-btn"
+          class="px-4 h-9 rounded-lg text-sm font-medium cursor-pointer bg-(--primary) text-white hover:opacity-90 transition flex items-center gap-1.5"
+          ><svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path><polyline
+              points="17 8 12 3 7 8"></polyline><line
+              x1="12"
+              y1="3"
+              x2="12"
+              y2="15"></line></svg
+          >{i18n(I18nKey.interactionCommonChooseFile)}</button
+        >
+        <button
+          type="button"
+          id="me-avatar-crop-apply-btn"
+          class="px-4 py-2.5 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm"
+        >
+          {i18n(I18nKey.interactionCommonApplyCrop)}
+        </button>
+        <button
+          type="button"
+          id="me-avatar-crop-cancel-btn"
+          class="overlay-dialog-actions-end px-4 py-2.5 rounded-lg border border-(--line-divider) text-sm text-75"
+        >
+          {i18n(I18nKey.interactionCommonCancel)}
+        </button>
+      </div>
+    </div>
+  </div>
+</MainGridLayout>

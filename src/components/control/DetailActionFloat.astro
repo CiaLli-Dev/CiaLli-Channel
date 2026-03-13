@@ -1,0 +1,475 @@
+---
+import { Icon } from "astro-icon/components";
+import type { SharePosterPayload } from "@/utils/share-poster";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+
+interface Props {
+  contentType: "article" | "diary";
+  contentId: string;
+  authorId: string;
+  likeCount?: number;
+  commentCount?: number;
+  likedByViewer?: boolean;
+  dockToBackTop?: boolean;
+  showLikeAction?: boolean;
+  showCommentAction?: boolean;
+  sharePayload?: SharePosterPayload;
+  editHref?: string;
+  deleteEndpoint?: string;
+  adminDeleteEndpoint?: string;
+  deleteConfirmMessage?: string;
+  adminDeleteConfirmMessage?: string;
+  adminDeleteLabel?: string;
+  deleteSuccessHref?: string;
+}
+
+const {
+  contentType,
+  contentId,
+  authorId,
+  likeCount = 0,
+  commentCount = 0,
+  likedByViewer = false,
+  dockToBackTop = false,
+  showLikeAction = true,
+  showCommentAction = true,
+  sharePayload,
+  editHref = "",
+  deleteEndpoint = "",
+  adminDeleteEndpoint = "",
+  deleteConfirmMessage = "确认删除该内容？删除后不可恢复。",
+  adminDeleteConfirmMessage = deleteConfirmMessage,
+  adminDeleteLabel = i18n(I18nKey.interactionCommonDeleteAdmin),
+  deleteSuccessHref = "/",
+} = Astro.props;
+const deleteLabel = i18n(I18nKey.interactionCommonDelete);
+---
+
+<div
+  class:list={["detail-action-float", dockToBackTop && "fixed-mode"]}
+  data-content-type={contentType}
+  data-content-id={contentId}
+  data-author-id={authorId}
+  data-like-count={String(likeCount)}
+  data-comment-count={String(commentCount)}
+  data-liked={likedByViewer ? "1" : "0"}
+  data-dock-to-back-top={dockToBackTop ? "1" : "0"}
+  data-share-dialog-id={sharePayload ? "article-share-dialog" : ""}
+  data-edit-href={editHref}
+  data-delete-endpoint={deleteEndpoint}
+  data-admin-delete-endpoint={adminDeleteEndpoint}
+  data-delete-confirm-message={deleteConfirmMessage}
+  data-admin-delete-confirm-message={adminDeleteConfirmMessage}
+  data-delete-label={deleteLabel}
+  data-admin-delete-label={adminDeleteLabel}
+  data-delete-success-href={deleteSuccessHref}
+>
+  <div class="detail-action-bar card-base rounded-2xl">
+    {
+      showLikeAction && (
+        <button
+          type="button"
+          class="detail-action-btn detail-like-btn"
+          aria-label="点赞"
+        >
+          <Icon name="material-symbols:thumb-up-rounded" class="detail-icon" />
+          <span class="detail-action-count" data-like-count-text>
+            {likeCount}
+          </span>
+        </button>
+      )
+    }
+    {
+      showCommentAction && (
+        <button
+          type="button"
+          class="detail-action-btn detail-comment-btn"
+          aria-label="查看评论"
+        >
+          <Icon name="material-symbols:comment-rounded" class="detail-icon" />
+          <span class="detail-action-count">{commentCount}</span>
+        </button>
+      )
+    }
+    {
+      sharePayload && (
+        <button
+          type="button"
+          id="share-component"
+          class:list={[
+            "detail-action-btn detail-share-btn",
+            sharePayload.hiddenUntilDecrypt && "encrypted-hidden",
+          ]}
+          aria-label={i18n(I18nKey.contentShareArticle)}
+        >
+          <Icon name="material-symbols:share" class="detail-icon" />
+        </button>
+      )
+    }
+    <button
+      type="button"
+      class="detail-action-btn detail-manage-toggle hidden"
+      aria-label="更多操作"
+    >
+      <Icon name="material-symbols:more-horiz" class="detail-icon" />
+    </button>
+  </div>
+
+  <div class="detail-manage-panel">
+    <button
+      type="button"
+      class="detail-manage-edit hidden w-full text-left px-3 py-2 rounded-lg text-sm text-90 hover:bg-black/5 dark:hover:bg-white/10"
+    >
+      编辑
+    </button>
+    <button
+      type="button"
+      class="detail-manage-delete hidden w-full text-left px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-black/5 dark:hover:bg-white/10"
+    >
+      {deleteLabel}
+    </button>
+  </div>
+</div>
+
+<style lang="stylus">
+  .detail-action-float
+    position: relative
+    width: var(--right-float-size, 3.75rem)
+    margin-top: 9.5rem
+    margin-left: 0
+    margin-right: auto
+    pointer-events: auto
+    z-index: 30
+
+    &.fixed-mode
+      position: fixed
+      right: var(--right-float-right, 6rem)
+      bottom: calc(var(--back-to-top-bottom, 10rem) + var(--right-float-size, 3.75rem) + var(--right-float-gap, 0.75rem))
+      top: auto
+      margin: 0
+
+    &[data-dock-to-back-top='1'].fixed-mode
+      transform: translateX(var(--right-float-shift-x, 5rem))
+
+    &.slot-mode
+      margin-top: .5rem
+
+  .detail-action-bar
+    width: var(--right-float-size, 3.75rem)
+    display: flex
+    flex-direction: column
+    align-items: center
+    padding: .4rem
+    gap: .15rem
+    border: 1px solid var(--line-divider)
+
+  .detail-action-btn
+    width: 100%
+    min-height: 3.35rem
+    border: none
+    background: transparent
+    border-radius: .85rem
+    display: flex
+    flex-direction: column
+    align-items: center
+    justify-content: center
+    gap: .25rem
+    color: var(--btn-content)
+    transition: background-color .2s ease, color .2s ease
+
+    &:hover
+      background: var(--btn-card-bg-active)
+
+    &.active
+      color: var(--primary)
+
+    &:disabled
+      opacity: .65
+      cursor: not-allowed
+
+  .detail-icon
+    font-size: 1.65rem
+
+  .detail-action-count
+    font-size: .95rem
+    line-height: 1
+    color: var(--text-60)
+
+  .detail-manage-panel
+    position: absolute
+    bottom: 0
+    left: calc(100% + .4rem)
+    min-width: 11.5rem
+    z-index: 60
+    background: var(--card-bg)
+    border: 1px solid var(--line-divider)
+    border-radius: 1rem
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15)
+    padding: 0.6rem
+    opacity: 0
+    visibility: hidden
+    transform: translate(-6px, 6px) scale(0.95)
+    transition: all 0.2s ease
+    pointer-events: none
+
+    &.show
+      opacity: 1
+      visibility: visible
+      transform: translate(0, 0) scale(1)
+      pointer-events: auto
+
+  .detail-action-float.fixed-mode .detail-manage-panel
+    left: auto
+    right: calc(100% + .4rem)
+    transform: translate(6px, 6px) scale(0.95)
+
+  .detail-action-float.fixed-mode .detail-manage-panel.show
+    transform: translate(0, 0) scale(1)
+
+</style>
+
+<script>
+  import { getAuthState, subscribeAuthState } from "@/scripts/auth-state";
+  import type { AuthState } from "@/scripts/auth-state";
+  import { showAuthRequiredDialog } from "@/scripts/dialogs";
+  import { navigateToPage } from "@/utils/navigation-utils";
+  import {
+    queryDetailElements,
+    resolveAndMountElement,
+    handleDeleteAction,
+    handleLikeAction,
+  } from "@/scripts/detail-action-float-helpers";
+  import type { LikeActionState } from "@/scripts/detail-action-float-helpers";
+
+  function applyDeleteButtonLabel(
+    button: HTMLButtonElement,
+    label: string,
+  ): void {
+    button.textContent = label;
+  }
+
+  // eslint-disable-next-line complexity -- 该组件需在单一绑定点整合多种交互状态
+  function bindDetailRoot(rootEl: HTMLElement): void {
+    rootEl.dataset.bound = "1";
+    const dockToBackTop = rootEl.dataset.dockToBackTop === "1";
+    resolveAndMountElement({ rootEl, dockToBackTop });
+
+    const contentType = String(rootEl.dataset.contentType || "");
+    const contentId = String(rootEl.dataset.contentId || "");
+    const authorId = String(rootEl.dataset.authorId || "");
+    const editHref = String(rootEl.dataset.editHref || "");
+    const deleteEndpoint = String(rootEl.dataset.deleteEndpoint || "");
+    const adminDeleteEndpoint = String(
+      rootEl.dataset.adminDeleteEndpoint || "",
+    );
+    const deleteConfirmMessage = String(
+      rootEl.dataset.deleteConfirmMessage || "确认删除该内容？删除后不可恢复。",
+    );
+    const adminDeleteConfirmMessage = String(
+      rootEl.dataset.adminDeleteConfirmMessage || deleteConfirmMessage,
+    );
+    const deleteLabel = String(rootEl.dataset.deleteLabel || "删除");
+    const adminDeleteLabel = String(
+      rootEl.dataset.adminDeleteLabel || "删除（管理员）",
+    );
+    const deleteSuccessHref = String(rootEl.dataset.deleteSuccessHref || "/");
+    const shareDialogId = String(rootEl.dataset.shareDialogId || "").trim();
+
+    const els = queryDetailElements(rootEl);
+    const {
+      likeBtn,
+      commentBtn,
+      shareBtn,
+      manageBtn,
+      panel,
+      editBtn,
+      deleteBtn,
+      likeCountText,
+    } = els;
+
+    const likeState: LikeActionState = {
+      liked: rootEl.dataset.liked === "1",
+      likeCount: Number(rootEl.dataset.likeCount || "0") || 0,
+      likePending: false,
+    };
+    let currentAuthState: AuthState = getAuthState();
+    let isOpen = false;
+
+    function applyLikeUI(): void {
+      const count = Math.max(0, likeState.likeCount);
+      likeState.likeCount = count;
+      rootEl.dataset.liked = likeState.liked ? "1" : "0";
+      rootEl.dataset.likeCount = String(count);
+      likeBtn?.classList.toggle("active", likeState.liked);
+      likeBtn?.classList.toggle("is-pending", likeState.likePending);
+      if (likeBtn) {
+        likeBtn.disabled = likeState.likePending;
+      }
+      if (likeCountText) {
+        likeCountText.textContent = String(count);
+      }
+    }
+
+    // eslint-disable-next-line complexity -- 需同步 owner/admin 双模式按钮显隐与文案
+    function applyActionVisibility(state: AuthState): void {
+      currentAuthState = state;
+      const isOwner =
+        state.isLoggedIn && Boolean(state.userId) && state.userId === authorId;
+      const isAdminOnly = state.isLoggedIn && state.isAdmin && !isOwner;
+      const canEdit = isOwner;
+      const canDelete = isOwner || isAdminOnly;
+      const canOpenPanel = canEdit || canDelete;
+
+      manageBtn?.classList.toggle("hidden", !canOpenPanel);
+      editBtn?.classList.toggle("hidden", !canEdit);
+      deleteBtn?.classList.toggle("hidden", !canDelete);
+
+      if (deleteBtn) {
+        // 管理员删除与作者删除走不同链路，按钮文案同步标识当前模式。
+        const deleteMode = isAdminOnly ? "admin" : "owner";
+        deleteBtn.dataset.deleteMode = deleteMode;
+        applyDeleteButtonLabel(
+          deleteBtn,
+          deleteMode === "admin" ? adminDeleteLabel : deleteLabel,
+        );
+      }
+
+      if (!canOpenPanel && isOpen) {
+        panel?.classList.remove("show");
+        isOpen = false;
+      }
+    }
+
+    function openPanel(): void {
+      isOpen = true;
+      panel?.classList.add("show");
+      manageBtn?.classList.add("active");
+    }
+
+    function closePanel(): void {
+      isOpen = false;
+      panel?.classList.remove("show");
+      manageBtn?.classList.remove("active");
+    }
+
+    applyLikeUI();
+    applyActionVisibility(getAuthState());
+    subscribeAuthState((state) => applyActionVisibility(state));
+
+    manageBtn?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (isOpen) {
+        closePanel();
+      } else {
+        openPanel();
+      }
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!isOpen) return;
+      if (!rootEl.contains(event.target as Node)) {
+        closePanel();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && isOpen) {
+        closePanel();
+      }
+    });
+
+    editBtn?.addEventListener("click", () => {
+      if (!editHref) return;
+      closePanel();
+      navigateToPage(editHref, { force: contentType === "diary" });
+    });
+
+    deleteBtn?.addEventListener("click", () => {
+      if (!deleteBtn) return;
+      const isOwner =
+        currentAuthState.isLoggedIn &&
+        Boolean(currentAuthState.userId) &&
+        currentAuthState.userId === authorId;
+      const isAdminOnly =
+        currentAuthState.isLoggedIn && currentAuthState.isAdmin && !isOwner;
+      const deleteMode: "owner" | "admin" = isAdminOnly ? "admin" : "owner";
+      void handleDeleteAction({
+        mode: deleteMode,
+        ownerDeleteEndpoint: deleteEndpoint,
+        adminDeleteEndpoint,
+        ownerDeleteConfirmMessage: deleteConfirmMessage,
+        adminDeleteConfirmMessage,
+        deleteSuccessHref,
+        contentType,
+        deleteBtn,
+        closePanel,
+      });
+    });
+
+    likeBtn?.addEventListener("click", () => {
+      if (likeState.likePending || !contentId) return;
+      const auth = getAuthState();
+      if (!auth.isLoggedIn) {
+        showAuthRequiredDialog();
+        return;
+      }
+      if (!likeBtn) return;
+      void handleLikeAction({
+        contentType,
+        contentId,
+        likeBtn,
+        likeCountText,
+        rootEl,
+        state: likeState,
+        applyLikeUI,
+      });
+    });
+
+    commentBtn?.addEventListener("click", () => {
+      const commentRoot = document.getElementById("comment-root");
+      if (commentRoot) {
+        commentRoot.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      navigateToPage(`${window.location.pathname}#comment-root`);
+    });
+
+    shareBtn?.addEventListener("click", () => {
+      if (!shareDialogId) {
+        return;
+      }
+      runtimeWindow.cialliOpenArticleShareDialog?.(shareDialogId);
+    });
+  }
+
+  function initDetailActionFloat(): void {
+    const roots = document.querySelectorAll<HTMLElement>(
+      ".detail-action-float:not([data-bound='1'])",
+    );
+    roots.forEach((rootEl) => bindDetailRoot(rootEl));
+  }
+
+  type DetailActionRuntimeWindow = Window &
+    typeof globalThis & {
+      cialliOpenArticleShareDialog?: (dialogId: string) => void;
+      __detailActionSettledInitBound?: boolean;
+    };
+
+  const runtimeWindow = window as DetailActionRuntimeWindow;
+  const NAVIGATION_SETTLED_EVENT = "cialli:navigation:settled";
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initDetailActionFloat, {
+      once: true,
+    });
+  } else {
+    initDetailActionFloat();
+  }
+
+  if (!runtimeWindow.__detailActionSettledInitBound) {
+    runtimeWindow.__detailActionSettledInitBound = true;
+    // 统一在导航最终稳定后初始化，避免骨架阶段重复绑定引发二次动画体感
+    document.addEventListener(NAVIGATION_SETTLED_EVENT, initDetailActionFloat);
+  }
+</script>

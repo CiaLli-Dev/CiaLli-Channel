@@ -1,0 +1,153 @@
+---
+interface Props {
+  title: string;
+  moreHref?: string;
+  class?: string;
+}
+
+const { title, moreHref } = Astro.props;
+const className = Astro.props.class;
+---
+
+<section
+  class:list={[
+    "card-base rounded-(--radius-large) mb-4 overflow-hidden",
+    className,
+  ]}
+  data-horizontal-scroll-section
+>
+  <!-- 标题栏 -->
+  <div class="flex items-center justify-between px-6 pt-5 pb-3">
+    <h2 class="text-xl font-semibold text-90">{title}</h2>
+    {
+      moreHref && (
+        <a
+          href={moreHref}
+          class="text-sm text-50 hover:text-(--primary) transition-colors flex items-center gap-1"
+        >
+          查看更多
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
+          </svg>
+        </a>
+      )
+    }
+  </div>
+
+  <!-- 横向滚动容器 -->
+  <div class="relative group/scroll">
+    <!-- 左箭头 -->
+    <button
+      type="button"
+      class="scroll-arrow scroll-arrow-left absolute left-2 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-(--card-bg) border border-black/10 dark:border-white/15 shadow-md flex items-center justify-center text-50 hover:text-(--primary) transition-all opacity-0 pointer-events-none"
+      aria-label="向左滚动"
+    >
+      <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"></path>
+      </svg>
+    </button>
+
+    <!-- 右箭头 -->
+    <button
+      type="button"
+      class="scroll-arrow scroll-arrow-right absolute right-2 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-(--card-bg) border border-black/10 dark:border-white/15 shadow-md flex items-center justify-center text-50 hover:text-(--primary) transition-all opacity-0 pointer-events-none"
+      aria-label="向右滚动"
+    >
+      <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path>
+      </svg>
+    </button>
+
+    <div
+      class="scroll-container flex gap-4 overflow-x-auto px-6 pb-5 snap-x snap-mandatory"
+    >
+      <slot />
+
+      {/* 末尾"查看更多"占位卡片 */}
+      {
+        moreHref && (
+          <a
+            href={moreHref}
+            class="shrink-0 w-[140px] min-h-[160px] rounded-xl border-2 border-dashed border-black/15 dark:border-white/20 flex flex-col items-center justify-center gap-2 text-50 hover:text-(--primary) hover:border-(--primary) transition-colors snap-start"
+          >
+            <svg class="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
+            </svg>
+            <span class="text-sm font-medium">查看更多</span>
+          </a>
+        )
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  .scroll-container {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-padding-inline: 1.5rem;
+  }
+  .scroll-container::-webkit-scrollbar {
+    display: none;
+  }
+  .scroll-arrow.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+</style>
+
+<script>
+  const INIT_ATTR = "data-horizontal-scroll-initialized";
+  const AFTER_SWAP_BOUND_ATTR = "data-horizontal-scroll-after-swap-bound";
+
+  function initScrollSections(): void {
+    const sections = document.querySelectorAll<HTMLElement>(
+      "[data-horizontal-scroll-section]",
+    );
+    sections.forEach((section) => {
+      if (section.hasAttribute(INIT_ATTR)) return;
+      const container = section.querySelector<HTMLElement>(".scroll-container");
+      const leftBtn =
+        section.querySelector<HTMLButtonElement>(".scroll-arrow-left");
+      const rightBtn = section.querySelector<HTMLButtonElement>(
+        ".scroll-arrow-right",
+      );
+      if (!container || !leftBtn || !rightBtn) return;
+      section.setAttribute(INIT_ATTR, "true");
+
+      // 修正浏览器历史导航或页面切换后可能保留的横向滚动位置
+      container.scrollLeft = 0;
+
+      function updateArrows(): void {
+        if (!container || !leftBtn || !rightBtn) return;
+        const { scrollLeft, scrollWidth, clientWidth } = container;
+        const maxScrollLeft = Math.max(0, scrollWidth - clientWidth);
+        const threshold = 2;
+        const canScroll = maxScrollLeft > threshold;
+        const atStart = scrollLeft <= threshold;
+        const atEnd = maxScrollLeft - scrollLeft <= threshold;
+
+        leftBtn.classList.toggle("visible", canScroll && !atStart);
+        rightBtn.classList.toggle("visible", canScroll && !atEnd);
+      }
+
+      container.addEventListener("scroll", updateArrows, { passive: true });
+      leftBtn.addEventListener("click", () => {
+        container.scrollBy({ left: -280, behavior: "smooth" });
+      });
+      rightBtn.addEventListener("click", () => {
+        container.scrollBy({ left: 280, behavior: "smooth" });
+      });
+
+      updateArrows();
+      window.addEventListener("resize", updateArrows, { passive: true });
+    });
+  }
+
+  // 初始化
+  initScrollSections();
+  if (!document.documentElement.hasAttribute(AFTER_SWAP_BOUND_ATTR)) {
+    document.documentElement.setAttribute(AFTER_SWAP_BOUND_ATTR, "true");
+    document.addEventListener("astro:after-swap", initScrollSections);
+  }
+</script>

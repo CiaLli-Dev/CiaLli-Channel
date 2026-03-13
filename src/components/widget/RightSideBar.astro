@@ -1,0 +1,71 @@
+---
+import { widgetManager } from "@utils/widget-manager";
+import SideBarComponentList from "./SideBarComponentList.astro";
+import { pathsEqual, url } from "@/utils/url-utils";
+import type { WidgetComponentConfig } from "@/types/config";
+
+// 分离顶部固定和粘性定位的组件
+const isHomePage = pathsEqual(Astro.url.pathname, url("/"));
+const filterCalendar = (components: WidgetComponentConfig[]) => {
+  if (isHomePage) {
+    return components;
+  }
+  return components.filter((component) => component.type !== "calendar");
+};
+
+const topComponents = filterCalendar(
+  widgetManager.getComponentsByPosition("top", "right"),
+);
+const stickyComponents = filterCalendar(
+  widgetManager.getComponentsByPosition("sticky", "right"),
+);
+---
+
+<div class="right-sidebar" id="right-sidebar">
+  <!-- 顶部固定区域 -->
+  {
+    topComponents.length > 0 && (
+      <div class="sidebar-top">
+        <SideBarComponentList components={topComponents} />
+      </div>
+    )
+  }
+
+  <!-- 粘性定位区域 -->
+  {
+    stickyComponents.length > 0 && (
+      <div class="sidebar-sticky">
+        <SideBarComponentList components={stickyComponents} />
+      </div>
+    )
+  }
+</div>
+
+<style>
+  .right-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    max-width: 300px;
+    height: fit-content;
+    position: sticky;
+    top: 1rem;
+  }
+
+  .sidebar-top {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .sidebar-sticky {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+  }
+
+  /* 响应式设计 */
+</style>

@@ -1,0 +1,539 @@
+---
+import { Image } from "astro:assets";
+import { Icon } from "astro-icon/components";
+import ExternalImage from "@components/misc/ExternalImage.astro";
+import { getResolvedSiteSettings } from "@/server/site-settings/service";
+import defaultNavIconImage from "@assets/home/home.png";
+import defaultNavLogoImage from "@assets/home/default-logo.png";
+import { LinkPresets } from "@constants/link-presets";
+import type { LinkPreset } from "@/types/config";
+import { type NavBarLink } from "@/types/config";
+import { isAdminOnlyLink } from "@utils/nav-link-utils";
+import { url } from "@utils/url-utils";
+import LightDarkSwitch from "./LightDarkSwitch.svelte";
+import AuthStatus from "./auth/AuthStatus.astro";
+import DropdownMenu from "./widget/DropdownMenu.astro";
+
+const className = Astro.props.class;
+const resolvedSiteSettings =
+  Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
+const siteSettings = resolvedSiteSettings.settings;
+const navBarConfig = siteSettings.navBar;
+
+const DEFAULT_NAV_ICON_PATH = "/assets/home/home.png";
+const DEFAULT_NAV_LOGO_PATH = "/assets/home/default-logo.png";
+
+function resolveAssetSrc(path: string): string {
+  if (!path) {
+    return "";
+  }
+  if (path.startsWith("/")) {
+    return url(path);
+  }
+  if (path.startsWith("assets/")) {
+    return url(`/${path}`);
+  }
+  return path;
+}
+
+const navbarIconSrc =
+  siteSettings.navbarTitle?.icon ||
+  siteSettings.site.favicon[0]?.src ||
+  DEFAULT_NAV_ICON_PATH;
+const navbarLogoSrc = siteSettings.navbarTitle?.logo || DEFAULT_NAV_LOGO_PATH;
+const resolvedNavbarIconSrc = resolveAssetSrc(navbarIconSrc);
+const resolvedNavbarLogoSrc = resolveAssetSrc(navbarLogoSrc);
+// 默认内置素材走 astro:assets，可进入 Vercel Image Optimization；自定义地址保持原始直连逻辑。
+const useOptimizedDefaultNavIcon =
+  resolvedNavbarIconSrc === url(DEFAULT_NAV_ICON_PATH);
+const useOptimizedDefaultNavLogo =
+  resolvedNavbarLogoSrc === url(DEFAULT_NAV_LOGO_PATH);
+
+const navbarTransparentMode =
+  siteSettings.banner?.navbar?.transparentMode || "semi";
+const isHomePage = Astro.url.pathname === "/" || Astro.url.pathname === "";
+
+function resolveLink(link: NavBarLink | LinkPreset): NavBarLink {
+  if (typeof link === "number") {
+    return LinkPresets[link];
+  }
+  return link;
+}
+
+function withoutAdminChildren(link: NavBarLink): NavBarLink | null {
+  if (isAdminOnlyLink(link)) {
+    return null;
+  }
+  const childrenSource = Array.isArray(link.children) ? link.children : [];
+  if (childrenSource.length === 0) {
+    return link;
+  }
+  const children = childrenSource
+    .map((child) => resolveLink(child))
+    .filter((child) => !isAdminOnlyLink(child));
+  if (children.length === 0) {
+    const rawUrl = String(link.url || "").trim();
+    if (!rawUrl || rawUrl === "#") {
+      return null;
+    }
+  }
+  return { ...link, children };
+}
+
+const links: NavBarLink[] = navBarConfig.links
+  .map((item) => resolveLink(item))
+  .map((item) => withoutAdminChildren(item))
+  .filter((item): item is NavBarLink => Boolean(item));
+---
+
+<div
+  id="navbar"
+  class="z-50 onload-animation group"
+  data-transparent-mode={navbarTransparentMode}
+  data-is-home={isHomePage}
+>
+  <div
+    class="navbar-bg-strip absolute h-8 left-0 right-0 -top-8 bg-(--card-bg) transition"
+  >
+  </div>
+  <div
+    class:list={[
+      className,
+      "navbar-shell overflow-visible! w-full min-w-0 max-w-(--page-width) h-[4.5rem] mx-auto flex items-center justify-between px-4",
+    ]}
+  >
+    <a
+      id="navbar-logo"
+      href={url("/")}
+      class="btn-plain scale-animation rounded-lg h-[3.25rem] in-[.enable-banner]:h-[2.5rem]! in-[.enable-banner]:group-[.scrolled]:h-[3.25rem]! px-5 font-bold active:scale-95 min-w-0 max-w-none transition-[height,padding-left,padding-right] duration-920"
+    >
+      <div class="flex flex-row items-center min-w-0 text-md">
+        {
+          siteSettings.navbarTitle ? (
+            siteSettings.navbarTitle.mode === "logo" ? (
+              useOptimizedDefaultNavLogo ? (
+                <Image
+                  src={defaultNavLogoImage}
+                  alt={siteSettings.navbarTitle.text}
+                  class="h-[3.25rem] w-auto in-[.enable-banner]:h-[2.5rem]! in-[.enable-banner]:group-[.scrolled]:h-[3.25rem]! max-w-full object-contain transition-[height] duration-920"
+                  loading="lazy"
+                  width={320}
+                  height={160}
+                  widths={[128, 160, 192, 320]}
+                  sizes="(max-width: 1024px) 10rem, 14rem"
+                />
+              ) : (
+                <ExternalImage
+                  src={resolvedNavbarLogoSrc}
+                  alt={siteSettings.navbarTitle.text}
+                  class="h-[3.25rem] w-auto in-[.enable-banner]:h-[2.5rem]! in-[.enable-banner]:group-[.scrolled]:h-[3.25rem]! max-w-full object-contain transition-[height] duration-920"
+                  loading="lazy"
+                />
+              )
+            ) : (
+              <>
+                {useOptimizedDefaultNavIcon ? (
+                  <Image
+                    src={defaultNavIconImage}
+                    alt={siteSettings.navbarTitle.text}
+                    class="h-[1.75rem] w-[1.75rem] mr-2 object-contain"
+                    loading="lazy"
+                    width={96}
+                    height={99}
+                    widths={[48, 72, 96, 128]}
+                    sizes="1.75rem"
+                  />
+                ) : (
+                  <ExternalImage
+                    src={resolvedNavbarIconSrc}
+                    alt={siteSettings.navbarTitle.text}
+                    class="h-[1.75rem] w-[1.75rem] mr-2 object-contain"
+                    loading="lazy"
+                  />
+                )}
+                <span class="max-w-none truncate dark:text-white text-black">
+                  {siteSettings.navbarTitle.text}
+                </span>
+              </>
+            )
+          ) : (
+            <>
+              <Icon
+                name="material-symbols:home-pin-outline"
+                class="text-[1.75rem] mr-2"
+              />
+              <span class="max-w-none truncate dark:text-white text-black">
+                {siteSettings.site.title}
+              </span>
+            </>
+          )
+        }
+      </div>
+    </a>
+
+    <div
+      id="navbar-links-container"
+      class="flex items-center space-x-1 transition-opacity duration-300"
+    >
+      {
+        links.map((l) => {
+          return <DropdownMenu link={l} />;
+        })
+      }
+    </div>
+
+    <div class="flex shrink-0 items-center gap-1">
+      <LightDarkSwitch client:only="svelte" />
+      <AuthStatus />
+    </div>
+  </div>
+</div>
+
+<script>
+  import {
+    emitAuthState,
+    getAuthState,
+    subscribeAuthState,
+    type AuthState,
+  } from "@/scripts/auth-state";
+  import { showAuthRequiredDialog } from "@/scripts/dialogs";
+
+  const navbarLinksContainer = document.getElementById(
+    "navbar-links-container",
+  );
+  const AUTH_PROTECTED_TARGET_ATTR = "data-auth-target-href";
+
+  const normalizePathname = (pathname: string): string => {
+    const normalized = pathname.replace(/\/+$/, "");
+    return normalized === "" ? "/" : normalized;
+  };
+
+  const isPublishPathname = (pathname: string): boolean => {
+    const normalizedPath = normalizePathname(pathname);
+    return (
+      normalizedPath === "/posts/new" ||
+      /^\/posts\/[^/]+\/edit$/.test(normalizedPath)
+    );
+  };
+
+  type InternalTarget = {
+    pathname: string;
+    search: string;
+    hash: string;
+  };
+
+  const parseInternalTarget = (href: string): InternalTarget | null => {
+    if (!href.startsWith("/")) {
+      return null;
+    }
+
+    try {
+      const parsed = new URL(href, window.location.origin);
+      return {
+        pathname: normalizePathname(parsed.pathname),
+        search: parsed.search,
+        hash: parsed.hash,
+      };
+    } catch {
+      const [pathAndSearch, hashPart = ""] = href.split("#", 2);
+      const [pathPart, searchPart = ""] = pathAndSearch.split("?", 2);
+      return {
+        pathname: normalizePathname(pathPart || "/"),
+        search: searchPart ? `?${searchPart}` : "",
+        hash: hashPart ? `#${hashPart}` : "",
+      };
+    }
+  };
+
+  const setAuthProtectedLink = (
+    anchor: HTMLAnchorElement,
+    targetHref: string,
+  ): void => {
+    anchor.setAttribute(AUTH_PROTECTED_TARGET_ATTR, targetHref);
+    anchor.setAttribute("href", "#");
+    anchor.setAttribute("data-needs-login", "");
+  };
+
+  const clearAuthProtectedLink = (
+    anchor: HTMLAnchorElement,
+    href: string,
+  ): void => {
+    anchor.setAttribute("href", href);
+    anchor.removeAttribute("data-needs-login");
+    anchor.removeAttribute(AUTH_PROTECTED_TARGET_ATTR);
+  };
+
+  const resolveUserSegmentPath = (
+    pathname: string,
+    cleanUsername: string,
+  ): string => {
+    const segments = pathname.split("/").filter(Boolean);
+    const resolved = segments
+      .map((segment) => (segment === "__user__" ? cleanUsername : segment))
+      .join("/");
+    return `/${resolved}`;
+  };
+
+  const updatePublishLink = (
+    anchor: HTMLAnchorElement,
+    pathname: string,
+    search: string,
+    hash: string,
+    isLoggedIn: boolean,
+  ): void => {
+    const publishHref = `${pathname}${search}${hash}`;
+    if (isLoggedIn) {
+      clearAuthProtectedLink(anchor, publishHref);
+    } else {
+      setAuthProtectedLink(anchor, publishHref);
+    }
+  };
+
+  const updateUserPlaceholderLink = (
+    anchor: HTMLAnchorElement,
+    pathname: string,
+    search: string,
+    hash: string,
+    cleanUsername: string,
+    isLoggedIn: boolean,
+  ): void => {
+    if (cleanUsername) {
+      const resolvedPath = resolveUserSegmentPath(pathname, cleanUsername);
+      clearAuthProtectedLink(anchor, `${resolvedPath}${search}${hash}`);
+    } else if (!isLoggedIn) {
+      setAuthProtectedLink(anchor, `${pathname}${search}${hash}`);
+    } else {
+      clearAuthProtectedLink(anchor, "/me");
+    }
+  };
+
+  const updateMeHashLink = (
+    anchor: HTMLAnchorElement,
+    pathname: string,
+    search: string,
+    hash: string,
+    hashLower: string,
+    cleanUsername: string,
+    isLoggedIn: boolean,
+  ): void => {
+    const meHashTargets = ["bangumi", "diary", "albums"];
+    if (!meHashTargets.includes(hashLower)) return;
+    if (cleanUsername) {
+      clearAuthProtectedLink(anchor, `/${cleanUsername}/${hashLower}`);
+    } else if (!isLoggedIn) {
+      setAuthProtectedLink(anchor, `${pathname}${search}${hash}`);
+    } else {
+      clearAuthProtectedLink(anchor, "/me");
+    }
+  };
+
+  const updateLegacyLink = (
+    anchor: HTMLAnchorElement,
+    pathname: string,
+    cleanUsername: string,
+    isLoggedIn: boolean,
+  ): void => {
+    const target = pathname.replace(/^\//, "");
+    if (cleanUsername) {
+      clearAuthProtectedLink(anchor, `/${cleanUsername}/${target}`);
+    } else if (!isLoggedIn) {
+      setAuthProtectedLink(anchor, `/${target}`);
+    } else {
+      clearAuthProtectedLink(anchor, "/me");
+    }
+  };
+
+  const updateAnchorForAuth = (
+    anchor: HTMLAnchorElement,
+    cleanUsername: string,
+    isLoggedIn: boolean,
+  ): void => {
+    const rawHref = anchor.getAttribute("href") || "";
+    const targetHref =
+      anchor.getAttribute(AUTH_PROTECTED_TARGET_ATTR) || rawHref;
+    const parsedTarget = parseInternalTarget(targetHref);
+    if (!parsedTarget) return;
+
+    const { pathname, search, hash } = parsedTarget;
+
+    if (isPublishPathname(pathname)) {
+      updatePublishLink(anchor, pathname, search, hash, isLoggedIn);
+      return;
+    }
+
+    const hasUserPlaceholder = pathname
+      .split("/")
+      .filter(Boolean)
+      .includes("__user__");
+
+    if (hasUserPlaceholder) {
+      updateUserPlaceholderLink(
+        anchor,
+        pathname,
+        search,
+        hash,
+        cleanUsername,
+        isLoggedIn,
+      );
+      return;
+    }
+
+    const hashLower = hash.replace(/^#/, "").trim().toLowerCase();
+    if (pathname === "/me") {
+      updateMeHashLink(
+        anchor,
+        pathname,
+        search,
+        hash,
+        hashLower,
+        cleanUsername,
+        isLoggedIn,
+      );
+      return;
+    }
+
+    const legacyTarget = ["/bangumi", "/diary", "/albums"];
+    if (!legacyTarget.includes(pathname)) return;
+    updateLegacyLink(anchor, pathname, cleanUsername, isLoggedIn);
+  };
+
+  const updateUserRouteLinks = (
+    username: string,
+    isLoggedIn: boolean,
+  ): void => {
+    const cleanUsername = String(username || "").trim();
+    const anchors = Array.from(
+      document.querySelectorAll<HTMLAnchorElement>("a[href]"),
+    );
+    anchors.forEach((anchor) => {
+      updateAnchorForAuth(anchor, cleanUsername, isLoggedIn);
+    });
+  };
+
+  const fetchAuthProfile = async () => {
+    try {
+      const response = await fetch("/api/auth/me", {
+        method: "GET",
+        credentials: "include",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.ok) {
+        return { ok: false, username: "", isAdmin: false, userId: "" };
+      }
+      return {
+        ok: true,
+        username: String(data?.user?.username || "").trim(),
+        isAdmin: Boolean(data?.is_admin || data?.isAdmin),
+        userId: String(data?.user?.id || "").trim(),
+      };
+    } catch (error) {
+      console.warn("[navbar] failed to load username:", error);
+      return { ok: false, username: "", isAdmin: false, userId: "" };
+    }
+  };
+
+  const applyAuthRouting = async (
+    state: AuthState | null | undefined,
+  ): Promise<void> => {
+    let username = String(state?.username || "").trim();
+    let isLoggedIn = Boolean(state?.isLoggedIn);
+
+    // 先使用当前已知状态立即更新链接行为，避免等待鉴权接口期间出现竞态
+    updateUserRouteLinks(username, isLoggedIn);
+
+    if (!username) {
+      const profile = await fetchAuthProfile();
+      if (profile.ok) {
+        username = profile.username;
+        isLoggedIn = true;
+        emitAuthState({
+          isLoggedIn: true,
+          isAdmin: profile.isAdmin,
+          userId: profile.userId,
+          username,
+        });
+      }
+    }
+    updateUserRouteLinks(username, isLoggedIn);
+  };
+
+  const initialAuth = getAuthState();
+  applyAuthRouting(initialAuth);
+  subscribeAuthState((state) => {
+    applyAuthRouting(state);
+  });
+
+  document.addEventListener("astro:after-swap", () => {
+    applyAuthRouting(getAuthState());
+  });
+
+  const isModifiedClick = (e: MouseEvent): boolean => {
+    return (
+      e.defaultPrevented ||
+      e.button !== 0 ||
+      e.metaKey ||
+      e.ctrlKey ||
+      e.shiftKey ||
+      e.altKey
+    );
+  };
+
+  const handlePublishTargetClick = (
+    e: MouseEvent,
+    anchor: HTMLAnchorElement,
+    parsedTarget: InternalTarget,
+    isLoggedIn: boolean,
+  ): void => {
+    if (!isLoggedIn) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      showAuthRequiredDialog();
+      return;
+    }
+    const publishHref = `${parsedTarget.pathname}${parsedTarget.search}${parsedTarget.hash}`;
+    clearAuthProtectedLink(anchor, publishHref);
+  };
+
+  const handleNavClick = (e: MouseEvent): void => {
+    const target = e.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    const anchor = target.closest<HTMLAnchorElement>("a[href]");
+    if (!anchor) {
+      return;
+    }
+    if (isModifiedClick(e)) {
+      return;
+    }
+
+    const rawHref = anchor.getAttribute("href") || "";
+    const needsLogin = anchor.hasAttribute("data-needs-login");
+    const authTargetHref =
+      anchor.getAttribute(AUTH_PROTECTED_TARGET_ATTR) || rawHref;
+    const parsedTarget = parseInternalTarget(authTargetHref);
+    const isPublishTarget = Boolean(
+      parsedTarget && isPublishPathname(parsedTarget.pathname),
+    );
+    const isLoggedIn = getAuthState().isLoggedIn;
+
+    if (isPublishTarget && parsedTarget) {
+      handlePublishTargetClick(e, anchor, parsedTarget, isLoggedIn);
+      return;
+    }
+
+    if (needsLogin) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      showAuthRequiredDialog();
+    }
+  };
+
+  document.addEventListener("click", handleNavClick, true);
+
+  if (navbarLinksContainer) {
+    navbarLinksContainer.style.opacity = "1";
+  }
+</script>

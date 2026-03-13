@@ -1,0 +1,51 @@
+---
+import {
+  resolveExternalImageRequestAttributes,
+  toExternalImageDataAttributes,
+} from "@/utils/external-image-policy";
+
+interface Props {
+  id?: string;
+  src: string;
+  alt?: string;
+  class?: string;
+  style?: string;
+  loading?: "eager" | "lazy";
+  decoding?: "sync" | "async" | "auto";
+  width?: number | string;
+  height?: number | string;
+}
+
+const {
+  id,
+  src,
+  alt = "",
+  class: className,
+  style,
+  loading = "lazy",
+  decoding,
+  width,
+  height,
+} = Astro.props;
+
+const imageRequestAttributes = resolveExternalImageRequestAttributes(src);
+const imageDataAttributes = toExternalImageDataAttributes(
+  imageRequestAttributes,
+);
+---
+
+<img
+  id={id}
+  src={src}
+  alt={alt}
+  class={className}
+  style={style}
+  loading={loading}
+  decoding={decoding}
+  width={width}
+  height={height}
+  referrerpolicy={imageRequestAttributes.referrerPolicy}
+  crossorigin={imageRequestAttributes.crossOrigin}
+  data-referrer-policy={imageDataAttributes["data-referrer-policy"]}
+  data-cross-origin={imageDataAttributes["data-cross-origin"]}
+/>

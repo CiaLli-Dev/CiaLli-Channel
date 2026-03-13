@@ -1,0 +1,153 @@
+---
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import {
+  loadProfileForViewer,
+  profileToSidebarData,
+} from "@/server/api/v1/public-data";
+import { getSessionUser } from "@/server/auth/session";
+
+export const prerender = false;
+
+const username = (Astro.params.username || "").trim();
+const diaryId = (Astro.params.id || "").trim();
+
+if (!username || !diaryId) {
+  return Astro.redirect(`/${username || ""}/diary`);
+}
+
+const sessionUser = await getSessionUser(Astro);
+if (!sessionUser) {
+  return Astro.redirect(`/${username}/diary`);
+}
+
+const profile = await loadProfileForViewer(username, sessionUser.id);
+if (!profile || profile.user_id !== sessionUser.id) {
+  return Astro.redirect(`/${username}/diary`);
+}
+
+Astro.locals.sidebarProfile = profileToSidebarData(profile);
+---
+
+<MainGridLayout
+  title={i18n(I18nKey.contentDiaryEditTitle)}
+  description={i18n(I18nKey.contentDiaryEditDescription)}
+>
+  <div
+    id="diary-editor-root"
+    class="space-y-4 text-90"
+    data-mode="edit"
+    data-username={username}
+    data-diary-id={diaryId}
+  >
+    <section
+      class="card-base p-6 rounded-(--radius-large) mb-4 space-y-3 text-90"
+    >
+      <a
+        href={`/${username}/diary/${diaryId}`}
+        class="text-sm text-(--primary) hover:underline"
+      >
+        {i18n(I18nKey.contentDiaryEditBackToDetail)}
+      </a>
+      <h1 class="text-3xl font-bold text-black/90 dark:text-white/90">
+        {i18n(I18nKey.contentDiaryEditHeading)}
+      </h1>
+      <p class="text-75">{i18n(I18nKey.contentDiaryCreateHint)}</p>
+    </section>
+
+    <section class="card-base p-6 rounded-(--radius-large) space-y-5">
+      <div class="space-y-1.5">
+        <span class="text-sm text-60"
+          >{i18n(I18nKey.contentDiaryContentLabel)}
+          <span class="text-red-500">*</span></span
+        >
+      </div>
+
+      <label class="block">
+        <textarea
+          id="diary-editor-content"
+          rows="18"
+          placeholder={i18n(I18nKey.contentDiaryContentPlaceholder)}
+          class="w-full h-[18rem] overflow-y-auto rounded-xl border border-(--line-divider) bg-transparent px-4 py-3 text-90 font-mono focus:outline-none focus:border-(--primary) resize-none"
+        ></textarea>
+      </label>
+
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <input
+            id="diary-editor-image-file"
+            type="file"
+            accept="image/*"
+            class="hidden"
+          />
+          <button
+            id="diary-editor-upload-image"
+            type="button"
+            class="px-4 py-2 rounded-lg border border-(--line-divider) text-sm text-75 hover:bg-(--btn-plain-bg-hover) transition"
+          >
+            {i18n(I18nKey.interactionCommonUploadImage)}
+          </button>
+          <span id="diary-editor-upload-msg" class="text-xs text-60"></span>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <label
+            class="flex items-center gap-3 text-sm text-75 cursor-pointer select-none"
+          >
+            <input
+              id="diary-editor-allow-comments"
+              type="checkbox"
+              class="toggle-checkbox"
+              checked
+            />
+            <span class="toggle-track"><span class="toggle-knob"></span></span>
+            {i18n(I18nKey.interactionCommonAllowComments)}
+          </label>
+          <label
+            class="flex items-center gap-3 text-sm text-75 cursor-pointer select-none"
+          >
+            <input
+              id="diary-editor-is-public"
+              type="checkbox"
+              class="toggle-checkbox"
+              checked
+            />
+            <span class="toggle-track"><span class="toggle-knob"></span></span>
+            {i18n(I18nKey.interactionCommonPublicVisible)}
+          </label>
+        </div>
+      </div>
+
+      <section class="space-y-2 w-[60%]">
+        <h2 class="text-sm text-60">
+          {i18n(I18nKey.interactionCommonImageOrder)}
+        </h2>
+        <p id="diary-editor-image-order-empty" class="text-xs text-60">
+          {i18n(I18nKey.interactionCommonNoImages)}
+        </p>
+        <div id="diary-editor-image-order-list" class="space-y-2"></div>
+      </section>
+
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <span id="diary-editor-submit-msg" class="text-sm text-60"></span>
+        <div class="flex items-center gap-2 ml-auto">
+          <button
+            id="diary-editor-save-published"
+            type="button"
+            class="px-4 py-2 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm"
+          >
+            {i18n(I18nKey.contentDiaryEditSubmit)}
+          </button>
+        </div>
+      </div>
+      <p id="diary-editor-submit-error" class="hidden text-sm text-red-500"></p>
+    </section>
+  </div>
+</MainGridLayout>
+
+<script>
+  import { bootstrapDiaryEditorPage } from "@/scripts/diary-editor-page";
+
+  bootstrapDiaryEditorPage();
+</script>

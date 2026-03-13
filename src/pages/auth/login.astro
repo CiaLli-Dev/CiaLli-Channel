@@ -1,0 +1,420 @@
+---
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { Icon } from "astro-icon/components";
+import AuthLoginShell from "@/components/auth/AuthLoginShell.astro";
+import AuthLoginSkeletonCard from "@/components/auth/AuthLoginSkeletonCard.astro";
+import { getResolvedSiteSettings } from "@/server/site-settings/service";
+
+export const prerender = false;
+
+const resolvedSettings =
+  Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
+const registerEnabled = Boolean(
+  resolvedSettings.settings.auth?.register_enabled,
+);
+const loginI18n = {
+  hidePassword: i18n(I18nKey.authHidePassword),
+  showPassword: i18n(I18nKey.authShowPassword),
+  emptyCredentials: i18n(I18nKey.authEmailPasswordRequired),
+  loggingIn: i18n(I18nKey.authLoggingIn),
+  loginFailed: i18n(I18nKey.authLoginFailedRetry),
+  loginSubmit: i18n(I18nKey.authLoginSubmit),
+};
+---
+
+<MainGridLayout
+  title={i18n(I18nKey.authLoginTitle)}
+  description={i18n(I18nKey.authLoginDescription)}
+>
+  <div
+    data-enter-skeleton-page="auth-login"
+    data-enter-skeleton-target="auth-login"
+  >
+    <div data-enter-skeleton-inline-content>
+      <AuthLoginShell>
+        <div class="min-w-0">
+          <div class="card-base rounded-(--radius-large) p-6 p-8 login-card">
+            <div class="flex items-center gap-3 mb-2">
+              <div
+                class="w-12 h-12 rounded-2xl bg-(--btn-regular-bg) flex items-center justify-center login-icon-box"
+              >
+                <Icon
+                  name="material-symbols:login-rounded"
+                  class="text-(--btn-content) text-3xl"
+                />
+              </div>
+              <div>
+                <h1 class="text-2xl font-bold text-90">
+                  {i18n(I18nKey.authLoginTitle)}
+                </h1>
+                <p class="text-sm text-75">{i18n(I18nKey.authLoginHint)}</p>
+              </div>
+            </div>
+
+            <div class="mt-6">
+              <form
+                id="login-form"
+                class="login-fields"
+                data-i18n-hide-password={loginI18n.hidePassword}
+                data-i18n-show-password={loginI18n.showPassword}
+                data-i18n-empty-credentials={loginI18n.emptyCredentials}
+                data-i18n-logging-in={loginI18n.loggingIn}
+                data-i18n-login-failed={loginI18n.loginFailed}
+                data-i18n-login-submit={loginI18n.loginSubmit}
+              >
+                <div class="login-field-group">
+                  <label for="login-email" class="login-field-label text-75"
+                    >{i18n(I18nKey.authEmailLabel)}</label
+                  >
+                  <div class="login-input-wrapper">
+                    <Icon
+                      name="material-symbols:mail-outline-rounded"
+                      class="login-input-icon"
+                    />
+                    <input
+                      id="login-email"
+                      type="email"
+                      autocomplete="email"
+                      required
+                      class="login-input login-email-input"
+                      placeholder="name@example.com"
+                    />
+                  </div>
+                </div>
+
+                <div class="login-field-group">
+                  <label for="login-password" class="login-field-label text-75"
+                    >{i18n(I18nKey.authPasswordLabel)}</label
+                  >
+                  <div class="login-input-wrapper">
+                    <Icon
+                      name="material-symbols:lock-outline"
+                      class="login-input-icon"
+                    />
+                    <input
+                      id="login-password"
+                      type="password"
+                      autocomplete="current-password"
+                      required
+                      class="login-input login-password-input is-masked"
+                      placeholder={i18n(I18nKey.authPasswordPlaceholder)}
+                    />
+                    <button
+                      id="login-password-toggle"
+                      type="button"
+                      class="login-password-toggle"
+                      aria-label={i18n(I18nKey.authShowPassword)}
+                      aria-pressed="false"
+                    >
+                      <svg
+                        class="login-password-icon login-password-icon-show"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"
+                        ></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                      <svg
+                        class="login-password-icon login-password-icon-hide hidden"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M3 3l18 18"></path>
+                        <path d="M10.6 10.6a2 2 0 102.8 2.8"></path>
+                        <path
+                          d="M9.9 5.3A11 11 0 0112 5c6.5 0 10 7 10 7a16.2 16.2 0 01-4 4.7"
+                        ></path>
+                        <path
+                          d="M6.3 6.3A16.1 16.1 0 002 12s3.5 7 10 7c1 0 2-.2 2.9-.5"
+                        ></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div id="login-error" class="login-error hidden" role="alert">
+                </div>
+
+                <div class="login-remember-row">
+                  <div class="login-remember-left">
+                    <input
+                      id="login-remember"
+                      type="checkbox"
+                      checked
+                      class="toggle-checkbox"
+                    />
+                    <label for="login-remember" class="toggle-track">
+                      <span class="toggle-knob"></span>
+                    </label>
+                    <label
+                      for="login-remember"
+                      class="login-remember-label text-75"
+                    >
+                      {i18n(I18nKey.authRemember)}
+                    </label>
+                  </div>
+                  {
+                    registerEnabled ? (
+                      <p class="login-register-hint text-70">
+                        {i18n(I18nKey.authNoAccount)}
+                        <a
+                          class="text-(--primary) hover:underline"
+                          href="/auth/register"
+                        >
+                          {i18n(I18nKey.authApplyRegister)}
+                        </a>
+                      </p>
+                    ) : null
+                  }
+                </div>
+
+                <button
+                  id="login-submit"
+                  type="submit"
+                  class="login-submit-btn"
+                >
+                  <span class="login-submit-text"
+                    >{i18n(I18nKey.authLoginSubmit)}</span
+                  >
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </AuthLoginShell>
+    </div>
+    <AuthLoginShell>
+      <AuthLoginSkeletonCard />
+    </AuthLoginShell>
+  </div>
+
+  <script>
+    import { init } from "@/scripts/login-page";
+    init();
+  </script>
+
+  <style>
+    .login-card {
+      animation: loginCardIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    @keyframes loginCardIn {
+      from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.98);
+      }
+    }
+    .login-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .login-field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .login-field-label {
+      font-size: 0.8125rem;
+      font-weight: 500;
+      padding-left: 0.125rem;
+    }
+
+    .login-input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .login-input-icon {
+      position: absolute;
+      left: 0.875rem;
+      width: 1.25rem;
+      height: 1.25rem;
+      color: var(--primary);
+      opacity: 0.55;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    .login-input-wrapper:focus-within .login-input-icon {
+      opacity: 1;
+    }
+    .login-input {
+      width: 100%;
+      padding: 0.75rem 4.25rem 0.75rem 2.75rem;
+      border-radius: 0.75rem;
+      border: 1.5px solid var(--line-divider);
+      background: transparent;
+      color: rgb(24 24 27);
+      font-size: 1rem;
+      outline: none;
+      transition:
+        border-color 0.2s,
+        box-shadow 0.2s;
+    }
+    :root.dark .login-input {
+      color: rgb(244 244 245);
+    }
+    .login-input::placeholder {
+      font-size: 0.9375rem;
+      opacity: 0.9;
+      color: rgb(113 113 122 / 0.9);
+    }
+    :root.dark .login-input::placeholder {
+      color: rgb(212 212 216 / 0.82);
+    }
+    .login-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px oklch(from var(--primary) l c h / 0.1);
+    }
+    .login-email-input {
+      font-size: 1.0625rem;
+    }
+    .login-password-input {
+      font-size: 1.0625rem;
+      letter-spacing: 0.12em;
+    }
+    .login-password-input.is-masked {
+      -webkit-text-security: disc;
+    }
+    .login-password-input::placeholder {
+      letter-spacing: normal;
+    }
+    .login-password-toggle {
+      position: absolute;
+      right: 0.625rem;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 1px solid var(--line-divider);
+      background: rgb(255 255 255 / 0.7);
+      color: rgb(39 39 42);
+      width: 2rem;
+      height: 2rem;
+      line-height: 1;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition:
+        border-color 0.2s,
+        background-color 0.2s,
+        color 0.2s;
+    }
+    :root.dark .login-password-toggle {
+      background: rgb(39 39 42 / 0.72);
+      color: rgb(228 228 231);
+    }
+    .login-password-toggle:hover {
+      border-color: var(--primary);
+      background: oklch(from var(--primary) l c h / 0.1);
+    }
+    .login-password-icon {
+      width: 1rem;
+      height: 1rem;
+    }
+
+    .login-remember-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .login-remember-left {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .login-remember-label {
+      font-size: 0.8125rem;
+      cursor: pointer;
+      user-select: none;
+      line-height: 1;
+    }
+    .login-register-hint {
+      margin: 0;
+      font-size: 0.8125rem;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .login-error {
+      font-size: 0.8125rem;
+      color: oklch(0.55 0.2 25);
+      background: oklch(0.55 0.2 25 / 0.08);
+      border-radius: 0.625rem;
+      padding: 0.625rem 0.875rem;
+      animation: loginShake 0.35s ease;
+    }
+    :root.dark .login-error {
+      color: oklch(0.75 0.18 25);
+      background: oklch(0.75 0.18 25 / 0.1);
+    }
+    @keyframes loginShake {
+      15%,
+      45%,
+      75% {
+        transform: translateX(-3px);
+      }
+      30%,
+      60% {
+        transform: translateX(3px);
+      }
+    }
+
+    .login-submit-btn {
+      position: relative;
+      width: 100%;
+      padding: 0.8125rem 1rem;
+      border-radius: 0.75rem;
+      border: none;
+      background: var(--btn-regular-bg);
+      color: var(--btn-content);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      overflow: hidden;
+      transition:
+        background-color 0.15s,
+        transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .login-submit-btn:hover:not(:disabled) {
+      background: var(--btn-regular-bg-hover);
+    }
+    .login-submit-btn:active:not(:disabled) {
+      background: var(--btn-regular-bg-active);
+      transform: scale(0.98);
+    }
+    .login-submit-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+    .login-submit-btn.is-loading .login-submit-text {
+      animation: loginPulseText 1.2s ease-in-out infinite;
+    }
+    @keyframes loginPulseText {
+      0%,
+      100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.5;
+      }
+    }
+  </style>
+</MainGridLayout>

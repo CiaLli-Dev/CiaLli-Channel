@@ -1,0 +1,29 @@
+---
+// 只加载基础的等宽字体，减少加载时间
+import "@fontsource-variable/jetbrains-mono";
+import "../../styles/markdown.css";
+import "../../styles/markdown-extend.styl";
+
+interface Props {
+  class: string;
+}
+const className = Astro.props.class;
+---
+
+<div
+  data-mermaid-interactive="true"
+  class:list={[
+    "prose prose-base dark:prose-invert max-w-none! custom-md",
+    className,
+  ]}
+>
+  <!--<div class="prose dark:prose-invert max-w-none custom-md">-->
+  <!--<div class="max-w-none custom-md">-->
+  <slot />
+</div>
+
+<script>
+  import { setupCodeCopyDelegation } from "@/scripts/code-copy";
+
+  setupCodeCopyDelegation();
+</script>

@@ -1,0 +1,98 @@
+---
+import { Icon } from "astro-icon/components";
+
+interface Props {
+  mode: "not_found" | "permission_denied";
+  title?: string;
+  description?: string;
+  backHref?: string;
+  backLabel?: string;
+}
+
+const {
+  mode,
+  title = mode === "permission_denied" ? "内容不可见" : "内容不存在",
+  description = mode === "permission_denied"
+    ? "由于用户权限设置，该内容不可见。"
+    : "该内容可能已删除或链接错误。",
+  backHref = "/",
+  backLabel = "返回首页",
+} = Astro.props;
+
+const statusCode = mode === "permission_denied" ? "403" : "404";
+const iconName =
+  mode === "permission_denied"
+    ? "material-symbols:lock-outline"
+    : "material-symbols:error-outline";
+---
+
+<div
+  class="flex w-full rounded-(--radius-large) overflow-hidden relative min-h-96"
+>
+  <div
+    class="card-base z-10 px-9 py-12 relative w-full flex flex-col items-center justify-center text-center content-not-visible-card"
+  >
+    <div class="text-8xl font-bold text-(--primary) opacity-20 mb-4">
+      {statusCode}
+    </div>
+
+    <div class="mb-6">
+      <Icon name={iconName} class="text-6xl text-(--primary)" />
+    </div>
+
+    <h1 class="text-3xl font-bold mb-4 text-90">
+      {title}
+    </h1>
+
+    <p class="text-lg text-75 mb-8 max-w-md">
+      {description}
+    </p>
+
+    <a
+      href={backHref}
+      class="inline-flex items-center gap-2 px-6 py-3 bg-(--primary) text-white rounded-(--radius-large) hover:opacity-95 transition-colors duration-200 font-medium content-not-visible-btn"
+    >
+      <Icon name="material-symbols:arrow-back" class="text-xl" />
+      {backLabel}
+    </a>
+
+    <div class="absolute top-4 left-4 opacity-10">
+      <Icon
+        name={mode === "permission_denied"
+          ? "material-symbols:shield-lock"
+          : "material-symbols:sentiment-sad"}
+        class="text-4xl text-(--primary)"
+      />
+    </div>
+    <div class="absolute bottom-4 right-4 opacity-10">
+      <Icon
+        name={mode === "permission_denied"
+          ? "material-symbols:visibility-off"
+          : "material-symbols:search-off"}
+        class="text-4xl text-(--primary)"
+      />
+    </div>
+  </div>
+</div>
+
+<style>
+  .content-not-visible-card {
+    animation: fadeInUp 0.6s ease-out;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .content-not-visible-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px oklch(from var(--primary) l c h / 0.3);
+  }
+</style>

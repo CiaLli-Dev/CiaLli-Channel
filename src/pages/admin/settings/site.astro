@@ -1,0 +1,463 @@
+---
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import AdminLayout from "@layouts/AdminLayout.astro";
+import SiteSiteSection from "@/components/admin/settings/SiteSiteSection.astro";
+import SiteHomeSection from "@/components/admin/settings/SiteHomeSection.astro";
+
+export const prerender = false;
+---
+
+<AdminLayout
+  title={i18n(I18nKey.adminSiteSettingsTitle)}
+  description={i18n(I18nKey.adminSiteSettingsDescription)}
+>
+  <div
+    data-enter-skeleton-page="admin-site-settings"
+    data-enter-skeleton-target="admin-site-settings"
+  >
+    <div data-enter-skeleton-inline-content class="space-y-4 text-75">
+      <section class="card-base px-9 py-6 rounded-(--radius-large)">
+        <h1
+          class="text-4xl font-bold text-black/90 dark:text-white/90 mb-2 relative
+				before:w-1 before:h-8 before:rounded-md before:bg-(--primary)
+				before:absolute before:top-1/2 before:-translate-y-1/2 before:-left-4"
+        >
+          {i18n(I18nKey.adminSiteSettingsTitle)}
+        </h1>
+        <p class="text-base text-70">
+          {i18n(I18nKey.adminSiteSettingsPageIntro)}
+        </p>
+      </section>
+
+      <div id="ss-authenticated" class="space-y-4">
+        <!-- ===== Section 1: 站点信息 ===== -->
+        <SiteSiteSection />
+
+        <!-- ===== Section 2: 导航栏 ===== -->
+        <section class="card-base p-8 rounded-(--radius-large) space-y-4">
+          <h2 class="text-2xl font-semibold text-90">
+            {i18n(I18nKey.adminSiteSettingsSectionNav)}
+          </h2>
+          <form id="ss-nav-form" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <label class="space-y-1.5">
+              <span class="text-sm text-60">
+                {i18n(I18nKey.adminSiteSettingsNavMode)}
+              </span>
+              <select
+                id="ss-navbar-mode"
+                class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
+              >
+                <option value="logo">Logo</option>
+                <option value="text-icon">
+                  {i18n(I18nKey.adminSiteSettingsNavTextIcon)}
+                </option>
+              </select>
+            </label>
+            <label class="space-y-1.5">
+              <span class="text-sm text-60">
+                {i18n(I18nKey.adminSiteSettingsNavTitleText)}
+              </span>
+              <input
+                id="ss-navbar-text"
+                class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+                placeholder="Site Title"
+              />
+            </label>
+            <label class="space-y-1.5">
+              <span class="text-sm text-60">
+                {i18n(I18nKey.adminSiteSettingsNavIconLabel)}
+              </span>
+              <input
+                id="ss-navbar-icon"
+                class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+                placeholder="/api/v1/public/assets/..."
+              />
+            </label>
+            <label class="space-y-1.5">
+              <span class="text-sm text-60">
+                {i18n(I18nKey.adminSiteSettingsNavLogoLabel)}
+              </span>
+              <input
+                id="ss-navbar-logo"
+                class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+                placeholder="/api/v1/public/assets/..."
+              />
+            </label>
+            <label class="space-y-1.5">
+              <span class="text-sm text-60">
+                {i18n(I18nKey.adminSiteSettingsNavBannerTransparency)}
+              </span>
+              <select
+                id="ss-navbar-transparent-mode"
+                class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
+              >
+                <option value="semi">semi</option>
+                <option value="full">full</option>
+                <option value="semifull">semifull</option>
+              </select>
+            </label>
+            <div class="col-span-2 space-y-1.5">
+              <span class="text-sm text-60">
+                {i18n(I18nKey.adminSiteSettingsNavLinks)}
+              </span>
+              <div id="ss-nav-links-list" class="space-y-2"></div>
+            </div>
+            <div class="col-span-2 flex items-center gap-2 pt-2">
+              <button
+                type="submit"
+                class="px-4 py-2 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm"
+                >{i18n(I18nKey.adminSiteSettingsSaveNav)}</button
+              >
+              <span id="ss-nav-msg" class="text-sm text-60"></span>
+            </div>
+          </form>
+        </section>
+
+        <!-- ===== Section 3: 首页设置 ===== -->
+        <SiteHomeSection />
+
+        <!-- ===== Section 4: 文章设置 ===== -->
+        <section class="card-base p-8 rounded-(--radius-large) space-y-4">
+          <h2 class="text-2xl font-semibold text-90">
+            {i18n(I18nKey.adminSiteSettingsSectionArticle)}
+          </h2>
+          <form
+            id="ss-feature-form"
+            class="grid grid-cols-1 lg:grid-cols-2 gap-4 text-base"
+          >
+            <label
+              class="flex items-center gap-3 text-75 cursor-pointer select-none"
+            >
+              <input
+                type="checkbox"
+                id="ss-toc-enable"
+                class="toggle-checkbox"
+              />
+              <span class="toggle-track"><span class="toggle-knob"></span></span
+              >
+              {i18n(I18nKey.adminSiteSettingsEnableArticleToc)}
+            </label>
+            <label
+              class="flex items-center gap-3 text-75 cursor-pointer select-none"
+            >
+              <input type="checkbox" id="ss-toc-jp" class="toggle-checkbox" />
+              <span class="toggle-track"><span class="toggle-knob"></span></span
+              >
+              {i18n(I18nKey.adminSiteSettingsUseJapaneseTocBadge)}
+            </label>
+            <label class="space-y-1.5">
+              <span class="text-sm text-60">
+                {i18n(I18nKey.adminSiteSettingsTocMode)}
+              </span>
+              <select
+                id="ss-toc-mode"
+                class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
+              >
+                <option value="sidebar">sidebar</option>
+                <option value="float">float</option>
+              </select>
+            </label>
+            <label class="space-y-1.5">
+              <span class="text-sm text-60">
+                {i18n(I18nKey.adminSiteSettingsTocDepth)}
+              </span>
+              <select
+                id="ss-toc-depth"
+                class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
+              >
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+              </select>
+            </label>
+            <hr class="border-(--line-divider) col-span-2" />
+            <h3 class="text-lg font-medium text-75 col-span-2">
+              {i18n(I18nKey.adminSiteSettingsArticleLicenseInfo)}
+            </h3>
+            <label
+              class="flex items-center gap-3 text-75 cursor-pointer select-none col-span-2"
+            >
+              <input
+                type="checkbox"
+                id="ss-license-enable"
+                class="toggle-checkbox"
+              />
+              <span class="toggle-track"><span class="toggle-knob"></span></span
+              >
+              {i18n(I18nKey.adminSiteSettingsEnableLicenseBlock)}
+            </label>
+            <label class="space-y-1.5">
+              <span class="text-sm text-60">
+                {i18n(I18nKey.adminSiteSettingsLicenseName)}
+              </span>
+              <input
+                id="ss-license-name"
+                class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+                placeholder="CC BY-NC-SA 4.0"
+              />
+            </label>
+            <label class="space-y-1.5">
+              <span class="text-sm text-60">
+                {i18n(I18nKey.adminSiteSettingsLicenseUrl)}
+              </span>
+              <input
+                id="ss-license-url"
+                class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+                placeholder="https://creativecommons.org/licenses/by-nc-sa/4.0/"
+              />
+            </label>
+            <div class="col-span-2 flex items-center gap-2 pt-2">
+              <button
+                type="submit"
+                class="px-4 py-2 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm"
+                >{i18n(I18nKey.adminSiteSettingsSaveArticle)}</button
+              >
+              <span id="ss-feature-msg" class="text-sm text-60"></span>
+            </div>
+          </form>
+        </section>
+
+        <!-- ===== Section 5: 其它设置 ===== -->
+        <section class="card-base p-8 rounded-(--radius-large) space-y-4">
+          <h2 class="text-2xl font-semibold text-90">
+            {i18n(I18nKey.adminSiteSettingsSectionOther)}
+          </h2>
+          <form
+            id="ss-other-form"
+            class="grid grid-cols-1 lg:grid-cols-2 gap-4"
+          >
+            <h3 class="text-lg font-medium text-75 col-span-2">
+              {i18n(I18nKey.coreMusicPlayer)}
+            </h3>
+            <label
+              class="flex items-center gap-3 text-75 cursor-pointer select-none col-span-2"
+            >
+              <input
+                type="checkbox"
+                id="ss-music-enable"
+                class="toggle-checkbox"
+              />
+              <span class="toggle-track"><span class="toggle-knob"></span></span
+              >
+              {i18n(I18nKey.adminSiteSettingsEnableMusicPlayer)}
+            </label>
+            <label class="space-y-1.5">
+              <span class="text-sm text-60">Meting API</span>
+              <input
+                id="ss-music-api"
+                class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+                placeholder="https://api.injahow.cn/meting/"
+              />
+            </label>
+            <label class="space-y-1.5">
+              <span class="text-sm text-60">
+                {i18n(I18nKey.adminSiteSettingsPlaylistId)}
+              </span>
+              <input
+                id="ss-music-id"
+                class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+              />
+            </label>
+            <label class="space-y-1.5">
+              <span class="text-sm text-60">
+                {i18n(I18nKey.adminSiteSettingsMusicServer)}
+              </span>
+              <input
+                id="ss-music-server"
+                class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+                placeholder="netease"
+              />
+            </label>
+            <label class="space-y-1.5">
+              <span class="text-sm text-60">
+                {i18n(I18nKey.adminSiteSettingsMusicType)}
+              </span>
+              <input
+                id="ss-music-type"
+                class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+                placeholder="playlist"
+              />
+            </label>
+            <label class="space-y-1.5">
+              <span class="text-sm text-60">
+                {i18n(I18nKey.adminSiteSettingsMarqueeSpeed)}
+              </span>
+              <input
+                id="ss-music-marquee"
+                type="number"
+                min="0"
+                max="200"
+                class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
+                placeholder="30"
+              />
+            </label>
+            <hr class="border-(--line-divider) col-span-2" />
+            <h3 class="text-lg font-medium text-75 col-span-2">
+              {i18n(I18nKey.adminSiteSettingsSakuraEffect)}
+            </h3>
+            <label
+              class="flex items-center gap-3 text-75 cursor-pointer select-none"
+            >
+              <input
+                type="checkbox"
+                id="ss-sakura-enable"
+                class="toggle-checkbox"
+              />
+              <span class="toggle-track"><span class="toggle-knob"></span></span
+              >
+              {i18n(I18nKey.adminSiteSettingsEnableSakura)}
+            </label>
+            <div class="col-span-2 flex items-center gap-2 pt-2">
+              <button
+                type="submit"
+                class="px-4 py-2 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm"
+                >{i18n(I18nKey.adminSiteSettingsSaveOther)}</button
+              >
+              <span id="ss-other-msg" class="text-sm text-60"></span>
+            </div>
+          </form>
+        </section>
+      </div>
+    </div>
+    <div
+      data-enter-skeleton-inline-placeholder
+      aria-hidden="true"
+      class="space-y-4"
+    >
+      <section class="card-base px-9 py-6 rounded-(--radius-large) space-y-3">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 30%; --skeleton-height: 2rem;"
+        >
+        </div>
+        <div class="md3-skeleton-text" style="--skeleton-width: 56%;"></div>
+      </section>
+      {
+        Array.from({ length: 6 }).map((_, index) => (
+          <section class="card-base p-8 rounded-(--radius-large) space-y-4">
+            <div
+              class="md3-skeleton-text"
+              style="--skeleton-width: 22%; --skeleton-height: 1.6rem;"
+            />
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {Array.from({ length: index === 0 ? 6 : 4 }).map(() => (
+                <div class="md3-skeleton-block h-10 rounded-lg" />
+              ))}
+              <div class="md3-skeleton-block h-24 rounded-lg col-span-2" />
+            </div>
+            <div class="flex items-center gap-2 pt-2">
+              <div class="md3-skeleton-block h-10 w-28 rounded-lg" />
+              <div class="md3-skeleton-text w-24" />
+            </div>
+          </section>
+        ))
+      }
+    </div>
+  </div>
+
+  <div
+    slot="modal"
+    id="ss-image-crop-modal"
+    class="overlay-dialog hidden px-4 py-5"
+    tabindex="-1"
+  >
+    <div
+      id="ss-image-crop-panel"
+      class="overlay-dialog-card overlay-dialog-card-crop w-full max-w-2xl border border-(--line-divider) text-75"
+      style="text-align: left;"
+    >
+      <div class="overlay-dialog-body">
+        <div class="flex items-center gap-2">
+          <h3 id="ss-image-crop-title" class="text-lg font-semibold text-90">
+            {i18n(I18nKey.interactionCommonCropImage)}
+          </h3>
+        </div>
+        <p id="ss-image-crop-help" class="text-sm text-60">
+          {i18n(I18nKey.adminSiteSettingsCropHelpDefault)}
+        </p>
+        <div
+          id="ss-image-crop-viewport"
+          class="relative mx-auto w-full max-w-[640px] overflow-hidden rounded-2xl border border-(--line-divider) bg-black/15 dark:bg-white/10 select-none touch-none"
+          style="aspect-ratio: 16 / 9;"
+        >
+          <img
+            id="ss-image-crop-image"
+            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
+            class="absolute left-0 top-0 max-w-none pointer-events-none hidden"
+            alt={i18n(I18nKey.interactionCommonCropPreviewAlt)}
+          />
+          <div
+            id="ss-image-crop-empty"
+            class="absolute inset-0 grid place-items-center text-sm text-60 pointer-events-none"
+          >
+            {i18n(I18nKey.interactionCommonSelectImageFirst)}
+          </div>
+          <div
+            class="absolute inset-0 pointer-events-none rounded-2xl ring-2 ring-white/80"
+          >
+          </div>
+        </div>
+        <div class="space-y-1">
+          <label for="ss-image-crop-zoom" class="text-sm text-60">
+            {i18n(I18nKey.interactionCommonZoom)}
+          </label>
+          <input
+            id="ss-image-crop-zoom"
+            type="range"
+            min="100"
+            max="300"
+            step="1"
+            value="100"
+            class="w-full"
+          />
+        </div>
+        <span id="ss-image-crop-msg" class="text-sm text-red-500"></span>
+      </div>
+
+      <div class="overlay-dialog-actions overlay-dialog-actions-crop">
+        <input
+          id="ss-image-crop-file"
+          type="file"
+          accept="image/*"
+          class="hidden"
+        />
+        <button
+          type="button"
+          id="ss-image-crop-select-btn"
+          class="px-4 h-9 rounded-lg text-sm font-medium cursor-pointer bg-(--primary) text-white hover:opacity-90 transition flex items-center gap-1.5"
+          ><svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path><polyline
+              points="17 8 12 3 7 8"></polyline><line
+              x1="12"
+              y1="3"
+              x2="12"
+              y2="15"></line></svg
+          >{i18n(I18nKey.interactionCommonChooseFile)}</button
+        >
+        <button
+          type="button"
+          id="ss-image-crop-apply-btn"
+          class="px-4 py-2.5 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm"
+        >
+          {i18n(I18nKey.interactionCommonApplyCrop)}
+        </button>
+        <button
+          type="button"
+          id="ss-image-crop-cancel-btn"
+          class="overlay-dialog-actions-end px-4 py-2.5 rounded-lg border border-(--line-divider) text-sm text-75"
+        >
+          {i18n(I18nKey.interactionCommonCancel)}
+        </button>
+      </div>
+    </div>
+  </div>
+</AdminLayout>

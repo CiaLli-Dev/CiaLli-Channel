@@ -1,0 +1,59 @@
+# 构建产物
+dist/
+public/assets/font/
+src/generated/
+
+# Astro 生成目录
+.astro/
+
+# 依赖目录
+node_modules/
+
+# 日志文件
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 环境变量文件
+.env
+.env.production
+
+# 内容备份文件
+*.backup
+
+# 软链接到外部内容仓库
+/src/data
+/public/images
+
+# 大体积压缩包
+*.zip
+
+# macOS 系统文件
+.DS_Store
+
+# Vercel 本地输出
+.vercel
+
+# 非 pnpm 锁文件
+package-lock.json
+bun.lockb
+yarn.lock
+
+# IDE 配置
+.idea
+*.iml
+
+# Directus
+/directus/
+
+# AGENTS & MCP
+.claude/
+.serena/
+.vscode/mcp.json
+
+# Wiki 仓库
+CiaLli.wiki/
+
+# 项目检查报告
+report/

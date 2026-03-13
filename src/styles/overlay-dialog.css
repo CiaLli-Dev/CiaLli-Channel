@@ -1,0 +1,343 @@
+/* Overlay dialog — 全屏覆盖层 */
+
+.overlay-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  animation: overlay-dialog-fade-in 150ms cubic-bezier(0, 0, 0, 1) forwards;
+}
+
+.overlay-dialog.hidden,
+.overlay-dialog[hidden] {
+  display: none !important;
+}
+
+.overlay-dialog.is-closing {
+  animation: overlay-dialog-fade-out 100ms cubic-bezier(0.3, 0, 1, 1) forwards;
+}
+
+.overlay-dialog-card {
+  --overlay-dialog-card-padding-inline: 2.25rem;
+  --overlay-dialog-card-padding-block: 2.5rem;
+  width: 90%;
+  max-width: 640px;
+  max-height: min(86vh, 760px);
+  padding: 0;
+  border-radius: var(--radius-large);
+  background: var(--card-bg);
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  overflow: hidden;
+  transform: scale(0.92) translateY(12px);
+  opacity: 0;
+  animation: overlay-dialog-card-in 200ms cubic-bezier(0, 0, 0, 1) 50ms forwards;
+}
+
+.overlay-dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--overlay-dialog-card-padding-block) var(--overlay-dialog-card-padding-inline) 1rem;
+  overflow-y: auto;
+  /* 滚动条预留在容器内部，避免贴到外边缘 */
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-bg) transparent;
+}
+
+.overlay-dialog-body::-webkit-scrollbar {
+  width: 0.5rem;
+}
+
+.overlay-dialog-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overlay-dialog-body::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-bg);
+  border-radius: 999px;
+}
+
+.overlay-dialog-body::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-bg-hover);
+}
+
+.overlay-dialog-body::-webkit-scrollbar-thumb:active {
+  background: var(--scrollbar-bg-active);
+}
+
+.overlay-dialog.is-closing .overlay-dialog-card {
+  animation: overlay-dialog-card-out 100ms cubic-bezier(0.3, 0, 1, 1) forwards;
+}
+
+.overlay-dialog-message {
+  font-size: 1.075rem;
+  line-height: 1.6;
+  color: var(--deep-text);
+  margin-bottom: 1.75rem;
+}
+
+:root.dark .overlay-dialog-message {
+  color: oklch(0.9 0.02 var(--hue));
+}
+
+.overlay-dialog-content {
+  display: grid;
+  gap: 0.625rem;
+  margin: -0.5rem 0 1.5rem;
+  text-align: left;
+}
+
+.overlay-dialog-content-two-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.overlay-dialog-content[hidden] {
+  display: none !important;
+}
+
+.overlay-dialog-content-item {
+  border: 1px solid var(--line-divider);
+  border-radius: 0.65rem;
+  padding: 0.625rem 0.75rem;
+  background: color-mix(in oklab, var(--card-bg) 88%, var(--primary) 12%);
+}
+
+.overlay-dialog-content-item-primary {
+  border-color: color-mix(in oklab, var(--primary) 40%, var(--line-divider) 60%);
+  background: color-mix(in oklab, var(--card-bg) 80%, var(--primary) 20%);
+}
+
+.overlay-dialog-content-item-danger {
+  border-color: color-mix(in oklab, oklch(0.62 0.22 25) 40%, var(--line-divider) 60%);
+  background: color-mix(in oklab, var(--card-bg) 86%, oklch(0.62 0.22 25) 14%);
+}
+
+.overlay-dialog-content-item-full {
+  grid-column: 1 / -1;
+}
+
+.overlay-dialog-content-label {
+  margin: 0 0 0.25rem;
+  font-size: 0.75rem;
+  opacity: 0.74;
+  color: var(--deep-text);
+}
+
+.overlay-dialog-content-value {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--deep-text);
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+:root.dark .overlay-dialog-content-label,
+:root.dark .overlay-dialog-content-value {
+  color: oklch(0.9 0.02 var(--hue));
+}
+
+.overlay-dialog-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.overlay-dialog-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.overlay-dialog-field-label {
+  font-size: 0.875rem;
+  color: var(--deep-text);
+}
+
+.overlay-dialog-field-label-highlight {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.overlay-dialog-field-hint {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--deep-text);
+  opacity: 0.72;
+}
+
+.overlay-dialog-field-hint-primary {
+  color: var(--primary);
+  opacity: 1;
+  font-weight: 600;
+}
+
+.overlay-dialog-field-hint-danger {
+  color: oklch(0.62 0.22 25);
+  opacity: 1;
+}
+
+.overlay-dialog-field-control {
+  width: 100%;
+  border: 1px solid var(--line-divider);
+  border-radius: 0.65rem;
+  background: var(--card-bg);
+  color: var(--deep-text);
+  font-size: 0.9375rem;
+  padding: 0.625rem 0.75rem;
+  outline: none;
+}
+
+.overlay-dialog-field-control:focus {
+  border-color: var(--primary);
+}
+
+.overlay-dialog-field-control.is-invalid {
+  border-color: oklch(0.62 0.22 25);
+}
+
+textarea.overlay-dialog-field-control {
+  resize: vertical;
+  min-height: 5.25rem;
+}
+
+:root.dark .overlay-dialog-field-label,
+:root.dark .overlay-dialog-field-control {
+  color: oklch(0.9 0.02 var(--hue));
+}
+
+.overlay-dialog-error {
+  margin: -0.625rem 0 1.125rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  text-align: left;
+  color: oklch(0.62 0.22 25);
+}
+
+.overlay-dialog-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0.875rem var(--overlay-dialog-card-padding-inline) max(0.875rem, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line-divider);
+  background: var(--card-bg);
+}
+
+.overlay-dialog-actions a,
+.overlay-dialog-actions button {
+  flex: 1;
+  max-width: 160px;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 150ms;
+  border: none;
+}
+
+.overlay-dialog-card-crop {
+  max-height: min(92vh, 860px);
+}
+
+.overlay-dialog-actions-crop {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.overlay-dialog-actions-crop a,
+.overlay-dialog-actions-crop button {
+  flex: 0 0 auto;
+  max-width: none;
+}
+
+.overlay-dialog-actions-end {
+  margin-left: auto;
+}
+
+.overlay-dialog-action-primary {
+  background: var(--primary);
+  color: white;
+}
+
+.overlay-dialog-action-primary:hover {
+  filter: brightness(1.1);
+}
+
+.overlay-dialog-action-secondary {
+  background: var(--btn-regular-bg);
+  color: var(--deep-text);
+}
+
+:root.dark .overlay-dialog-action-secondary {
+  color: oklch(0.9 0.02 var(--hue));
+}
+
+.overlay-dialog-action-secondary:hover {
+  background: var(--btn-regular-bg-hover);
+}
+
+.overlay-dialog-action-danger {
+  background: oklch(0.62 0.22 25);
+  color: white;
+}
+
+.overlay-dialog-action-danger:hover {
+  filter: brightness(1.08);
+}
+
+/* Animations */
+
+@keyframes overlay-dialog-fade-in {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes overlay-dialog-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes overlay-dialog-card-in {
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes overlay-dialog-card-out {
+  from {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0.95) translateY(8px);
+    opacity: 0;
+  }
+}
+
+/* 减弱动画偏好 */
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay-dialog,
+  .overlay-dialog-card,
+  .overlay-dialog.is-closing,
+  .overlay-dialog.is-closing .overlay-dialog-card {
+    animation-duration: 1ms !important;
+  }
+}

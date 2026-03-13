@@ -1,0 +1,498 @@
+---
+import Comment from "@components/comment/index.astro";
+import ContentNotVisible from "@components/misc/ContentNotVisible.astro";
+import ArticleShareDialog from "@components/misc/ArticleShareDialog.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import ExternalImage from "@components/misc/ExternalImage.astro";
+import Markdown from "@components/misc/Markdown.astro";
+import PasswordProtection from "@components/PasswordProtection.astro";
+import ResponsiveImage from "@components/misc/ResponsiveImage.astro";
+import { defaultSiteSettings } from "@/config";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { renderMarkdown } from "@/server/markdown/render";
+import {
+  DIRECTUS_ACCESS_COOKIE_NAME,
+  DIRECTUS_REFRESH_COOKIE_NAME,
+  buildDirectusAssetUrl,
+  buildPublicAssetUrl,
+} from "@/server/directus-auth";
+import {
+  loadArticleInteractionSnapshot,
+  isSpecialArticleSlug,
+  loadArticleByShortIdLoose,
+  loadArticleBySlugLoose,
+  loadPublicArticleByShortId,
+  loadPublicArticleBySlug,
+  safeCsv,
+} from "@/server/api/v1/shared";
+import { isShortId } from "@/server/utils/short-id";
+import { getAuthorBundle } from "@/server/api/v1/shared/author-cache";
+import { readAuthor } from "@/server/api/v1/public-data";
+import {
+  loadProfileForViewerByUserId,
+  profileToSidebarData,
+} from "@/server/api/v1/public-data";
+import {
+  runWithDirectusPublicAccess,
+  runWithDirectusUserAccess,
+} from "@/server/directus/client";
+import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
+import { getResolvedSiteSettings } from "@/server/site-settings/service";
+import type { AppArticle } from "@/types/app";
+import { buildOwnerArticlePasswordStorageKeys } from "@/utils/protected-content";
+import type { SharePosterPayload } from "@/utils/share-poster";
+import {
+  buildSiteDateFormatContext,
+  formatSiteDateTime,
+} from "@/utils/date-utils";
+import DetailActionFloat from "@components/control/DetailActionFloat.astro";
+
+export const prerender = false;
+
+const rawId = (Astro.params.id || "").replace(/^\/+|\/+$/g, "");
+
+let article: {
+  id: string;
+  short_id: string | null;
+  title: string;
+  slug: string | null;
+  summary: string | null;
+  body_markdown: string;
+  cover_file: string | null;
+  cover_url: string | null;
+  tags: string[];
+  category: string | null;
+  allow_comments: boolean;
+  status: "draft" | "published" | "archived";
+  is_public: boolean;
+  date_created: string | null;
+  date_updated: string | null;
+  author?: {
+    id?: string;
+    name?: string;
+    display_name?: string;
+    avatar_url?: string;
+  };
+} | null = null;
+let articleHtml = "";
+let encryptedBody = "";
+let articleLikeCount = 0;
+let articleCommentCount = 0;
+let articleLikedByViewer = false;
+let viewerIsOwner = false;
+let ownerPasswordStorageKeys: string[] = [];
+let sessionUserId: string | null = null;
+let articleSupportsPublicInteraction = false;
+const hasSessionCookie = Boolean(
+  Astro.cookies.get(DIRECTUS_ACCESS_COOKIE_NAME)?.value ||
+  Astro.cookies.get(DIRECTUS_REFRESH_COOKIE_NAME)?.value,
+);
+const resolvedSiteSettings =
+  Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
+const siteDateContext = buildSiteDateFormatContext(resolvedSiteSettings);
+
+function resolvePublicArticleByRoute(
+  routeId: string,
+): Promise<AppArticle | null> {
+  if (isShortId(routeId)) {
+    return loadPublicArticleByShortId(routeId);
+  }
+  if (isSpecialArticleSlug(routeId)) {
+    return loadPublicArticleBySlug(routeId);
+  }
+  return Promise.resolve(null);
+}
+
+function resolveOwnerArticleByRoute(
+  routeId: string,
+): Promise<AppArticle | null> {
+  if (isShortId(routeId)) {
+    return loadArticleByShortIdLoose(routeId);
+  }
+  if (isSpecialArticleSlug(routeId)) {
+    return loadArticleBySlugLoose(routeId);
+  }
+  return Promise.resolve(null);
+}
+
+if (rawId) {
+  try {
+    // 会话与公开文章查询并行启动，减少首段串行等待。
+    const sessionUserPromise = getSessionUser(Astro);
+    const publicArticlePromise = runWithDirectusPublicAccess(
+      async () => await resolvePublicArticleByRoute(rawId),
+    );
+    const [sessionUser, publicArticle] = await Promise.all([
+      sessionUserPromise,
+      publicArticlePromise,
+    ]);
+    sessionUserId = sessionUser?.id ?? null;
+
+    let rawArticle = publicArticle;
+
+    // 公开查询失败且已登录时，才触发 owner 回退查询。
+    if (!rawArticle && sessionUser) {
+      const candidate = await runWithDirectusUserAccess(
+        getSessionAccessToken(Astro),
+        async () => await resolveOwnerArticleByRoute(rawId),
+      );
+      if (candidate && candidate.author_id === sessionUser.id) {
+        rawArticle = candidate;
+      }
+    }
+
+    if (rawArticle) {
+      const rawBodyMarkdown = String(rawArticle.body_markdown || "");
+      const isEncryptedBody = rawBodyMarkdown.trim().startsWith("CL2:");
+      const isPubliclyVisible =
+        rawArticle.status === "published" && rawArticle.is_public === true;
+      const loadArticleViewData = async () => {
+        const authorMapPromise = getAuthorBundle([rawArticle!.author_id]);
+        const interactionPromise = isPubliclyVisible
+          ? loadArticleInteractionSnapshot({
+              articleId: rawArticle!.id,
+              viewerId: sessionUserId,
+            })
+          : Promise.resolve({
+              likeCount: 0,
+              commentCount: 0,
+              viewerLiked: false,
+            });
+        const authorProfilePromise = loadProfileForViewerByUserId(
+          rawArticle!.author_id,
+          sessionUserId,
+        );
+        const articleHtmlPromise = isEncryptedBody
+          ? Promise.resolve("")
+          : renderMarkdown(rawBodyMarkdown, {
+              target: "page",
+            });
+        return await Promise.all([
+          authorMapPromise,
+          interactionPromise,
+          authorProfilePromise,
+          articleHtmlPromise,
+        ]);
+      };
+
+      const [authorMap, interaction, authorProfile, renderedArticleHtml] =
+        sessionUserId
+          ? await runWithDirectusUserAccess(
+              getSessionAccessToken(Astro),
+              loadArticleViewData,
+            )
+          : await runWithDirectusPublicAccess(loadArticleViewData);
+
+      article = {
+        ...rawArticle,
+        tags: safeCsv(rawArticle.tags),
+        author: readAuthor(authorMap, rawArticle.author_id),
+      };
+      articleLikeCount = interaction.likeCount;
+      articleCommentCount = interaction.commentCount;
+      articleLikedByViewer = interaction.viewerLiked;
+      viewerIsOwner = Boolean(
+        sessionUserId && rawArticle.author_id === sessionUserId,
+      );
+      articleSupportsPublicInteraction = isPubliclyVisible;
+
+      if (isEncryptedBody) {
+        encryptedBody = rawBodyMarkdown.trim();
+        ownerPasswordStorageKeys = buildOwnerArticlePasswordStorageKeys({
+          id: rawArticle.id,
+          shortId: rawArticle.short_id,
+          slug: rawArticle.slug,
+        });
+      } else {
+        articleHtml = renderedArticleHtml;
+      }
+      if (authorProfile) {
+        Astro.locals.sidebarProfile = profileToSidebarData(authorProfile);
+      }
+    } else {
+      Astro.response.status = 404;
+    }
+  } catch (error) {
+    console.error("[posts] failed to load article:", error);
+    Astro.response.status = 500;
+  }
+} else {
+  Astro.response.status = 404;
+}
+
+const responseStatus = Astro.response.status ?? 200;
+if (responseStatus < 500) {
+  if (hasSessionCookie || sessionUserId) {
+    Astro.response.headers.set("Cache-Control", "private, no-store");
+  } else {
+    Astro.response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=60, stale-while-revalidate=300",
+    );
+  }
+}
+
+const hasCoverFile = Boolean(article?.cover_file);
+const articleVisibleToPublic =
+  article?.status === "published" && article?.is_public === true;
+const coverUrl = article?.cover_url
+  ? article.cover_url
+  : article?.cover_file
+    ? (articleVisibleToPublic ? buildPublicAssetUrl : buildDirectusAssetUrl)(
+        article.cover_file,
+        {
+          width: 1600,
+          height: 900,
+          fit: "cover",
+        },
+      )
+    : null;
+
+const ownerOnlyNotice = viewerIsOwner
+  ? article?.status === "draft"
+    ? i18n(I18nKey.contentArticleOwnerDraftNotice)
+    : article && !articleVisibleToPublic
+      ? i18n(I18nKey.contentArticleOwnerPrivateNotice)
+      : ""
+  : "";
+
+// LCP preload: 当文章有 Directus 封面文件且当前对访问者可见时，预加载 WebP 格式
+const coverPreloadUrl =
+  article?.cover_file && articleVisibleToPublic
+    ? buildPublicAssetUrl(article.cover_file, {
+        width: 1200,
+        height: 675,
+        fit: "cover",
+        format: "webp",
+      })
+    : null;
+
+const lastEditedAt = article?.date_updated || article?.date_created || null;
+const lastEditedMetaText = formatSiteDateTime(lastEditedAt, siteDateContext);
+const createdMetaText = formatSiteDateTime(
+  article?.date_created,
+  siteDateContext,
+);
+const articleSharePayload: SharePosterPayload | undefined =
+  articleSupportsPublicInteraction && article
+    ? {
+        title: article.title || i18n(I18nKey.contentUntitled),
+        author:
+          article.author?.display_name ||
+          article.author?.name ||
+          defaultSiteSettings.profile.name,
+        description: article.summary || "",
+        pubDate: article.date_created || article.date_updated || "",
+        coverImage: coverUrl,
+        url: Astro.url.toString(),
+        siteTitle:
+          Astro.locals.siteSettings?.settings.site.title ||
+          defaultSiteSettings.site.title,
+        avatar: article.author?.avatar_url || null,
+        hiddenUntilDecrypt: Boolean(encryptedBody),
+      }
+    : undefined;
+---
+
+<MainGridLayout
+  setOGTypeArticle={true}
+  title={article
+    ? article.title || i18n(I18nKey.contentUntitled)
+    : i18n(I18nKey.contentArticleNotFoundTitle)}
+  description={article?.summary || ""}
+>
+  {
+    coverPreloadUrl && (
+      <link
+        slot="head"
+        rel="preload"
+        as="image"
+        type="image/webp"
+        href={coverPreloadUrl}
+      />
+    )
+  }
+  {
+    !article ? (
+      <ContentNotVisible
+        mode="not_found"
+        title={i18n(I18nKey.contentArticleNotFoundTitle)}
+        description={i18n(I18nKey.contentArticleNotFoundDescription)}
+        backHref="/"
+        backLabel={i18n(I18nKey.contentUserBackToHome)}
+      />
+    ) : (
+      <>
+        <article
+          id="post-container"
+          data-enter-skeleton-target="post-detail"
+          class="card-base p-6 rounded-(--radius-large) mb-4 relative"
+        >
+          <div data-enter-skeleton-content>
+            <header class="mb-6 space-y-3">
+              <h1 class="text-3xl font-bold text-90">
+                {article.title || i18n(I18nKey.contentUntitled)}
+              </h1>
+              {ownerOnlyNotice && (
+                <p class="rounded-xl border border-(--line-divider) bg-(--btn-plain-bg-hover) px-4 py-3 text-sm text-75">
+                  {ownerOnlyNotice}
+                </p>
+              )}
+              <div class="flex flex-wrap items-center gap-3 text-sm text-60">
+                {article.date_created && createdMetaText && (
+                  <span>
+                    {i18n(I18nKey.contentArticleCreatedAtLabel)}：
+                    <time datetime={article.date_created}>
+                      {createdMetaText}
+                    </time>
+                  </span>
+                )}
+                {lastEditedAt && lastEditedMetaText && (
+                  <span>
+                    {i18n(I18nKey.contentArticleLastEditedLabel)}：
+                    <time datetime={lastEditedAt}>{lastEditedMetaText}</time>
+                  </span>
+                )}
+                {article.category && (
+                  // 分类使用胶囊样式，和时间信息形成明显视觉区分。
+                  <span class="inline-flex items-center gap-1.5 rounded-full border border-(--md-sys-color-outline-variant) bg-(--md-sys-color-secondary-container) px-2.5 py-1 text-xs font-semibold text-(--md-sys-color-on-secondary-container)">
+                    <span class="text-[0.7rem] opacity-80">
+                      {i18n(I18nKey.interactionCommonCategory)}
+                    </span>
+                    <span class="max-w-[16rem] truncate">
+                      {article.category}
+                    </span>
+                  </span>
+                )}
+              </div>
+              {article.summary && (
+                <p class="text-base text-75">{article.summary}</p>
+              )}
+              {article.tags.length > 0 && (
+                <div class="flex flex-wrap gap-2">
+                  {article.tags.map((tag) => (
+                    <span class="btn-regular h-7 text-xs px-3 rounded-lg">
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </header>
+
+            {coverUrl && (
+              <div class="mb-6">
+                {hasCoverFile && article?.cover_file ? (
+                  <ResponsiveImage
+                    fileId={article.cover_file}
+                    alt={article.title || i18n(I18nKey.contentUntitled)}
+                    preset="cover"
+                    eager
+                    isPublic={articleVisibleToPublic}
+                    class="w-full max-h-[420px] object-cover rounded-xl border border-(--line-divider)"
+                  />
+                ) : (
+                  <ExternalImage
+                    src={coverUrl}
+                    alt={article.title || i18n(I18nKey.contentUntitled)}
+                    class="w-full max-h-[420px] object-cover rounded-xl border border-(--line-divider)"
+                    loading="lazy"
+                  />
+                )}
+              </div>
+            )}
+
+            {encryptedBody ? (
+              <PasswordProtection
+                encryptedContent={encryptedBody}
+                viewerIsOwner={viewerIsOwner}
+                ownerPasswordStorageKeys={ownerPasswordStorageKeys}
+              />
+            ) : (
+              <Markdown class="markdown-content">
+                <Fragment set:html={articleHtml} />
+              </Markdown>
+            )}
+          </div>
+          <div
+            data-enter-skeleton-placeholder
+            aria-hidden="true"
+            class="absolute inset-0 z-20 pointer-events-none p-6"
+          >
+            <div class="space-y-4">
+              <div
+                class="md3-skeleton-text"
+                style="--skeleton-width: 62%; --skeleton-height: 2rem;"
+              />
+              <div
+                class="md3-skeleton-text"
+                style="--skeleton-width: 48%; --skeleton-height: 0.95rem;"
+              />
+              <div class="space-y-2 pt-1">
+                <div class="md3-skeleton-text" style="--skeleton-width: 92%;" />
+                <div class="md3-skeleton-text" style="--skeleton-width: 66%;" />
+              </div>
+              {coverUrl && (
+                <div class="md3-skeleton-block h-[240px] w-full rounded-xl" />
+              )}
+              <div class="space-y-3 pt-2">
+                <div
+                  class="md3-skeleton-text"
+                  style="--skeleton-width: 100%;"
+                />
+                <div class="md3-skeleton-text" style="--skeleton-width: 96%;" />
+                <div class="md3-skeleton-text" style="--skeleton-width: 94%;" />
+                <div class="md3-skeleton-text" style="--skeleton-width: 98%;" />
+                <div class="md3-skeleton-text" style="--skeleton-width: 90%;" />
+                <div class="md3-skeleton-text" style="--skeleton-width: 84%;" />
+                <div class="md3-skeleton-text" style="--skeleton-width: 88%;" />
+                <div class="md3-skeleton-text" style="--skeleton-width: 72%;" />
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <DetailActionFloat
+          contentType="article"
+          contentId={article.id}
+          authorId={article.author?.id || ""}
+          likeCount={articleLikeCount}
+          commentCount={articleCommentCount}
+          likedByViewer={articleLikedByViewer}
+          dockToBackTop={true}
+          showLikeAction={articleSupportsPublicInteraction}
+          showCommentAction={articleSupportsPublicInteraction}
+          sharePayload={articleSharePayload}
+          editHref={`/posts/${encodeURIComponent(article.short_id || rawId)}/edit`}
+          deleteEndpoint={`/api/v1/me/articles/${encodeURIComponent(article.id)}`}
+          adminDeleteEndpoint={`/api/v1/admin/content/articles/${encodeURIComponent(article.id)}`}
+          deleteConfirmMessage={i18n(I18nKey.contentArticleDeleteConfirm)}
+          adminDeleteConfirmMessage={i18n(
+            I18nKey.interactionPostDeleteConfirmAdminArticle,
+          )}
+          deleteSuccessHref="/"
+        />
+
+        <Comment
+          module="articles"
+          contentId={article.id}
+          contentShortId={article.short_id || ""}
+          contentAuthorId={article?.author?.id || ""}
+          allowComments={
+            articleSupportsPublicInteraction && article.allow_comments
+          }
+        />
+      </>
+    )
+  }
+  {
+    articleSharePayload && (
+      <ArticleShareDialog slot="modal" payload={articleSharePayload} />
+    )
+  }
+  {
+    articleSharePayload && (
+      <script>import "@/scripts/article-share-dialog";</script>
+    )
+  }
+</MainGridLayout>

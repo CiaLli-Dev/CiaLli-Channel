@@ -1,0 +1,41 @@
+---
+interface Props {
+  contentClass?: string;
+  proxyMainSlot?: boolean;
+}
+
+const { contentClass = "", proxyMainSlot = false } = Astro.props;
+---
+
+<div class="auth-login-shell">
+  <div class="auth-login-main">
+    <div
+      data-transition-proxy-main-slot={proxyMainSlot ? "" : undefined}
+      class:list={["auth-login-main-slot", contentClass]}
+    >
+      <slot />
+    </div>
+  </div>
+  <div class="auth-login-sidebar-placeholder" aria-hidden="true"></div>
+</div>
+
+<style>
+  .auth-login-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 17.5rem;
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .auth-login-main {
+    min-width: 0;
+  }
+
+  .auth-login-main-slot {
+    min-width: 0;
+  }
+
+  .auth-login-sidebar-placeholder {
+    min-width: 0;
+  }
+</style>

@@ -1,0 +1,27 @@
+---
+import PasswordProtection from "./PasswordProtection.astro";
+import { encryptProtectedContent } from "@/server/crypto/protected-content";
+import "../styles/markdown.css";
+import "../styles/expressive-code.css";
+import "../styles/encrypted-content.css";
+import "../styles/markdown-extend.styl";
+
+interface Props {
+  password: string | number;
+}
+
+const { password } = Astro.props;
+
+const htmlContent = await Astro.slots.render("default");
+const protectedPayload = JSON.stringify({
+  format: "protected-html-v1",
+  html: htmlContent,
+});
+
+const encryptedContent = await encryptProtectedContent(
+  protectedPayload,
+  String(password),
+);
+---
+
+<PasswordProtection encryptedContent={encryptedContent} />

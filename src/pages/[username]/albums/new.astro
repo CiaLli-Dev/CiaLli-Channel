@@ -1,0 +1,99 @@
+---
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import {
+  loadProfileForViewer,
+  profileToSidebarData,
+} from "@/server/api/v1/public-data";
+import { getSessionUser } from "@/server/auth/session";
+
+export const prerender = false;
+
+const username = (Astro.params.username || "").trim();
+
+if (!username) {
+  return Astro.redirect("/");
+}
+
+const sessionUser = await getSessionUser(Astro);
+if (!sessionUser) {
+  return Astro.redirect(`/${username}/albums`);
+}
+
+const profile = await loadProfileForViewer(username, sessionUser.id);
+if (!profile || profile.user_id !== sessionUser.id) {
+  return Astro.redirect(`/${username}/albums`);
+}
+
+Astro.locals.sidebarProfile = profileToSidebarData(profile);
+---
+
+<MainGridLayout
+  title={i18n(I18nKey.contentAlbumCreateTitle)}
+  description={i18n(I18nKey.contentAlbumCreateDescription)}
+>
+  <section
+    class="card-base p-6 rounded-(--radius-large) mb-4 space-y-3 text-90"
+  >
+    <a
+      href={`/${username}/albums`}
+      class="text-sm text-(--primary) hover:underline"
+      >{i18n(I18nKey.contentAlbumCreateBackToList)}</a
+    >
+    <h1 class="text-3xl font-bold text-black/90 dark:text-white/90">
+      {i18n(I18nKey.contentAlbumCreateHeading)}
+    </h1>
+    <p class="text-75">
+      {i18n(I18nKey.contentAlbumCreateHint)}
+    </p>
+  </section>
+
+  <section class="card-base p-6 rounded-(--radius-large) space-y-5 text-90">
+    <form id="album-publish-form" class="space-y-5" data-username={username}>
+      <div>
+        <label
+          for="album-title"
+          class="block text-sm font-medium mb-1.5 text-75"
+          >{i18n(I18nKey.contentAlbumTitleLabel)}
+          <span class="text-red-500">*</span></label
+        >
+        <input
+          id="album-title"
+          name="title"
+          type="text"
+          required
+          maxlength="40"
+          placeholder={i18n(I18nKey.contentAlbumTitlePlaceholder)}
+          class="w-full h-10 px-3 rounded-lg border border-(--line-divider)
+						bg-(--card-bg) text-90 placeholder:text-50
+						focus:outline-none focus:ring-2 focus:ring-(--primary) focus:border-transparent
+						transition"
+        />
+        <span id="album-title-counter" class="text-xs mt-1 block text-50"
+        ></span>
+      </div>
+
+      <div id="album-publish-error" class="hidden text-sm text-red-500"></div>
+
+      <div class="flex items-center gap-3">
+        <button
+          id="album-publish-btn"
+          type="submit"
+          class="px-6 h-10 rounded-lg bg-(--primary) text-white font-medium
+						hover:opacity-90 active:opacity-80 transition cursor-pointer
+						disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {i18n(I18nKey.contentAlbumCreateSubmit)}
+        </button>
+        <a
+          href={`/${username}/albums`}
+          class="px-4 h-10 rounded-lg border border-(--line-divider)
+						flex items-center text-sm text-75 hover:bg-(--btn-plain-bg-hover) transition"
+        >
+          {i18n(I18nKey.interactionCommonCancel)}
+        </a>
+      </div>
+    </form>
+  </section>
+</MainGridLayout>

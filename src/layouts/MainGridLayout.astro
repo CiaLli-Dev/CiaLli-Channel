@@ -1,0 +1,512 @@
+---
+import BackToTop from "@components/control/BackToTop.astro";
+import FloatingTOC from "@components/control/FloatingTOC.astro";
+import Footer from "@components/Footer.astro";
+import RightSideBar from "@components/layout/RightSideBar.astro";
+import TransitionProxySkeletonTemplates from "@components/layout/TransitionProxySkeletonTemplates.astro";
+import Navbar from "@components/Navbar.astro";
+import SideBar from "@components/widget/SideBar.astro";
+import type { MarkdownHeading } from "astro";
+import IconifyLoader from "../components/misc/IconifyLoader.astro";
+import ImageWrapper from "../components/misc/ImageWrapper.astro";
+import TypewriterText from "../components/TypewriterText.astro";
+import TOC from "../components/widget/TOC.astro";
+import { buildLegacySiteConfig } from "@/config";
+import { getResolvedSiteSettings } from "@/server/site-settings/service";
+import { BANNER_HEIGHT_EXTEND } from "../constants/constants";
+import Layout from "@layouts/Layout.astro";
+import {
+  buildMainGridLayoutState,
+  getBannerImages,
+} from "@utils/main-grid-layout-utils";
+import "@/styles/main-grid-layout.css";
+
+interface Props {
+  title?: string;
+  banner?: string;
+  description?: string;
+  lang?: string;
+  setOGTypeArticle?: boolean;
+  headings?: MarkdownHeading[];
+}
+
+const resolvedSiteSettings =
+  Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
+const siteConfig = buildLegacySiteConfig(
+  resolvedSiteSettings.system,
+  resolvedSiteSettings.settings,
+);
+const bannerImages = await getBannerImages(siteConfig);
+
+const {
+  title,
+  banner,
+  description,
+  lang,
+  setOGTypeArticle,
+  headings = [],
+} = Astro.props;
+
+const hasCustomRightSidebar = Astro.slots.has("sidebar-right");
+const {
+  isFloatTOC,
+  isPostEditorPage,
+  showHomeText,
+  initialWallpaperMode,
+  finalMainPanelTop,
+  shouldRenderDedicatedPostToc,
+  shouldFixRightSidebarSlot,
+  desktopShowLeftSidebar,
+  gridCols,
+  sidebarClass,
+  rightSidebarClass,
+  mainContentClass,
+  hasCarousel,
+  hasRightSidebarComponents,
+} = buildMainGridLayoutState(
+  siteConfig,
+  bannerImages,
+  Astro.url.pathname,
+  hasCustomRightSidebar,
+);
+---
+
+<Layout
+  title={title}
+  banner={banner}
+  description={description}
+  lang={lang}
+  setOGTypeArticle={setOGTypeArticle}
+>
+  <IconifyLoader />
+
+  <slot slot="head" name="head" />
+  <div
+    id="top-row"
+    class="z-50 pointer-events-none fixed top-0 left-0 right-0"
+    transition:persist
+  >
+    <div id="navbar-wrapper" class="pointer-events-auto">
+      <Navbar />
+    </div>
+  </div>
+
+  <div
+    id="banner-wrapper"
+    class={`absolute z-10 w-full transition duration-700 overflow-hidden wallpaper-layer ${initialWallpaperMode !== "banner" ? "wallpaper-layer-hidden" : ""}`}
+    style={`top: -${BANNER_HEIGHT_EXTEND}vh`}
+    aria-hidden={initialWallpaperMode !== "banner" ? "true" : undefined}
+    inert={initialWallpaperMode !== "banner"}
+  >
+    <div class="banner-container relative h-full w-full">
+      {
+        hasCarousel ? (
+          <div
+            id="banner-carousel"
+            class="relative h-full w-full overflow-hidden"
+          >
+            <ul class="carousel-list h-full w-full">
+              {bannerImages.map((image, index) => (
+                <li
+                  class={`carousel-item absolute inset-0 transition-all duration-500 ${index === 0 ? "opacity-100 scale-100" : "opacity-0 scale-110"}`}
+                >
+                  <ImageWrapper
+                    alt={`Desktop banner image ${index + 1}`}
+                    class:list={[
+                      "banner-image object-cover h-full w-full transition-transform duration-500 ease-out",
+                    ]}
+                    src={image}
+                    position={siteConfig.banner.position}
+                    loading={index === 0 ? "eager" : "lazy"}
+                  />
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <div id="banner-single-container" class="relative h-full w-full" />
+        )
+      }
+
+      <script
+        is:inline
+        data-astro-rerun
+        define:vars={{
+          desktopImages: bannerImages,
+          position: siteConfig.banner.position,
+        }}
+      >
+        (function () {
+          const container = document.getElementById("banner-single-container");
+          if (!container || container.children.length > 0) {
+            return;
+          }
+
+          const images = Array.isArray(desktopImages)
+            ? desktopImages.filter((entry) => String(entry || "").trim())
+            : [];
+          if (images.length === 0) {
+            return;
+          }
+
+          let picked = images[0];
+          if (images.length > 1) {
+            const storageKey = "banner_desktop_index";
+            const previous = Number.parseInt(
+              sessionStorage.getItem(storageKey) || "-1",
+              10,
+            );
+            let next = Math.floor(Math.random() * images.length);
+            while (next === previous && images.length > 1) {
+              next = Math.floor(Math.random() * images.length);
+            }
+            sessionStorage.setItem(storageKey, String(next));
+            picked = images[next];
+          }
+
+          const desktopImg = document.createElement("img");
+          desktopImg.id = "banner";
+          desktopImg.alt = "Desktop banner image of the blog";
+          desktopImg.className =
+            "banner-image object-cover h-full w-full transition duration-700 opacity-100";
+          desktopImg.src = picked;
+          desktopImg.loading = "eager";
+          if (position) {
+            desktopImg.dataset.position = position;
+          }
+          container.appendChild(desktopImg);
+        })();
+      </script>
+
+      <div class="navbar-scrim" aria-hidden="true"></div>
+
+      {
+        siteConfig.banner.homeText?.enable && (
+          <div
+            class={`banner-text-overlay absolute inset-0 z-20 flex items-center justify-center ${!showHomeText ? "hidden" : ""}`}
+          >
+            <div class="w-3/4 text-center mb-0">
+              <div class="flex flex-col">
+                {siteConfig.banner.homeText?.title && (
+                  <h1 class="banner-title text-8xl text-white drop-shadow-lg mb-4">
+                    {siteConfig.banner.homeText.title}
+                  </h1>
+                )}
+                {siteConfig.banner.homeText?.subtitle && (
+                  <h2 class="banner-subtitle text-3xl text-white/90 drop-shadow-md">
+                    <span class="inline-block min-h-[1.2em]">
+                      {siteConfig.banner.homeText.typewriter?.enable ? (
+                        <TypewriterText
+                          text={siteConfig.banner.homeText.subtitle}
+                          speed={siteConfig.banner.homeText.typewriter.speed}
+                          deleteSpeed={
+                            siteConfig.banner.homeText.typewriter.deleteSpeed
+                          }
+                          pauseTime={
+                            siteConfig.banner.homeText.typewriter.pauseTime
+                          }
+                        />
+                      ) : Array.isArray(siteConfig.banner.homeText.subtitle) ? (
+                        siteConfig.banner.homeText.subtitle[0]
+                      ) : (
+                        siteConfig.banner.homeText.subtitle
+                      )}
+                    </span>
+                  </h2>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {
+        siteConfig.banner.waves?.enable && (
+          <div
+            class="waves absolute -bottom-px h-[15vh] max-h-[9.375rem] min-h-[3.125rem] w-full"
+            id="header-waves"
+            style="transform: translateZ(0); will-change: fill;"
+          >
+            <svg
+              class="waves"
+              xmlns="http://www.w3.org/2000/svg"
+              xmlns:xlink="http://www.w3.org/1999/xlink"
+              viewBox="0 20 150 32"
+              preserveAspectRatio="none"
+              shape-rendering="auto"
+              style="transform: translateZ(0); backface-visibility: hidden;"
+            >
+              <defs>
+                <path
+                  id="gentle-wave"
+                  d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v48h-352z"
+                />
+              </defs>
+              <g class="parallax" style="transform: translateZ(0);">
+                <use
+                  xlink:href="#gentle-wave"
+                  x="48"
+                  y="0"
+                  class="opacity-25 fill-(--page-bg)"
+                  style="animation-delay: -2s; animation-duration: 7s; will-change: transform;"
+                />
+                <use
+                  xlink:href="#gentle-wave"
+                  x="48"
+                  y="3"
+                  class="opacity-50 fill-(--page-bg)"
+                  style="animation-delay: -3s; animation-duration: 10s; will-change: transform;"
+                />
+                <use
+                  xlink:href="#gentle-wave"
+                  x="48"
+                  y="5"
+                  class="opacity-75 fill-(--page-bg)"
+                  style="animation-delay: -4s; animation-duration: 13s; will-change: transform;"
+                />
+                <use
+                  xlink:href="#gentle-wave"
+                  x="48"
+                  y="7"
+                  class="fill-(--page-bg)"
+                  style="animation-delay: -5s; animation-duration: 20s; will-change: transform;"
+                />
+              </g>
+            </svg>
+          </div>
+        )
+      }
+    </div>
+  </div>
+
+  <div
+    class={`absolute w-full z-30 pointer-events-none main-panel-wrapper ${initialWallpaperMode === "none" ? "no-banner-layout" : ""} ${isPostEditorPage ? "post-editor-workbench" : ""}`}
+    style={`top: ${finalMainPanelTop}`}
+  >
+    <!-- 过渡期独立背景层：与内容同启停，但承担更快的整页封顶覆盖。 -->
+    <div class="main-panel-transition-bg" aria-hidden="true">
+      {
+        siteConfig.banner.waves?.enable && (
+          <div class="main-panel-transition-bg-wave" aria-hidden="true">
+            <svg
+              class="waves"
+              xmlns="http://www.w3.org/2000/svg"
+              xmlns:xlink="http://www.w3.org/1999/xlink"
+              viewBox="0 20 150 32"
+              preserveAspectRatio="none"
+              shape-rendering="auto"
+              style="transform: translateZ(0); backface-visibility: hidden;"
+            >
+              <defs>
+                <path
+                  id="main-panel-transition-gentle-wave"
+                  d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v48h-352z"
+                />
+              </defs>
+              <g class="parallax" style="transform: translateZ(0);">
+                <use
+                  xlink:href="#main-panel-transition-gentle-wave"
+                  x="48"
+                  y="0"
+                  class="opacity-25 fill-(--page-bg)"
+                  style="animation-delay: -2s; animation-duration: 7s; will-change: transform;"
+                />
+                <use
+                  xlink:href="#main-panel-transition-gentle-wave"
+                  x="48"
+                  y="3"
+                  class="opacity-50 fill-(--page-bg)"
+                  style="animation-delay: -3s; animation-duration: 10s; will-change: transform;"
+                />
+                <use
+                  xlink:href="#main-panel-transition-gentle-wave"
+                  x="48"
+                  y="5"
+                  class="opacity-75 fill-(--page-bg)"
+                  style="animation-delay: -4s; animation-duration: 13s; will-change: transform;"
+                />
+                <use
+                  xlink:href="#main-panel-transition-gentle-wave"
+                  x="48"
+                  y="7"
+                  class="fill-(--page-bg)"
+                  style="animation-delay: -5s; animation-duration: 20s; will-change: transform;"
+                />
+              </g>
+            </svg>
+          </div>
+        )
+      }
+    </div>
+    <div
+      id="main-panel-transition-proxy"
+      class="main-panel-transition-proxy"
+      aria-hidden="true"
+      transition:persist
+    >
+    </div>
+    <TransitionProxySkeletonTemplates />
+    <div
+      class={`relative pointer-events-auto ${isPostEditorPage ? "w-full px-4 post-editor-workbench-inner" : "max-w-(--page-width) mx-auto"}`}
+    >
+      <div
+        class:list={[
+          "main-panel-content-layer",
+          {
+            "post-editor-content-layer": isPostEditorPage,
+          },
+        ]}
+      >
+        <div
+          id="main-grid"
+          class={`transition duration-700 w-full left-0 right-0 grid ${gridCols} grid-rows-none mx-auto gap-4 ${isPostEditorPage ? "post-editor-workbench-grid" : "px-4"}`}
+        >
+          {
+            desktopShowLeftSidebar ? (
+              <SideBar class={sidebarClass} headings={headings} />
+            ) : (
+              // 保证 sidebar 容器在全宽页也存在，确保布局结构一致。
+              <div
+                id="sidebar"
+                class="hidden"
+                data-sidebar-uid="__placeholder__"
+                data-sidebar-layout-key='{"top":[],"sticky":[]}'
+                data-scrollable="false"
+                aria-hidden="true"
+              />
+            )
+          }
+
+          <div
+            id="right-sidebar-slot"
+            class={`right-sidebar-container self-start ${shouldFixRightSidebarSlot ? "right-sidebar-toc-fixed" : ""} ${rightSidebarClass}`}
+          >
+            {
+              hasCustomRightSidebar ? (
+                <slot name="sidebar-right" />
+              ) : hasRightSidebarComponents ? (
+                <>
+                  <RightSideBar headings={headings} />
+                  {shouldRenderDedicatedPostToc && (
+                    <div id="toc-wrapper" class="w-full transition-fade">
+                      <div
+                        id="toc-inner-wrapper"
+                        class="w-full max-h-[calc(100vh-10rem)] overflow-hidden"
+                      >
+                        <div id="toc-container" class="w-full transition-fade">
+                          <TOC headings={headings} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : shouldRenderDedicatedPostToc ? (
+                <div id="toc-wrapper" class="w-full transition-fade">
+                  <div
+                    id="toc-inner-wrapper"
+                    class="w-full max-h-[calc(100vh-10rem)] overflow-hidden"
+                  >
+                    <div id="toc-container" class="w-full transition-fade">
+                      <TOC headings={headings} />
+                    </div>
+                  </div>
+                </div>
+              ) : null
+            }
+          </div>
+
+          <main
+            id="main-container"
+            data-enter-skeleton-target="fallback"
+            class={`${mainContentClass} transition-main relative ${isPostEditorPage ? "post-editor-main-container" : ""}`}
+          >
+            <div
+              id="content-wrapper"
+              data-enter-skeleton-content
+              class={`onload-animation transition-leaving ${isPostEditorPage ? "post-editor-content-wrapper" : ""}`}
+            >
+              <slot />
+              {
+                !isPostEditorPage && (
+                  <div class="footer col-span-full onload-animation block">
+                    <Footer />
+                  </div>
+                )
+              }
+            </div>
+            <div
+              data-enter-skeleton-placeholder
+              aria-hidden="true"
+              class="absolute inset-0 z-20 pointer-events-none"
+            >
+              <div data-enter-skeleton-template="fallback" class="space-y-5">
+                <div class="md3-skeleton-surface rounded-(--radius-large) p-8">
+                  <div class="flex items-start justify-between gap-4">
+                    <div class="w-full space-y-3">
+                      <div
+                        class="md3-skeleton-text"
+                        style="--skeleton-width: 42%; --skeleton-height: 1.5rem;"
+                      >
+                      </div>
+                      <div
+                        class="md3-skeleton-text"
+                        style="--skeleton-width: 68%;"
+                      >
+                      </div>
+                    </div>
+                    <div class="md3-skeleton-block h-12 w-36 rounded-xl"></div>
+                  </div>
+                </div>
+
+                <div class="md3-skeleton-surface rounded-(--radius-large) p-6">
+                  <div class="space-y-3">
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 94%;"
+                    >
+                    </div>
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 90%;"
+                    >
+                    </div>
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 86%;"
+                    >
+                    </div>
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 72%;"
+                    >
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-4 pt-4">
+                    <div class="md3-skeleton-block h-24 rounded-xl"></div>
+                    <div class="md3-skeleton-block h-24 rounded-xl"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+      <!--
+        固定浮层统一挂载到内容滤镜层外，且与旧版一样处于可点击的相对定位宿主内，
+        避免被 filter/transform 捕获或被 overlay 事件策略影响。
+      -->
+      <div id="detail-action-float-anchor" aria-hidden="true"></div>
+      <BackToTop />
+      {siteConfig.toc.enable && isFloatTOC && <FloatingTOC />}
+    </div>
+  </div>
+
+  {
+    (!siteConfig.toc.enable || isFloatTOC || !shouldRenderDedicatedPostToc) && (
+      <div id="toc-container" class="hidden" />
+    )
+  }
+
+  <slot name="modal" />
+</Layout>

@@ -1,0 +1,972 @@
+---
+import TransitionProxyRightSidebarSkeleton from "@components/layout/TransitionProxyRightSidebarSkeleton.astro";
+import TransitionProxySidebarSkeleton from "@components/layout/TransitionProxySidebarSkeleton.astro";
+import AuthLoginShell from "@components/auth/AuthLoginShell.astro";
+import AuthLoginSkeletonCard from "@components/auth/AuthLoginSkeletonCard.astro";
+import RegisterFormSkeleton from "@components/auth/RegisterFormSkeleton.astro";
+import PublishPageSkeleton from "@components/publish/PublishPageSkeleton.astro";
+
+const settingsModes = [
+  "admin-site-settings",
+  "admin-bulletin-settings",
+  "admin-about-settings",
+  "me-settings",
+] as const;
+
+const staticPageModes = [
+  "about-page",
+  "friends-page",
+  "stats-page",
+  "bulletin-page",
+] as const;
+
+const feedModes = ["rss-page", "atom-page"] as const;
+---
+
+<template data-transition-proxy-shell="sidebar-main">
+  <div class="relative max-w-(--page-width) mx-auto">
+    <div
+      class="main-panel-transition-proxy-grid grid grid-cols-[17.5rem_minmax(0,1fr)] gap-4 px-4"
+    >
+      <div
+        class="main-panel-transition-proxy-sidebar mb-4 max-w-[17.5rem] col-start-1 col-end-2 row-start-1 row-end-2"
+      >
+        <TransitionProxySidebarSkeleton />
+      </div>
+      <main
+        class="main-panel-transition-proxy-main transition-fade overflow-clip w-full col-span-1 row-start-1 row-end-2 col-start-2 col-end-3 relative"
+      >
+        <div
+          data-transition-proxy-main-slot
+          class="main-panel-transition-proxy-content"
+        >
+        </div>
+      </main>
+    </div>
+  </div>
+</template>
+
+<template data-transition-proxy-shell="auth-login-split">
+  <div class="relative max-w-(--page-width) mx-auto px-4">
+    <AuthLoginShell
+      proxyMainSlot={true}
+      contentClass="main-panel-transition-proxy-content"
+    />
+  </div>
+</template>
+
+<template data-transition-proxy-shell="main-only">
+  <div class="relative max-w-(--page-width) mx-auto px-4">
+    <main
+      class="main-panel-transition-proxy-main transition-fade overflow-clip w-full relative"
+    >
+      <div
+        data-transition-proxy-main-slot
+        class="main-panel-transition-proxy-content"
+      >
+      </div>
+    </main>
+  </div>
+</template>
+
+<template data-transition-proxy-shell="sidebar-main-right-default">
+  <div class="relative max-w-(--page-width) mx-auto">
+    <div
+      class="main-panel-transition-proxy-grid grid grid-cols-[17.5rem_minmax(0,1fr)_17.5rem] gap-4 px-4"
+    >
+      <div
+        class="main-panel-transition-proxy-sidebar mb-4 max-w-[17.5rem] col-start-1 col-end-2 row-start-1 row-end-2"
+      >
+        <TransitionProxySidebarSkeleton />
+      </div>
+      <main
+        class="main-panel-transition-proxy-main transition-fade overflow-clip w-full col-span-1 row-start-1 row-end-2 col-start-2 col-end-3 relative"
+      >
+        <div
+          data-transition-proxy-main-slot
+          class="main-panel-transition-proxy-content"
+        >
+        </div>
+      </main>
+      <div
+        class="main-panel-transition-proxy-right right-sidebar-container self-start block overflow-x-hidden mb-4 max-w-[17.5rem] row-start-1 row-end-2 col-start-3 col-end-4 space-y-4"
+      >
+        <TransitionProxyRightSidebarSkeleton dense={true} />
+      </div>
+    </div>
+  </div>
+</template>
+
+<template data-transition-proxy-shell="sidebar-main-right-archive">
+  <div class="relative max-w-(--page-width) mx-auto">
+    <div
+      class="main-panel-transition-proxy-grid grid grid-cols-[17.5rem_minmax(0,1fr)_17.5rem] gap-4 px-4"
+    >
+      <div
+        class="main-panel-transition-proxy-sidebar mb-4 max-w-[17.5rem] col-start-1 col-end-2 row-start-1 row-end-2"
+      >
+        <TransitionProxySidebarSkeleton />
+      </div>
+      <main
+        class="main-panel-transition-proxy-main transition-fade overflow-clip w-full col-span-1 row-start-1 row-end-2 col-start-2 col-end-3 relative"
+      >
+        <div
+          data-transition-proxy-main-slot
+          class="main-panel-transition-proxy-content"
+        >
+        </div>
+      </main>
+      <div
+        class="main-panel-transition-proxy-right right-sidebar-container self-start block mb-4 max-w-[17.5rem] row-start-1 row-end-2 col-start-3 col-end-4 space-y-4"
+      >
+        <div class="card-base p-5 space-y-3">
+          <div
+            class="md3-skeleton-text"
+            style="--skeleton-width: 32%; --skeleton-height: 1rem;"
+          >
+          </div>
+          <div class="md3-skeleton-block h-24 rounded-xl"></div>
+        </div>
+        <div class="card-base rounded-(--radius-large) pb-4">
+          <div
+            class="font-bold text-lg relative ml-8 mt-4 mb-2 before:w-1 before:h-4 before:rounded-md before:bg-(--primary) before:absolute before:left-[-16px] before:top-[5.5px]"
+          >
+            <div
+              class="md3-skeleton-text"
+              style="--skeleton-width: 38%; --skeleton-height: 1rem;"
+            >
+            </div>
+          </div>
+          <div class="px-4 flex flex-col gap-2">
+            {
+              Array.from({ length: 4 }).map(() => (
+                <div class="md3-skeleton-block h-10 rounded-lg" />
+              ))
+            }
+          </div>
+        </div>
+        <div class="card-base rounded-(--radius-large) pb-4">
+          <div
+            class="font-bold text-lg relative ml-8 mt-4 mb-2 before:w-1 before:h-4 before:rounded-md before:bg-(--primary) before:absolute before:left-[-16px] before:top-[5.5px]"
+          >
+            <div
+              class="md3-skeleton-text"
+              style="--skeleton-width: 26%; --skeleton-height: 1rem;"
+            >
+            </div>
+          </div>
+          <div class="px-4 flex gap-2 flex-wrap">
+            {
+              Array.from({ length: 6 }).map(() => (
+                <div class="md3-skeleton-block h-8 w-16 rounded-lg" />
+              ))
+            }
+          </div>
+        </div>
+        <div
+          class="card-base rounded-(--radius-large) px-4 py-3 flex items-center justify-between gap-2"
+        >
+          <div
+            class="md3-skeleton-text"
+            style="--skeleton-width: 48%; --skeleton-height: 0.85rem;"
+          >
+          </div>
+          <div class="md3-skeleton-block h-8 w-12 rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template data-transition-proxy-shell="sidebar-main-right-bangumi">
+  <div class="relative max-w-(--page-width) mx-auto">
+    <div
+      class="main-panel-transition-proxy-grid grid grid-cols-[17.5rem_minmax(0,1fr)_17.5rem] gap-4 px-4"
+    >
+      <div
+        class="main-panel-transition-proxy-sidebar mb-4 max-w-[17.5rem] col-start-1 col-end-2 row-start-1 row-end-2"
+      >
+        <TransitionProxySidebarSkeleton />
+      </div>
+      <main
+        class="main-panel-transition-proxy-main transition-fade overflow-clip w-full col-span-1 row-start-1 row-end-2 col-start-2 col-end-3 relative"
+      >
+        <div
+          data-transition-proxy-main-slot
+          class="main-panel-transition-proxy-content"
+        >
+        </div>
+      </main>
+      <div
+        class="main-panel-transition-proxy-right right-sidebar-container self-start block mb-4 max-w-[17.5rem] row-start-1 row-end-2 col-start-3 col-end-4 space-y-4"
+      >
+        <div class="card-base rounded-(--radius-large) pb-4">
+          <div
+            class="font-bold text-lg relative ml-8 mt-4 mb-2 before:w-1 before:h-4 before:rounded-md before:bg-(--primary) before:absolute before:left-[-16px] before:top-[5.5px]"
+          >
+            <div
+              class="md3-skeleton-text"
+              style="--skeleton-width: 42%; --skeleton-height: 1rem;"
+            >
+            </div>
+          </div>
+          <div class="px-4 flex flex-col gap-2">
+            {
+              Array.from({ length: 5 }).map(() => (
+                <div class="md3-skeleton-block h-10 rounded-lg" />
+              ))
+            }
+          </div>
+        </div>
+        <div class="card-base rounded-(--radius-large) pb-4">
+          <div
+            class="font-bold text-lg relative ml-8 mt-4 mb-2 before:w-1 before:h-4 before:rounded-md before:bg-(--primary) before:absolute before:left-[-16px] before:top-[5.5px]"
+          >
+            <div
+              class="md3-skeleton-text"
+              style="--skeleton-width: 28%; --skeleton-height: 1rem;"
+            >
+            </div>
+          </div>
+          <div class="px-4 flex gap-2 flex-wrap">
+            {
+              Array.from({ length: 8 }).map(() => (
+                <div class="md3-skeleton-block h-8 w-14 rounded-lg" />
+              ))
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template data-transition-proxy-shell="sidebar-main-right-albums">
+  <div class="relative max-w-(--page-width) mx-auto">
+    <div
+      class="main-panel-transition-proxy-grid grid grid-cols-[17.5rem_minmax(0,1fr)_17.5rem] gap-4 px-4"
+    >
+      <div
+        class="main-panel-transition-proxy-sidebar mb-4 max-w-[17.5rem] col-start-1 col-end-2 row-start-1 row-end-2"
+      >
+        <TransitionProxySidebarSkeleton />
+      </div>
+      <main
+        class="main-panel-transition-proxy-main transition-fade overflow-clip w-full col-span-1 row-start-1 row-end-2 col-start-2 col-end-3 relative"
+      >
+        <div
+          data-transition-proxy-main-slot
+          class="main-panel-transition-proxy-content"
+        >
+        </div>
+      </main>
+      <div
+        class="main-panel-transition-proxy-right right-sidebar-container self-start block mb-4 max-w-[17.5rem] row-start-1 row-end-2 col-start-3 col-end-4 space-y-4"
+      >
+        <div class="card-base rounded-(--radius-large) pb-4">
+          <div
+            class="font-bold text-lg relative ml-8 mt-4 mb-2 before:w-1 before:h-4 before:rounded-md before:bg-(--primary) before:absolute before:left-[-16px] before:top-[5.5px]"
+          >
+            <div
+              class="md3-skeleton-text"
+              style="--skeleton-width: 42%; --skeleton-height: 1rem;"
+            >
+            </div>
+          </div>
+          <div class="px-4 flex flex-col gap-2">
+            {
+              Array.from({ length: 4 }).map(() => (
+                <div class="md3-skeleton-block h-10 rounded-lg" />
+              ))
+            }
+          </div>
+        </div>
+        <div class="card-base rounded-(--radius-large) pb-4">
+          <div
+            class="font-bold text-lg relative ml-8 mt-4 mb-2 before:w-1 before:h-4 before:rounded-md before:bg-(--primary) before:absolute before:left-[-16px] before:top-[5.5px]"
+          >
+            <div
+              class="md3-skeleton-text"
+              style="--skeleton-width: 28%; --skeleton-height: 1rem;"
+            >
+            </div>
+          </div>
+          <div class="px-4 flex gap-2 flex-wrap">
+            {
+              Array.from({ length: 7 }).map(() => (
+                <div class="md3-skeleton-block h-8 w-16 rounded-lg" />
+              ))
+            }
+          </div>
+        </div>
+        <div
+          class="card-base rounded-(--radius-large) px-4 py-3 flex items-center justify-between gap-2"
+        >
+          <div
+            class="md3-skeleton-text"
+            style="--skeleton-width: 52%; --skeleton-height: 0.85rem;"
+          >
+          </div>
+          <div class="md3-skeleton-block h-8 w-12 rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template data-transition-proxy-shell="full-width-post-editor">
+  <div class="relative w-full px-4 post-editor-workbench-inner h-full min-h-0">
+    <div
+      class="main-panel-transition-proxy-grid w-full grid grid-cols-1 gap-4 post-editor-workbench-grid h-full min-h-0"
+    >
+      <main
+        class="main-panel-transition-proxy-main transition-fade overflow-clip w-full col-span-1 row-start-1 row-end-2 relative post-editor-main-container"
+      >
+        <div
+          data-transition-proxy-main-slot
+          class="main-panel-transition-proxy-content post-editor-content-wrapper"
+        >
+        </div>
+      </main>
+    </div>
+  </div>
+</template>
+
+<template data-transition-proxy-template="fallback">
+  <div
+    class="main-panel-transition-proxy-shell main-panel-transition-proxy-scroll"
+  >
+    <section class="card-base rounded-(--radius-large) p-8 space-y-4">
+      <div
+        class="md3-skeleton-text"
+        style="--skeleton-width: 32%; --skeleton-height: 1.8rem;"
+      >
+      </div>
+      <div class="space-y-2">
+        <div class="md3-skeleton-text" style="--skeleton-width: 88%;"></div>
+        <div class="md3-skeleton-text" style="--skeleton-width: 72%;"></div>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <div class="card-base rounded-(--radius-large) p-6 space-y-4">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 24%; --skeleton-height: 1.15rem;"
+        >
+        </div>
+        <div class="space-y-3">
+          <div class="md3-skeleton-text" style="--skeleton-width: 96%;"></div>
+          <div class="md3-skeleton-text" style="--skeleton-width: 90%;"></div>
+          <div class="md3-skeleton-text" style="--skeleton-width: 86%;"></div>
+          <div class="md3-skeleton-text" style="--skeleton-width: 78%;"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-4 pt-2">
+          <div class="md3-skeleton-block h-24 rounded-xl"></div>
+          <div class="md3-skeleton-block h-24 rounded-xl"></div>
+        </div>
+      </div>
+      <div class="card-base rounded-(--radius-large) p-6 space-y-4">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 22%; --skeleton-height: 1.15rem;"
+        >
+        </div>
+        <div class="md3-skeleton-block h-48 rounded-xl"></div>
+        <div class="space-y-3">
+          <div class="md3-skeleton-text" style="--skeleton-width: 88%;"></div>
+          <div class="md3-skeleton-text" style="--skeleton-width: 84%;"></div>
+          <div class="md3-skeleton-text" style="--skeleton-width: 66%;"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</template>
+
+<template data-transition-proxy-template="post-card">
+  <div
+    class="main-panel-transition-proxy-shell main-panel-transition-proxy-scroll"
+  >
+    <section class="card-base rounded-(--radius-large) p-8 space-y-4">
+      <div
+        class="md3-skeleton-text"
+        style="--skeleton-width: 20%; --skeleton-height: 1.8rem;"
+      >
+      </div>
+      <div class="space-y-2">
+        <div class="md3-skeleton-text" style="--skeleton-width: 52%;"></div>
+        <div class="md3-skeleton-text" style="--skeleton-width: 32%;"></div>
+      </div>
+    </section>
+
+    <section class="space-y-4">
+      {
+        Array.from({ length: 3 }).map(() => (
+          <article class="card-base rounded-(--radius-large) p-6 space-y-5">
+            <div class="flex items-start justify-between gap-6">
+              <div class="flex-1 space-y-4">
+                <div class="flex items-center gap-3">
+                  <div class="md3-skeleton-block h-8 w-1 rounded-md" />
+                  <div
+                    class="md3-skeleton-text"
+                    style="--skeleton-width: 42%; --skeleton-height: 2rem;"
+                  />
+                </div>
+                <div class="space-y-2">
+                  <div
+                    class="md3-skeleton-text"
+                    style="--skeleton-width: 86%;"
+                  />
+                  <div
+                    class="md3-skeleton-text"
+                    style="--skeleton-width: 62%;"
+                  />
+                </div>
+              </div>
+              <div class="md3-skeleton-block h-28 w-[28%] rounded-xl shrink-0" />
+            </div>
+            <div class="flex items-center justify-between gap-4">
+              <div class="flex items-center gap-2.5">
+                <div
+                  class="md3-skeleton-text"
+                  style="--skeleton-width: 8rem; --skeleton-height: 1rem;"
+                />
+                <div class="md3-skeleton-circle h-1.5 w-1.5" />
+                <div
+                  class="md3-skeleton-text"
+                  style="--skeleton-width: 6rem; --skeleton-height: 1rem;"
+                />
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="md3-skeleton-block h-6 w-8 rounded-lg" />
+                <div class="md3-skeleton-block h-6 w-8 rounded-lg" />
+                <div class="md3-skeleton-circle h-6 w-6" />
+              </div>
+            </div>
+          </article>
+        ))
+      }
+    </section>
+  </div>
+</template>
+
+<template data-transition-proxy-template="post-detail">
+  <div
+    class="main-panel-transition-proxy-shell main-panel-transition-proxy-scroll"
+  >
+    <article class="card-base rounded-(--radius-large) p-6 space-y-6">
+      <header class="space-y-4">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 56%; --skeleton-height: 2.1rem;"
+        >
+        </div>
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 34%; --skeleton-height: 0.95rem;"
+        >
+        </div>
+        <div class="space-y-2">
+          <div class="md3-skeleton-text" style="--skeleton-width: 92%;"></div>
+          <div class="md3-skeleton-text" style="--skeleton-width: 68%;"></div>
+        </div>
+      </header>
+
+      <div class="md3-skeleton-block h-[18rem] rounded-xl"></div>
+
+      <div class="space-y-3">
+        <div class="md3-skeleton-text" style="--skeleton-width: 100%;"></div>
+        <div class="md3-skeleton-text" style="--skeleton-width: 97%;"></div>
+        <div class="md3-skeleton-text" style="--skeleton-width: 94%;"></div>
+        <div class="md3-skeleton-text" style="--skeleton-width: 96%;"></div>
+        <div class="md3-skeleton-text" style="--skeleton-width: 92%;"></div>
+        <div class="md3-skeleton-text" style="--skeleton-width: 88%;"></div>
+        <div class="md3-skeleton-text" style="--skeleton-width: 74%;"></div>
+      </div>
+    </article>
+  </div>
+</template>
+
+<template data-transition-proxy-template="diary-detail">
+  <div
+    class="main-panel-transition-proxy-shell main-panel-transition-proxy-scroll"
+  >
+    <article class="card-base rounded-(--radius-large) p-6 space-y-5">
+      <div
+        class="md3-skeleton-text"
+        style="--skeleton-width: 7.5rem; --skeleton-height: 0.95rem;"
+      >
+      </div>
+      <div class="space-y-2">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 54%; --skeleton-height: 2rem;"
+        >
+        </div>
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 42%; --skeleton-height: 0.95rem;"
+        >
+        </div>
+      </div>
+      <div class="space-y-3 pt-2">
+        <div class="md3-skeleton-text" style="--skeleton-width: 98%;"></div>
+        <div class="md3-skeleton-text" style="--skeleton-width: 95%;"></div>
+        <div class="md3-skeleton-text" style="--skeleton-width: 92%;"></div>
+        <div class="md3-skeleton-text" style="--skeleton-width: 84%;"></div>
+      </div>
+      <div class="grid grid-cols-3 gap-3 pt-2">
+        <div class="md3-skeleton-block h-32 rounded-xl"></div>
+        <div class="md3-skeleton-block h-32 rounded-xl"></div>
+        <div class="md3-skeleton-block h-32 rounded-xl"></div>
+      </div>
+    </article>
+  </div>
+</template>
+
+<template data-transition-proxy-template="publish-page">
+  <div class="main-panel-transition-proxy-shell h-full min-h-0">
+    <PublishPageSkeleton proxyVisible={true} />
+  </div>
+</template>
+
+<template data-transition-proxy-template="user-home">
+  <div
+    class="main-panel-transition-proxy-shell main-panel-transition-proxy-scroll"
+  >
+    <section class="card-base rounded-(--radius-large) overflow-hidden">
+      <div class="md3-skeleton-block h-48 w-full rounded-none"></div>
+      <div class="px-6 py-5 space-y-4">
+        <div class="flex items-center gap-4">
+          <div
+            class="md3-skeleton-circle h-20 w-20 border-2 border-(--card-bg)"
+          >
+          </div>
+          <div class="flex-1 space-y-3">
+            <div
+              class="md3-skeleton-text"
+              style="--skeleton-width: 28%; --skeleton-height: 1.4rem;"
+            >
+            </div>
+            <div
+              class="md3-skeleton-text"
+              style="--skeleton-width: 18%; --skeleton-height: 0.85rem;"
+            >
+            </div>
+          </div>
+        </div>
+        <div class="space-y-2">
+          <div class="md3-skeleton-text" style="--skeleton-width: 90%;"></div>
+          <div class="md3-skeleton-text" style="--skeleton-width: 74%;"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      {
+        Array.from({ length: 3 }).map(() => (
+          <div class="card-base rounded-(--radius-large) overflow-hidden">
+            <div class="md3-skeleton-block h-36 w-full rounded-none" />
+            <div class="p-4 space-y-3">
+              <div
+                class="md3-skeleton-text"
+                style="--skeleton-width: 70%; --skeleton-height: 1rem;"
+              />
+              <div
+                class="md3-skeleton-text"
+                style="--skeleton-width: 48%; --skeleton-height: 0.8rem;"
+              />
+            </div>
+          </div>
+        ))
+      }
+    </section>
+  </div>
+</template>
+
+<template data-transition-proxy-template="me-homepage">
+  <div
+    class="main-panel-transition-proxy-shell main-panel-transition-proxy-scroll"
+  >
+    <section class="card-base px-9 py-6 rounded-(--radius-large) space-y-3">
+      <div
+        class="md3-skeleton-text"
+        style="--skeleton-width: 26%; --skeleton-height: 1.9rem;"
+      >
+      </div>
+      <div class="md3-skeleton-text" style="--skeleton-width: 44%;"></div>
+    </section>
+    <section class="card-base p-8 rounded-(--radius-large) space-y-4">
+      <div
+        class="md3-skeleton-text"
+        style="--skeleton-width: 32%; --skeleton-height: 1.2rem;"
+      >
+      </div>
+      <div class="md3-skeleton-block h-48 rounded-xl"></div>
+      <div class="md3-skeleton-block h-10 w-48 rounded-lg"></div>
+    </section>
+    <section class="card-base p-8 rounded-(--radius-large) space-y-4">
+      <div
+        class="md3-skeleton-text"
+        style="--skeleton-width: 24%; --skeleton-height: 1.2rem;"
+      >
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {
+          Array.from({ length: 4 }).map(() => (
+            <div class="md3-skeleton-block h-12 rounded-lg" />
+          ))
+        }
+      </div>
+      <div class="flex justify-end">
+        <div class="md3-skeleton-block h-10 w-32 rounded-lg"></div>
+      </div>
+    </section>
+  </div>
+</template>
+
+<template data-transition-proxy-template="user-bangumi">
+  <div
+    class="main-panel-transition-proxy-shell main-panel-transition-proxy-scroll"
+  >
+    <section class="card-base rounded-(--radius-large) p-6 space-y-3">
+      <div
+        class="md3-skeleton-text"
+        style="--skeleton-width: 26%; --skeleton-height: 1.8rem;"
+      >
+      </div>
+      <div
+        class="md3-skeleton-text"
+        style="--skeleton-width: 42%; --skeleton-height: 0.9rem;"
+      >
+      </div>
+    </section>
+    <section class="space-y-4">
+      {
+        Array.from({ length: 3 }).map(() => (
+          <article class="card-base rounded-(--radius-large) p-5 flex gap-4">
+            <div class="md3-skeleton-block h-32 w-24 rounded-lg shrink-0" />
+            <div class="flex-1 space-y-3">
+              <div
+                class="md3-skeleton-text"
+                style="--skeleton-width: 64%; --skeleton-height: 1.6rem;"
+              />
+              <div
+                class="md3-skeleton-text"
+                style="--skeleton-width: 34%; --skeleton-height: 0.85rem;"
+              />
+              <div class="space-y-2">
+                <div class="md3-skeleton-text" style="--skeleton-width: 92%;" />
+                <div class="md3-skeleton-text" style="--skeleton-width: 86%;" />
+              </div>
+              <div class="flex gap-2">
+                <div class="md3-skeleton-block h-6 w-16 rounded-lg" />
+                <div class="md3-skeleton-block h-6 w-16 rounded-lg" />
+              </div>
+            </div>
+          </article>
+        ))
+      }
+    </section>
+  </div>
+</template>
+
+<template data-transition-proxy-template="user-albums">
+  <div
+    class="main-panel-transition-proxy-shell main-panel-transition-proxy-scroll"
+  >
+    <section
+      class="card-base rounded-(--radius-large) p-6 flex items-center justify-between gap-4"
+    >
+      <div class="space-y-3 flex-1">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 24%; --skeleton-height: 1.8rem;"
+        >
+        </div>
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 40%; --skeleton-height: 0.9rem;"
+        >
+        </div>
+      </div>
+      <div class="md3-skeleton-block h-10 w-28 rounded-lg"></div>
+    </section>
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {
+        Array.from({ length: 4 }).map(() => (
+          <article class="card-base rounded-(--radius-large) overflow-hidden">
+            <div class="md3-skeleton-block h-56 w-full rounded-none" />
+            <div class="p-5 space-y-3">
+              <div
+                class="md3-skeleton-text"
+                style="--skeleton-width: 58%; --skeleton-height: 1.3rem;"
+              />
+              <div class="space-y-2">
+                <div class="md3-skeleton-text" style="--skeleton-width: 82%;" />
+                <div class="md3-skeleton-text" style="--skeleton-width: 68%;" />
+              </div>
+            </div>
+          </article>
+        ))
+      }
+    </section>
+  </div>
+</template>
+
+<template data-transition-proxy-template="user-diary">
+  <div
+    class="main-panel-transition-proxy-shell main-panel-transition-proxy-scroll"
+  >
+    <section class="card-base rounded-(--radius-large) p-6 space-y-3">
+      <div
+        class="md3-skeleton-text"
+        style="--skeleton-width: 22%; --skeleton-height: 1.8rem;"
+      >
+      </div>
+      <div
+        class="md3-skeleton-text"
+        style="--skeleton-width: 38%; --skeleton-height: 0.9rem;"
+      >
+      </div>
+    </section>
+    <section class="space-y-4">
+      {
+        Array.from({ length: 3 }).map(() => (
+          <article class="card-base rounded-(--radius-large) p-5 space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+              <div class="md3-skeleton-block h-20 rounded-lg" />
+              <div class="md3-skeleton-block h-20 rounded-lg" />
+            </div>
+            <div class="space-y-2">
+              <div class="md3-skeleton-text" style="--skeleton-width: 92%;" />
+              <div class="md3-skeleton-text" style="--skeleton-width: 86%;" />
+              <div class="md3-skeleton-text" style="--skeleton-width: 72%;" />
+            </div>
+            <div class="flex items-center justify-between gap-4">
+              <div class="flex items-center gap-2.5">
+                <div
+                  class="md3-skeleton-text"
+                  style="--skeleton-width: 8rem; --skeleton-height: 1rem;"
+                />
+                <div class="md3-skeleton-circle h-1.5 w-1.5" />
+                <div
+                  class="md3-skeleton-text"
+                  style="--skeleton-width: 6rem; --skeleton-height: 1rem;"
+                />
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="md3-skeleton-block h-6 w-8 rounded-lg" />
+                <div class="md3-skeleton-block h-6 w-8 rounded-lg" />
+                <div class="md3-skeleton-circle h-6 w-6" />
+              </div>
+            </div>
+          </article>
+        ))
+      }
+    </section>
+  </div>
+</template>
+
+<template data-transition-proxy-template="admin-dashboard">
+  <div
+    class="main-panel-transition-proxy-shell main-panel-transition-proxy-scroll"
+  >
+    <section class="card-base px-9 py-6 rounded-(--radius-large) space-y-3">
+      <div
+        class="md3-skeleton-text"
+        style="--skeleton-width: 30%; --skeleton-height: 2rem;"
+      >
+      </div>
+      <div class="md3-skeleton-text" style="--skeleton-width: 58%;"></div>
+    </section>
+    <section class="grid grid-cols-1 gap-4">
+      {
+        Array.from({ length: 4 }).map(() => (
+          <div class="card-base p-6 rounded-(--radius-large) border border-(--line-divider) space-y-3">
+            <div
+              class="md3-skeleton-text"
+              style="--skeleton-width: 36%; --skeleton-height: 1.25rem;"
+            />
+            <div class="space-y-2">
+              <div class="md3-skeleton-text" style="--skeleton-width: 90%;" />
+              <div class="md3-skeleton-text" style="--skeleton-width: 74%;" />
+            </div>
+          </div>
+        ))
+      }
+    </section>
+  </div>
+</template>
+
+<template data-transition-proxy-template="admin-users">
+  <div
+    class="main-panel-transition-proxy-shell main-panel-transition-proxy-scroll"
+  >
+    <section class="card-base px-9 py-6 rounded-(--radius-large) space-y-3">
+      <div
+        class="md3-skeleton-text"
+        style="--skeleton-width: 30%; --skeleton-height: 2rem;"
+      >
+      </div>
+      <div class="md3-skeleton-text" style="--skeleton-width: 54%;"></div>
+    </section>
+    <section class="card-base p-6 rounded-(--radius-large) space-y-4">
+      <div class="flex items-center justify-between gap-3">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 24%; --skeleton-height: 1.25rem;"
+        >
+        </div>
+        <div class="md3-skeleton-block h-9 w-16 rounded-lg"></div>
+      </div>
+      <div class="space-y-2">
+        {
+          Array.from({ length: 6 }).map(() => (
+            <div class="md3-skeleton-block h-11 rounded-lg" />
+          ))
+        }
+      </div>
+    </section>
+    <section class="card-base p-6 rounded-(--radius-large) space-y-4">
+      <div class="flex items-center justify-between gap-3">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 20%; --skeleton-height: 1.25rem;"
+        >
+        </div>
+        <div class="md3-skeleton-block h-9 w-16 rounded-lg"></div>
+      </div>
+      <div class="space-y-2">
+        {
+          Array.from({ length: 5 }).map(() => (
+            <div class="md3-skeleton-block h-11 rounded-lg" />
+          ))
+        }
+      </div>
+    </section>
+  </div>
+</template>
+
+{
+  settingsModes.map((mode) => (
+    <template data-transition-proxy-template={mode}>
+      <div class="main-panel-transition-proxy-shell main-panel-transition-proxy-scroll">
+        <section class="card-base rounded-(--radius-large) p-6 space-y-4">
+          <div
+            class="md3-skeleton-text"
+            style="--skeleton-width: 26%; --skeleton-height: 1.7rem;"
+          />
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {Array.from({ length: 4 }).map(() => (
+              <div class="space-y-2.5">
+                <div
+                  class="md3-skeleton-text"
+                  style="--skeleton-width: 30%; --skeleton-height: 0.85rem;"
+                />
+                <div class="md3-skeleton-block h-11 rounded-lg" />
+              </div>
+            ))}
+          </div>
+          <div class="space-y-2.5">
+            <div
+              class="md3-skeleton-text"
+              style="--skeleton-width: 18%; --skeleton-height: 0.85rem;"
+            />
+            <div class="md3-skeleton-block h-32 rounded-xl" />
+          </div>
+          <div class="flex justify-end">
+            <div class="md3-skeleton-block h-10 w-28 rounded-lg" />
+          </div>
+        </section>
+      </div>
+    </template>
+  ))
+}
+
+{
+  staticPageModes.map((mode) => (
+    <template data-transition-proxy-template={mode}>
+      <div class="main-panel-transition-proxy-shell main-panel-transition-proxy-scroll">
+        <section class="card-base rounded-(--radius-large) p-8 space-y-4">
+          <div
+            class="md3-skeleton-text"
+            style="--skeleton-width: 28%; --skeleton-height: 1.9rem;"
+          />
+          <div class="space-y-2">
+            <div class="md3-skeleton-text" style="--skeleton-width: 92%;" />
+            <div class="md3-skeleton-text" style="--skeleton-width: 88%;" />
+            <div class="md3-skeleton-text" style="--skeleton-width: 74%;" />
+          </div>
+        </section>
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {Array.from({ length: 4 }).map(() => (
+            <div class="card-base rounded-(--radius-large) p-5 space-y-3">
+              <div class="md3-skeleton-block h-32 rounded-xl" />
+              <div
+                class="md3-skeleton-text"
+                style="--skeleton-width: 62%; --skeleton-height: 1rem;"
+              />
+              <div class="space-y-2">
+                <div class="md3-skeleton-text" style="--skeleton-width: 90%;" />
+                <div class="md3-skeleton-text" style="--skeleton-width: 66%;" />
+              </div>
+            </div>
+          ))}
+        </section>
+      </div>
+    </template>
+  ))
+}
+
+<template data-transition-proxy-template="auth-login">
+  <AuthLoginShell>
+    <AuthLoginSkeletonCard proxyVisible={true} />
+  </AuthLoginShell>
+</template>
+
+<template data-transition-proxy-template="auth-register">
+  <RegisterFormSkeleton proxyVisible={true} />
+</template>
+
+{
+  feedModes.map((mode) => (
+    <template data-transition-proxy-template={mode}>
+      <div class="main-panel-transition-proxy-shell main-panel-transition-proxy-scroll">
+        <section class="card-base rounded-(--radius-large) p-6 space-y-4">
+          <div class="flex items-center gap-4">
+            <div class="md3-skeleton-circle h-16 w-16" />
+            <div class="flex-1 space-y-3">
+              <div
+                class="md3-skeleton-text"
+                style="--skeleton-width: 24%; --skeleton-height: 1.6rem;"
+              />
+              <div
+                class="md3-skeleton-text"
+                style="--skeleton-width: 52%; --skeleton-height: 0.9rem;"
+              />
+            </div>
+          </div>
+        </section>
+        <section class="space-y-4">
+          {Array.from({ length: 4 }).map(() => (
+            <article class="card-base rounded-(--radius-large) p-5 space-y-4">
+              <div class="flex items-center justify-between gap-4">
+                <div
+                  class="md3-skeleton-text"
+                  style="--skeleton-width: 46%; --skeleton-height: 1.1rem;"
+                />
+                <div class="md3-skeleton-block h-9 w-24 rounded-lg" />
+              </div>
+              <div class="space-y-2">
+                <div class="md3-skeleton-text" style="--skeleton-width: 94%;" />
+                <div class="md3-skeleton-text" style="--skeleton-width: 88%;" />
+                <div class="md3-skeleton-text" style="--skeleton-width: 70%;" />
+              </div>
+            </article>
+          ))}
+        </section>
+      </div>
+    </template>
+  ))
+}

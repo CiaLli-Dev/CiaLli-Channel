@@ -1,0 +1,156 @@
+---
+import type { MarkdownHeading } from "astro";
+import Announcement from "@/components/widget/Announcement.astro";
+import Calendar from "@/components/widget/Calendar.astro";
+import Categories from "@/components/widget/Categories.astro";
+import MusicPlayer from "@/components/widget/MusicPlayer/MusicPlayer.svelte";
+import Profile from "@/components/widget/Profile.astro";
+import SiteStats from "@/components/widget/SiteStats.astro";
+import Tags from "@/components/widget/Tags.astro";
+import TOC from "@/components/widget/TOC.astro";
+import type { JsonValue } from "@/types/json";
+import type { WidgetComponentConfig } from "@/types/config";
+import { widgetManager } from "@/utils/widget-manager";
+import { pathsEqual, url } from "@/utils/url-utils";
+
+interface Props {
+  class?: string;
+  headings?: MarkdownHeading[];
+}
+
+const { class: className, headings } = Astro.props;
+const isHomePage = pathsEqual(Astro.url.pathname, url("/"));
+
+const filterCalendar = (components: WidgetComponentConfig[]) => {
+  if (isHomePage) {
+    return components;
+  }
+  return components.filter((component) => component.type !== "calendar");
+};
+
+const topComponents = filterCalendar(
+  widgetManager.getComponentsByPosition("top", "right"),
+);
+const stickyComponents = filterCalendar(
+  widgetManager.getComponentsByPosition("sticky", "right"),
+);
+
+const stickyContainerClass =
+  "flex flex-col w-full gap-4 sticky top-4 transition-[top] duration-(--layout-mode-transition-duration) ease-(--layout-mode-transition-easing)";
+
+const componentMap = {
+  profile: Profile,
+  announcement: Announcement,
+  categories: Categories,
+  tags: Tags,
+  "music-player": MusicPlayer,
+  "site-stats": SiteStats,
+  calendar: Calendar,
+};
+
+type TocRenderData = {
+  type: "toc";
+  class: string;
+  style: string;
+  headings: MarkdownHeading[];
+  customProps: WidgetComponentConfig["customProps"];
+};
+
+type ComponentRenderData = {
+  type: "component";
+  Component: (typeof componentMap)[keyof typeof componentMap];
+  props: Record<string, JsonValue>;
+};
+
+type RenderData = TocRenderData | ComponentRenderData;
+
+function renderComponent(
+  component: WidgetComponentConfig,
+  index: number,
+): RenderData | null {
+  const componentClass = widgetManager.getComponentClass(component, index);
+  const componentStyle = widgetManager.getComponentStyle(component, index);
+
+  if (component.type === "toc") {
+    return {
+      type: "toc",
+      class: componentClass,
+      style: componentStyle,
+      headings: headings ?? [],
+      customProps: component.customProps,
+    };
+  }
+
+  const ComponentToRender =
+    componentMap[component.type as keyof typeof componentMap];
+  if (!ComponentToRender) {
+    return null;
+  }
+
+  return {
+    type: "component",
+    Component: ComponentToRender,
+    props: {
+      class: componentClass,
+      style: componentStyle,
+      ...(component.customProps ?? {}),
+    },
+  };
+}
+---
+
+<div id="right-sidebar" class:list={[className, "w-full"]}>
+  {
+    topComponents.length > 0 && (
+      <div class="flex flex-col w-full gap-4 mb-4">
+        {topComponents.map((component, index) => {
+          const renderData = renderComponent(component, index);
+          if (!renderData) {
+            return null;
+          }
+
+          if (renderData.type === "toc") {
+            return (
+              <TOC
+                class={renderData.class}
+                style={renderData.style}
+                headings={renderData.headings}
+                {...(renderData.customProps ?? {})}
+              />
+            );
+          }
+
+          const { Component, props } = renderData;
+          return <Component {...props} />;
+        })}
+      </div>
+    )
+  }
+
+  {
+    stickyComponents.length > 0 && (
+      <div id="right-sidebar-sticky" class={stickyContainerClass}>
+        {stickyComponents.map((component, index) => {
+          const renderData = renderComponent(component, index);
+          if (!renderData) {
+            return null;
+          }
+
+          if (renderData.type === "toc") {
+            return (
+              <TOC
+                class={renderData.class}
+                style={renderData.style}
+                headings={renderData.headings}
+                {...(renderData.customProps ?? {})}
+              />
+            );
+          }
+
+          const { Component, props } = renderData;
+          return <Component {...props} />;
+        })}
+      </div>
+    )
+  }
+</div>

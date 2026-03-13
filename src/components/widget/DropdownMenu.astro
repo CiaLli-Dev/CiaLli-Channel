@@ -1,0 +1,303 @@
+---
+import { Icon } from "astro-icon/components";
+import { LinkPresets } from "@constants/link-presets";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import type { NavBarLink } from "@/types/config";
+import { isAdminOnlyLink } from "@utils/nav-link-utils";
+import { url } from "@utils/url-utils";
+
+interface Props {
+  link: NavBarLink;
+  class?: string;
+}
+
+const { link, class: className } = Astro.props;
+
+const navTitleMap: Record<string, I18nKey> = {
+  Links: I18nKey.coreNavLinks,
+  链接: I18nKey.coreNavLinks,
+  My: I18nKey.coreNavMy,
+  我的: I18nKey.coreNavMy,
+  About: I18nKey.coreNavAbout,
+  关于: I18nKey.coreNavAbout,
+  Others: I18nKey.coreNavOthers,
+  其他: I18nKey.coreNavOthers,
+  Anime: I18nKey.contentAnime,
+  番剧: I18nKey.contentAnime,
+  Diary: I18nKey.contentDiary,
+  日记: I18nKey.contentDiary,
+  Gallery: I18nKey.contentAlbums,
+  相册: I18nKey.contentAlbums,
+  Friends: I18nKey.contentFriends,
+  友情链接: I18nKey.contentFriends,
+  关于我们: I18nKey.coreAbout,
+  站点统计: I18nKey.coreSiteStats,
+};
+
+const getLocalizedName = (name: string): string => {
+  return name in navTitleMap ? i18n(navTitleMap[name]) : name;
+};
+
+const resolveHref = (rawUrl: string, isExternal?: boolean): string => {
+  return isExternal ? rawUrl : url(rawUrl);
+};
+
+const children =
+  link.children?.map((child) =>
+    typeof child === "number" ? LinkPresets[child] : child,
+  ) ?? [];
+
+const hasChildren = children.length > 0;
+const isAdminOnly = isAdminOnlyLink(link);
+const linkHref = resolveHref(link.url, link.external);
+---
+
+<div
+  class:list={["dropdown-container group", className, isAdminOnly && "hidden"]}
+  data-dropdown
+  data-admin-only={isAdminOnly ? "true" : undefined}
+>
+  {
+    hasChildren ? (
+      <>
+        <button
+          class="btn-plain scale-animation rounded-lg h-11 font-bold w-11 lg:w-auto lg:px-5 active:scale-95 dropdown-trigger flex items-center justify-center lg:justify-start whitespace-nowrap"
+          aria-expanded="false"
+          aria-haspopup="true"
+          data-dropdown-trigger
+        >
+          {link.icon && (
+            <Icon name={link.icon} class="text-[1.1rem] lg:mr-2 shrink-0" />
+          )}
+          <span class="truncate hidden lg:inline">
+            {getLocalizedName(link.name)}
+          </span>
+          <Icon
+            name="material-symbols:keyboard-arrow-down-rounded"
+            class="text-[1.25rem] transition-transform duration-200 dropdown-arrow ml-1 shrink-0 hidden lg:inline"
+          />
+        </button>
+
+        <div class="dropdown-menu" data-dropdown-menu>
+          <div class="dropdown-content">
+            {children.map((child) => {
+              const childHref = resolveHref(child.url, child.external);
+              return (
+                <a
+                  href={childHref}
+                  target={child.external ? "_blank" : null}
+                  rel={child.external ? "noopener noreferrer" : null}
+                  class:list={[
+                    "dropdown-item",
+                    isAdminOnlyLink(child) && "hidden",
+                  ]}
+                  data-admin-only={isAdminOnlyLink(child) ? "true" : undefined}
+                  aria-label={child.name}
+                >
+                  <div class="flex items-center">
+                    {child.icon && (
+                      <Icon name={child.icon} class="text-[1rem] mr-2" />
+                    )}
+                    <span>{getLocalizedName(child.name)}</span>
+                  </div>
+                  {child.external && (
+                    <Icon
+                      name="fa7-solid:arrow-up-right-from-square"
+                      class="text-[0.75rem] text-black/25 dark:text-white/25 ml-2"
+                    />
+                  )}
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      </>
+    ) : (
+      <a
+        aria-label={link.name}
+        href={linkHref}
+        target={link.external ? "_blank" : null}
+        rel={link.external ? "noopener noreferrer" : null}
+        class:list={[
+          "btn-plain scale-animation rounded-lg h-11 font-bold w-11 lg:w-auto lg:px-5 active:scale-95 flex items-center justify-center lg:justify-start whitespace-nowrap",
+          isAdminOnly && "hidden",
+        ]}
+        data-admin-only={isAdminOnly ? "true" : undefined}
+      >
+        {link.icon && (
+          <Icon name={link.icon} class="text-[1.1rem] lg:mr-2 shrink-0" />
+        )}
+        <span class="truncate hidden lg:inline">
+          {getLocalizedName(link.name)}
+        </span>
+        {link.external && (
+          <Icon
+            name="fa7-solid:arrow-up-right-from-square"
+            class="text-[0.875rem] transition -translate-y-px ml-1 text-black/20 dark:text-white/20 shrink-0 hidden lg:inline"
+          />
+        )}
+      </a>
+    )
+  }
+</div>
+
+<style>
+  @reference "../../styles/main.css";
+
+  .dropdown-container {
+    @apply relative;
+  }
+
+  .dropdown-menu {
+    @apply absolute top-full left-0 pt-2 opacity-0 invisible pointer-events-none translate-y-[-8px] transition-all duration-200 ease-out z-50;
+  }
+
+  .dropdown-container:hover .dropdown-menu,
+  .dropdown-container:focus-within .dropdown-menu,
+  .dropdown-trigger[aria-expanded="true"] + .dropdown-menu {
+    @apply opacity-100 visible pointer-events-auto translate-y-0;
+  }
+
+  .dropdown-container:hover .dropdown-arrow,
+  .dropdown-container:focus-within .dropdown-arrow,
+  .dropdown-trigger[aria-expanded="true"] .dropdown-arrow {
+    @apply rotate-180;
+  }
+
+  .dropdown-content {
+    @apply bg-(--float-panel-bg) rounded-(--radius-large) shadow-xl dark:shadow-none border border-black/5 dark:border-white/10 p-2 min-w-[12rem];
+  }
+
+  .dropdown-item {
+    @apply flex items-center justify-between px-4 py-2.5 text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) transition-colors duration-150 font-medium rounded-lg;
+  }
+</style>
+
+<script>
+  // 键盘导航支持
+  document.addEventListener("DOMContentLoaded", () => {
+    const dropdowns = Array.from(
+      document.querySelectorAll("[data-dropdown]"),
+    ) as HTMLElement[];
+
+    const getTrigger = (dropdown: Element) =>
+      dropdown.querySelector("[data-dropdown-trigger]") as HTMLElement | null;
+
+    // 关闭指定下拉菜单
+    const closeDropdown = (dropdown: Element) => {
+      const trigger = getTrigger(dropdown);
+      if (!trigger) {
+        return;
+      }
+      trigger.setAttribute("aria-expanded", "false");
+    };
+
+    // 处理 focus-within 导致的残留展开状态
+    const blurIfFocused = (dropdown: Element) => {
+      const activeElement = document.activeElement as HTMLElement | null;
+      if (activeElement && dropdown.contains(activeElement)) {
+        activeElement.blur();
+      }
+    };
+
+    // 互斥逻辑
+    const closeOtherDropdowns = (currentDropdown: Element) => {
+      dropdowns.forEach((dropdown) => {
+        if (dropdown !== currentDropdown) {
+          closeDropdown(dropdown);
+          blurIfFocused(dropdown);
+        }
+      });
+    };
+
+    dropdowns.forEach((dropdown) => {
+      const trigger = getTrigger(dropdown);
+      const menu = dropdown.querySelector(
+        "[data-dropdown-menu]",
+      ) as HTMLElement;
+      const items = dropdown.querySelectorAll(
+        ".dropdown-item",
+      ) as NodeListOf<HTMLElement>;
+
+      if (!trigger || !menu) {
+        return;
+      }
+
+      const closeMenu = () => {
+        trigger.setAttribute("aria-expanded", "false");
+      };
+
+      const toggleMenu = () => {
+        const isExpanded = trigger.getAttribute("aria-expanded") === "true";
+        if (!isExpanded) {
+          closeOtherDropdowns(dropdown);
+        }
+        trigger.setAttribute("aria-expanded", String(!isExpanded));
+      };
+
+      dropdown.addEventListener("mouseenter", () => {
+        closeOtherDropdowns(dropdown);
+      });
+
+      dropdown.addEventListener("focusin", () => {
+        closeOtherDropdowns(dropdown);
+      });
+
+      trigger.addEventListener("click", () => {
+        const isExpanded = trigger.getAttribute("aria-expanded") === "true";
+        if (isExpanded) {
+          closeMenu();
+          return;
+        }
+        closeOtherDropdowns(dropdown);
+        window.setTimeout(() => {
+          trigger.setAttribute("aria-expanded", "true");
+        });
+      });
+
+      trigger.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          toggleMenu();
+        } else if (e.key === "ArrowDown") {
+          e.preventDefault();
+          closeOtherDropdowns(dropdown);
+          trigger.setAttribute("aria-expanded", "true");
+          if (items.length > 0) {
+            items[0].focus();
+          }
+        } else if (e.key === "Escape") {
+          closeMenu();
+        }
+      });
+
+      // 菜单项键盘导航
+      items.forEach((item, index) => {
+        item.addEventListener("click", () => {
+          closeMenu();
+        });
+        item.addEventListener("keydown", (e) => {
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            items[(index + 1) % items.length].focus();
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            items[(index - 1 + items.length) % items.length].focus();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            closeMenu();
+            trigger.focus();
+          }
+        });
+      });
+
+      // 点击外部关闭
+      document.addEventListener("click", (e) => {
+        if (!dropdown.contains(e.target as Node)) {
+          closeMenu();
+        }
+      });
+    });
+  });
+</script>

@@ -1,0 +1,96 @@
+---
+import Markdown from "@components/misc/Markdown.astro";
+import { renderMarkdown } from "@/server/markdown/render";
+import { loadPublicArticleBySlug } from "@/server/api/v1/shared";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "../layouts/MainGridLayout.astro";
+
+export const prerender = false;
+
+const fallbackTitle = i18n(I18nKey.coreAbout);
+
+let title = fallbackTitle;
+let summary = "";
+let html = "";
+
+try {
+  const article = await loadPublicArticleBySlug("about");
+  if (article?.title) {
+    title = String(article.title).trim() || fallbackTitle;
+  }
+  if (article?.summary) {
+    summary = String(article.summary).trim();
+  }
+  if (article?.body_markdown) {
+    html = await renderMarkdown(String(article.body_markdown), {
+      target: "page",
+    });
+  }
+} catch (error) {
+  console.error("[about] failed to load content:", error);
+}
+
+if (!html) {
+  html = "<p>关于页内容暂未配置。</p>";
+}
+---
+
+<MainGridLayout title={title} description={summary}>
+  <script>
+    import("../scripts/right-sidebar-layout.js");
+  </script>
+  <div
+    data-enter-skeleton-page="about-page"
+    data-enter-skeleton-target="about-page"
+  >
+    <div data-enter-skeleton-inline-content>
+      <div
+        class="flex w-full rounded-(--radius-large) overflow-hidden relative min-h-32"
+      >
+        <div
+          id="post-container"
+          class="card-base z-10 px-9 py-6 relative w-full"
+        >
+          <div class="flex flex-col items-start justify-center mb-8">
+            <h1
+              class="text-4xl font-bold text-black/90 dark:text-white/90 mb-2 relative
+                          before:w-1 before:h-8 before:rounded-md before:bg-(--primary)
+                          before:absolute before:top-1/2 before:-translate-y-1/2 before:-left-4"
+            >
+              {title}
+            </h1>
+          </div>
+
+          <Markdown class="mt-2">
+            <Fragment set:html={html} />
+          </Markdown>
+        </div>
+      </div>
+    </div>
+    <div
+      data-enter-skeleton-inline-placeholder
+      aria-hidden="true"
+      class="flex w-full rounded-(--radius-large) overflow-hidden relative min-h-32"
+    >
+      <div class="card-base z-10 px-9 py-6 relative w-full">
+        <div class="flex flex-col items-start justify-center mb-8">
+          <div
+            class="md3-skeleton-text"
+            style="--skeleton-width: 28%; --skeleton-height: 2rem;"
+          >
+          </div>
+        </div>
+        <div class="space-y-3 mt-2">
+          <div class="md3-skeleton-text" style="--skeleton-width: 96%;"></div>
+          <div class="md3-skeleton-text" style="--skeleton-width: 92%;"></div>
+          <div class="md3-skeleton-text" style="--skeleton-width: 88%;"></div>
+          <div class="md3-skeleton-text" style="--skeleton-width: 78%;"></div>
+          <div class="md3-skeleton-block h-24 rounded-xl mt-2"></div>
+          <div class="md3-skeleton-text" style="--skeleton-width: 94%;"></div>
+          <div class="md3-skeleton-text" style="--skeleton-width: 85%;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</MainGridLayout>

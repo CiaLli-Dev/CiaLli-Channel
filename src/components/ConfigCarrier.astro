@@ -1,0 +1,47 @@
+---
+import { buildLegacySiteConfig } from "@/config";
+import { getTranslation } from "@/i18n/translation";
+import { getResolvedSiteSettings } from "@/server/site-settings/service";
+import type { ResolvedSiteSettings } from "@/types/site-settings";
+
+interface Props {
+  resolvedSiteSettings?: ResolvedSiteSettings;
+}
+
+const resolvedSiteSettings =
+  Astro.props.resolvedSiteSettings ??
+  Astro.locals.siteSettings ??
+  (await getResolvedSiteSettings());
+const legacySiteConfig = buildLegacySiteConfig(
+  resolvedSiteSettings.system,
+  resolvedSiteSettings.settings,
+);
+const runtimeI18n = getTranslation(resolvedSiteSettings.system.lang);
+---
+
+<!-- 全局配置载体 -->
+<div
+  id="config-carrier"
+  data-hue={resolvedSiteSettings.system.themeColor.hue}
+  data-hide-code-blocks-during-transition={resolvedSiteSettings.system
+    .expressiveCode.hideDuringThemeTransition
+    ? "true"
+    : "false"}
+>
+</div>
+
+<script
+  is:inline
+  define:vars={{
+    runtimeSettings: resolvedSiteSettings,
+    legacySiteConfig,
+    runtimeI18n,
+  }}
+>
+  window.__CIALLI_RUNTIME_SETTINGS__ = runtimeSettings;
+  window.siteConfig = legacySiteConfig;
+  window.__CIALLI_I18N__ = runtimeI18n;
+</script>
+
+<!-- 引入Umami Share工具脚本 -->
+<script is:inline src="/js/umami-share.js"></script>

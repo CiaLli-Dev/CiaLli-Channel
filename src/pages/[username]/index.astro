@@ -1,0 +1,323 @@
+---
+import ContentNotVisible from "@components/misc/ContentNotVisible.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import HorizontalScrollSection from "@components/home/HorizontalScrollSection.astro";
+import ArticleCardCompact from "@components/home/ArticleCardCompact.astro";
+import BangumiCardCompact from "@components/home/BangumiCardCompact.astro";
+import AlbumCardCompact from "@components/home/AlbumCardCompact.astro";
+import DiaryCardCompact from "@components/home/DiaryCardCompact.astro";
+import ExternalImage from "@components/misc/ExternalImage.astro";
+import {
+  loadProfileForViewer,
+  loadUserHomeData,
+  profileToSidebarData,
+} from "@/server/api/v1/public-data";
+import type {
+  ContentLoadResult,
+  UserHomeData,
+} from "@/server/api/v1/public-data";
+import {
+  isSpecialArticleSlug,
+  loadPublicArticleByShortId,
+  loadPublicArticleBySlug,
+} from "@/server/api/v1/shared";
+import {
+  runWithDirectusPublicAccess,
+  runWithDirectusUserAccess,
+} from "@/server/directus/client";
+import { isShortId } from "@/server/utils/short-id";
+import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
+
+export const prerender = false;
+
+const username = (Astro.params.username || "").trim();
+
+let result: ContentLoadResult<UserHomeData> = { status: "not_found" };
+let viewerId: string | null = null;
+
+try {
+  if (!username) {
+    Astro.response.status = 404;
+  } else {
+    const sessionUser = await getSessionUser(Astro);
+    viewerId = sessionUser?.id ?? null;
+    result = viewerId
+      ? await runWithDirectusUserAccess(
+          getSessionAccessToken(Astro),
+          async () => await loadUserHomeData(username, { viewerId }),
+        )
+      : await runWithDirectusPublicAccess(
+          async () => await loadUserHomeData(username, { viewerId }),
+        );
+    if (result.status === "not_found") {
+      // 用户不存在，尝试作为文章短链接解析
+      const article = await runWithDirectusPublicAccess(async () =>
+        isShortId(username)
+          ? await loadPublicArticleByShortId(username)
+          : isSpecialArticleSlug(username)
+            ? await loadPublicArticleBySlug(username)
+            : null,
+      );
+      if (article?.short_id) {
+        return Astro.redirect(`/posts/${article.short_id}`, 302);
+      }
+      Astro.response.status = 404;
+    } else if (result.status === "permission_denied") {
+      Astro.response.status = 404;
+    } else {
+      const sidebarProfile = viewerId
+        ? await runWithDirectusUserAccess(
+            getSessionAccessToken(Astro),
+            async () => await loadProfileForViewer(username, viewerId),
+          )
+        : await runWithDirectusPublicAccess(
+            async () => await loadProfileForViewer(username, viewerId),
+          );
+      if (sidebarProfile) {
+        // 个人主页侧栏优先显示当前主页用户资料，避免回退到官方账户
+        Astro.locals.sidebarProfile = profileToSidebarData(sidebarProfile);
+      }
+    }
+  }
+} catch (error) {
+  console.error("[profile] failed to load user home:", error);
+  Astro.response.status = 500;
+}
+
+const payload = result.status === "ok" ? result.data : null;
+const ownerUsername = payload?.owner?.username || username;
+const isOwner = Boolean(viewerId) && payload?.owner?.id === viewerId;
+
+const DEFAULT_SECTION_ORDER = ["articles", "diaries", "bangumi", "albums"];
+const sectionOrder =
+  payload?.profile?.home_section_order ?? DEFAULT_SECTION_ORDER;
+---
+
+<MainGridLayout
+  title={payload?.owner?.name || i18n(I18nKey.contentUserProfileTitle)}
+  description={payload?.profile?.bio || ""}
+>
+  {
+    result.status === "not_found" || result.status === "permission_denied" ? (
+      <ContentNotVisible
+        mode="not_found"
+        title={i18n(I18nKey.contentUserNotFoundTitle)}
+        description={i18n(I18nKey.contentUserNotFoundDescription)}
+        backHref="/"
+        backLabel={i18n(I18nKey.contentUserBackToHome)}
+      />
+    ) : (
+      <>
+        <div
+          data-enter-skeleton-page="user-home"
+          data-enter-skeleton-target="user-home"
+        >
+          <div data-enter-skeleton-inline-content>
+            {/* ── 用户卡片区域（含头图） ── */}
+            <section class="card-base rounded-(--radius-large) mb-4 overflow-hidden relative">
+              {isOwner && (
+                <a
+                  href="/me/homepage"
+                  class="absolute top-3 right-3 z-10 flex items-center justify-center w-9 h-9 rounded-full bg-black/30 hover:bg-black/50 text-white transition-colors backdrop-blur-sm"
+                  title={i18n(I18nKey.interactionCommonEdit)}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M17 3a2.85 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5Z" />
+                    <path d="m15 5 4 4" />
+                  </svg>
+                </a>
+              )}
+              {payload!.owner?.header_url ? (
+                <div class="relative h-66">
+                  <ExternalImage
+                    src={payload!.owner.header_url}
+                    alt="header image"
+                    class="w-full h-full object-cover"
+                    loading="eager"
+                  />
+                  <div class="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-(--card-bg) to-transparent" />
+                </div>
+              ) : (
+                <div class="h-32 bg-linear-to-br from-black/8 to-black/3 dark:from-white/8 dark:to-white/3" />
+              )}
+
+              <div class="px-6 pb-6 -mt-10 relative">
+                <div class="flex items-end gap-4">
+                  {payload!.owner?.avatar_url ? (
+                    <ExternalImage
+                      src={payload!.owner.avatar_url}
+                      alt="avatar"
+                      class="w-20 h-20 rounded-full object-cover border-3 border-(--card-bg) shadow-sm"
+                      loading="eager"
+                    />
+                  ) : (
+                    <div class="w-20 h-20 rounded-full bg-black/10 dark:bg-white/10 border-2 border-(--card-bg)" />
+                  )}
+                  <div class="pb-1">
+                    <h1 class="text-2xl font-bold text-90">
+                      {payload!.owner?.name ||
+                        i18n(I18nKey.contentUserProfileDefaultName)}
+                    </h1>
+                    <p class="text-xs text-60">@{ownerUsername}</p>
+                  </div>
+                </div>
+                {payload!.profile?.bio && (
+                  <p class="mt-4 text-sm text-75 leading-7">
+                    {payload!.profile.bio}
+                  </p>
+                )}
+              </div>
+            </section>
+
+            {/* ── 动态排序内容模块 ── */}
+            {sectionOrder.map((section: string) => {
+              if (
+                section === "articles" &&
+                Array.isArray(payload!.articles) &&
+                payload!.articles.length > 0
+              ) {
+                return (
+                  <HorizontalScrollSection
+                    title={i18n(I18nKey.contentPostList)}
+                    moreHref={`/posts?author=${ownerUsername}`}
+                  >
+                    {payload!.articles.map((item) => (
+                      <ArticleCardCompact
+                        article={item}
+                        username={ownerUsername}
+                      />
+                    ))}
+                  </HorizontalScrollSection>
+                );
+              }
+              if (
+                section === "diaries" &&
+                Array.isArray(payload!.diaries) &&
+                payload!.diaries.length > 0
+              ) {
+                return (
+                  <HorizontalScrollSection
+                    title={i18n(I18nKey.contentDiary)}
+                    moreHref={`/${ownerUsername}/diary`}
+                  >
+                    {payload!.diaries.map((item) => (
+                      <DiaryCardCompact diary={item} username={ownerUsername} />
+                    ))}
+                  </HorizontalScrollSection>
+                );
+              }
+              if (
+                section === "bangumi" &&
+                Array.isArray(payload!.bangumi) &&
+                payload!.bangumi.length > 0
+              ) {
+                return (
+                  <HorizontalScrollSection
+                    title={i18n(I18nKey.contentAnime)}
+                    moreHref={`/${ownerUsername}/bangumi`}
+                  >
+                    {payload!.bangumi.map((item) => (
+                      <BangumiCardCompact bangumi={item} />
+                    ))}
+                  </HorizontalScrollSection>
+                );
+              }
+              if (
+                section === "albums" &&
+                Array.isArray(payload!.albums) &&
+                payload!.albums.length > 0
+              ) {
+                return (
+                  <HorizontalScrollSection
+                    title={i18n(I18nKey.contentAlbums)}
+                    moreHref={`/${ownerUsername}/albums?author=${ownerUsername}`}
+                  >
+                    {payload!.albums.map((item) => (
+                      <AlbumCardCompact album={item} username={ownerUsername} />
+                    ))}
+                  </HorizontalScrollSection>
+                );
+              }
+              return null;
+            })}
+          </div>
+
+          {/* ── 骨架屏 ── */}
+          <div
+            data-enter-skeleton-inline-placeholder
+            aria-hidden="true"
+            class="space-y-4"
+          >
+            {/* 头图区域骨架 */}
+            <section class="card-base rounded-(--radius-large) overflow-hidden">
+              <div class="md3-skeleton-block h-66 w-full" />
+              <div class="px-6 pb-6 -mt-10 relative">
+                <div class="flex items-end gap-4">
+                  <div class="md3-skeleton-circle w-20 h-20 border-2 border-(--card-bg)" />
+                  <div class="flex-1 space-y-2 pb-1">
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 34%; --skeleton-height: 1.6rem;"
+                    />
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 20%; --skeleton-height: 0.78rem;"
+                    />
+                  </div>
+                </div>
+                <div class="space-y-2 pt-4">
+                  <div
+                    class="md3-skeleton-text"
+                    style="--skeleton-width: 90%;"
+                  />
+                  <div
+                    class="md3-skeleton-text"
+                    style="--skeleton-width: 70%;"
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* 横向滚动骨架 ×4 */}
+            {Array.from({ length: 4 }).map(() => (
+              <section class="card-base rounded-(--radius-large) overflow-hidden p-6 space-y-3">
+                <div
+                  class="md3-skeleton-text"
+                  style="--skeleton-width: 18%; --skeleton-height: 1.2rem;"
+                />
+                <div class="flex gap-4 overflow-hidden">
+                  {Array.from({ length: 3 }).map(() => (
+                    <div class="shrink-0 w-[240px] rounded-xl overflow-hidden">
+                      <div class="md3-skeleton-block h-36 w-full" />
+                      <div class="p-3 space-y-2">
+                        <div
+                          class="md3-skeleton-text"
+                          style="--skeleton-width: 80%; --skeleton-height: 0.9rem;"
+                        />
+                        <div
+                          class="md3-skeleton-text"
+                          style="--skeleton-width: 50%; --skeleton-height: 0.7rem;"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </div>
+      </>
+    )
+  }
+</MainGridLayout>

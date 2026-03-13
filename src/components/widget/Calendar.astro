@@ -1,0 +1,275 @@
+---
+import { systemSiteConfig } from "@/config";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import WidgetLayout from "./WidgetLayout.astro";
+import { Icon } from "astro-icon/components";
+
+interface Props {
+  class?: string;
+  style?: string;
+  defaultExpanded?: boolean;
+}
+
+const { class: className, style, defaultExpanded = true } = Astro.props;
+
+const monthNames = [
+  i18n(I18nKey.coreCalendarJanuary),
+  i18n(I18nKey.coreCalendarFebruary),
+  i18n(I18nKey.coreCalendarMarch),
+  i18n(I18nKey.coreCalendarApril),
+  i18n(I18nKey.coreCalendarMay),
+  i18n(I18nKey.coreCalendarJune),
+  i18n(I18nKey.coreCalendarJuly),
+  i18n(I18nKey.coreCalendarAugust),
+  i18n(I18nKey.coreCalendarSeptember),
+  i18n(I18nKey.coreCalendarOctober),
+  i18n(I18nKey.coreCalendarNovember),
+  i18n(I18nKey.coreCalendarDecember),
+];
+
+const weekDays = [
+  i18n(I18nKey.coreCalendarMonday),
+  i18n(I18nKey.coreCalendarTuesday),
+  i18n(I18nKey.coreCalendarWednesday),
+  i18n(I18nKey.coreCalendarThursday),
+  i18n(I18nKey.coreCalendarFriday),
+  i18n(I18nKey.coreCalendarSaturday),
+  i18n(I18nKey.coreCalendarSunday),
+];
+
+const isChinese = systemSiteConfig.lang.startsWith("zh");
+const yearSuffix = isChinese ? "年" : " ";
+const calendarTitle = isChinese ? "日期" : "Date";
+---
+
+<WidgetLayout id="calendar-widget" class={className} style={style}>
+  <div
+    class="calendar-shell font-bold transition text-lg text-neutral-900 dark:text-neutral-100 relative ml-4 mt-4 mb-0 flex items-center justify-between gap-2
+			before:w-1 before:h-4 before:rounded-md before:bg-(--primary)
+			before:absolute before:left-[-16px] before:top-[5.5px]"
+  >
+    <div class="min-w-0 flex items-center gap-2">
+      <span class="shrink-0">{calendarTitle}</span>
+    </div>
+    <button
+      id="calendar-toggle-btn"
+      type="button"
+      aria-controls="calendar-body"
+      aria-expanded={defaultExpanded ? "true" : "false"}
+      class="calendar-toggle-btn p-1.5 rounded-md hover:bg-(--btn-plain-bg-hover) text-neutral-600 dark:text-neutral-400 hover:text-(--primary) transition-colors shrink-0"
+    >
+      <Icon
+        id="calendar-toggle-icon"
+        name="material-symbols:expand-more-rounded"
+        class:list={[
+          "text-xl transition-transform duration-200",
+          { "rotate-180": defaultExpanded },
+        ]}
+      />
+    </button>
+  </div>
+
+  <div
+    id="calendar-body"
+    class:list={["calendar-body", { expanded: defaultExpanded }]}
+  >
+    <div
+      id="calendar-loading"
+      class="hidden py-2 text-sm text-neutral-600 dark:text-neutral-300"
+    >
+      {isChinese ? "正在加载日历..." : "Loading calendar..."}
+    </div>
+    <div id="calendar-load-error" class="hidden py-2">
+      <div
+        id="calendar-load-error-text"
+        class="text-sm text-red-600 dark:text-red-300"
+      >
+      </div>
+      <button
+        id="calendar-retry-btn"
+        type="button"
+        class="mt-2 text-sm text-(--primary) hover:underline cursor-pointer"
+      >
+        {isChinese ? "重试" : "Retry"}
+      </button>
+    </div>
+
+    <div id="calendar-content" class="hidden">
+      <div class="flex justify-between items-center mb-2 mt-2">
+        <div class="flex items-center gap-1 min-w-0">
+          <div
+            id="calendar-year-btn"
+            class="cursor-pointer hover:bg-(--btn-plain-bg-hover) px-2 py-1.5 rounded-lg transition-colors text-lg font-bold text-neutral-900 dark:text-neutral-100 select-none"
+          >
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1 shrink-0 ml-2">
+          <button
+            id="back-to-today-btn"
+            class="p-1.5 rounded-md hover:bg-(--btn-plain-bg-hover) text-(--primary) transition-all invisible"
+            aria-label="Back to today"
+          >
+            <Icon name="material-symbols:restart-alt-rounded" class="text-xl" />
+          </button>
+          <div
+            class="flex items-center bg-(--card-bg) rounded-lg border border-neutral-200 dark:border-neutral-700"
+          >
+            <button
+              id="prev-month-btn"
+              class="p-1 px-2 hover:bg-(--btn-plain-bg-hover) text-neutral-600 dark:text-neutral-400 hover:text-(--primary) transition-colors text-sm font-bold rounded-l-lg"
+              aria-label="Previous month"
+            >
+              ＜
+            </button>
+            <div
+              id="calendar-month-btn"
+              class="cursor-pointer hover:bg-(--btn-plain-bg-hover) px-2 py-1 transition-colors text-sm font-bold text-neutral-900 dark:text-neutral-100 select-none min-w-[3rem] text-center"
+            >
+            </div>
+            <button
+              id="next-month-btn"
+              class="p-1 px-2 hover:bg-(--btn-plain-bg-hover) text-neutral-600 dark:text-neutral-400 hover:text-(--primary) transition-colors text-sm font-bold rounded-r-lg"
+              aria-label="Next month"
+            >
+              ＞
+            </button>
+          </div>
+        </div>
+      </div>
+      <div
+        class="relative w-full overflow-hidden"
+        style="min-height: 15.625rem;"
+      >
+        <div id="calendar-view" class="w-full opacity-100">
+          <div class="grid grid-cols-7 gap-1 mb-2">
+            {
+              weekDays.map((day) => (
+                <div class="text-center text-xs text-neutral-500 dark:text-neutral-400 font-medium py-1">
+                  {day}
+                </div>
+              ))
+            }
+          </div>
+          <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
+        </div>
+        <div
+          id="selection-panel"
+          class="absolute inset-0 bg-(--card-bg) z-10 hidden opacity-0 transition-opacity duration-200"
+        >
+          <div
+            id="selection-content"
+            class="w-full h-full overflow-y-auto custom-scrollbar p-2 grid gap-2 content-start"
+          >
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</WidgetLayout>
+
+<script
+  is:inline
+  define:vars={{
+    monthNames,
+    yearSuffix,
+    defaultExpanded,
+    isChinese,
+  }}
+>
+  window.__calendarWidgetConfig = {
+    monthNames,
+    yearSuffix,
+    defaultExpanded,
+    isChinese,
+  };
+</script>
+
+<script>
+  import { initCalendarWidget } from "@/scripts/calendar-widget";
+  import type { CalendarConfig } from "@/scripts/calendar-widget";
+
+  const rw = window as Window & {
+    __calendarWidgetConfig?: CalendarConfig;
+  };
+  const cfg = rw.__calendarWidgetConfig;
+  if (cfg) {
+    initCalendarWidget(cfg);
+  }
+</script>
+
+<style>
+  .calendar-body {
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
+    overflow: hidden;
+    transition:
+      max-height 240ms ease,
+      opacity 180ms ease;
+  }
+
+  .calendar-body.expanded {
+    max-height: 40rem;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  :global(.calendar-day-default) {
+    color: rgb(64 64 64);
+  }
+
+  :global(.dark .calendar-day-default) {
+    color: rgb(212 212 212);
+  }
+
+  :global(.calendar-day-default:hover),
+  :global(.calendar-day-has-post:hover) {
+    background: var(--btn-plain-bg-hover);
+  }
+
+  :global(.calendar-day-has-post) {
+    font-weight: 700;
+    color: rgb(23 23 23);
+  }
+
+  :global(.dark .calendar-day-has-post) {
+    color: rgb(245 245 245);
+  }
+
+  :global(.calendar-day-today) {
+    font-weight: 700;
+    color: var(--primary);
+    background: color-mix(in oklab, var(--primary) 10%, transparent);
+    border-color: var(--primary);
+  }
+
+  :global(.calendar-day-dot) {
+    background: var(--primary);
+  }
+
+  :global(.calendar-day.is-selected) {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 6px 16px color-mix(in oklab, var(--primary) 35%, transparent);
+  }
+
+  :global(.calendar-day.is-selected .calendar-day-dot) {
+    background: #fff;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.5);
+    border-radius: 2px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(156, 163, 175, 0.8);
+  }
+</style>

@@ -1,0 +1,88 @@
+---
+import type { BangumiCollectionItem } from "@/server/bangumi/types";
+import ExternalImage from "@components/misc/ExternalImage.astro";
+
+interface Props {
+  bangumi: BangumiCollectionItem;
+}
+
+const { bangumi } = Astro.props;
+
+const hasCover = Boolean(bangumi.cover_url);
+
+// Bangumi 观看状态徽章文案（卡片保持紧凑，使用短文案）
+const statusMap: Record<string, { label: string; color: string }> = {
+  watching: { label: "在看", color: "bg-green-500" },
+  completed: { label: "看过", color: "bg-blue-500" },
+  planned: { label: "想看", color: "bg-yellow-500" },
+  onhold: { label: "搁置", color: "bg-gray-500" },
+  dropped: { label: "弃番", color: "bg-red-500" },
+};
+
+const statusInfo = statusMap[bangumi.watch_status] || statusMap.planned;
+
+const ratingStr =
+  bangumi.rating !== null && bangumi.rating !== undefined
+    ? `${bangumi.rating}分`
+    : "";
+
+const Tag = bangumi.link ? "a" : "div";
+const linkProps = bangumi.link
+  ? { href: bangumi.link, target: "_blank", rel: "noopener noreferrer" }
+  : {};
+---
+
+<Tag
+  {...linkProps}
+  class="shrink-0 w-[160px] rounded-xl overflow-hidden bg-black/5 dark:bg-white/5 hover:bg-black/8 dark:hover:bg-white/8 transition-colors snap-start block group"
+>
+  <div class="h-48 overflow-hidden relative">
+    {
+      hasCover ? (
+        <ExternalImage
+          src={bangumi.cover_url || ""}
+          alt={bangumi.title}
+          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          loading="lazy"
+        />
+      ) : (
+        <div class="w-full h-full bg-gradient-to-br from-black/10 to-black/5 dark:from-white/10 dark:to-white/5 flex items-center justify-center">
+          <svg
+            class="w-10 h-10 text-black/20 dark:text-white/20"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z" />
+          </svg>
+        </div>
+      )
+    }
+    <span
+      class:list={[
+        "absolute bottom-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-medium text-white shadow-sm",
+        statusInfo.color,
+      ]}
+    >
+      {statusInfo.label}
+    </span>
+  </div>
+
+  <div class="p-2.5">
+    <h3
+      class="text-sm font-medium text-90 line-clamp-2 leading-snug mb-1 group-hover:text-(--primary) transition-colors"
+    >
+      {bangumi.title}
+    </h3>
+    <p class="text-xs text-50 flex items-center gap-1">
+      {
+        ratingStr && (
+          <>
+            <span>{ratingStr}</span>
+            {bangumi.year && <span aria-hidden="true">·</span>}
+          </>
+        )
+      }
+      {bangumi.year && <span>{bangumi.year}</span>}
+    </p>
+  </div>
+</Tag>

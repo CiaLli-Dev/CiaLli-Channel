@@ -1,0 +1,504 @@
+---
+import ContentNotVisible from "@components/misc/ContentNotVisible.astro";
+import ExternalImage from "@components/misc/ExternalImage.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import {
+  loadProfileForViewer,
+  loadUserAlbumList,
+  profileToSidebarData,
+} from "@/server/api/v1/public-data";
+import {
+  runWithDirectusPublicAccess,
+  runWithDirectusUserAccess,
+} from "@/server/directus/client";
+import type {
+  ContentLoadResult,
+  PaginatedResult,
+} from "@/server/api/v1/public-data";
+import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
+import {
+  resolveAlbumCoverUrl,
+  formatAlbumDate,
+  buildGoogleMapsSearchUrl,
+  resolveAlbumAuthor,
+} from "@/utils/album-page-utils";
+
+export const prerender = false;
+
+const username = (Astro.params.username || "").trim();
+
+type AlbumListItem = {
+  id: string;
+  short_id: string | null;
+  title: string;
+  description: string | null;
+  cover_file: string | null;
+  cover_url: string | null;
+  date: string | null;
+  location: string | null;
+  tags: string[];
+  category: string | null;
+  layout: "grid" | "masonry";
+  author_id: string;
+  author?: {
+    id?: string;
+    name?: string;
+    display_name?: string;
+    username?: string;
+  };
+};
+
+let result: ContentLoadResult<PaginatedResult<AlbumListItem>> = {
+  status: "not_found",
+};
+let isOwner = false;
+
+try {
+  if (!username) {
+    Astro.response.status = 404;
+  } else {
+    const sessionUser = await getSessionUser(Astro);
+    const viewerId = sessionUser?.id ?? null;
+    result = (
+      viewerId
+        ? await runWithDirectusUserAccess(
+            getSessionAccessToken(Astro),
+            async () =>
+              await loadUserAlbumList(username, {
+                limit: 100,
+                viewerId,
+              }),
+          )
+        : await runWithDirectusPublicAccess(
+            async () =>
+              await loadUserAlbumList(username, {
+                limit: 100,
+                viewerId,
+              }),
+          )
+    ) as ContentLoadResult<PaginatedResult<AlbumListItem>>;
+    if (result.status === "not_found") {
+      Astro.response.status = 404;
+    } else if (result.status === "permission_denied") {
+      Astro.response.status = 404;
+    } else {
+      const sidebarProfile = viewerId
+        ? await runWithDirectusUserAccess(
+            getSessionAccessToken(Astro),
+            async () => await loadProfileForViewer(username, viewerId),
+          )
+        : await runWithDirectusPublicAccess(
+            async () => await loadProfileForViewer(username, viewerId),
+          );
+      if (sidebarProfile) {
+        Astro.locals.sidebarProfile = profileToSidebarData(sidebarProfile);
+        isOwner = Boolean(viewerId) && viewerId === sidebarProfile.user_id;
+      }
+    }
+  }
+} catch (error) {
+  console.error("[albums] failed to load entries:", error);
+  Astro.response.status = 500;
+}
+
+const items = result.status === "ok" ? result.data.items : [];
+
+const enrichedItems = items.map((item) => {
+  const author = resolveAlbumAuthor(item);
+  return {
+    ...item,
+    author,
+    coverSrc: resolveAlbumCoverUrl(item, isOwner),
+    formattedDate: formatAlbumDate(item.date),
+    mapsUrl: item.location ? buildGoogleMapsSearchUrl(item.location) : null,
+    albumHref: `/${username}/albums/${item.short_id ?? item.id}`,
+  };
+});
+
+// Aggregate tags and categories for sidebar filters
+const tagCounts = new Map<string, number>();
+const categoryCounts = new Map<string, number>();
+for (const item of items) {
+  for (const tag of item.tags) {
+    tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+  }
+  if (item.category) {
+    categoryCounts.set(
+      item.category,
+      (categoryCounts.get(item.category) || 0) + 1,
+    );
+  }
+}
+const tagList = Array.from(tagCounts.entries())
+  .sort((a, b) => b[1] - a[1])
+  .map(([name, count]) => ({ name, count }));
+const categoryList = Array.from(categoryCounts.entries())
+  .sort((a, b) => b[1] - a[1])
+  .map(([name, count]) => ({ name, count }));
+
+const hasSidebarContent = tagList.length > 0 || categoryList.length > 0;
+---
+
+<MainGridLayout
+  title={i18n(I18nKey.contentAlbums)}
+  description={i18n(I18nKey.contentAlbumsPublicSubtitle)}
+>
+  {
+    result.status === "not_found" || result.status === "permission_denied" ? (
+      <ContentNotVisible
+        mode="not_found"
+        title={i18n(I18nKey.contentUserNotFoundTitle)}
+        description={i18n(I18nKey.contentUserNotFoundDescription)}
+        backHref="/"
+        backLabel={i18n(I18nKey.contentUserBackToHome)}
+      />
+    ) : (
+      <div
+        class="album-list-root"
+        data-enter-skeleton-page="user-albums"
+        data-enter-skeleton-target="user-albums"
+      >
+        <div data-enter-skeleton-inline-content>
+          <section class="card-base px-9 py-6 rounded-(--radius-large) mb-4 text-90 flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <h1
+                class="text-4xl font-bold text-black/90 dark:text-white/90 mb-2 relative
+            before:w-1 before:h-8 before:rounded-md before:bg-(--primary)
+						before:absolute before:top-1/2 before:-translate-y-1/2 before:-left-4"
+              >
+                {i18n(I18nKey.contentAlbums)}
+              </h1>
+              <p class="text-base text-70">
+                {i18n(I18nKey.contentAlbumsPublicSubtitle)}
+              </p>
+            </div>
+            {isOwner && (
+              <a
+                href={`/${username}/albums/new`}
+                class="px-5 h-10 rounded-lg bg-(--primary) text-white font-medium
+							hover:opacity-90 active:opacity-80 transition
+							flex items-center gap-1.5 text-sm shrink-0"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                {i18n(I18nKey.contentAlbumCreateTitle)}
+              </a>
+            )}
+          </section>
+
+          {enrichedItems.length === 0 ? (
+            <div class="card-base p-8 rounded-(--radius-large) text-70">
+              {i18n(I18nKey.contentAlbumsNoPublic)}
+            </div>
+          ) : (
+            <div class="grid grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-5">
+              {enrichedItems.map((item) => (
+                <article
+                  class="album-list-item card-base rounded-(--radius-large) overflow-hidden border border-(--line-divider) text-90"
+                  data-tags={JSON.stringify(item.tags)}
+                  data-category={item.category ?? ""}
+                  data-author-id={item.author_id}
+                  data-author-handle={item.author.handle}
+                >
+                  <a href={item.albumHref} class="block">
+                    {item.coverSrc &&
+                      (item.layout === "masonry" ? (
+                        <div class="w-full h-56 bg-black flex items-center justify-center">
+                          <ExternalImage
+                            src={item.coverSrc}
+                            alt={item.title}
+                            class="w-full h-full object-contain"
+                            loading="lazy"
+                          />
+                        </div>
+                      ) : (
+                        <ExternalImage
+                          src={item.coverSrc}
+                          alt={item.title}
+                          class="w-full h-56 object-cover"
+                          loading="lazy"
+                        />
+                      ))}
+                  </a>
+                  <div class="p-5 space-y-2">
+                    <a href={item.albumHref} class="block space-y-2">
+                      <h2 class="text-lg font-semibold line-clamp-1">
+                        {item.title}
+                      </h2>
+                      {item.description && (
+                        <p class="text-sm text-75 line-clamp-1">
+                          {item.description}
+                        </p>
+                      )}
+                      <div
+                        class="h-px bg-(--line-divider)"
+                        aria-hidden="true"
+                      />
+                    </a>
+                    <div class="text-xs text-60 font-semibold flex items-center gap-1.5 min-w-0">
+                      <span class="truncate text-90 border-b border-transparent hover:border-current transition-colors">
+                        {item.author.displayName}
+                      </span>
+                      <span class="shrink-0 hover:text-(--primary) transition-colors">
+                        @{item.author.username}
+                      </span>
+                      {item.formattedDate && (
+                        <>
+                          <span
+                            class="text-(--meta-divider)"
+                            aria-hidden="true"
+                          >
+                            ·
+                          </span>
+                          <span class="shrink-0 text-60">
+                            {item.formattedDate}
+                          </span>
+                        </>
+                      )}
+                      {item.mapsUrl && (
+                        <>
+                          <span
+                            class="text-(--meta-divider)"
+                            aria-hidden="true"
+                          >
+                            ·
+                          </span>
+                          <a
+                            class="inline-flex items-center gap-1 min-w-0 hover:text-(--primary) transition-colors"
+                            href={item.mapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={i18n(
+                              I18nKey.contentAlbumsGoogleMapSearchAria,
+                            ).replace("{location}", item.location ?? "")}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              class="w-3.5 h-3.5 shrink-0"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              aria-hidden="true"
+                            >
+                              <path d="M12 22s8-6.2 8-12a8 8 0 10-16 0c0 5.8 8 12 8 12z" />
+                              <circle cx="12" cy="10" r="3" />
+                            </svg>
+                            <span class="truncate">{item.location}</span>
+                          </a>
+                        </>
+                      )}
+                    </div>
+                    <div class="text-xs text-60 flex flex-wrap items-center gap-2">
+                      {item.category && (
+                        <span class="px-1.5 py-0.5 rounded bg-(--btn-plain-bg-hover)">
+                          {item.category}
+                        </span>
+                      )}
+                      {item.tags.length > 0 &&
+                        item.tags
+                          .slice(0, 4)
+                          .map((tag) => (
+                            <span class="btn-regular h-6 text-xs px-2.5 rounded-lg">
+                              #{tag}
+                            </span>
+                          ))}
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+
+          {/* No results hint */}
+          <div
+            id="album-no-results"
+            class="hidden card-base p-8 rounded-(--radius-large) text-70 mt-4"
+          >
+            {i18n(I18nKey.contentAlbumsNoMatch)}
+          </div>
+        </div>
+        <div
+          data-enter-skeleton-inline-placeholder
+          aria-hidden="true"
+          class="space-y-4"
+        >
+          <section class="card-base px-9 py-6 rounded-(--radius-large) mb-4 flex items-center justify-between gap-4 flex-wrap">
+            <div class="space-y-3 flex-1">
+              <div
+                class="md3-skeleton-text"
+                style="--skeleton-width: 26%; --skeleton-height: 2rem;"
+              />
+              <div
+                class="md3-skeleton-text"
+                style="--skeleton-width: 42%; --skeleton-height: 0.92rem;"
+              />
+            </div>
+            <div class="md3-skeleton-block h-10 w-28 rounded-lg" />
+          </section>
+          <div class="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-5">
+            {Array.from({ length: 6 }).map(() => (
+              <article class="album-list-item card-base rounded-(--radius-large) overflow-hidden border border-(--line-divider)">
+                <div class="md3-skeleton-block h-56 w-full rounded-none" />
+                <div class="p-5 space-y-2">
+                  <div
+                    class="md3-skeleton-text"
+                    style="--skeleton-width: 66%; --skeleton-height: 1.7rem;"
+                  />
+                  <div
+                    class="md3-skeleton-text"
+                    style="--skeleton-width: 82%; --skeleton-height: 0.95rem;"
+                  />
+                  <div
+                    class="md3-skeleton-text"
+                    style="--skeleton-width: 72%; --skeleton-height: 0.9rem;"
+                  />
+                  <div
+                    class="md3-skeleton-text"
+                    style="--skeleton-width: 78%; --skeleton-height: 2.2rem;"
+                  />
+                  <div class="flex gap-2 pt-1">
+                    <div class="md3-skeleton-block h-6 w-16 rounded-lg" />
+                    <div class="md3-skeleton-block h-6 w-16 rounded-lg" />
+                    <div class="md3-skeleton-block h-6 w-14 rounded-lg" />
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  {/* Sidebar: filters */}
+  {
+    result.status === "ok" && hasSidebarContent && (
+      <div
+        slot="sidebar-right"
+        class="album-filter-panel max-h-[calc(100vh-6.5rem)] overflow-y-auto flex flex-col gap-4 self-start"
+      >
+        {/* Categories */}
+        {categoryList.length > 0 && (
+          <div class="card-base rounded-(--radius-large) pb-4">
+            <div
+              class="font-bold transition text-lg text-neutral-900 dark:text-neutral-100 relative ml-8 mt-4 mb-2 flex items-center
+            before:w-1 before:h-4 before:rounded-md before:bg-(--primary)
+						before:absolute before:left-[-16px] before:top-[5.5px]"
+            >
+              {i18n(I18nKey.interactionCommonCategory)}
+            </div>
+            <div class="px-4 flex flex-col gap-0.5" id="album-categories">
+              {categoryList.map((c) => (
+                <button
+                  data-filter="category"
+                  data-value={c.name}
+                  class="album-filter-btn w-full h-10 rounded-lg bg-none
+                  hover:bg-(--btn-plain-bg-hover) active:bg-(--btn-plain-bg-active)
+									transition-all pl-2 hover:pl-3 text-left
+                  text-neutral-700 hover:text-(--primary)
+                  dark:text-neutral-300 dark:hover:text-(--primary)
+									cursor-pointer"
+                >
+                  <span class="flex items-center justify-between mr-2">
+                    <span class="overflow-hidden whitespace-nowrap text-ellipsis">
+                      {c.name}
+                    </span>
+                    <span
+                      class="transition px-2 h-7 ml-4 min-w-[2rem] rounded-lg text-sm font-bold
+                    text-(--btn-content) dark:text-(--deep-text)
+                    bg-[oklch(0.95_0.025_var(--hue))] dark:bg-(--primary)
+										flex items-center justify-center shrink-0"
+                    >
+                      {c.count}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Tags */}
+        {tagList.length > 0 && (
+          <div class="card-base rounded-(--radius-large) pb-4">
+            <div
+              class="font-bold transition text-lg text-neutral-900 dark:text-neutral-100 relative ml-8 mt-4 mb-2 flex items-center
+            before:w-1 before:h-4 before:rounded-md before:bg-(--primary)
+						before:absolute before:left-[-16px] before:top-[5.5px]"
+            >
+              {i18n(I18nKey.contentTags)}
+            </div>
+            <div class="px-4 flex gap-2 flex-wrap" id="album-tags">
+              {tagList.map((t) => (
+                <button
+                  data-filter="tag"
+                  data-value={t.name}
+                  class="album-filter-btn btn-regular h-8 text-sm px-3 rounded-lg cursor-pointer"
+                >
+                  {t.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Filter status bar */}
+        <div
+          id="album-filter-status"
+          class="hidden card-base rounded-(--radius-large) px-4 py-3 items-center justify-between gap-2"
+        >
+          <span
+            id="album-filter-status-label"
+            class="text-sm text-75 truncate"
+          />
+          <button
+            id="album-filter-clear-btn"
+            class="shrink-0 text-sm text-(--primary) hover:underline cursor-pointer"
+          >
+            {i18n(I18nKey.interactionCommonClear)}
+          </button>
+        </div>
+      </div>
+    )
+  }
+</MainGridLayout>
+
+<style>
+  /* Custom scrollbar */
+  .album-filter-panel::-webkit-scrollbar {
+    width: 4px;
+  }
+  .album-filter-panel::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .album-filter-panel::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.3);
+    border-radius: 2px;
+  }
+
+  /* Active filter button */
+  :global(.album-filter-btn.active) {
+    background-color: var(--primary) !important;
+    color: white !important;
+  }
+  :global(.album-filter-btn.active .flex span:last-child) {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+  }
+</style>

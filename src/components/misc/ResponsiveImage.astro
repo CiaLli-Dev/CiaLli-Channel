@@ -1,0 +1,133 @@
+---
+import {
+  buildPublicAssetUrl,
+  buildDirectusAssetUrl,
+} from "@/server/directus-auth";
+
+interface Props {
+  /** Directus 文件 ID */
+  fileId: string;
+  alt?: string;
+  class?: string;
+  /** LCP 关键图，使用 loading="eager" */
+  eager?: boolean;
+  /** 预设断点配置 */
+  preset?: "cover" | "avatar" | "diary" | "album-grid" | "album-masonry";
+  /** 自定义宽度断点（覆盖 preset） */
+  widths?: number[];
+  /** 自定义 sizes 属性 */
+  sizes?: string;
+  /** 使用公开直链 vs BFF 代理 */
+  isPublic?: boolean;
+}
+
+type PresetConfig = {
+  widths: number[];
+  sizes: string;
+  fit?: string;
+  /** 高度计算比例 [numerator, denominator]，null 表示不设高度 */
+  heightRatio: [number, number] | null;
+};
+
+const PRESETS: Record<string, PresetConfig> = {
+  cover: {
+    widths: [400, 800, 1200],
+    sizes: "(max-width:640px) 100vw, (max-width:1024px) 800px, 1200px",
+    fit: "cover",
+    heightRatio: [675, 1200],
+  },
+  avatar: {
+    widths: [48, 96, 192],
+    sizes: "96px",
+    fit: "cover",
+    heightRatio: [1, 1],
+  },
+  diary: {
+    widths: [480, 960],
+    sizes: "(max-width:640px) 100vw, 960px",
+    fit: "cover",
+    heightRatio: [1, 1],
+  },
+  "album-grid": {
+    widths: [600, 1200],
+    sizes: "(max-width:640px) 50vw, (max-width:1024px) 33vw, 300px",
+    fit: "cover",
+    heightRatio: [900, 1200],
+  },
+  "album-masonry": {
+    widths: [600, 1200, 1920],
+    sizes: "(max-width:640px) 100vw, (max-width:1024px) 50vw, 600px",
+    fit: undefined,
+    heightRatio: null,
+  },
+};
+
+const {
+  fileId,
+  alt = "",
+  class: className,
+  eager = false,
+  preset,
+  widths: customWidths,
+  sizes: customSizes,
+  isPublic = false,
+} = Astro.props;
+
+const config = preset ? PRESETS[preset] : undefined;
+const widths = customWidths ?? config?.widths ?? [800, 1200];
+const sizes = customSizes ?? config?.sizes ?? "100vw";
+const fit = config?.fit;
+const heightRatio = config?.heightRatio;
+
+function buildUrl(fileId: string, options: Record<string, unknown>): string {
+  const opts = options as {
+    width?: number;
+    height?: number;
+    fit?: string;
+    quality?: number;
+    format?: string;
+  };
+  return isPublic
+    ? buildPublicAssetUrl(fileId, opts)
+    : buildDirectusAssetUrl(fileId, opts);
+}
+
+function computeHeight(width: number): number | undefined {
+  if (!heightRatio) return undefined;
+  return Math.round((width * heightRatio[0]) / heightRatio[1]);
+}
+
+// 构建 WebP srcset
+const webpSrcset = widths
+  .map((w) => {
+    const h = computeHeight(w);
+    const url = buildUrl(fileId, {
+      width: w,
+      ...(h ? { height: h } : {}),
+      ...(fit ? { fit } : {}),
+      format: "webp",
+    });
+    return `${url} ${w}w`;
+  })
+  .join(", ");
+
+// 回退 src：使用中间宽度
+const fallbackWidth = widths[Math.floor(widths.length / 2)] ?? widths[0];
+const fallbackHeight = computeHeight(fallbackWidth);
+const fallbackSrc = buildUrl(fileId, {
+  width: fallbackWidth,
+  ...(fallbackHeight ? { height: fallbackHeight } : {}),
+  ...(fit ? { fit } : {}),
+});
+---
+
+<picture>
+  <source type="image/webp" srcset={webpSrcset} sizes={sizes} />
+  <img
+    src={fallbackSrc}
+    alt={alt}
+    loading={eager ? "eager" : "lazy"}
+    decoding={eager ? "sync" : "async"}
+    class={className}
+  />
+</picture>

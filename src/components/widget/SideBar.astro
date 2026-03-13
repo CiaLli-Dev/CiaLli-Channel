@@ -1,0 +1,66 @@
+---
+import type { MarkdownHeading } from "astro";
+import type { WidgetComponentConfig } from "@/types/config";
+import { widgetManager } from "@utils/widget-manager";
+import SideBarComponentList from "./SideBarComponentList.astro";
+import { pathsEqual, url } from "@/utils/url-utils";
+
+interface Props {
+  class?: string;
+  headings?: MarkdownHeading[];
+}
+
+const { class: className, headings } = Astro.props;
+const isHomePage = pathsEqual(Astro.url.pathname, url("/"));
+
+const filterCalendar = (components: WidgetComponentConfig[]) => {
+  if (isHomePage) {
+    return components;
+  }
+  return components.filter((component) => component.type !== "calendar");
+};
+
+const topComponents = filterCalendar(
+  widgetManager.getComponentsByPosition("top", "left"),
+);
+const stickyComponents = filterCalendar(
+  widgetManager.getComponentsByPosition("sticky", "left"),
+);
+
+const stickyContainerClass =
+  "flex flex-col w-full gap-4 sticky top-4 transition-[top] duration-(--layout-mode-transition-duration) ease-(--layout-mode-transition-easing)";
+
+const sidebarUid = Astro.locals.sidebarProfile?.username || "__official__";
+const sidebarLayoutKey = JSON.stringify({
+  top: topComponents.map((component) => component.type),
+  sticky: stickyComponents.map((component) => component.type),
+});
+const hasScrollableContent = stickyComponents.length > 0;
+---
+
+<div
+  id="sidebar"
+  data-sidebar-uid={sidebarUid}
+  data-sidebar-layout-key={sidebarLayoutKey}
+  data-scrollable={hasScrollableContent ? "true" : "false"}
+  class:list={[className, "w-full sidebar-root"]}
+>
+  {
+    topComponents.length > 0 && (
+      <div class="flex flex-col w-full gap-4 mb-4">
+        <SideBarComponentList components={topComponents} headings={headings} />
+      </div>
+    )
+  }
+
+  {
+    stickyComponents.length > 0 && (
+      <div id="sidebar-sticky" class={stickyContainerClass}>
+        <SideBarComponentList
+          components={stickyComponents}
+          headings={headings}
+        />
+      </div>
+    )
+  }
+</div>

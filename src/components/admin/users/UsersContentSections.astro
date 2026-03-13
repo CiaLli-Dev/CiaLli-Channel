@@ -1,0 +1,90 @@
+---
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+---
+
+<section class="card-base p-6 rounded-(--radius-large) space-y-3">
+  <h2 class="text-xl font-semibold text-90">
+    {i18n(I18nKey.adminUsersRegisterSwitchTitle)}
+  </h2>
+  <div class="pt-2 flex flex-wrap items-center gap-3">
+    <label class="flex items-center gap-3 text-75 cursor-pointer select-none">
+      <input
+        type="checkbox"
+        id="admin-register-enabled"
+        class="toggle-checkbox"
+      />
+      <span class="toggle-track"><span class="toggle-knob"></span></span>
+      {i18n(I18nKey.adminUsersRegisterSwitchLabel)}
+    </label>
+    <span id="admin-register-msg" class="text-xs text-60"></span>
+  </div>
+</section>
+
+<section class="card-base p-6 rounded-(--radius-large) space-y-3">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h2 class="text-xl font-semibold text-90">
+      {i18n(I18nKey.adminUsersRegistrationsTitle)}
+    </h2>
+    <div class="flex items-center gap-2">
+      <label for="admin-registration-status" class="sr-only">
+        {i18n(I18nKey.adminUsersRegistrationStatusFilter)}
+      </label>
+      <select
+        id="admin-registration-status"
+        class="rounded-lg border border-(--line-divider) px-3 py-2 text-sm bg-black/5 dark:bg-white/5 text-75"
+      >
+        <option value="pending">pending</option>
+        <option value="approved">approved</option>
+        <option value="rejected">rejected</option>
+        <option value="cancelled">cancelled</option>
+        <option value="all">all</option>
+      </select>
+      <button
+        id="admin-registration-refresh"
+        class="px-3 py-2 rounded-lg border border-(--line-divider) text-sm text-75 hover:bg-(--btn-plain-bg-hover) transition-colors"
+      >
+        {i18n(I18nKey.interactionCommonRefresh)}
+      </button>
+    </div>
+  </div>
+  <div class="overflow-auto">
+    <table class="w-full text-sm min-w-[420px] text-75">
+      <thead>
+        <tr class="text-left text-60 border-b border-(--line-divider)">
+          <th class="py-2">{i18n(I18nKey.meSettingsAvatarLabel)}</th>
+          <th class="py-2">{i18n(I18nKey.meSettingsUsernameLabel)}</th>
+        </tr>
+      </thead>
+      <tbody id="admin-registration-table"></tbody>
+    </table>
+  </div>
+  <div id="admin-registration-msg" class="text-xs text-60"></div>
+</section>
+
+<section class="card-base p-6 rounded-(--radius-large) space-y-3">
+  <div class="flex items-center justify-between gap-3">
+    <h2 class="text-xl font-semibold text-90">
+      {i18n(I18nKey.adminUsersListTitle)}
+    </h2>
+    <button
+      id="admin-users-refresh"
+      class="px-3 py-2 rounded-lg border border-(--line-divider) text-sm text-75 hover:bg-(--btn-plain-bg-hover) transition-colors"
+    >
+      {i18n(I18nKey.interactionCommonRefresh)}
+    </button>
+  </div>
+  <div class="overflow-auto">
+    <table class="w-full text-sm min-w-[720px] text-75">
+      <thead>
+        <tr class="text-left text-60 border-b border-(--line-divider)">
+          <th class="py-2">{i18n(I18nKey.authEmailLabel)}</th>
+          <th class="py-2">{i18n(I18nKey.meSettingsUsernameLabel)}</th>
+          <th class="py-2">{i18n(I18nKey.adminUsersRole)}</th>
+          <th class="py-2">{i18n(I18nKey.adminUsersActions)}</th>
+        </tr>
+      </thead>
+      <tbody id="admin-users-table"></tbody>
+    </table>
+  </div>
+</section>

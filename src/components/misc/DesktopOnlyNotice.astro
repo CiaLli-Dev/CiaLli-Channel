@@ -1,0 +1,61 @@
+<div
+  id="desktop-only-notice"
+  class="fixed inset-0 z-10000 items-center justify-center bg-(--page-bg)"
+  aria-live="polite"
+>
+  <section
+    class="card-base mx-6 w-full max-w-xl rounded-(--radius-large) p-8 text-center"
+  >
+    <h1 class="text-3xl font-bold text-90">仅支持桌面端访问</h1>
+    <p class="mt-4 text-base text-60">
+      当前站点仅支持桌面端（视口宽度需大于或等于 1280px）。
+    </p>
+    <p class="mt-2 text-sm text-50">请在更大屏幕设备上访问本页面。</p>
+    <button
+      id="desktop-force-browse-btn"
+      type="button"
+      class="btn-regular mt-6 inline-flex h-11 items-center justify-center rounded-lg px-6 text-sm font-semibold"
+    >
+      强制浏览
+    </button>
+    <p class="mt-3 text-xs text-50">强制浏览可能出现布局错位或交互异常。</p>
+  </section>
+</div>
+
+<script is:inline>
+  (function () {
+    const DESKTOP_FORCE_BROWSE_KEY = "cialli.desktop.force-browse";
+
+    const applyForceBrowseState = () => {
+      document.documentElement.dataset.desktopForceBrowse = "true";
+      document.documentElement.dataset.desktopUnsupported = "false";
+      if (document.body) {
+        document.body.dataset.desktopForceBrowse = "true";
+        document.body.dataset.desktopUnsupported = "false";
+      }
+    };
+
+    const bindForceBrowseButton = () => {
+      const button = document.getElementById("desktop-force-browse-btn");
+      if (
+        !(button instanceof HTMLButtonElement) ||
+        button.dataset.bound === "1"
+      ) {
+        return;
+      }
+      button.dataset.bound = "1";
+      button.addEventListener("click", () => {
+        try {
+          sessionStorage.setItem(DESKTOP_FORCE_BROWSE_KEY, "true");
+        } catch (error) {
+          console.warn("[desktop-only-notice] 保存强制浏览状态失败:", error);
+        }
+        applyForceBrowseState();
+        window.dispatchEvent(new CustomEvent("desktop-force-browse-change"));
+      });
+    };
+
+    bindForceBrowseButton();
+    document.addEventListener("astro:after-swap", bindForceBrowseButton);
+  })();
+</script>

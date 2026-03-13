@@ -1,0 +1,83 @@
+---
+import type { AppArticle } from "@/types/app";
+import ExternalImage from "@components/misc/ExternalImage.astro";
+import { buildPublicAssetUrl } from "@/server/directus-auth";
+import { getResolvedSiteSettings } from "@/server/site-settings/service";
+import { buildSiteDateFormatContext, formatSiteDate } from "@/utils/date-utils";
+
+interface Props {
+  article: AppArticle & { tags: string[] };
+  username: string;
+}
+
+const { article } = Astro.props;
+const resolvedSiteSettings =
+  Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
+const siteDateContext = buildSiteDateFormatContext(resolvedSiteSettings);
+
+const href = `/posts/${article.short_id || article.id}`;
+
+const coverUrl = article.cover_file
+  ? buildPublicAssetUrl(article.cover_file, {
+      width: 480,
+      height: 288,
+      fit: "cover",
+    })
+  : article.cover_url || "";
+
+const hasCover = Boolean(coverUrl);
+
+const publishedDate = article.date_updated || article.date_created;
+const dateStr = publishedDate
+  ? formatSiteDate(publishedDate, siteDateContext)
+  : "";
+---
+
+<a
+  href={href}
+  class="shrink-0 w-[240px] rounded-xl overflow-hidden bg-black/5 dark:bg-white/5 hover:bg-black/8 dark:hover:bg-white/8 transition-colors snap-start block group"
+>
+  <!-- 封面区域 -->
+  <div class="h-36 overflow-hidden relative">
+    {
+      hasCover ? (
+        <ExternalImage
+          src={coverUrl}
+          alt={article.title}
+          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          loading="lazy"
+        />
+      ) : (
+        <div class="w-full h-full bg-linear-to-br from-black/10 to-black/5 dark:from-white/10 dark:to-white/5 flex items-center justify-center">
+          <svg
+            class="w-10 h-10 text-black/20 dark:text-white/20"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" />
+          </svg>
+        </div>
+      )
+    }
+  </div>
+
+  <!-- 信息区域 -->
+  <div class="p-3">
+    <h3
+      class="text-sm font-medium text-90 line-clamp-2 leading-snug mb-1.5 group-hover:text-(--primary) transition-colors"
+    >
+      {article.title}
+    </h3>
+    <p class="text-xs text-50 flex items-center gap-1">
+      {
+        article.category && (
+          <>
+            <span>{article.category}</span>
+            <span aria-hidden="true">·</span>
+          </>
+        )
+      }
+      <span>{dateStr}</span>
+    </p>
+  </div>
+</a>

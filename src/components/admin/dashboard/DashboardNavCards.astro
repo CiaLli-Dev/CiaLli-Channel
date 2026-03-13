@@ -1,0 +1,49 @@
+---
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+---
+
+<section class="grid grid-cols-1 gap-4">
+  <a
+    href="/admin/users"
+    class="card-base p-6 rounded-(--radius-large) border border-(--line-divider) hover:border-(--primary) transition-colors"
+  >
+    <h2 class="text-xl font-semibold text-90 mb-2">
+      {i18n(I18nKey.adminUsersTitle)}
+    </h2>
+    <p class="text-sm text-70">
+      {i18n(I18nKey.adminUsersDescription)}
+    </p>
+  </a>
+  <a
+    href="/admin/settings/site"
+    class="card-base p-6 rounded-(--radius-large) border border-(--line-divider) hover:border-(--primary) transition-colors"
+  >
+    <h2 class="text-xl font-semibold text-90 mb-2">
+      {i18n(I18nKey.adminSiteSettingsTitle)}
+    </h2>
+    <p class="text-sm text-70">
+      {i18n(I18nKey.adminSiteSettingsDescription)}
+    </p>
+  </a>
+  <a
+    href="/admin/settings/bulletin"
+    class="card-base p-6 rounded-(--radius-large) border border-(--line-divider) hover:border-(--primary) transition-colors"
+  >
+    <h2 class="text-xl font-semibold text-90 mb-2">
+      {i18n(I18nKey.adminBulletinTitle)}
+    </h2>
+    <p class="text-sm text-70">
+      {i18n(I18nKey.adminBulletinDescription)}
+    </p>
+  </a>
+  <a
+    href="/admin/settings/about"
+    class="card-base p-6 rounded-(--radius-large) border border-(--line-divider) hover:border-(--primary) transition-colors"
+  >
+    <h2 class="text-xl font-semibold text-90 mb-2">
+      {i18n(I18nKey.adminAboutTitle)}
+    </h2>
+    <p class="text-sm text-70">{i18n(I18nKey.adminAboutDescription)}</p>
+  </a>
+</section>

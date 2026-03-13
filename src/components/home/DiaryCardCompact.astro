@@ -1,0 +1,54 @@
+---
+import type { AppDiary } from "@/types/app";
+import { getResolvedSiteSettings } from "@/server/site-settings/service";
+import {
+  buildSiteDateFormatContext,
+  formatSiteMonthDay,
+} from "@/utils/date-utils";
+
+interface Props {
+  diary: AppDiary;
+  username: string;
+}
+
+const { diary, username } = Astro.props;
+const resolvedSiteSettings =
+  Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
+const siteDateContext = buildSiteDateFormatContext(resolvedSiteSettings);
+
+const href = `/${username}/diary/${diary.short_id || diary.id}`;
+
+// 内容摘要
+const excerpt = String(diary.content || "")
+  .replace(/\s+/g, " ")
+  .trim()
+  .slice(0, 120);
+const displayText =
+  excerpt.length < (diary.content || "").replace(/\s+/g, " ").trim().length
+    ? `${excerpt}...`
+    : excerpt;
+
+const dateStr = diary.date_created;
+const formattedDate = dateStr
+  ? formatSiteMonthDay(dateStr, siteDateContext)
+  : "";
+---
+
+<a
+  href={href}
+  class="shrink-0 w-[280px] rounded-xl overflow-hidden bg-black/5 dark:bg-white/5 hover:bg-black/8 dark:hover:bg-white/8 transition-colors snap-start block group p-4 flex-col justify-between min-h-[160px]"
+>
+  <div>
+    <!-- 内容摘要 -->
+    <p
+      class="text-sm text-75 line-clamp-3 leading-relaxed group-hover:text-(--primary) transition-colors"
+    >
+      {displayText}
+    </p>
+  </div>
+
+  <!-- 底部日期 -->
+  <div class="mt-3 pt-2 border-t border-black/5 dark:border-white/10">
+    <span class="text-xs text-50">{formattedDate}</span>
+  </div>
+</a>

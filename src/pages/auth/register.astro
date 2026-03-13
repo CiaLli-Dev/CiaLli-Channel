@@ -1,0 +1,500 @@
+---
+import type { AppUserRegistrationRequest } from "@/types/app";
+import type { JsonObject } from "@/types/json";
+import defaultAvatarAsset from "@/assets/images/avatar.webp";
+import ExternalImage from "@components/misc/ExternalImage.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { Icon } from "astro-icon/components";
+import { readMany } from "@/server/directus/client";
+import { buildPublicAssetUrl } from "@/server/directus-auth";
+import { getSessionUser } from "@/server/auth/session";
+import {
+  normalizeRegistrationRequestId,
+  REGISTRATION_REQUEST_COOKIE_NAME,
+} from "@/server/auth/registration-request-cookie";
+import { getResolvedSiteSettings } from "@/server/site-settings/service";
+import {
+  buildRegisterI18n,
+  buildRegistrationStatusMeta,
+} from "@/utils/register-i18n";
+import {
+  buildSiteDateFormatContext,
+  formatSiteDateTime,
+} from "@/utils/date-utils";
+import RegisterFormSkeleton from "@/components/auth/RegisterFormSkeleton.astro";
+import RegisterAvatarCropModal from "@/components/auth/RegisterAvatarCropModal.astro";
+
+export const prerender = false;
+
+const resolvedSettings =
+  Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
+const siteDateContext = buildSiteDateFormatContext(resolvedSettings);
+const registerEnabled = Boolean(
+  resolvedSettings.settings.auth?.register_enabled,
+);
+if (!registerEnabled) {
+  return Astro.redirect("/404");
+}
+
+const registrationRequestId = normalizeRegistrationRequestId(
+  Astro.cookies.get(REGISTRATION_REQUEST_COOKIE_NAME)?.value,
+);
+
+type RegistrationSnapshot = Pick<
+  AppUserRegistrationRequest,
+  | "id"
+  | "email"
+  | "username"
+  | "display_name"
+  | "avatar_file"
+  | "registration_reason"
+  | "request_status"
+  | "approved_user_id"
+  | "reviewed_at"
+  | "reject_reason"
+  | "date_created"
+>;
+
+let currentRegistration: RegistrationSnapshot | null = null;
+let hiddenBySessionMismatch = false;
+
+if (registrationRequestId) {
+  const rows = await readMany("app_user_registration_requests", {
+    filter: { id: { _eq: registrationRequestId } } as JsonObject,
+    limit: 1,
+    fields: [
+      "id",
+      "email",
+      "username",
+      "display_name",
+      "avatar_file",
+      "registration_reason",
+      "request_status",
+      "approved_user_id",
+      "reviewed_at",
+      "reject_reason",
+      "date_created",
+    ],
+  });
+  currentRegistration = (rows[0] as RegistrationSnapshot | undefined) || null;
+  const sessionUser = await getSessionUser(Astro);
+  if (currentRegistration && sessionUser) {
+    const approvedUserId = String(
+      currentRegistration.approved_user_id || "",
+    ).trim();
+    const canDisplayApprovedSelfStatus =
+      currentRegistration.request_status === "approved" &&
+      approvedUserId &&
+      approvedUserId === sessionUser.id;
+    if (!canDisplayApprovedSelfStatus) {
+      currentRegistration = null;
+      hiddenBySessionMismatch = true;
+    }
+  }
+  if (!currentRegistration && !hiddenBySessionMismatch) {
+    Astro.cookies.delete(REGISTRATION_REQUEST_COOKIE_NAME, { path: "/" });
+  }
+}
+
+const registrationStatusMeta = buildRegistrationStatusMeta();
+
+const currentRegistrationStatus = currentRegistration
+  ? registrationStatusMeta[currentRegistration.request_status]
+  : null;
+const currentRegistrationAvatarFile = currentRegistration?.avatar_file;
+const currentRegistrationAvatar = currentRegistrationAvatarFile
+  ? buildPublicAssetUrl(currentRegistrationAvatarFile, {
+      width: 160,
+      height: 160,
+      fit: "cover",
+    })
+  : "";
+const currentRegistrationRejectReason = currentRegistration?.reject_reason;
+const currentRegistrationCreatedAt = formatSiteDateTime(
+  currentRegistration?.date_created,
+  siteDateContext,
+);
+const currentRegistrationReviewedAt = formatSiteDateTime(
+  currentRegistration?.reviewed_at,
+  siteDateContext,
+);
+const currentRegistrationReviewReason =
+  currentRegistration?.request_status === "rejected"
+    ? String(currentRegistrationRejectReason || "").trim()
+    : "";
+const currentRegistrationReason = String(
+  currentRegistration?.registration_reason || "",
+).trim();
+const defaultAvatarPreviewSrc = defaultAvatarAsset.src;
+const registerI18n = buildRegisterI18n();
+---
+
+<MainGridLayout
+  title={i18n(I18nKey.authRegisterTitle)}
+  description={i18n(I18nKey.authRegisterDescription)}
+>
+  <div
+    data-enter-skeleton-page="auth-register"
+    data-enter-skeleton-target="auth-register"
+  >
+    <div data-enter-skeleton-inline-content>
+      <div class="card-base rounded-(--radius-large) p-6 space-y-5">
+        <div class="flex items-center gap-3">
+          <div
+            class="w-12 h-12 rounded-2xl bg-(--btn-regular-bg) flex items-center justify-center"
+          >
+            <Icon
+              name="material-symbols:person-add-rounded"
+              class="text-(--btn-content) text-3xl"
+            />
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold text-90">
+              {i18n(I18nKey.authRegisterTitle)}
+            </h1>
+            <p class="text-sm text-75">
+              {i18n(I18nKey.authRegisterHint)}
+            </p>
+          </div>
+        </div>
+
+        {
+          currentRegistration ? (
+            <section class="space-y-4">
+              <div class="flex items-start justify-between gap-4 flex-wrap">
+                <div class="flex items-center gap-3">
+                  {currentRegistrationAvatar ? (
+                    <ExternalImage
+                      id="register-current-avatar"
+                      class="w-12 h-12 rounded-full object-cover border border-(--line-divider) bg-black/10 dark:bg-white/10"
+                      src={currentRegistrationAvatar}
+                      alt={i18n(I18nKey.authRegisterAvatarAlt)}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div class="w-12 h-12 rounded-full border border-(--line-divider) bg-black/10 dark:bg-white/10 inline-flex items-center justify-center text-60">
+                      <Icon
+                        name="material-symbols:person-rounded"
+                        class="text-xl"
+                      />
+                    </div>
+                  )}
+                  <div class="space-y-1">
+                    <p class="text-sm text-60">
+                      {i18n(I18nKey.authRegisterRequestIdLabel)}：
+                      {currentRegistration.id}
+                    </p>
+                    <p class="text-sm text-75">
+                      {i18n(I18nKey.authRegisterSubmittedAtLabel)}：
+                      {currentRegistrationCreatedAt || "-"}
+                    </p>
+                  </div>
+                </div>
+                <span
+                  class:list={[
+                    "inline-flex items-center px-2.5 h-7 rounded-full text-xs font-medium",
+                    currentRegistrationStatus?.tone === "warning" &&
+                      "bg-amber-500/15 text-amber-600 dark:bg-amber-500/22 dark:text-amber-300",
+                    currentRegistrationStatus?.tone === "success" &&
+                      "bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/22 dark:text-emerald-300",
+                    currentRegistrationStatus?.tone === "danger" &&
+                      "bg-red-500/15 text-red-600 dark:bg-red-500/22 dark:text-red-300",
+                    currentRegistrationStatus?.tone === "neutral" &&
+                      "bg-black/8 text-70 dark:bg-white/10",
+                  ]}
+                >
+                  {currentRegistrationStatus?.label ||
+                    currentRegistration.request_status}
+                </span>
+              </div>
+              <p class="text-sm text-75">
+                {currentRegistrationStatus?.description ||
+                  i18n(I18nKey.authRegisterStatusUpdated)}
+              </p>
+              <div class="grid grid-cols-1 gap-3 text-sm">
+                <div class="rounded-lg border border-(--line-divider) bg-black/5 dark:bg-white/5 px-3 py-2.5">
+                  <p class="text-60 text-xs mb-1">
+                    {i18n(I18nKey.authEmailLabel)}
+                  </p>
+                  <p class="text-90 break-all">{currentRegistration.email}</p>
+                </div>
+                <div class="rounded-lg border border-(--line-divider) bg-black/5 dark:bg-white/5 px-3 py-2.5">
+                  <p class="text-60 text-xs mb-1">
+                    {i18n(I18nKey.authRegisterUsernameLabel)}
+                  </p>
+                  <p class="text-90 break-all">
+                    {currentRegistration.username}
+                  </p>
+                </div>
+                <div class="rounded-lg border border-(--line-divider) bg-black/5 dark:bg-white/5 px-3 py-2.5">
+                  <p class="text-60 text-xs mb-1">
+                    {i18n(I18nKey.authRegisterDisplayNameLabel)}
+                  </p>
+                  <p class="text-90 break-all">
+                    {currentRegistration.display_name}
+                  </p>
+                </div>
+                <div class="rounded-lg border border-(--line-divider) bg-black/5 dark:bg-white/5 px-3 py-2.5">
+                  <p class="text-60 text-xs mb-1">
+                    {i18n(I18nKey.authRegisterReviewedAtLabel)}
+                  </p>
+                  <p class="text-90 break-all">
+                    {currentRegistrationReviewedAt || "-"}
+                  </p>
+                </div>
+                <div class="rounded-lg border border-(--line-divider) bg-black/5 dark:bg-white/5 px-3 py-2.5 col-span-2">
+                  <p class="text-60 text-xs mb-1">
+                    {i18n(I18nKey.authRegisterReasonLabel)}
+                  </p>
+                  <p class="text-90 whitespace-pre-wrap break-all">
+                    {currentRegistrationReason || "-"}
+                  </p>
+                </div>
+                {currentRegistrationReviewReason ? (
+                  <div class="rounded-lg border border-red-500/35 bg-red-500/5 dark:border-red-400/35 dark:bg-red-500/12 px-3 py-2.5 col-span-2">
+                    <p class="text-red-600 dark:text-red-300 text-xs mb-1">
+                      {i18n(I18nKey.authRegisterReviewNote)}
+                    </p>
+                    <p class="text-red-700/90 dark:text-red-200/90 whitespace-pre-wrap break-all">
+                      {currentRegistrationReviewReason}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+              <div class="flex items-center gap-3 pt-2">
+                <a
+                  href="/auth/login"
+                  class="px-4 h-9 rounded-lg text-sm font-medium bg-(--btn-regular-bg) text-(--btn-content) inline-flex items-center"
+                >
+                  {i18n(I18nKey.authApplyLogin)}
+                </a>
+                {currentRegistration.request_status === "pending" ? (
+                  <button
+                    id="register-cancel-btn"
+                    type="button"
+                    data-request-id={currentRegistration.id}
+                    class="px-4 h-9 rounded-lg text-sm font-medium border border-red-500/50 text-red-600 dark:text-red-300 hover:bg-red-500/10 transition"
+                  >
+                    {i18n(I18nKey.authRegisterCancelRequest)}
+                  </button>
+                ) : null}
+                {currentRegistration.request_status === "rejected" ||
+                currentRegistration.request_status === "cancelled" ? (
+                  <button
+                    id="register-reapply-btn"
+                    type="button"
+                    data-reapply-email={currentRegistration.email}
+                    data-reapply-username={currentRegistration.username}
+                    data-reapply-display-name={currentRegistration.display_name}
+                    data-reapply-reason={currentRegistrationReason}
+                    data-reapply-avatar-file={
+                      currentRegistration.avatar_file || ""
+                    }
+                    data-reapply-avatar-url={currentRegistrationAvatar}
+                    class="px-4 h-9 rounded-lg text-sm font-medium border border-(--line-divider) text-75 hover:bg-(--btn-plain-bg-hover) transition"
+                  >
+                    {i18n(I18nKey.authRegisterReapply)}
+                  </button>
+                ) : null}
+              </div>
+            </section>
+          ) : (
+            <>
+              <form id="register-form" class="space-y-4">
+                <label class="block space-y-1">
+                  <span class="text-sm text-70">
+                    {i18n(I18nKey.authEmailLabel)}
+                  </span>
+                  <input
+                    id="register-email"
+                    type="email"
+                    required
+                    autocomplete="email"
+                    class="w-full rounded-lg border border-(--line-divider) px-3 py-2.5 bg-transparent text-75"
+                    placeholder="name@example.com"
+                  />
+                  <span
+                    id="register-email-hint"
+                    class="text-xs text-60 hidden"
+                  />
+                </label>
+                <label class="block space-y-1">
+                  <span class="text-sm text-70">
+                    {i18n(I18nKey.authRegisterUsernameLabel)}
+                  </span>
+                  <input
+                    id="register-username"
+                    required
+                    pattern="[A-Za-z0-9_-]+"
+                    title={i18n(I18nKey.authRegisterUsernameRule)}
+                    class="w-full rounded-lg border border-(--line-divider) px-3 py-2.5 bg-transparent text-75"
+                    placeholder="cialli_user"
+                  />
+                  <span
+                    id="register-username-hint"
+                    class="text-xs text-60 hidden"
+                  />
+                </label>
+                <label class="block space-y-1">
+                  <span class="text-sm text-70">
+                    {i18n(I18nKey.authRegisterDisplayNameLabel)}
+                  </span>
+                  <input
+                    id="register-display-name"
+                    required
+                    class="w-full rounded-lg border border-(--line-divider) px-3 py-2.5 bg-transparent text-75"
+                    placeholder={i18n(
+                      I18nKey.authRegisterDisplayNamePlaceholder,
+                    )}
+                  />
+                </label>
+                <label class="block space-y-1">
+                  <span class="text-sm text-70">
+                    {i18n(I18nKey.authPasswordLabel)}
+                  </span>
+                  <span class="relative block">
+                    <input
+                      id="register-password"
+                      type="password"
+                      required
+                      minlength="8"
+                      maxlength="20"
+                      pattern="[A-Za-z0-9@_]+"
+                      title={i18n(I18nKey.authRegisterPasswordRule)}
+                      autocomplete="new-password"
+                      class="w-full rounded-lg border border-(--line-divider) pl-3 pr-11 py-2.5 bg-transparent text-75"
+                      placeholder={i18n(
+                        I18nKey.authRegisterPasswordPlaceholder,
+                      )}
+                    />
+                    <button
+                      id="register-password-toggle"
+                      type="button"
+                      class="absolute right-2 top-1/2 -translate-y-1/2 border border-(--line-divider) bg-white/70 dark:bg-zinc-800/72 text-zinc-800 dark:text-zinc-200 w-8 h-8 rounded-lg inline-flex items-center justify-center hover:border-(--primary) hover:bg-(--primary)/10 transition"
+                      aria-label={i18n(I18nKey.authShowPassword)}
+                      aria-pressed="false"
+                    >
+                      <svg
+                        class="register-password-icon register-password-icon-show w-4 h-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                      <svg
+                        class="register-password-icon register-password-icon-hide hidden w-4 h-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M3 3l18 18" />
+                        <path d="M10.6 10.6a2 2 0 102.8 2.8" />
+                        <path d="M9.9 5.3A11 11 0 0112 5c6.5 0 10 7 10 7a16.2 16.2 0 01-4 4.7" />
+                        <path d="M6.3 6.3A16.1 16.1 0 002 12s3.5 7 10 7c1 0 2-.2 2.9-.5" />
+                      </svg>
+                    </button>
+                  </span>
+                  <span
+                    id="register-password-hint"
+                    class="text-xs text-60 hidden"
+                  />
+                </label>
+                <div class="space-y-2">
+                  <span class="text-sm text-70">
+                    {i18n(I18nKey.authRegisterAvatarOptional)}
+                  </span>
+                  <div class="flex items-center gap-4">
+                    <img
+                      id="register-avatar-preview"
+                      src={defaultAvatarPreviewSrc}
+                      class="w-20 h-20 rounded-full object-cover border border-(--line-divider) bg-black/10 dark:bg-white/10"
+                      alt={i18n(I18nKey.authRegisterAvatarPreviewAlt)}
+                      loading="lazy"
+                    />
+                    <div class="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        id="register-avatar-upload-btn"
+                        class="px-4 h-9 rounded-lg text-sm font-medium cursor-pointer bg-(--primary) text-white hover:opacity-90 transition"
+                      >
+                        {i18n(I18nKey.authRegisterUploadAvatar)}
+                      </button>
+                      <button
+                        type="button"
+                        id="register-avatar-clear-btn"
+                        class="px-4 h-9 rounded-lg text-sm border border-(--line-divider) text-75"
+                      >
+                        {i18n(I18nKey.interactionCommonClear)}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <label class="block space-y-1">
+                  <span class="text-sm text-70">
+                    {i18n(I18nKey.authRegisterReasonLabel)}
+                  </span>
+                  <textarea
+                    id="register-reason"
+                    required
+                    rows="4"
+                    maxlength="500"
+                    class="w-full rounded-lg border border-(--line-divider) px-3 py-2.5 bg-transparent text-75 resize-none"
+                    placeholder={i18n(I18nKey.authRegisterReasonPlaceholder)}
+                  />
+                </label>
+                <div id="register-message" class="text-sm text-70 hidden" />
+                <button
+                  id="register-submit"
+                  type="submit"
+                  class="w-full px-4 py-2.5 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm font-semibold"
+                >
+                  <span id="register-submit-text">
+                    {i18n(I18nKey.authRegisterSubmit)}
+                  </span>
+                </button>
+              </form>
+
+              <p class="text-sm text-70">
+                {i18n(I18nKey.authNoAccount)}
+                <a class="text-(--primary) hover:underline" href="/auth/login">
+                  {i18n(I18nKey.authApplyLogin)}
+                </a>
+              </p>
+            </>
+          )
+        }
+      </div>
+    </div>
+    <RegisterFormSkeleton />
+  </div>
+
+  <RegisterAvatarCropModal />
+
+  <script>
+    import "@/scripts/dialogs";
+  </script>
+
+  <div
+    id="register-page-config"
+    data-default-avatar-src={defaultAvatarPreviewSrc}
+    data-register-i18n={JSON.stringify(registerI18n)}
+    hidden
+  >
+  </div>
+
+  <script>
+    import "@/scripts/register-page";
+  </script>
+</MainGridLayout>

@@ -1,0 +1,11 @@
+name: 其他问题
+description: 提交不属于缺陷或功能建议的其他问题
+title: "[其他]: "
+body:
+  - type: textarea
+    id: issue-description
+    attributes:
+      label: 问题描述
+      description: 请描述你要反馈的问题。
+    validations:
+      required: true

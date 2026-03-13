@@ -1,0 +1,32 @@
+---
+interface Props {
+  dense?: boolean;
+}
+
+const { dense = false } = Astro.props;
+const blockHeight = dense ? "h-24" : "h-32";
+---
+
+<div class="space-y-4">
+  <div class="card-base p-5 space-y-3">
+    <div
+      class="md3-skeleton-text"
+      style="--skeleton-width: 42%; --skeleton-height: 1rem;"
+    >
+    </div>
+    <div class={`md3-skeleton-block ${blockHeight} rounded-xl`}></div>
+  </div>
+
+  <div class="card-base p-5 space-y-3">
+    <div
+      class="md3-skeleton-text"
+      style="--skeleton-width: 36%; --skeleton-height: 1rem;"
+    >
+    </div>
+    <div class="space-y-2">
+      <div class="md3-skeleton-text" style="--skeleton-width: 84%;"></div>
+      <div class="md3-skeleton-text" style="--skeleton-width: 78%;"></div>
+      <div class="md3-skeleton-text" style="--skeleton-width: 66%;"></div>
+    </div>
+  </div>
+</div>

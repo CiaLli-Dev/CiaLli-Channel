@@ -1,0 +1,308 @@
+---
+import ContentNotVisible from "@components/misc/ContentNotVisible.astro";
+import ExternalImage from "@components/misc/ExternalImage.astro";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import AlbumDetailEditor from "@components/album/AlbumDetailEditor.svelte";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import {
+  loadProfileForViewer,
+  loadUserAlbumDetail,
+  profileToSidebarData,
+} from "@/server/api/v1/public-data";
+import type { ContentLoadResult } from "@/server/api/v1/public-data";
+import {
+  runWithDirectusPublicAccess,
+  runWithDirectusUserAccess,
+} from "@/server/directus/client";
+import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
+import {
+  resolvePhotoUrl,
+  resolvePhotoPreviewUrl,
+  formatAlbumDate,
+  buildGoogleMapsSearchUrl,
+} from "@/utils/album-page-utils";
+
+export const prerender = false;
+
+const username = (Astro.params.username || "").trim();
+const id = (Astro.params.id || "").trim();
+
+type AlbumPageData = {
+  id: string;
+  short_id: string | null;
+  title: string;
+  slug: string;
+  description: string | null;
+  cover_file: string | null;
+  cover_url: string | null;
+  date: string | null;
+  location: string | null;
+  tags: string[];
+  category: string | null;
+  layout: "grid" | "masonry";
+  columns: number;
+  status: "private" | "published";
+  is_public: boolean;
+  author_id: string;
+  author?: { name?: string; username?: string };
+  photos: Array<{
+    id: string;
+    file_id: string | null;
+    image_url: string | null;
+    title: string | null;
+    description: string | null;
+    tags: string[];
+    location: string | null;
+    sort: number | null;
+  }>;
+};
+
+let result: ContentLoadResult<AlbumPageData> = { status: "not_found" };
+let isOwner = false;
+let autoEdit = false;
+
+if (!username || !id) {
+  Astro.response.status = 404;
+} else {
+  try {
+    const sessionUser = await getSessionUser(Astro);
+    const viewerId = sessionUser?.id ?? null;
+    result = (
+      viewerId
+        ? await runWithDirectusUserAccess(
+            getSessionAccessToken(Astro),
+            async () =>
+              await loadUserAlbumDetail(username, id, {
+                viewerId,
+              }),
+          )
+        : await runWithDirectusPublicAccess(
+            async () =>
+              await loadUserAlbumDetail(username, id, {
+                viewerId,
+              }),
+          )
+    ) as ContentLoadResult<AlbumPageData>;
+    if (result.status === "not_found") {
+      Astro.response.status = 404;
+    } else if (result.status === "permission_denied") {
+      Astro.response.status = 404;
+    } else {
+      const profile = viewerId
+        ? await runWithDirectusUserAccess(
+            getSessionAccessToken(Astro),
+            async () => await loadProfileForViewer(username, viewerId),
+          )
+        : await runWithDirectusPublicAccess(
+            async () => await loadProfileForViewer(username, viewerId),
+          );
+      if (profile) {
+        Astro.locals.sidebarProfile = profileToSidebarData(profile);
+        isOwner = Boolean(viewerId) && viewerId === profile.user_id;
+      }
+      autoEdit = isOwner && Astro.url.searchParams.get("edit") === "1";
+    }
+  } catch (error) {
+    console.error("[albums] failed to load detail:", error);
+    Astro.response.status = 500;
+  }
+}
+
+const album = result.status === "ok" ? result.data : null;
+
+const enrichedPhotos = album
+  ? album.photos.map((photo) => {
+      const thumbSrc = resolvePhotoUrl(photo, album.layout, isOwner);
+      const previewSrc = resolvePhotoPreviewUrl(photo, isOwner) ?? thumbSrc;
+      const hasCaption = Boolean(photo.title || photo.description);
+      return {
+        ...photo,
+        thumbSrc,
+        previewSrc,
+        hasMedia: Boolean(thumbSrc && previewSrc),
+        showOverlay: hasCaption && album.layout === "grid",
+        showCaption: hasCaption && album.layout !== "grid",
+        isMasonry: album.layout === "masonry",
+        captionText: [photo.title, photo.description]
+          .filter(Boolean)
+          .join("\n"),
+      };
+    })
+  : [];
+---
+
+<MainGridLayout
+  title={album?.title || i18n(I18nKey.contentAlbumNotFoundTitle)}
+  description={album?.description || ""}
+>
+  {
+    !album ? (
+      <ContentNotVisible
+        mode="not_found"
+        title={i18n(I18nKey.contentAlbumNotFoundTitle)}
+        description={i18n(I18nKey.contentAlbumNotFoundDescription)}
+        backHref={`/${username}/albums`}
+        backLabel={i18n(I18nKey.contentAlbumBackToList)}
+      />
+    ) : isOwner ? (
+      <AlbumDetailEditor
+        client:only="svelte"
+        albumId={album.id}
+        albumShortId={album.short_id}
+        username={username}
+        isOwner={true}
+        initialEditMode={autoEdit}
+        album={{
+          title: album.title,
+          description: album.description,
+          category: album.category,
+          tags: album.tags,
+          date: album.date,
+          location: album.location,
+          layout: album.layout,
+          columns: album.columns,
+          status: album.status,
+          is_public: album.is_public,
+          cover_file: album.cover_file,
+          cover_url: album.cover_url,
+        }}
+        photos={album.photos.map((p) => ({
+          id: p.id,
+          file_id: p.file_id,
+          image_url: p.image_url,
+          title: p.title,
+          description: p.description,
+          tags: p.tags,
+          location: p.location,
+          sort: p.sort,
+        }))}
+      />
+    ) : (
+      <>
+        <section class="card-base p-6 rounded-(--radius-large) mb-4 space-y-3 text-90">
+          <a
+            href={`/${username}/albums`}
+            class="text-sm text-(--primary) hover:underline"
+          >
+            {i18n(I18nKey.contentAlbumBackToList)}
+          </a>
+          <h1 class="text-3xl font-bold">{album.title}</h1>
+          <div class="text-xs text-60 flex flex-wrap items-center gap-2">
+            {album.author?.name && <span>{album.author.name}</span>}
+            {album.date && <span>{formatAlbumDate(album.date)}</span>}
+            {album.location && (
+              <a
+                href={buildGoogleMapsSearchUrl(album.location)}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors hover:bg-(--btn-plain-bg-hover) active:bg-(--btn-plain-bg-active) hover:text-(--primary)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="w-3.5 h-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 22s8-6.2 8-12a8 8 0 10-16 0c0 5.8 8 12 8 12z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                {album.location}
+              </a>
+            )}
+            {album.category ? (
+              <span class="inline-flex items-center gap-2 whitespace-nowrap shrink-0">
+                <span class="px-2 py-0.5 rounded bg-(--btn-plain-bg-hover) text-75">
+                  {album.category}
+                </span>
+                {album.tags.length > 0 &&
+                  album.tags.map((tag) => (
+                    <span class="btn-regular h-7 text-xs px-3 rounded-lg">
+                      #{tag}
+                    </span>
+                  ))}
+              </span>
+            ) : (
+              album.tags.length > 0 &&
+              album.tags.map((tag) => (
+                <span class="btn-regular h-7 text-xs px-3 rounded-lg">
+                  #{tag}
+                </span>
+              ))
+            )}
+          </div>
+          {album.description && <p class="text-75">{album.description}</p>}
+        </section>
+
+        {enrichedPhotos.length === 0 ? (
+          <div class="card-base p-8 rounded-(--radius-large) text-70">
+            {i18n(I18nKey.contentAlbumNoPhotosToShow)}
+          </div>
+        ) : (
+          <div
+            class:list={[
+              "dc-album-gallery gap-3",
+              album.layout === "masonry"
+                ? "columns-3"
+                : "grid grid-cols-2 lg:grid-cols-4",
+            ]}
+          >
+            {enrichedPhotos.map((photo) => (
+              <figure
+                class:list={[
+                  "album-photo-item rounded-xl overflow-hidden border border-(--line-divider) bg-(--card-bg) relative",
+                  photo.isMasonry ? "mb-3 break-inside-avoid" : "",
+                ]}
+              >
+                {photo.hasMedia && (
+                  <a
+                    href={photo.previewSrc ?? ""}
+                    data-fancybox="album-photo-preview"
+                    data-caption={photo.captionText || undefined}
+                    class="block relative"
+                  >
+                    <ExternalImage
+                      src={photo.thumbSrc ?? ""}
+                      alt={photo.title || "album photo"}
+                      class="w-full h-auto object-cover"
+                      loading="lazy"
+                    />
+                    {photo.showOverlay && (
+                      <div class="absolute inset-x-0 bottom-0 p-3 space-y-1 text-white bg-linear-to-t from-black/70 via-black/35 to-transparent">
+                        {photo.title && (
+                          <div class="text-sm font-medium line-clamp-1">
+                            {photo.title}
+                          </div>
+                        )}
+                        {photo.description && (
+                          <div class="text-xs text-white/85 line-clamp-2">
+                            {photo.description}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </a>
+                )}
+                {photo.showCaption && (
+                  <figcaption class="p-3 space-y-1 text-90">
+                    {photo.title && (
+                      <div class="text-sm font-medium">{photo.title}</div>
+                    )}
+                    {photo.description && (
+                      <div class="text-xs text-60">{photo.description}</div>
+                    )}
+                  </figcaption>
+                )}
+              </figure>
+            ))}
+          </div>
+        )}
+      </>
+    )
+  }
+</MainGridLayout>

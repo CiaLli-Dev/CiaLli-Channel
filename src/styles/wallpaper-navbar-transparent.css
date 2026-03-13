@@ -1,0 +1,115 @@
+/* 集中管理颜色与状态，修改一处即可全局生效 */
+:root {
+  /* --- 基础 Token --- */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --radius-std: 0.75rem;
+
+  /* --- 状态变量 (默认值) --- */
+  --nav-bg: var(--page-bg);
+  --nav-blur: none;
+  --nav-shadow: none;
+  --nav-radius: var(--radius-std);
+  --nav-strip-opacity: 1;
+
+  /* --- 面板变量 (默认跟随 Navbar，特定情况分离) --- */
+  --panel-bg: var(--card-bg);
+  --panel-blur: none;
+}
+
+/* Dark Mode 适配 */
+:root.dark {
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.18);
+}
+
+/* --- 滚动透明度控制 (Dynamic Transparent) --- */
+
+/* Semi (毛玻璃) */
+#navbar[data-dynamic-transparent="semi"],
+#navbar[data-transparent-mode="semi"] {
+  --nav-bg: var(--page-bg);
+  --nav-blur: none;
+  --nav-shadow: none;
+  --nav-strip-opacity: 1;
+}
+
+/* Full (全透明) */
+#navbar[data-dynamic-transparent="full"],
+#navbar[data-transparent-mode="full"] {
+  --nav-bg: transparent;
+  --nav-blur: none;
+  --nav-shadow: none;
+  --nav-strip-opacity: 0;
+}
+
+/* SemiFull (顶部透明，滚动后显色) */
+#navbar[data-dynamic-transparent="semifull"],
+#navbar[data-transparent-mode="semifull"] {
+  --nav-bg: transparent;
+  --nav-blur: none;
+  --nav-shadow: none;
+  --nav-strip-opacity: 0;
+}
+
+#navbar[data-dynamic-transparent="semifull"].scrolled,
+#navbar[data-transparent-mode="semifull"].scrolled {
+  --nav-bg: var(--page-bg);
+  --nav-strip-opacity: 1;
+}
+
+/* None (实心) */
+#navbar[data-dynamic-transparent="none"],
+#navbar[data-transparent-mode="none"] {
+  --nav-bg: var(--page-bg);
+  --nav-blur: none;
+  --nav-shadow: none;
+  --nav-strip-opacity: 1;
+
+  /* 联动子面板 */
+  --panel-bg: var(--card-bg);
+  --panel-blur: none;
+}
+
+/* 导航栏样式核心 (Navbar Core) */
+#navbar > div {
+  border: none !important;
+  outline: none;
+
+  /* 核心外观由变量驱动 */
+  background: var(--nav-bg);
+  backdrop-filter: none;
+  box-shadow: none !important;
+  border-radius: var(--nav-radius);
+
+  /* 性能优化 */
+  will-change: background, box-shadow, border-radius;
+  transition:
+    background-color 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#navbar .navbar-bg-strip {
+  opacity: var(--nav-strip-opacity);
+  transition: opacity 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 子组件样式 (Sub-Components) */
+:is(.dropdown-content, #display-setting, .music-player .mini-player, .float-panel) {
+  /* 使用面板专用变量 */
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-lg);
+  border: none;
+
+  /* 优化过渡 */
+  transition: background 0.3s ease;
+}
+
+/* Layout state machine override:
+ * In banner-hidden modes, navbar shape is rectangular on all devices.
+ */
+body[data-layout-mode="none"] #navbar > div,
+body[data-layout-mode="collapsed"] #navbar > div {
+  border-radius: 0 !important;
+}

@@ -1,0 +1,96 @@
+---
+import { getResolvedSiteSettings } from "@/server/site-settings/service";
+import { url } from "@utils/url-utils";
+import packageJson from "../../package.json";
+
+const currentYear = new Date().getFullYear();
+const packageVersion = packageJson.version;
+const resolvedSiteSettings =
+  Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
+const profileName = resolvedSiteSettings.settings.profile.name;
+---
+
+<div
+  class="transition border-t border-black/10 dark:border-white/15 my-10 border-dashed mx-32"
+>
+</div>
+<div
+  class="transition border-dashed border-[oklch(85%_0.01_var(--hue))] dark:border-white/15 rounded-2xl mb-12 flex flex-col items-center justify-center px-6"
+>
+  <div class="transition text-50 text-sm text-center">
+    <div class="mb-2">
+      &copy; <span id="copyright-year">{currentYear}</span>
+      {profileName}. All Rights Reserved. /
+      <a
+        class="transition link text-(--primary) font-medium"
+        href={url("rss")}
+        data-footer-nav
+        data-footer-target={url("rss")}>RSS</a
+      > /
+      <a
+        class="transition link text-(--primary) font-medium"
+        href={url("atom")}
+        data-footer-nav
+        data-footer-target={url("atom")}>Atom</a
+      > /
+      <a
+        class="transition link text-(--primary) font-medium"
+        target="_blank"
+        href={url("sitemap-index.xml")}>Sitemap</a
+      >
+    </div>
+
+    <div>
+      Powered by
+      <a
+        class="transition link text-(--primary) font-medium"
+        target="_blank"
+        href="https://github.com/matsuzaka-yuki/Mizuki">Mizuki</a
+      >
+      &
+      <a
+        class="transition link text-(--primary) font-medium"
+        target="_blank"
+        href="https://github.com/directus/directus">Directus</a
+      >
+      &
+      <a
+        class="transition link text-(--primary) font-medium"
+        target="_blank"
+        href="https://github.com/CiaLliChannel-Dev">CiaLliChannel-Dev</a
+      >&nbsp; Version <a
+        class="transition link text-(--primary) font-medium"
+        target="_blank"
+        href="https://github.com/CiaLliChannel-Dev/CiaLli">{packageVersion}</a
+      >
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  (() => {
+    const bindFooterNavigation = () => {
+      const navLinks = document.querySelectorAll("[data-footer-nav]");
+      navLinks.forEach((link) => {
+        if (!(link instanceof HTMLAnchorElement)) {
+          return;
+        }
+        if (link.dataset.footerNavBound === "true") {
+          return;
+        }
+        link.dataset.footerNavBound = "true";
+        link.addEventListener("click", (event) => {
+          const target = link.dataset.footerTarget;
+          if (!target || typeof navigateToPage !== "function") {
+            return;
+          }
+          event.preventDefault();
+          navigateToPage(target);
+        });
+      });
+    };
+
+    bindFooterNavigation();
+    document.addEventListener("astro:after-swap", bindFooterNavigation);
+  })();
+</script>

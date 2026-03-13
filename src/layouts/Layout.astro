@@ -1,0 +1,764 @@
+---
+import { ClientRouter } from "astro:transitions";
+import Analytics from "@vercel/analytics/astro";
+import SpeedInsights from "@vercel/speed-insights/astro";
+import ConfigCarrier from "@components/ConfigCarrier.astro";
+import MusicPlayer from "@components/widget/MusicPlayer/MusicPlayer.svelte";
+import DesktopOnlyNotice from "@components/misc/DesktopOnlyNotice.astro";
+import { buildLegacySiteConfig } from "@/config";
+import { generatedFontManifest } from "@/generated/font-manifest";
+import { getResolvedSiteSettings } from "@/server/site-settings/service";
+import { readCsrfToken } from "@/server/security/csrf";
+import type { ResolvedSiteSettings } from "@/types/site-settings";
+
+const BANNER_HEIGHT = 35;
+const BANNER_HEIGHT_EXTEND = 30;
+const BANNER_HEIGHT_HOME = BANNER_HEIGHT + BANNER_HEIGHT_EXTEND;
+const DESKTOP_MIN_WIDTH = 1280;
+
+import {
+  DARK_MODE,
+  DEFAULT_THEME,
+  LIGHT_MODE,
+  PAGE_WIDTH,
+} from "../constants/constants";
+import { defaultFavicons } from "@constants/icon";
+import type { Favicon } from "@/types/config";
+import { pathsEqual, url } from "@utils/url-utils";
+import "../styles/wallpaper-navbar-transparent.css";
+import "../styles/fancybox-custom.css";
+import "../styles/expressive-code.css";
+import "../styles/panel-animations.css";
+import "../styles/skeleton.css";
+import "../styles/variables.styl";
+import "../styles/main.css";
+
+interface Props {
+  title?: string;
+  banner?: string;
+  description?: string;
+  lang?: string;
+  setOGTypeArticle?: boolean;
+}
+
+const resolvedSiteSettings: ResolvedSiteSettings =
+  Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
+const siteConfig = buildLegacySiteConfig(
+  resolvedSiteSettings.system,
+  resolvedSiteSettings.settings,
+);
+const profileName = resolvedSiteSettings.settings.profile.name;
+const musicPlayerSettings = resolvedSiteSettings.settings.musicPlayer;
+const umamiConfig = {
+  enabled: resolvedSiteSettings.settings.umami.enabled,
+  apiKey: import.meta.env.UMAMI_API_KEY || "api_xxxxxxxx",
+  baseUrl: resolvedSiteSettings.settings.umami.baseUrl,
+  scripts: resolvedSiteSettings.settings.umami.scripts,
+};
+const analyticsConfig = {
+  gtmId: String(resolvedSiteSettings.settings.analytics.gtmId || "").trim(),
+  clarityId: String(
+    resolvedSiteSettings.settings.analytics.clarityId || "",
+  ).trim(),
+};
+const csrfTokenFromLocals =
+  typeof Astro.locals.csrfToken === "string" ? Astro.locals.csrfToken : "";
+const csrfToken = csrfTokenFromLocals || readCsrfToken(Astro);
+
+// 在首屏渲染时先为 body 打上类名，用于决定 banner 高度
+// 虽然 View Transitions 会在切页后更新 body，但时机在动画之后，会造成高度切换延迟
+// 因此仍需在点击链接时通过 transition hooks 立即切换布局态
+const isHomePage = pathsEqual(Astro.url.pathname, url("/"));
+const normalizedPathname = Astro.url.pathname.replace(/\/+$/, "").toLowerCase();
+const isArchivePage =
+  normalizedPathname === "/posts" || normalizedPathname.endsWith("/posts");
+const isPostEditorRoute =
+  normalizedPathname === "/posts/new" ||
+  /^\/posts\/[^/]+\/edit$/.test(normalizedPathname);
+
+// 定义全局 CSS 变量
+// 放在 Layout 而非 GlobalStyles 的原因见：
+// https://github.com/withastro/astro/issues/6728#issuecomment-1502203757
+const configHue = siteConfig.themeColor.hue;
+
+let { title, description, lang, setOGTypeArticle } = Astro.props;
+
+const enableBanner = !!siteConfig.banner.src;
+const initialLayoutMode =
+  enableBanner &&
+  isHomePage &&
+  siteConfig.wallpaperMode.defaultMode === "banner"
+    ? "banner"
+    : "none";
+
+let pageTitle: string;
+if (title) {
+  pageTitle = `${title} - ${siteConfig.title}`;
+} else {
+  pageTitle = siteConfig.subtitle
+    ? `${siteConfig.title} - ${siteConfig.subtitle}`
+    : siteConfig.title;
+}
+
+const favicons: Favicon[] =
+  siteConfig.favicon.length > 0 ? siteConfig.favicon : defaultFavicons;
+
+const resolveFaviconHref = (src: string): string => {
+  const value = String(src || "").trim();
+  if (!value) {
+    return "";
+  }
+  if (value.startsWith("/")) {
+    return url(value);
+  }
+  if (value.startsWith("assets/")) {
+    return url(`/${value}`);
+  }
+  return value;
+};
+
+// const siteLang = siteConfig.lang.replace('_', '-') // 预留：历史写法
+if (!lang) {
+  lang = `${siteConfig.lang}`;
+}
+const siteLang = lang.replace("_", "-");
+
+const bannerOffsetByPosition = {
+  top: `${BANNER_HEIGHT_EXTEND}vh`,
+  center: `${BANNER_HEIGHT_EXTEND / 2}vh`,
+  bottom: "0",
+};
+const bannerOffset =
+  bannerOffsetByPosition[siteConfig.banner.position || "center"];
+const pageWidthRem = `${PAGE_WIDTH}rem`;
+const bannerHeightHomeVh = `${BANNER_HEIGHT_HOME}vh`;
+const bannerHeightVh = `${BANNER_HEIGHT}vh`;
+
+const umamiEnabled = umamiConfig.enabled || false;
+const umamiScripts = umamiConfig.scripts || ""; // 获取 Umami scripts 配置
+const gtmId = analyticsConfig.gtmId;
+const clarityId = analyticsConfig.clarityId;
+const analyticsEnabled = Boolean(gtmId || clarityId);
+const htmlClassName = [
+  "bg-(--page-bg)",
+  "text-[16px]",
+  isPostEditorRoute ? "route-post-editor" : "",
+]
+  .filter(Boolean)
+  .join(" ");
+const bodyClassName = [
+  "min-h-screen",
+  isHomePage ? "lg:is-home" : "",
+  isArchivePage ? "page-archive" : "",
+  isPostEditorRoute ? "route-post-editor" : "",
+  initialLayoutMode === "banner" ? "enable-banner" : "no-banner-mode",
+  initialLayoutMode !== "banner" ? "waves-paused" : "",
+]
+  .filter(Boolean)
+  .join(" ");
+
+// 构建字体配置的 CSS 变量
+// ASCII 字体优先级最高（用于英文字母、数字等），CJK 字体作为回退
+let bodyFontFamily = "";
+if (siteConfig.font) {
+  const fonts: string[] = [];
+  // 先添加 ASCII 字体（优先级最高）
+  if (siteConfig.font.asciiFont?.fontFamily) {
+    const asciiFont = siteConfig.font.asciiFont.fontFamily;
+    // 字体名包含空格时需加引号
+    fonts.push(asciiFont.includes(" ") ? `"${asciiFont}"` : asciiFont);
+  }
+  // 再添加 CJK 字体（作为回退）
+  if (siteConfig.font.cjkFont?.fontFamily) {
+    const cjkFont = siteConfig.font.cjkFont.fontFamily;
+    // 字体名包含空格时需加引号
+    fonts.push(cjkFont.includes(" ") ? `"${cjkFont}"` : cjkFont);
+  }
+  // 添加系统字体作为最终兜底
+  fonts.push(
+    "system-ui",
+    "-apple-system",
+    "BlinkMacSystemFont",
+    "'Segoe UI'",
+    "Roboto",
+    "Oxygen",
+    "Ubuntu",
+    "Cantarell",
+    "'Open Sans'",
+    "'Helvetica Neue'",
+    "sans-serif",
+  );
+  // 组合为完整的 font-family 字符串
+  bodyFontFamily = fonts.join(", ");
+}
+const bodyStyle = bodyFontFamily ? `font-family: ${bodyFontFamily};` : "";
+---
+
+<!doctype html>
+<html
+  lang={siteLang}
+  class={htmlClassName}
+  style={`--page-width:${pageWidthRem};--hue:${configHue};`}
+  data-overlayscrollbars-initialize
+>
+  <head>
+    <ClientRouter fallback="swap" />
+    <link rel="stylesheet" href={generatedFontManifest.cssHref} />
+    {
+      generatedFontManifest.preloadFonts.map((font) => (
+        <link
+          rel="preload"
+          href={font.href}
+          as="font"
+          type={font.type}
+          crossorigin={font.crossorigin}
+          fetchpriority={font.fetchpriority}
+        />
+      ))
+    }
+    <script
+      is:inline
+      define:vars={{
+        deferredFonts: generatedFontManifest.deferredFonts,
+        deferredWarmup: generatedFontManifest.deferredWarmup,
+      }}
+    >
+      (() => {
+        if (
+          typeof window === "undefined" ||
+          !deferredWarmup?.enabled ||
+          !Array.isArray(deferredFonts) ||
+          deferredFonts.length === 0
+        ) {
+          return;
+        }
+
+        const sessionKey = String(deferredWarmup.sessionKey || "").trim();
+        const hasWarmupFinished = () => {
+          if (!sessionKey) {
+            return false;
+          }
+          try {
+            return sessionStorage.getItem(sessionKey) === "1";
+          } catch (error) {
+            console.warn("[layout] 读取字体预热状态失败:", error);
+            return false;
+          }
+        };
+        const markWarmupFinished = () => {
+          if (!sessionKey) {
+            return;
+          }
+          try {
+            sessionStorage.setItem(sessionKey, "1");
+          } catch (error) {
+            console.warn("[layout] 写入字体预热状态失败:", error);
+          }
+        };
+
+        if (hasWarmupFinished()) {
+          return;
+        }
+
+        const warmupDeferredFonts = () => {
+          for (const font of deferredFonts) {
+            if (!font?.href) {
+              continue;
+            }
+
+            const link = document.createElement("link");
+            link.rel = "preload";
+            link.as = "font";
+            link.href = String(font.href);
+            link.type = String(font.type || "font/woff2");
+            link.crossOrigin = String(font.crossorigin || "anonymous");
+            link.setAttribute(
+              "fetchpriority",
+              String(
+                font.fetchpriority || deferredWarmup.fetchpriority || "low",
+              ),
+            );
+            link.dataset.fontDeferredWarmup = "true";
+            document.head.appendChild(link);
+          }
+
+          markWarmupFinished();
+        };
+
+        const scheduleWarmup = () => {
+          if (typeof window.requestIdleCallback === "function") {
+            window.requestIdleCallback(
+              () => {
+                warmupDeferredFonts();
+              },
+              { timeout: 4000 },
+            );
+            return;
+          }
+
+          window.setTimeout(() => {
+            warmupDeferredFonts();
+          }, 0);
+        };
+
+        if (deferredWarmup.trigger === "window-load-idle") {
+          if (document.readyState === "complete") {
+            scheduleWarmup();
+            return;
+          }
+          window.addEventListener(
+            "load",
+            () => {
+              scheduleWarmup();
+            },
+            { once: true },
+          );
+          return;
+        }
+
+        scheduleWarmup();
+      })();
+    </script>
+
+    <script is:inline>
+      (() => {
+        if (typeof window === "undefined" || typeof Node === "undefined") {
+          return;
+        }
+
+        const resolveInheritedGetter = (proto, key) => {
+          let cursor = Object.getPrototypeOf(proto);
+          while (cursor) {
+            const descriptor = Object.getOwnPropertyDescriptor(cursor, key);
+            if (typeof descriptor?.get === "function") {
+              return descriptor.get;
+            }
+            cursor = Object.getPrototypeOf(cursor);
+          }
+          return null;
+        };
+
+        const patchGetter = (key, fallbackGetter) => {
+          const descriptor = Object.getOwnPropertyDescriptor(
+            Node.prototype,
+            key,
+          );
+          if (typeof descriptor?.get === "function") {
+            return;
+          }
+
+          const inheritedGetter = resolveInheritedGetter(Node.prototype, key);
+          const getter = inheritedGetter || fallbackGetter;
+
+          try {
+            Object.defineProperty(Node.prototype, key, {
+              configurable: true,
+              enumerable: descriptor?.enumerable ?? false,
+              get() {
+                return getter(this);
+              },
+            });
+          } catch (error) {
+            console.warn(`[layout] 修复 Node.${key} 访问器失败:`, error);
+          }
+        };
+
+        patchGetter("firstChild", (node) => node.childNodes?.item(0) || null);
+        patchGetter("nextSibling", (node) => {
+          const parent = node.parentNode;
+          if (!parent) {
+            return null;
+          }
+          const siblings = parent.childNodes;
+          const currentIndex = Array.prototype.indexOf.call(siblings, node);
+          if (currentIndex < 0) {
+            return null;
+          }
+          return siblings.item(currentIndex + 1) || null;
+        });
+      })();
+    </script>
+    <script is:inline define:vars={{ DESKTOP_MIN_WIDTH }}>
+      (function () {
+        const runtimeWindow = window;
+        const DESKTOP_FORCE_BROWSE_KEY = "cialli.desktop.force-browse";
+
+        const readForceBrowseFlag = () => {
+          try {
+            return sessionStorage.getItem(DESKTOP_FORCE_BROWSE_KEY) === "true";
+          } catch (error) {
+            console.warn("[layout] 读取强制浏览状态失败:", error);
+            return false;
+          }
+        };
+
+        const applyDesktopSupportState = () => {
+          const forceBrowse = readForceBrowseFlag();
+          const unsupported =
+            window.innerWidth < DESKTOP_MIN_WIDTH && !forceBrowse;
+          const unsupportedValue = unsupported ? "true" : "false";
+          const forceBrowseValue = forceBrowse ? "true" : "false";
+          document.documentElement.dataset.desktopUnsupported =
+            unsupportedValue;
+          document.documentElement.dataset.desktopForceBrowse =
+            forceBrowseValue;
+          if (document.body) {
+            document.body.dataset.desktopUnsupported = unsupportedValue;
+            document.body.dataset.desktopForceBrowse = forceBrowseValue;
+          }
+        };
+
+        applyDesktopSupportState();
+        if (!runtimeWindow.__desktopOnlyGuardBound) {
+          runtimeWindow.__desktopOnlyGuardBound = true;
+          window.addEventListener("resize", applyDesktopSupportState, {
+            passive: true,
+          });
+          document.addEventListener(
+            "astro:page-load",
+            applyDesktopSupportState,
+          );
+          window.addEventListener("desktop-force-browse-change", () => {
+            applyDesktopSupportState();
+          });
+        }
+      })();
+    </script>
+    <script is:inline define:vars={{ gtmId, clarityId, analyticsEnabled }}>
+      if (analyticsEnabled) {
+        // 使用 requestIdleCallback 延迟加载第三方脚本
+        const loadAnalytics = () => {
+          // Google Tag Manager 脚本
+          if (gtmId) {
+            (function (w, d, s, l, i) {
+              w[l] = w[l] || [];
+              w[l].push({
+                "gtm.start": new Date().getTime(),
+                event: "gtm.js",
+              });
+              const f = d.getElementsByTagName(s)[0];
+              const j = d.createElement(s);
+              const dl = l !== "dataLayer" ? "&l=" + l : "";
+              j.async = true;
+              j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
+              f.parentNode.insertBefore(j, f);
+            })(window, document, "script", "dataLayer", gtmId);
+          }
+
+          // Clarity 脚本
+          if (clarityId) {
+            (function (c, l, a, r, i, t, y) {
+              c[a] =
+                c[a] ||
+                function () {
+                  (c[a].q = c[a].q || []).push(arguments);
+                };
+              t = l.createElement(r);
+              t.async = true;
+              t.src = "https://www.clarity.ms/tag/" + i;
+              y = l.getElementsByTagName(r)[0];
+              y.parentNode.insertBefore(t, y);
+            })(window, document, "clarity", "script", clarityId);
+          }
+        };
+
+        // 浏览器空闲时加载；若长期不空闲则 3 秒后兜底加载
+        if ("requestIdleCallback" in window) {
+          requestIdleCallback(loadAnalytics, { timeout: 3000 });
+        } else {
+          setTimeout(loadAnalytics, 3000);
+        }
+      }
+    </script>
+
+    <title>{pageTitle}</title>
+    <meta charset="UTF-8" />
+    <meta name="description" content={description || pageTitle} />
+    {
+      siteConfig.keywords && siteConfig.keywords.length > 0 && (
+        <meta name="keywords" content={siteConfig.keywords.join(", ")} />
+      )
+    }
+    <meta name="author" content={profileName} />
+    <meta property="og:site_name" content={siteConfig.title} />
+    <meta property="og:url" content={Astro.url} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description || pageTitle} />
+    {
+      setOGTypeArticle ? (
+        <meta property="og:type" content="article" />
+      ) : (
+        <meta property="og:type" content="website" />
+      )
+    }
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content={Astro.url} />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description || pageTitle} />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="cialli-csrf-token" content={csrfToken} />
+    <script is:inline>
+      (function bootstrapCsrfToken() {
+        const meta = document.querySelector('meta[name="cialli-csrf-token"]');
+        if (!(meta instanceof HTMLMetaElement) || meta.content) {
+          return;
+        }
+        void fetch("/api/auth/csrf", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        })
+          .then((response) =>
+            response.ok ? response.json().catch(() => null) : null,
+          )
+          .then((data) => {
+            const token =
+              data && data.ok && typeof data.token === "string"
+                ? data.token
+                : "";
+            if (token) {
+              meta.content = token;
+            }
+          })
+          .catch(() => null);
+      })();
+    </script>
+    <meta name="generator" content={Astro.generator} />
+    {
+      favicons.map((favicon) => (
+        <link
+          rel="icon"
+          href={resolveFaviconHref(favicon.src)}
+          sizes={favicon.sizes}
+          media={favicon.theme && `(prefers-color-scheme: ${favicon.theme})`}
+        />
+      ))
+    }
+
+    <!-- 在页面渲染前先设置主题，避免闪烁 -->
+    <script
+      is:inline
+      define:vars={{
+        DEFAULT_THEME,
+        LIGHT_MODE,
+        DARK_MODE,
+        BANNER_HEIGHT_EXTEND,
+        PAGE_WIDTH,
+        configHue,
+        DESKTOP_MIN_WIDTH,
+        themeColorFixed: siteConfig.themeColor.fixed,
+        pageScaling: siteConfig.pageScaling,
+      }}
+    >
+      // 从本地存储读取主题
+      const theme = localStorage.getItem("theme") || DEFAULT_THEME;
+      let isDark = false;
+      switch (theme) {
+        case LIGHT_MODE:
+          document.documentElement.classList.remove("dark");
+          isDark = false;
+          break;
+        case DARK_MODE:
+          document.documentElement.classList.add("dark");
+          isDark = true;
+          break;
+      }
+
+      // 按当前主题模式同步 Expressive Code 主题
+      const expressiveTheme = isDark ? "github-dark" : "github-light";
+      const currentTheme = document.documentElement.getAttribute("data-theme");
+      // 只在主题不同时才更新，避免触发不必要的重绘
+      if (currentTheme !== expressiveTheme) {
+        document.documentElement.setAttribute("data-theme", expressiveTheme);
+      }
+
+      // 固定主题色相（fixed=true 时忽略本地存储）
+      const storedHue = localStorage.getItem("hue");
+      const resolvedHue = themeColorFixed ? configHue : storedHue || configHue;
+      document.documentElement.style.setProperty("--hue", resolvedHue);
+
+      // 计算 --banner-height-extend，取 4 的倍数以避免文字发虚
+      let offset = Math.floor(
+        window.innerHeight * (BANNER_HEIGHT_EXTEND / 100),
+      );
+      offset = offset - (offset % 4);
+      document.documentElement.style.setProperty(
+        "--banner-height-extend",
+        `${offset}px`,
+      );
+
+      // 自动缩放逻辑（从 MainGridLayout 前移，尽早执行）
+      (function () {
+        if (pageScaling && pageScaling.enable) {
+          function adjustPageScale() {
+            const currentWidth = document.documentElement.clientWidth;
+            if (currentWidth < DESKTOP_MIN_WIDTH) {
+              document.documentElement.style.fontSize = "";
+              return;
+            }
+            const targetWidth = pageScaling.targetWidth || 2000;
+            let scale = currentWidth / targetWidth;
+            if (scale > 1) scale = 1;
+            if (scale < 0.85) scale = 0.85;
+            document.documentElement.style.fontSize = `${scale * 100}%`;
+          }
+
+          // 立即执行一次
+          adjustPageScale();
+
+          // 监听窗口尺寸变化
+          window.addEventListener("resize", adjustPageScale);
+
+          // 页面切换后也需要检查
+          document.addEventListener("astro:page-load", adjustPageScale);
+        }
+      })();
+    </script>
+    <!-- 定义全局 CSS 变量，会作用到 <html>、<body> 及部分根节点 -->
+    <slot name="head" />
+
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title={profileName}
+      href={`${Astro.site}rss.xml`}
+    />
+
+    <!-- Umami 统计 -->
+    {umamiEnabled && umamiScripts && <Fragment set:html={umamiScripts} />}
+  </head>
+  <body
+    class={bodyClassName}
+    style={bodyStyle}
+    data-layout-mode={initialLayoutMode}
+    data-route-home={String(isHomePage)}
+    data-route-archive={String(isArchivePage)}
+    data-route-post-editor={String(isPostEditorRoute)}
+    data-overlayscrollbars-initialize
+  >
+    <div data-desktop-app>
+      <ConfigCarrier resolvedSiteSettings={resolvedSiteSettings} />
+      {
+        gtmId && (
+          <noscript>
+            <iframe
+              src={`https://www.googletagmanager.com/ns.html?id=${encodeURIComponent(gtmId)}`}
+              height="0"
+              width="0"
+              style="display:none;visibility:hidden"
+            />
+          </noscript>
+        )
+      }
+      <slot />
+
+      <!-- Music Player - 仅在启用时加载 -->
+      {
+        musicPlayerSettings.enable && (
+          <div id="music-player-shell" transition:persist>
+            <MusicPlayer musicPlayer={musicPlayerSettings} client:idle />
+          </div>
+        )
+      }
+
+      <!-- 切页时临时增加页面高度，避免滚动动画跳变 -->
+      <div id="page-height-extend" class="hidden h-[300vh]"></div>
+    </div>
+    <!-- Vercel 可观测性 -->
+    <Analytics />
+    <SpeedInsights />
+    <DesktopOnlyNotice />
+  </body>
+</html>
+
+<style
+  is:global
+  define:vars={{
+    bannerOffset,
+    "banner-height-home": bannerHeightHomeVh,
+    "banner-height": bannerHeightVh,
+  }}
+>
+  @reference "../styles/main.css";
+
+  @layer components {
+    #desktop-only-notice {
+      display: none;
+    }
+
+    html[data-desktop-unsupported="true"],
+    html[data-desktop-unsupported="true"] body {
+      overflow: hidden !important;
+      overscroll-behavior: none;
+    }
+
+    html[data-desktop-unsupported="true"] [data-desktop-app] {
+      visibility: hidden;
+      pointer-events: none !important;
+      user-select: none;
+    }
+
+    html[data-desktop-unsupported="true"] #desktop-only-notice {
+      display: flex;
+    }
+
+    body[data-layout-mode="banner"][data-route-home="true"] #banner-wrapper {
+      @apply h-(--banner-height-home) translate-y-(--banner-height-extend);
+    }
+    body[data-layout-mode="banner"] #banner-wrapper {
+      @apply h-(--banner-height-home);
+    }
+    body[data-layout-mode="banner"][data-route-home="true"] #banner {
+      @apply h-(--banner-height-home) translate-y-0;
+    }
+    body[data-layout-mode="banner"] #banner {
+      @apply h-(--banner-height-home) translate-y-(--bannerOffset);
+    }
+
+    /* 水波动画 */
+    .waves > .parallax use {
+      animation: wave 25s cubic-bezier(0.5, 0.5, 0.45, 0.5) infinite;
+    }
+    @keyframes wave {
+      0% {
+        transform: translate3d(-90px, 0, 0);
+      }
+      100% {
+        transform: translate3d(85px, 0, 0);
+      }
+    }
+  }
+</style>
+
+<script>
+  import { bootstrapLayoutRuntime } from "../scripts/layout";
+
+  bootstrapLayoutRuntime();
+</script>
+
+<!-- Mermaid 图表渲染 -->
+<script>
+  import "../scripts/mermaid-runtime";
+</script>
+
+<!-- GitHub 卡片 runtime -->
+<script>
+  import "../scripts/github-card-runtime";
+</script>
+
+<!-- 代码块折叠功能 -->
+<script>
+  import "../scripts/code-collapse.js";
+</script>
+
+<!-- 登录提示覆盖层 -->
+<script>
+  import "../scripts/dialogs";
+</script>
+
+<!-- 主题切换综合性能优化器（包含代码块优化、重型元素优化、性能诊断） -->
+<script>
+  import "../scripts/theme-optimizer.js";
+</script>

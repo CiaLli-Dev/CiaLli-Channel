@@ -1,0 +1,65 @@
+---
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import AdminLayout from "@layouts/AdminLayout.astro";
+import DashboardNavCards from "@/components/admin/dashboard/DashboardNavCards.astro";
+
+export const prerender = false;
+---
+
+<AdminLayout
+  title={i18n(I18nKey.adminDashboardTitle)}
+  description={i18n(I18nKey.adminDashboardDescription)}
+>
+  <div
+    data-enter-skeleton-page="admin-dashboard"
+    data-enter-skeleton-target="admin-dashboard"
+  >
+    <div data-enter-skeleton-inline-content class="space-y-4 text-75">
+      <section class="card-base px-9 py-6 rounded-(--radius-large)">
+        <h1
+          class="text-4xl font-bold text-90 mb-2 relative
+				before:w-1 before:h-8 before:rounded-md before:bg-(--primary)
+				before:absolute before:top-1/2 before:-translate-y-1/2 before:-left-4"
+        >
+          {i18n(I18nKey.adminDashboardTitle)}
+        </h1>
+        <p class="text-base text-70">
+          {i18n(I18nKey.adminDashboardDescription)}
+        </p>
+      </section>
+
+      <DashboardNavCards />
+    </div>
+    <div
+      data-enter-skeleton-inline-placeholder
+      aria-hidden="true"
+      class="space-y-4"
+    >
+      <section class="card-base px-9 py-6 rounded-(--radius-large) space-y-3">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 30%; --skeleton-height: 2rem;"
+        >
+        </div>
+        <div class="md3-skeleton-text" style="--skeleton-width: 58%;"></div>
+      </section>
+      <section class="grid grid-cols-1 gap-4">
+        {
+          Array.from({ length: 4 }).map(() => (
+            <div class="card-base p-6 rounded-(--radius-large) border border-(--line-divider) space-y-3">
+              <div
+                class="md3-skeleton-text"
+                style="--skeleton-width: 36%; --skeleton-height: 1.25rem;"
+              />
+              <div class="space-y-2">
+                <div class="md3-skeleton-text" style="--skeleton-width: 90%;" />
+                <div class="md3-skeleton-text" style="--skeleton-width: 74%;" />
+              </div>
+            </div>
+          ))
+        }
+      </section>
+    </div>
+  </div>
+</AdminLayout>

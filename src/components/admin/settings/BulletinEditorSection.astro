@@ -1,0 +1,177 @@
+---
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import { Icon } from "astro-icon/components";
+---
+
+<section class="card-base p-8 rounded-(--radius-large) space-y-4">
+  <form id="bulletin-form" class="space-y-4">
+    <label class="space-y-1.5 block">
+      <span class="text-sm text-60"
+        >{i18n(I18nKey.adminBulletinTitleLabel)}</span
+      >
+      <input
+        id="bulletin-title"
+        type="text"
+        placeholder={i18n(I18nKey.adminBulletinTitlePlaceholder)}
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-90"
+      />
+    </label>
+
+    <label class="space-y-1.5 block">
+      <span class="text-sm text-60"
+        >{i18n(I18nKey.adminBulletinSummaryLabel)}</span
+      >
+      <textarea
+        id="bulletin-summary"
+        rows="3"
+        placeholder={i18n(I18nKey.adminBulletinSummaryPlaceholder)}
+        class="w-full h-24 rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-90 resize-none"
+      ></textarea>
+    </label>
+
+    <label
+      class="flex items-center gap-3 text-sm text-75 cursor-pointer select-none justify-start"
+    >
+      <input id="bulletin-closable" type="checkbox" class="toggle-checkbox" />
+      <span class="toggle-track"><span class="toggle-knob"></span></span>
+      {i18n(I18nKey.adminBulletinClosable)}
+    </label>
+
+    <div class="mt-8! flex items-center justify-between gap-3">
+      <span class="text-sm text-60">
+        {i18n(I18nKey.adminMarkdownBodyLabel)}
+        <span class="text-red-500">*</span>
+      </span>
+      <div class="flex items-center justify-end gap-2">
+        <button
+          type="button"
+          id="bulletin-mode-edit"
+          class="px-3 py-1.5 rounded-lg text-xs border border-(--line-divider) text-60"
+          aria-pressed="true"
+        >
+          {i18n(I18nKey.interactionCommonEdit)}
+        </button>
+        <button
+          type="button"
+          id="bulletin-mode-preview"
+          class="px-3 py-1.5 rounded-lg text-xs border border-(--line-divider) text-60"
+          aria-pressed="false"
+        >
+          {i18n(I18nKey.interactionCommonPreview)}
+        </button>
+      </div>
+    </div>
+
+    <div id="bulletin-editor-panel" class="space-y-4">
+      <div>
+        <div
+          id="bulletin-editor-monaco"
+          class="w-full h-96 rounded-xl border border-(--line-divider)"
+        >
+        </div>
+        <textarea id="bulletin-body-markdown" class="hidden"></textarea>
+      </div>
+
+      <div id="bulletin-toolbar" class="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          class="bulletin-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
+          data-md-action="bold"
+          aria-label={i18n(I18nKey.adminMarkdownBold)}
+          title={i18n(I18nKey.adminMarkdownBold)}
+        >
+          <Icon name="material-symbols:format-bold" class="text-[1.1rem]" />
+        </button>
+        <button
+          type="button"
+          class="bulletin-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
+          data-md-action="italic"
+          aria-label={i18n(I18nKey.adminMarkdownItalic)}
+          title={i18n(I18nKey.adminMarkdownItalic)}
+        >
+          <Icon name="material-symbols:format-italic" class="text-[1.1rem]" />
+        </button>
+        <button
+          type="button"
+          class="bulletin-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
+          data-md-action="underline"
+          aria-label={i18n(I18nKey.adminMarkdownUnderline)}
+          title={i18n(I18nKey.adminMarkdownUnderline)}
+        >
+          <Icon
+            name="material-symbols:format-underlined"
+            class="text-[1.1rem]"
+          />
+        </button>
+        <button
+          type="button"
+          class="bulletin-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
+          data-md-action="strike"
+          aria-label={i18n(I18nKey.adminMarkdownStrike)}
+          title={i18n(I18nKey.adminMarkdownStrike)}
+        >
+          <Icon
+            name="material-symbols:format-strikethrough"
+            class="text-[1.1rem]"
+          />
+        </button>
+        <button
+          type="button"
+          class="bulletin-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
+          data-md-action="quote"
+          aria-label={i18n(I18nKey.adminMarkdownQuote)}
+          title={i18n(I18nKey.adminMarkdownQuote)}
+        >
+          <Icon name="material-symbols:format-quote" class="text-[1.1rem]" />
+        </button>
+        <button
+          type="button"
+          class="bulletin-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
+          data-md-action="inline-code"
+          aria-label={i18n(I18nKey.adminMarkdownInlineCode)}
+          title={i18n(I18nKey.adminMarkdownInlineCode)}
+        >
+          <Icon name="material-symbols:code" class="text-[1.1rem]" />
+        </button>
+        <button
+          type="button"
+          class="bulletin-toolbar-btn btn-plain scale-animation w-9 h-9 rounded-lg border border-(--line-divider) text-75 hover:text-90"
+          data-md-action="code-block"
+          aria-label={i18n(I18nKey.adminMarkdownCodeBlock)}
+          title={i18n(I18nKey.adminMarkdownCodeBlock)}
+        >
+          <Icon name="material-symbols:terminal" class="text-[1.1rem]" />
+        </button>
+      </div>
+    </div>
+
+    <div
+      id="bulletin-preview-panel"
+      class="hidden rounded-xl border border-(--line-divider) p-4 space-y-2"
+    >
+      <div id="bulletin-preview-loading" class="hidden text-xs text-60"></div>
+      <p id="bulletin-preview-error" class="hidden text-sm text-red-500"></p>
+      <div id="bulletin-preview-empty" class="text-sm text-60 mt-0!">
+        {i18n(I18nKey.adminMarkdownPreviewEmpty)}
+      </div>
+      <div
+        id="bulletin-preview-content"
+        class="hidden prose prose-base dark:prose-invert max-w-none! custom-md text-90 mt-0!"
+      >
+      </div>
+    </div>
+
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <span id="bulletin-save-msg" class="text-sm text-60"></span>
+      <button
+        id="bulletin-save"
+        type="submit"
+        class="px-4 py-2 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm"
+      >
+        {i18n(I18nKey.adminBulletinSave)}
+      </button>
+    </div>
+    <p id="bulletin-save-error" class="hidden text-sm text-red-500"></p>
+  </form>
+</section>

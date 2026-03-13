@@ -1,0 +1,413 @@
+---
+import { Icon } from "astro-icon/components";
+import { getResolvedSiteSettings } from "@/server/site-settings/service";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "../layouts/MainGridLayout.astro";
+import {
+  getCategoryList,
+  getSortedPosts,
+  getTagList,
+} from "@utils/content-utils";
+import { getRunningDays } from "@utils/running-days";
+
+export const prerender = false;
+
+const title = i18n(I18nKey.coreSiteStats);
+const resolvedSiteSettings =
+  Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
+
+const siteStartDate =
+  resolvedSiteSettings.settings.site.siteStartDate || "2025-01-01";
+const runningDays = getRunningDays(siteStartDate);
+
+const posts = await getSortedPosts();
+const categories = await getCategoryList();
+const tags = await getTagList();
+
+let totalWords = 0;
+for (const post of posts) {
+  if (post.body) {
+    let text = post.body;
+    text = text.replace(/```[\s\S]*?```/g, "");
+    text = text.replace(/`[^`]+`/g, "");
+
+    const cjkPattern =
+      /[\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af\u3000-\u303f\uff00-\uffef]/g;
+    const cjkMatches = text.match(cjkPattern);
+    const cjkCount = cjkMatches ? cjkMatches.length : 0;
+
+    const nonCjkText = text.replace(cjkPattern, " ");
+    const nonCjkWords = nonCjkText
+      .split(/\s+/)
+      .filter((word: string) => word.trim().length > 0);
+
+    totalWords += cjkCount + nonCjkWords.length;
+  }
+}
+
+function formatNumber(num: number): string {
+  return num.toLocaleString();
+}
+
+const stats = [
+  {
+    icon: "material-symbols:article-outline",
+    label: i18n(I18nKey.coreSiteStatsPostCount),
+    value: posts.length,
+  },
+  {
+    icon: "material-symbols:folder-outline",
+    label: i18n(I18nKey.coreSiteStatsCategoryCount),
+    value: categories.length,
+  },
+  {
+    icon: "material-symbols:label-outline",
+    label: i18n(I18nKey.coreSiteStatsTagCount),
+    value: tags.length,
+  },
+  {
+    icon: "material-symbols:text-ad-outline-rounded",
+    label: i18n(I18nKey.coreSiteStatsTotalWords),
+    value: totalWords,
+    formatted: true,
+  },
+];
+---
+
+<MainGridLayout title={title}>
+  <script>
+    import("../scripts/right-sidebar-layout.js");
+  </script>
+  <div
+    data-enter-skeleton-page="stats-page"
+    data-enter-skeleton-target="stats-page"
+  >
+    <div data-enter-skeleton-inline-content>
+      <div
+        class="flex w-full rounded-(--radius-large) overflow-hidden relative min-h-32"
+      >
+        <div class="card-base z-10 px-6 py-6 px-9 relative w-full">
+          <!-- 页面标题 -->
+          <div class="flex flex-col items-start justify-center mb-8">
+            <h1
+              class="text-4xl font-bold text-black/90 dark:text-white/90 mb-2 relative
+                          before:w-1 before:h-8 before:rounded-md before:bg-(--primary)
+                          before:absolute before:top-1/2 before:-translate-y-1/2 before:-left-4"
+            >
+              {title}
+            </h1>
+          </div>
+
+          <!-- Hero: 运行天数 -->
+          <div class="hero-enter mb-8">
+            <div class="hero-surface">
+              <div class="hero-icon-ring">
+                <Icon name="material-symbols:calendar-clock-outline" />
+              </div>
+              <div class="hero-body">
+                <span class="hero-label"
+                  >{i18n(I18nKey.coreSiteStatsRunningDays)}</span
+                >
+                <div class="hero-metric">
+                  <span class="hero-value" data-stat-id="running-days"
+                    >{runningDays}</span
+                  >
+                  <span class="hero-unit"
+                    >{
+                      i18n(I18nKey.coreSiteStatsDays).replace("{days}", "")
+                    }</span
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 分隔线 -->
+          <div class="divider mb-8"></div>
+
+          <!-- 统计网格 -->
+          <div class="grid grid-cols-2 grid-cols-4 gap-3 gap-5">
+            {
+              stats.map((stat, index) => (
+                <div class:list={["card-enter", `card-delay-${index}`]}>
+                  <div class="stat-surface">
+                    <div class="stat-icon-dot">
+                      <Icon name={stat.icon} />
+                    </div>
+                    <span class="stat-value">
+                      {stat.formatted ? formatNumber(stat.value) : stat.value}
+                    </span>
+                    <span class="stat-label">{stat.label}</span>
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      data-enter-skeleton-inline-placeholder
+      aria-hidden="true"
+      class="flex w-full rounded-(--radius-large) overflow-hidden relative min-h-32"
+    >
+      <div class="card-base z-10 px-6 py-6 px-9 relative w-full">
+        <div class="flex flex-col items-start justify-center mb-8">
+          <div
+            class="md3-skeleton-text"
+            style="--skeleton-width: 30%; --skeleton-height: 2rem;"
+          >
+          </div>
+        </div>
+        <div class="mb-8">
+          <div class="hero-surface">
+            <div class="md3-skeleton-circle w-12 h-12"></div>
+            <div class="flex-1 space-y-2">
+              <div
+                class="md3-skeleton-text"
+                style="--skeleton-width: 28%; --skeleton-height: 0.75rem;"
+              >
+              </div>
+              <div class="flex items-end gap-2">
+                <div
+                  class="md3-skeleton-text"
+                  style="--skeleton-width: 20%; --skeleton-height: 2rem;"
+                >
+                </div>
+                <div
+                  class="md3-skeleton-text"
+                  style="--skeleton-width: 14%; --skeleton-height: 0.875rem;"
+                >
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="divider mb-8"></div>
+        <div class="grid grid-cols-2 grid-cols-4 gap-3 gap-5">
+          {
+            Array.from({ length: 4 }).map(() => (
+              <div class="stat-surface">
+                <div class="md3-skeleton-circle w-9 h-9 mb-3" />
+                <div
+                  class="md3-skeleton-text"
+                  style="--skeleton-width: 52%; --skeleton-height: 1.5rem;"
+                />
+                <div
+                  class="md3-skeleton-text mt-2"
+                  style="--skeleton-width: 66%; --skeleton-height: 0.75rem;"
+                />
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+</MainGridLayout>
+
+<style>
+  /* ── Hero ── */
+  .hero-surface {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 1.25rem 1.5rem;
+    border-radius: 1rem;
+    background: oklch(from var(--primary) l c h / 0.06);
+    border: 1px solid oklch(from var(--primary) l c h / 0.1);
+    transition: background 200ms ease;
+  }
+  .hero-surface:hover {
+    background: oklch(from var(--primary) l c h / 0.09);
+  }
+  :global(.dark) .hero-surface {
+    background: oklch(from var(--primary) l c h / 0.1);
+    border-color: oklch(from var(--primary) l c h / 0.15);
+  }
+  :global(.dark) .hero-surface:hover {
+    background: oklch(from var(--primary) l c h / 0.14);
+  }
+
+  .hero-icon-ring {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 0.75rem;
+    background: oklch(from var(--primary) l c h / 0.12);
+    color: var(--primary);
+    font-size: 1.375rem;
+    flex-shrink: 0;
+  }
+  :global(.dark) .hero-icon-ring {
+    background: oklch(from var(--primary) l c h / 0.2);
+  }
+
+  .hero-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .hero-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: oklch(from var(--primary) l c h / 0.6);
+  }
+  :global(.dark) .hero-label {
+    color: oklch(from var(--primary) l c h / 0.7);
+  }
+
+  .hero-metric {
+    display: flex;
+    align-items: baseline;
+    gap: 0.375rem;
+  }
+
+  .hero-value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+    color: var(--primary);
+  }
+
+  .hero-unit {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: oklch(from var(--primary) l c h / 0.55);
+  }
+  :global(.dark) .hero-unit {
+    color: oklch(from var(--primary) l c h / 0.65);
+  }
+
+  /* ── Divider ── */
+  .divider {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      oklch(from var(--primary) l c h / 0.15) 20%,
+      oklch(from var(--primary) l c h / 0.15) 80%,
+      transparent
+    );
+  }
+  :global(.dark) .divider {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      oklch(from var(--primary) l c h / 0.2) 20%,
+      oklch(from var(--primary) l c h / 0.2) 80%,
+      transparent
+    );
+  }
+
+  /* ── Stat Card ── */
+  .stat-surface {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.5rem 0.75rem 1.25rem;
+    border-radius: 0.875rem;
+    border: 1px solid rgba(0, 0, 0, 0.07);
+    background: transparent;
+    transition:
+      background 180ms ease,
+      border-color 180ms ease,
+      box-shadow 180ms ease;
+  }
+  .stat-surface:hover {
+    background: var(--btn-regular-bg);
+    border-color: oklch(from var(--primary) l c h / 0.18);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  }
+  :global(.dark) .stat-surface {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+  :global(.dark) .stat-surface:hover {
+    background: var(--btn-regular-bg);
+    border-color: oklch(from var(--primary) l c h / 0.25);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  }
+
+  .stat-icon-dot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    background: oklch(from var(--primary) l c h / 0.08);
+    color: var(--primary);
+    font-size: 1.125rem;
+    margin-bottom: 0.75rem;
+    transition: background 180ms ease;
+  }
+  .stat-surface:hover .stat-icon-dot {
+    background: oklch(from var(--primary) l c h / 0.14);
+  }
+  :global(.dark) .stat-icon-dot {
+    background: oklch(from var(--primary) l c h / 0.14);
+  }
+  :global(.dark) .stat-surface:hover .stat-icon-dot {
+    background: oklch(from var(--primary) l c h / 0.22);
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    color: rgba(0, 0, 0, 0.85);
+  }
+  :global(.dark) .stat-value {
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.42);
+    margin-top: 0.25rem;
+    letter-spacing: 0.02em;
+  }
+  :global(.dark) .stat-label {
+    color: rgba(255, 255, 255, 0.42);
+  }
+
+  /* ── Animations ── */
+  .hero-enter {
+    animation: fade-up 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .card-enter {
+    animation: fade-up 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .card-delay-0 {
+    animation-delay: 60ms;
+  }
+  .card-delay-1 {
+    animation-delay: 120ms;
+  }
+  .card-delay-2 {
+    animation-delay: 180ms;
+  }
+  .card-delay-3 {
+    animation-delay: 240ms;
+  }
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>

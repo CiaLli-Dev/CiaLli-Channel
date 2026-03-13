@@ -1,0 +1,210 @@
+---
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import {
+  getSupportedSiteTimeZones,
+  resolveEnvironmentTimeZone,
+  SITE_TIME_ZONE_AUTO_VALUE,
+} from "@/utils/date-utils";
+
+const environmentTimeZone = resolveEnvironmentTimeZone();
+const supportedTimeZones = getSupportedSiteTimeZones();
+---
+
+<!-- ===== Section 1: 站点信息 ===== -->
+<section class="card-base p-8 rounded-(--radius-large) space-y-4">
+  <h2 class="text-2xl font-semibold text-90">
+    {i18n(I18nKey.adminSiteSettingsSectionSite)}
+  </h2>
+  <form id="ss-site-form" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <label class="space-y-1.5">
+      <span class="text-sm text-60">
+        {i18n(I18nKey.adminSiteSettingsSiteTitle)}
+      </span>
+      <input
+        id="ss-title"
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+        placeholder="My Blog"
+      />
+    </label>
+    <label class="space-y-1.5">
+      <span class="text-sm text-60">
+        {i18n(I18nKey.adminSiteSettingsSiteSubtitle)}
+      </span>
+      <input
+        id="ss-subtitle"
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+        placeholder="A place for stories"
+      />
+    </label>
+    <label class="space-y-1.5">
+      <span class="text-sm text-60">
+        {i18n(I18nKey.adminSiteSettingsSiteLanguage)}
+      </span>
+      <select
+        id="ss-language"
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
+      >
+        <option value="zh_CN">
+          {i18n(I18nKey.adminSiteSettingsLanguageZhCN)}
+        </option>
+        <option value="zh_TW">
+          {i18n(I18nKey.adminSiteSettingsLanguageZhTW)}
+        </option>
+        <option value="en">{i18n(I18nKey.adminSiteSettingsLanguageEn)}</option>
+        <option value="ja">{i18n(I18nKey.adminSiteSettingsLanguageJa)}</option>
+      </select>
+    </label>
+    <label class="space-y-1.5">
+      <span class="text-sm text-60">
+        {i18n(I18nKey.adminSiteSettingsSiteTimeZone)}
+      </span>
+      <select
+        id="ss-timezone"
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
+      >
+        <option value={SITE_TIME_ZONE_AUTO_VALUE}>
+          {i18n(I18nKey.adminSiteSettingsTimeZoneFollowEnvironment)}（当前：
+          {environmentTimeZone}）
+        </option>
+        <option value="UTC">UTC</option>
+        {
+          supportedTimeZones
+            .filter((timeZone) => timeZone !== "UTC")
+            .map((timeZone) => <option value={timeZone}>{timeZone}</option>)
+        }
+      </select>
+    </label>
+    <label class="space-y-1.5">
+      <span class="text-sm text-60">
+        {i18n(I18nKey.adminSiteSettingsSiteKeywords)}
+      </span>
+      <input
+        id="ss-keywords"
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+        placeholder="blog, tech, life"
+      />
+    </label>
+    <p class="col-span-2 text-xs text-50">
+      {i18n(I18nKey.adminSiteSettingsTimeZoneHint)}
+    </p>
+    <label class="space-y-1.5">
+      <span class="text-sm text-60">
+        {i18n(I18nKey.adminSiteSettingsSiteStartDate)}
+      </span>
+      <input
+        id="ss-start-date"
+        type="date"
+        onkeydown="return false"
+        inputmode="none"
+        class="date-picker-input w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
+      />
+    </label>
+    <label class="space-y-1.5">
+      <span class="text-sm text-60"
+        >{i18n(I18nKey.adminSiteSettingsProfileNameLabel)}</span
+      >
+      <input
+        id="ss-profile-name"
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+        placeholder={i18n(I18nKey.adminSiteSettingsProfileNamePlaceholder)}
+      />
+    </label>
+    <hr class="border-(--line-divider) col-span-2" />
+    <h3 class="text-lg font-medium text-75 col-span-2">
+      {i18n(I18nKey.adminSiteSettingsFaviconTitle)}
+    </h3>
+    <div class="col-span-2 space-y-2">
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          id="ss-favicon-upload-btn"
+          class="px-4 h-9 rounded-lg text-sm font-medium cursor-pointer bg-(--primary) text-white hover:opacity-90 transition flex items-center gap-1.5"
+          ><svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path><polyline
+              points="17 8 12 3 7 8"></polyline><line
+              x1="12"
+              y1="3"
+              x2="12"
+              y2="15"></line></svg
+          >{i18n(I18nKey.interactionCommonUploadImage)}</button
+        >
+        <button
+          type="button"
+          id="ss-favicon-add-btn"
+          class="px-3 h-9 rounded-lg text-sm font-medium cursor-pointer border border-(--line-divider) text-75 hover:border-(--primary) hover:text-(--primary) transition"
+          >{i18n(I18nKey.adminSiteSettingsAddItem)}</button
+        >
+        <span class="text-xs text-50"
+          >{i18n(I18nKey.adminSiteSettingsFaviconHint)}</span
+        >
+      </div>
+      <div id="ss-favicon-list" class="space-y-2"></div>
+    </div>
+    <hr class="border-(--line-divider) col-span-2" />
+    <h3 class="text-lg font-medium text-75 col-span-2">
+      {i18n(I18nKey.adminSiteSettingsUmamiTitle)}
+    </h3>
+    <label
+      class="flex items-center gap-3 text-75 cursor-pointer select-none col-span-2"
+    >
+      <input type="checkbox" id="ss-umami-enabled" class="toggle-checkbox" />
+      <span class="toggle-track"><span class="toggle-knob"></span></span>
+      {i18n(I18nKey.adminSiteSettingsUmamiEnable)}
+    </label>
+    <label class="space-y-1.5">
+      <span class="text-sm text-60">Umami Base URL</span>
+      <input
+        id="ss-umami-url"
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+        placeholder="https://umami.example.com"
+      />
+    </label>
+    <label class="space-y-1.5 col-span-2">
+      <span class="text-sm text-60">Umami Scripts</span>
+      <textarea
+        id="ss-umami-scripts"
+        class="w-full min-h-24 rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 font-mono text-xs placeholder:text-50"
+        placeholder="<script ...></script>"></textarea>
+    </label>
+    <hr class="border-(--line-divider) col-span-2" />
+    <h3 class="text-lg font-medium text-75 col-span-2">
+      {i18n(I18nKey.adminSiteSettingsAnalyticsTitle)}
+    </h3>
+    <label class="space-y-1.5">
+      <span class="text-sm text-60">Google Tag Manager ID</span>
+      <input
+        id="ss-gtm-id"
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+        placeholder="GTM-XXXXXXX"
+      />
+    </label>
+    <label class="space-y-1.5">
+      <span class="text-sm text-60">Microsoft Clarity ID</span>
+      <input
+        id="ss-clarity-id"
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+        placeholder="abcd1234ef"
+      />
+    </label>
+    <p class="col-span-2 text-xs text-50">
+      {i18n(I18nKey.adminSiteSettingsAnalyticsHint)}
+    </p>
+    <div class="col-span-2 flex items-center gap-2 pt-2">
+      <button
+        type="submit"
+        class="px-4 py-2 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm"
+        >{i18n(I18nKey.adminSiteSettingsSaveSite)}</button
+      >
+      <span id="ss-site-msg" class="text-sm text-60"></span>
+    </div>
+  </form>
+</section>

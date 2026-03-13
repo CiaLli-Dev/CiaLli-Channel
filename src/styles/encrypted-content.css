@@ -1,0 +1,21 @@
+@reference "./main.css";
+
+/* 加密内容解锁后的补充样式。
+   Markdown 与 Expressive Code 的主样式仍由全局样式文件统一提供。 */
+
+#decrypted-content .expressive-code {
+  @apply my-4;
+}
+
+#decrypted-content .custom-md .expressive-code :is(ul, ol) li::marker {
+  @apply text-inherit;
+}
+
+#decrypted-content .expressive-code pre.wrap {
+  padding: 0 !important;
+}
+
+#decrypted-content .expressive-code pre code {
+  background-color: transparent !important;
+  padding: 1rem 0 !important;
+}

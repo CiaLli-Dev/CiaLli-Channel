@@ -1,0 +1,162 @@
+---
+// Skeleton placeholder for the publish page (new / edit article)
+interface Props {
+  proxyVisible?: boolean;
+}
+
+const { proxyVisible = false } = Astro.props;
+---
+
+<div
+  data-enter-skeleton-inline-placeholder={proxyVisible ? undefined : ""}
+  aria-hidden="true"
+  class="space-y-4 h-full min-h-0 flex flex-col"
+>
+  <section class="card-base px-9 py-6 rounded-(--radius-large) space-y-3">
+    <div
+      class="md3-skeleton-text"
+      style="--skeleton-width: 16%; --skeleton-height: 2rem;"
+    >
+    </div>
+    <div
+      class="md3-skeleton-text"
+      style="--skeleton-width: 46%; --skeleton-height: 0.95rem;"
+    >
+    </div>
+  </section>
+
+  <section class="space-y-4 flex-1 min-h-0 flex flex-col">
+    <div class="card-base p-6 rounded-(--radius-large) space-y-4">
+      <div
+        class="md3-skeleton-text"
+        style="--skeleton-width: 20%; --skeleton-height: 1.35rem;"
+      >
+      </div>
+      <div class="space-y-2.5">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 12%; --skeleton-height: 0.85rem;"
+        >
+        </div>
+        <div class="md3-skeleton-block h-11 rounded-lg"></div>
+      </div>
+      <div class="space-y-2.5">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 10%; --skeleton-height: 0.85rem;"
+        >
+        </div>
+        <div class="md3-skeleton-block h-24 rounded-lg"></div>
+      </div>
+      <div class="space-y-2.5">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 16%; --skeleton-height: 0.85rem;"
+        >
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <div class="md3-skeleton-block h-9 w-24 rounded-lg"></div>
+          <div class="md3-skeleton-block h-9 w-24 rounded-lg"></div>
+          <div
+            class="md3-skeleton-text mt-2"
+            style="--skeleton-width: 22%; --skeleton-height: 0.8rem;"
+          >
+          </div>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="space-y-2.5">
+          <div
+            class="md3-skeleton-text"
+            style="--skeleton-width: 24%; --skeleton-height: 0.85rem;"
+          >
+          </div>
+          <div class="md3-skeleton-block h-11 rounded-lg"></div>
+        </div>
+        <div class="space-y-2.5">
+          <div
+            class="md3-skeleton-text"
+            style="--skeleton-width: 22%; --skeleton-height: 0.85rem;"
+          >
+          </div>
+          <div class="md3-skeleton-block h-11 rounded-lg"></div>
+        </div>
+      </div>
+      <div class="flex gap-6">
+        <div class="flex items-center gap-2">
+          <div class="md3-skeleton-circle h-5 w-9 rounded-full"></div>
+          <div
+            class="md3-skeleton-text"
+            style="--skeleton-width: 5.8rem; --skeleton-height: 0.82rem;"
+          >
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="md3-skeleton-circle h-5 w-9 rounded-full"></div>
+          <div
+            class="md3-skeleton-text"
+            style="--skeleton-width: 5.8rem; --skeleton-height: 0.82rem;"
+          >
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="grid grid-cols-1 lg:grid-cols-2 gap-4 publish-dual-pane flex-1 min-h-0"
+    >
+      <div class="card-base p-6 rounded-(--radius-large) space-y-3">
+        <div class="flex items-center justify-between gap-3">
+          <div
+            class="md3-skeleton-text"
+            style="--skeleton-width: 22%; --skeleton-height: 0.85rem;"
+          >
+          </div>
+          <div class="flex flex-wrap justify-end gap-2">
+            <div class="md3-skeleton-block h-9 w-9 rounded-lg"></div>
+            <div class="md3-skeleton-block h-9 w-9 rounded-lg"></div>
+            <div class="md3-skeleton-block h-9 w-9 rounded-lg"></div>
+            <div class="md3-skeleton-block h-9 w-9 rounded-lg"></div>
+            <div class="md3-skeleton-block h-9 w-9 rounded-lg"></div>
+            <div class="md3-skeleton-block h-9 w-9 rounded-lg"></div>
+            <div class="md3-skeleton-block h-9 w-9 rounded-lg"></div>
+          </div>
+        </div>
+        <div class="md3-skeleton-block h-full min-h-[22rem] rounded-xl"></div>
+      </div>
+      <div class="card-base p-6 rounded-(--radius-large) space-y-4">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 18%; --skeleton-height: 0.85rem;"
+        >
+        </div>
+        <div class="space-y-3">
+          <div class="md3-skeleton-text" style="--skeleton-width: 92%;"></div>
+          <div class="md3-skeleton-text" style="--skeleton-width: 88%;"></div>
+          <div class="md3-skeleton-text" style="--skeleton-width: 86%;"></div>
+          <div class="md3-skeleton-text" style="--skeleton-width: 72%;"></div>
+          <div class="md3-skeleton-block h-24 rounded-xl"></div>
+          <div class="md3-skeleton-text" style="--skeleton-width: 90%;"></div>
+          <div class="md3-skeleton-text" style="--skeleton-width: 82%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="card-base px-6 py-4 rounded-(--radius-large) flex items-center justify-between gap-2"
+    >
+      <div class="md3-skeleton-block h-10 w-24 rounded-lg"></div>
+      <div
+        class="md3-skeleton-text"
+        style="--skeleton-width: 12rem; --skeleton-height: 0.85rem;"
+      >
+      </div>
+    </div>
+  </section>
+</div>
+
+<style>
+  .publish-dual-pane {
+    min-height: 0;
+  }
+</style>

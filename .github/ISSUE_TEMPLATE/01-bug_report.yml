@@ -1,0 +1,59 @@
+name: 缺陷反馈
+description: 提交缺陷报告以帮助我们改进
+title: "[缺陷]: "
+labels: ["bug"]
+assignees:
+  - L4Ph
+  - saicaca
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢你抽出时间填写缺陷反馈！
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: 缺陷描述
+      description: 请清晰、简洁地描述你遇到的问题。
+    validations:
+      required: true
+  - type: textarea
+    id: to-reproduce
+    attributes:
+      label: 复现步骤
+      description: 请提供可复现该问题的操作步骤。
+      placeholder: |
+        1. 打开 '...'
+        2. 点击 '....'
+        3. 滚动到 '....'
+        4. 看到报错
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: 期望行为
+      description: 请描述你预期应该发生的结果。
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统
+      multiple: true
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Android
+        - iOS
+  - type: input
+    id: browser
+    attributes:
+      label: 浏览器
+      placeholder: 例如：Chrome、Safari
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 补充信息
+      description: 请输入与该问题相关的其他上下文信息。

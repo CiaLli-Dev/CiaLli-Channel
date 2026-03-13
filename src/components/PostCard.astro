@@ -1,0 +1,318 @@
+---
+import { Icon } from "astro-icon/components";
+
+import ExternalImage from "@components/misc/ExternalImage.astro";
+import type { DirectusPostEntry } from "@/utils/content-utils";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import { resolveAuthorIdentity } from "@/utils/author-identity";
+import { getPostUrl } from "@/utils/url-utils";
+
+interface Props {
+  class?: string;
+  entry: DirectusPostEntry;
+  style?: string;
+}
+
+const { entry, style } = Astro.props;
+const className = Astro.props.class;
+
+const {
+  title,
+  published,
+  description,
+  image,
+  pinned,
+  author,
+  author_id,
+  article_id,
+  comment_count,
+  like_count,
+} = entry.data as DirectusPostEntry["data"] & {
+  pinned?: boolean;
+};
+
+const url = getPostUrl(entry);
+const hasCover = typeof image === "string" && image.trim().length > 0;
+const coverWidth = "28%";
+const bodyText = entry.data.encrypted
+  ? ""
+  : String(entry.body || "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+const excerpt = description || bodyText.slice(0, 30) || "";
+const { displayName: authorDisplayName, username: authorHandle } =
+  resolveAuthorIdentity(
+    {
+      id: author?.id,
+      name: author?.name,
+      username: author?.username,
+      display_name: author?.display_name,
+    },
+    author_id,
+  );
+const publishedDateSource = new Date(published);
+const publishedDate = !Number.isNaN(publishedDateSource.getTime())
+  ? `${publishedDateSource.getFullYear()}/${String(publishedDateSource.getMonth() + 1).padStart(2, "0")}/${String(publishedDateSource.getDate()).padStart(2, "0")}`
+  : "1970/01/01";
+const adminDeleteLabel = i18n(I18nKey.interactionCommonDeleteAdmin);
+---
+
+<div
+  class:list={[
+    "card-base flex flex-col w-full rounded-(--radius-large) overflow-hidden relative",
+    className,
+  ]}
+  style={style}
+  data-post-card
+  data-article-id={article_id}
+  data-author-id={author_id}
+  data-author-handle={authorHandle}
+  data-enter-skeleton-target="post-card"
+>
+  <div
+    data-enter-skeleton-content
+    class:list={[
+      "pl-9 pr-2 pt-7 pb-6 relative",
+      {
+        "w-[calc(100%-3.25rem-0.75rem)]": !hasCover,
+        "w-[calc(100%-var(--coverWidth)-0.75rem)]": hasCover,
+      },
+    ]}
+  >
+    <a
+      href={url}
+      class="transition group w-full block font-bold mb-3 text-3xl text-90
+        hover:text-(--primary) dark:hover:text-(--primary)
+        active:text-(--title-active) dark:active:text-(--title-active)
+        before:w-1 before:h-5 before:rounded-md before:bg-(--primary)
+        before:absolute
+        before:top-[2.1875rem] before:left-[1.125rem] before:block"
+    >
+      {
+        pinned && (
+          <Icon
+            name="mdi:pin"
+            class="inline text-(--primary) text-2xl mr-2 -translate-y-0.5"
+          />
+        )
+      }
+      {title}
+      <Icon
+        class="hidden text-[2rem] text-(--primary) translate-y-0.5 absolute"
+        name="material-symbols:chevron-right-rounded"
+      />
+      <Icon
+        class="text-(--primary) text-[2rem] transition inline absolute translate-y-0.5 opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0"
+        name="material-symbols:chevron-right-rounded"
+      />
+    </a>
+
+    <div class="mb-4 h-5" aria-hidden="true"></div>
+
+    <div class="transition text-75 -mt-3 mb-3.5 pr-4 line-clamp-1">
+      {excerpt}
+    </div>
+
+    <div class="flex items-center justify-between gap-3 mt-2">
+      <div
+        class="flex min-w-0 items-center gap-1.5 text-50 text-sm font-medium leading-none"
+      >
+        <div class="max-w-[14rem] min-w-0 inline-flex items-baseline gap-1">
+          <a
+            href={`/${authorHandle}`}
+            class="truncate text-90 border-b border-transparent hover:border-current"
+          >
+            {authorDisplayName}
+          </a>
+          <a
+            href={`/${authorHandle}`}
+            class="shrink-0 text-60 hover:text-(--primary) transition-colors"
+          >
+            @{authorHandle}
+          </a>
+        </div>
+        <span class="text-(--meta-divider)" aria-hidden="true">·</span>
+        <span>{publishedDate}</span>
+      </div>
+      <div
+        class="flex items-center gap-4 ml-3 mr-2 shrink-0 post-card-actions leading-none"
+      >
+        <button
+          type="button"
+          class="inline-flex h-6 items-center gap-1.5 text-50 text-base font-medium hover:text-(--primary) transition-colors post-card-action-btn"
+          data-action="toggle-like"
+          aria-label="切换点赞"
+        >
+          <Icon name="material-symbols:thumb-up-rounded" class="text-xl" />
+          <span data-like-count>{like_count}</span>
+        </button>
+        <a
+          href={`${url}#comment-root`}
+          class="inline-flex h-6 items-center gap-1.5 text-50 text-base font-medium hover:text-(--primary) transition-colors"
+        >
+          <Icon name="material-symbols:comment-rounded" class="text-xl" />
+          <span>{comment_count}</span>
+        </a>
+        <details class="relative post-card-menu">
+          <summary
+            class="list-none cursor-pointer inline-flex items-center justify-center w-8 h-8 rounded-lg text-50 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) active:bg-(--btn-plain-bg-active) transition-colors"
+            aria-label="更多操作"
+          >
+            <Icon name="material-symbols:more-horiz" class="text-xl" />
+          </summary>
+          <div
+            class="absolute right-0 bottom-full mb-2 z-30 min-w-[12rem] rounded-xl border border-black/5 dark:border-white/10 bg-(--float-panel-bg) p-1.5 shadow-xl dark:shadow-none"
+          >
+            <button
+              type="button"
+              class="hidden w-full text-left px-3 py-2 text-sm rounded-lg text-red-500 hover:text-red-500 hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors"
+              data-action="delete-own-article"
+            >
+              删除文章
+            </button>
+            <button
+              type="button"
+              class="hidden w-full text-left px-3 py-2 text-sm rounded-lg text-red-500 hover:text-red-500 hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors"
+              data-action="delete-admin-article"
+            >
+              {adminDeleteLabel}
+            </button>
+            <button
+              type="button"
+              class="w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors"
+              data-action="block-user"
+            >
+              屏蔽用户
+            </button>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  {
+    hasCover && (
+      <a
+        data-enter-skeleton-content
+        href={url}
+        aria-label={title}
+        class="group absolute top-3 bottom-3 right-3 rounded-xl overflow-hidden active:scale-95"
+        style="width: var(--coverWidth);"
+      >
+        <div class="absolute pointer-events-none z-10 w-full h-full group-hover:bg-black/30 group-active:bg-black/50 transition" />
+        <div class="absolute pointer-events-none z-20 w-full h-full flex items-center justify-center">
+          <Icon
+            name="material-symbols:chevron-right-rounded"
+            class="transition opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 text-white text-5xl"
+          />
+        </div>
+        <ExternalImage
+          src={image || ""}
+          alt={`Cover image of ${title}`}
+          class="w-full h-full object-cover"
+          loading="lazy"
+        />
+      </a>
+    )
+  }
+
+  {
+    !hasCover && (
+      <a
+        data-enter-skeleton-content
+        href={url}
+        aria-label={title}
+        class="flex btn-regular w-[3.25rem]
+         absolute right-3 top-3 bottom-3 rounded-xl bg-(--enter-btn-bg)
+         hover:bg-(--enter-btn-bg-hover) active:bg-(--enter-btn-bg-active) active:scale-95"
+      >
+        <Icon
+          name="material-symbols:chevron-right-rounded"
+          class="transition text-(--primary) text-4xl mx-auto"
+        />
+      </a>
+    )
+  }
+  <div
+    data-enter-skeleton-placeholder
+    aria-hidden="true"
+    class="absolute inset-0 z-20 pointer-events-none"
+  >
+    <div
+      class:list={[
+        "pl-9 pr-2 pt-7 pb-6 h-full flex flex-col",
+        {
+          "w-[calc(100%-3.25rem-0.75rem)]": !hasCover,
+          "w-[calc(100%-var(--coverWidth)-0.75rem)]": hasCover,
+        },
+      ]}
+    >
+      <div class="space-y-4">
+        <div class="flex items-center gap-2.5">
+          <div class="block md3-skeleton-block h-8 w-1 rounded-md"></div>
+          <div
+            class="md3-skeleton-text"
+            style="--skeleton-width: 42%; --skeleton-height: 2.2rem;"
+          >
+          </div>
+        </div>
+
+        <div class="h-5" aria-hidden="true"></div>
+
+        <div class="-mt-3">
+          <div class="md3-skeleton-text" style="--skeleton-width: 48%;"></div>
+        </div>
+      </div>
+      <div class="mt-auto flex items-center justify-between gap-4 pt-2.5">
+        <div class="flex min-w-0 items-center gap-2">
+          <div
+            class="md3-skeleton-text"
+            style="--skeleton-width: 9.5rem; --skeleton-height: 1.45rem;"
+          >
+          </div>
+          <div class="md3-skeleton-circle h-1.5 w-1.5 shrink-0"></div>
+          <div
+            class="md3-skeleton-text"
+            style="--skeleton-width: 7.5rem; --skeleton-height: 1.45rem;"
+          >
+          </div>
+        </div>
+        <div class="ml-3 mr-2 flex shrink-0 items-center gap-4">
+          <div class="md3-skeleton-block h-6 w-8 rounded-lg"></div>
+          <div class="md3-skeleton-block h-6 w-8 rounded-lg"></div>
+          <div class="md3-skeleton-circle h-6 w-6"></div>
+        </div>
+      </div>
+    </div>
+    {
+      hasCover ? (
+        <div
+          class="absolute top-3 bottom-3 right-3 rounded-xl overflow-hidden"
+          style="width: var(--coverWidth);"
+        >
+          <div class="md3-skeleton-block h-full w-full rounded-xl" />
+          <div class="absolute inset-0 flex items-center justify-center">
+            <div class="md3-skeleton-circle h-10 w-10" />
+          </div>
+        </div>
+      ) : (
+        <div class="flex absolute right-3 top-3 bottom-3 w-[3.25rem] rounded-xl overflow-hidden">
+          <div class="md3-skeleton-block h-full w-full rounded-xl" />
+        </div>
+      )
+    }
+  </div>
+</div>
+<div
+  class="transition border-t border-dashed mx-6 border-black/10 dark:border-white/15 last:border-t-0 hidden"
+>
+</div>
+
+<style define:vars={{ coverWidth }}></style>
+<style>
+  .post-card-menu summary::-webkit-details-marker {
+    display: none;
+  }
+</style>

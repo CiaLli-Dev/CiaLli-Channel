@@ -1,0 +1,93 @@
+---
+import Markdown from "@components/misc/Markdown.astro";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import { renderMarkdown } from "@/server/markdown/render";
+import { getResolvedSiteSettings } from "@/server/site-settings/service";
+
+export const prerender = false;
+
+const resolvedSiteSettings =
+  Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
+const announcement = resolvedSiteSettings.settings.announcement;
+const pageTitle =
+  String(announcement.title || "").trim() || i18n(I18nKey.coreAnnouncement);
+const summary = String(announcement.summary || "").trim();
+
+let bodyHtml = "";
+try {
+  bodyHtml = await renderMarkdown(String(announcement.body_markdown || ""), {
+    target: "page",
+  });
+} catch (error) {
+  console.error("[bulletin] failed to render markdown:", error);
+}
+
+if (!bodyHtml) {
+  bodyHtml = "<p>公告内容暂未配置。</p>";
+}
+---
+
+<MainGridLayout title={pageTitle} description={summary || pageTitle}>
+  <script>
+    import("../scripts/right-sidebar-layout.js");
+  </script>
+
+  <div
+    data-enter-skeleton-page="bulletin-page"
+    data-enter-skeleton-target="bulletin-page"
+  >
+    <div data-enter-skeleton-inline-content>
+      <div
+        class="flex w-full rounded-(--radius-large) overflow-hidden relative min-h-32"
+      >
+        <article class="card-base z-10 px-9 py-6 relative w-full space-y-6">
+          <header class="space-y-3">
+            <h1
+              class="text-4xl font-bold text-black/90 dark:text-white/90 relative
+                before:w-1 before:h-8 before:rounded-md before:bg-(--primary)
+                before:absolute before:top-1/2 before:-translate-y-1/2 before:-left-4"
+            >
+              {pageTitle}
+            </h1>
+            {
+              summary && (
+                <p class="mt-6 text-base text-70 rounded-xl border border-(--line-divider) px-4 py-3">
+                  {summary}
+                </p>
+              )
+            }
+          </header>
+
+          <Markdown class="mt-2">
+            <Fragment set:html={bodyHtml} />
+          </Markdown>
+        </article>
+      </div>
+    </div>
+
+    <div
+      data-enter-skeleton-inline-placeholder
+      aria-hidden="true"
+      class="flex w-full rounded-(--radius-large) overflow-hidden relative min-h-32"
+    >
+      <div class="card-base z-10 px-9 py-6 relative w-full space-y-6">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 26%; --skeleton-height: 2rem;"
+        >
+        </div>
+        <div class="md3-skeleton-block h-16 rounded-xl"></div>
+        <div class="space-y-3">
+          <div class="md3-skeleton-text" style="--skeleton-width: 96%;"></div>
+          <div class="md3-skeleton-text" style="--skeleton-width: 90%;"></div>
+          <div class="md3-skeleton-text" style="--skeleton-width: 92%;"></div>
+          <div class="md3-skeleton-text" style="--skeleton-width: 84%;"></div>
+          <div class="md3-skeleton-block h-28 rounded-xl"></div>
+          <div class="md3-skeleton-text" style="--skeleton-width: 95%;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</MainGridLayout>

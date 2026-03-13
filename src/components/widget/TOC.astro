@@ -1,0 +1,78 @@
+---
+import type { MarkdownHeading } from "astro";
+
+interface Props {
+  class?: string;
+  style?: string;
+  headings?: MarkdownHeading[];
+}
+
+const { style } = Astro.props;
+const className = Astro.props.class;
+---
+
+<table-of-contents class:list={[className, "group"]} id="toc" style={style}>
+  <!-- TOC 内容由客户端脚本运行时生成 -->
+</table-of-contents>
+
+<script>
+  import "@/scripts/toc-element";
+</script>
+
+<style>
+  #toc {
+    max-height: 100%;
+    overflow: auto;
+    position: relative;
+    scroll-behavior: smooth;
+    display: block;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  #toc[data-post-detail-sidebar="1"] {
+    --toc-fade-height: 2.75rem;
+    --toc-mask-image: none;
+    max-height: var(--post-detail-toc-max-height, 100%);
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-mask-image: var(--toc-mask-image);
+    mask-image: var(--toc-mask-image);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+  }
+
+  #toc[data-post-detail-sidebar="1"][data-fade-top="0"][data-fade-bottom="1"] {
+    --toc-mask-image: linear-gradient(
+      to bottom,
+      #000 0%,
+      #000 calc(100% - var(--toc-fade-height)),
+      transparent 100%
+    );
+  }
+
+  #toc[data-post-detail-sidebar="1"][data-fade-top="1"][data-fade-bottom="0"] {
+    --toc-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      #000 var(--toc-fade-height),
+      #000 100%
+    );
+  }
+
+  #toc[data-post-detail-sidebar="1"][data-fade-top="1"][data-fade-bottom="1"] {
+    --toc-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      #000 var(--toc-fade-height),
+      #000 calc(100% - var(--toc-fade-height)),
+      transparent 100%
+    );
+  }
+
+  #toc::-webkit-scrollbar {
+    display: none;
+  }
+</style>

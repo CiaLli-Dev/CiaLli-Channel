@@ -1,0 +1,84 @@
+---
+import { Icon } from "astro-icon/components";
+import { getResolvedSiteSettings } from "@/server/site-settings/service";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import WidgetLayout from "./WidgetLayout.astro";
+
+const resolvedSiteSettings =
+  Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
+const config = resolvedSiteSettings.settings.announcement;
+
+interface Props {
+  class?: string;
+  style?: string;
+}
+const className = Astro.props.class;
+const style = Astro.props.style;
+---
+
+<!-- 组件显示现在由sidebarLayoutConfig统一控制，无需检查config.enable -->
+<WidgetLayout
+  name={config.title || i18n(I18nKey.coreAnnouncement)}
+  id="announcement"
+  class={className}
+  style={style}
+>
+  <div>
+    <!-- 公告栏内容 -->
+    <div class="text-neutral-600 dark:text-neutral-300 leading-relaxed mb-3">
+      {config.summary || "暂无公告摘要"}
+    </div>
+
+    <!-- 可选链接和关闭按钮 -->
+    <div class="flex items-center justify-between gap-3">
+      <div>
+        <a
+          href="/bulletin"
+          class="btn-regular rounded-lg px-3 py-1.5 text-sm font-medium active:scale-95 transition-transform"
+        >
+          了解更多
+        </a>
+      </div>
+
+      {
+        config.closable && (
+          <button
+            class="btn-regular rounded-lg h-8 w-8 text-sm hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+            data-announce-close
+            aria-label={i18n(I18nKey.coreAnnouncementClose)}
+          >
+            <Icon name="fa7-solid:xmark" class="text-sm" />
+          </button>
+        )
+      }
+    </div>
+  </div>
+</WidgetLayout>
+
+<script>
+  const announcementSelector = 'widget-layout[data-id="announcement"]';
+  const closeButtonSelector = "[data-announce-close]";
+
+  function hideAnnouncements() {
+    document.querySelectorAll(announcementSelector).forEach((widget) => {
+      (widget as HTMLElement).style.display = "none";
+    });
+  }
+
+  function handleClose() {
+    hideAnnouncements();
+  }
+
+  function initAnnouncement() {
+    document.querySelectorAll(closeButtonSelector).forEach((button) => {
+      button.addEventListener("click", handleClose);
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initAnnouncement);
+  } else {
+    initAnnouncement();
+  }
+</script>

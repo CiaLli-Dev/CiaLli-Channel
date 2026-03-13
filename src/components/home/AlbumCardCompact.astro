@@ -1,0 +1,93 @@
+---
+import type { AppAlbum } from "@/types/app";
+import ExternalImage from "@components/misc/ExternalImage.astro";
+import { buildPublicAssetUrl } from "@/server/directus-auth";
+import { formatDateToYYYYMMDD } from "@/utils/date-utils";
+
+interface Props {
+  album: AppAlbum & { tags: string[] };
+  username: string;
+}
+
+const { album, username } = Astro.props;
+
+const href = `/${username}/albums/${album.short_id || album.id}`;
+
+const coverUrl = album.cover_file
+  ? buildPublicAssetUrl(album.cover_file, {
+      width: album.layout === "masonry" ? 960 : 480,
+      ...(album.layout === "masonry"
+        ? {}
+        : {
+            height: 320,
+            fit: "cover",
+          }),
+    })
+  : album.cover_url || "";
+
+const hasCover = Boolean(coverUrl);
+
+const dateStr = album.date
+  ? formatDateToYYYYMMDD(new Date(album.date)).replace(/-/g, "/")
+  : "";
+---
+
+<a
+  href={href}
+  class="shrink-0 w-[240px] rounded-xl overflow-hidden bg-black/5 dark:bg-white/5 hover:bg-black/8 dark:hover:bg-white/8 transition-colors snap-start block group"
+>
+  <!-- 封面区域 -->
+  <div class="h-40 overflow-hidden relative">
+    {
+      hasCover ? (
+        album.layout === "masonry" ? (
+          <div class="w-full h-full bg-black flex items-center justify-center">
+            <ExternalImage
+              src={coverUrl}
+              alt={album.title}
+              class="w-full h-full object-contain"
+              loading="lazy"
+            />
+          </div>
+        ) : (
+          <ExternalImage
+            src={coverUrl}
+            alt={album.title}
+            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+          />
+        )
+      ) : (
+        <div class="w-full h-full bg-linear-to-br from-black/10 to-black/5 dark:from-white/10 dark:to-white/5 flex items-center justify-center">
+          <svg
+            class="w-10 h-10 text-black/20 dark:text-white/20"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <path d="M22 16V4c0-1.1-.9-2-2-2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2zm-11-4l2.03 2.71L16 11l4 5H8l3-4zM2 6v14c0 1.1.9 2 2 2h14v-2H4V6H2z" />
+          </svg>
+        </div>
+      )
+    }
+  </div>
+
+  <!-- 信息区域 -->
+  <div class="p-3">
+    <h3
+      class="text-sm font-medium text-90 line-clamp-1 leading-snug mb-1 group-hover:text-(--primary) transition-colors"
+    >
+      {album.title}
+    </h3>
+    <p class="text-xs text-50 flex items-center gap-1">
+      {
+        album.location && (
+          <>
+            <span class="truncate max-w-[120px]">{album.location}</span>
+            {dateStr && <span aria-hidden="true">·</span>}
+          </>
+        )
+      }
+      {dateStr && <span>{dateStr}</span>}
+    </p>
+  </div>
+</a>
