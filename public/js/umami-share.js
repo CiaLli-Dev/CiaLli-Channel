@@ -91,7 +91,11 @@
         try {
             return await fetchWebsiteStats(baseUrl, apiKey, websiteId);
         } catch (err) {
-            throw new Error(`获取Umami统计数据失败: ${err.message}`);
+            const errorMessage =
+                err instanceof Error ? err.message : String(err);
+            throw new Error(`获取Umami统计数据失败: ${errorMessage}`, {
+                cause: err,
+            });
         }
     };
 
@@ -123,7 +127,11 @@
                 endAt,
             );
         } catch (err) {
-            throw new Error(`获取Umami页面统计数据失败: ${err.message}`);
+            const errorMessage =
+                err instanceof Error ? err.message : String(err);
+            throw new Error(`获取Umami页面统计数据失败: ${errorMessage}`, {
+                cause: err,
+            });
         }
     };
 
