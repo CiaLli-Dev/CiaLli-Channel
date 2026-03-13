@@ -1,9 +1,9 @@
 import type { APIContext } from "astro";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
+import { logoutWithRefreshToken } from "@/server/application/auth/logout.service";
 import {
     DIRECTUS_ACCESS_COOKIE_NAME,
-    directusLogout,
     DIRECTUS_REFRESH_COOKIE_NAME,
     getCookieOptions,
     REMEMBER_COOKIE_NAME,
@@ -68,13 +68,7 @@ export async function POST(context: APIContext): Promise<Response> {
 
     const refreshToken = cookies.get(DIRECTUS_REFRESH_COOKIE_NAME)?.value || "";
 
-    if (refreshToken) {
-        try {
-            await directusLogout({ refreshToken });
-        } catch {
-            // token 可能已过期/被轮换，仍然清理本地 cookie
-        }
-    }
+    await logoutWithRefreshToken(refreshToken);
 
     clearAuthCookie(context);
     return json({ ok: true });

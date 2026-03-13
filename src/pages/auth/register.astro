@@ -1,19 +1,14 @@
 ---
-import type { AppUserRegistrationRequest } from "@/types/app";
-import type { JsonObject } from "@/types/json";
 import defaultAvatarAsset from "@/assets/images/avatar.webp";
 import ExternalImage from "@components/misc/ExternalImage.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
 import { Icon } from "astro-icon/components";
-import { readMany } from "@/server/directus/client";
+import { loadRegistrationPageState } from "@/server/application/registration/public-registration.service";
 import { buildPublicAssetUrl } from "@/server/directus-auth";
 import { getSessionUser } from "@/server/auth/session";
-import {
-  normalizeRegistrationRequestId,
-  REGISTRATION_REQUEST_COOKIE_NAME,
-} from "@/server/auth/registration-request-cookie";
+import { REGISTRATION_REQUEST_COOKIE_NAME } from "@/server/auth/registration-request-cookie";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
 import {
   buildRegisterI18n,
@@ -38,65 +33,13 @@ if (!registerEnabled) {
   return Astro.redirect("/404");
 }
 
-const registrationRequestId = normalizeRegistrationRequestId(
-  Astro.cookies.get(REGISTRATION_REQUEST_COOKIE_NAME)?.value,
-);
-
-type RegistrationSnapshot = Pick<
-  AppUserRegistrationRequest,
-  | "id"
-  | "email"
-  | "username"
-  | "display_name"
-  | "avatar_file"
-  | "registration_reason"
-  | "request_status"
-  | "approved_user_id"
-  | "reviewed_at"
-  | "reject_reason"
-  | "date_created"
->;
-
-let currentRegistration: RegistrationSnapshot | null = null;
-let hiddenBySessionMismatch = false;
-
-if (registrationRequestId) {
-  const rows = await readMany("app_user_registration_requests", {
-    filter: { id: { _eq: registrationRequestId } } as JsonObject,
-    limit: 1,
-    fields: [
-      "id",
-      "email",
-      "username",
-      "display_name",
-      "avatar_file",
-      "registration_reason",
-      "request_status",
-      "approved_user_id",
-      "reviewed_at",
-      "reject_reason",
-      "date_created",
-    ],
-  });
-  currentRegistration = (rows[0] as RegistrationSnapshot | undefined) || null;
-  const sessionUser = await getSessionUser(Astro);
-  if (currentRegistration && sessionUser) {
-    const approvedUserId = String(
-      currentRegistration.approved_user_id || "",
-    ).trim();
-    const canDisplayApprovedSelfStatus =
-      currentRegistration.request_status === "approved" &&
-      approvedUserId &&
-      approvedUserId === sessionUser.id;
-    if (!canDisplayApprovedSelfStatus) {
-      currentRegistration = null;
-      hiddenBySessionMismatch = true;
-    }
-  }
-  if (!currentRegistration && !hiddenBySessionMismatch) {
-    Astro.cookies.delete(REGISTRATION_REQUEST_COOKIE_NAME, { path: "/" });
-  }
-}
+const sessionUser = await getSessionUser(Astro);
+const registrationPageState = await loadRegistrationPageState({
+  requestIdCookie: Astro.cookies.get(REGISTRATION_REQUEST_COOKIE_NAME)?.value,
+  sessionUserId: sessionUser?.id ?? null,
+  context: Astro,
+});
+const currentRegistration = registrationPageState.currentRegistration;
 
 const registrationStatusMeta = buildRegistrationStatusMeta();
 

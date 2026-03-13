@@ -1,6 +1,7 @@
 import { defaultSiteSettings, systemSiteConfig } from "@/config";
 import { cacheManager } from "@/server/cache/manager";
 import { readMany } from "@/server/directus/client";
+import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 import { createSingleFlightRunner } from "@/server/utils/single-flight";
 import type {
     EditableSiteSettings,
@@ -186,17 +187,20 @@ async function readSiteSettingsRow(): Promise<{
     settings: unknown;
     updatedAt: string | null;
 } | null> {
-    const rows = await readMany("app_site_settings", {
-        filter: {
-            _and: [
-                { key: { _eq: "default" } },
-                { status: { _eq: "published" } },
-            ],
-        },
-        limit: 1,
-        sort: ["-date_updated", "-date_created"],
-        fields: ["id", "settings", "date_updated", "date_created"],
-    });
+    const rows = await withServiceRepositoryContext(
+        async () =>
+            await readMany("app_site_settings", {
+                filter: {
+                    _and: [
+                        { key: { _eq: "default" } },
+                        { status: { _eq: "published" } },
+                    ],
+                },
+                limit: 1,
+                sort: ["-date_updated", "-date_created"],
+                fields: ["id", "settings", "date_updated", "date_created"],
+            }),
+    );
     const row = rows[0];
     if (!row) {
         return null;

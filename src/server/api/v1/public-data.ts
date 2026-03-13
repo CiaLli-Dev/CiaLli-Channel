@@ -6,26 +6,22 @@ import type {
     AppProfile,
     AppProfileView,
 } from "@/types/app";
-import type { JsonObject } from "@/types/json";
 import type {
     BangumiCollectionItem,
     BangumiCollectionStatus,
 } from "@/server/bangumi/types";
 import {
-    countItems,
-    readMany,
-    runWithDirectusServiceAccess,
-} from "@/server/directus/client";
-import { toAppProfileView } from "@/server/profile-view";
+    listUserDiariesFromRepository,
+    loadDiaryImagesForDiaryFromRepository,
+    loadDiaryImagesForIdsFromRepository,
+    loadOwnedDiaryByShortIdFromRepository,
+    loadProfileViewByUsernameFromRepository,
+} from "@/server/repositories/public/public-data.repository";
 import { isShortId } from "@/server/utils/short-id";
 
 import type { AuthorBundleItem } from "./shared/author-cache";
 import { getAuthorBundle } from "./shared/author-cache";
-import {
-    DIARY_FIELDS,
-    DEFAULT_LIST_LIMIT,
-    loadPublicDiaryByShortId,
-} from "./shared";
+import { loadPublicDiaryByShortId } from "./shared";
 import {
     buildOwnerData,
     diaryFilters,
@@ -66,30 +62,7 @@ type PublicProfile = Omit<AppProfileView, "bangumi_access_token_encrypted">;
 async function loadProfileByUsername(
     username: string,
 ): Promise<AppProfileView | null> {
-    const rows = (await readMany("app_user_profiles", {
-        filter: { username: { _eq: username } } as JsonObject,
-        limit: 1,
-    })) as AppProfile[];
-    const profile = rows[0];
-    if (!profile) {
-        return null;
-    }
-    const users = await runWithDirectusServiceAccess(
-        async () =>
-            await readMany("directus_users", {
-                filter: { id: { _eq: profile.user_id } } as JsonObject,
-                limit: 1,
-                fields: [
-                    "id",
-                    "email",
-                    "first_name",
-                    "last_name",
-                    "avatar",
-                    "description",
-                ],
-            }).catch(() => []),
-    );
-    return toAppProfileView(profile, users[0]);
+    return await loadProfileViewByUsernameFromRepository(username);
 }
 
 function toAuthorFallback(userId: string): AuthorBundleItem {
@@ -279,21 +252,7 @@ async function loadDiaryImages(
     diaryIds: string[],
     isOwnerViewing: boolean,
 ): Promise<AppDiaryImage[]> {
-    const diaryImageFilters: JsonObject[] = [{ diary_id: { _in: diaryIds } }];
-    if (!isOwnerViewing) {
-        diaryImageFilters.push(
-            { status: { _eq: "published" } },
-            { is_public: { _eq: true } },
-        );
-    }
-    return readMany("app_diary_images", {
-        filter:
-            diaryIds.length > 0
-                ? ({ _and: diaryImageFilters } as JsonObject)
-                : ({ id: { _null: true } } as JsonObject),
-        sort: ["sort", "-date_created"],
-        limit: Math.max(diaryIds.length * 6, DEFAULT_LIST_LIMIT),
-    }) as Promise<AppDiaryImage[]>;
+    return await loadDiaryImagesForIdsFromRepository(diaryIds, isOwnerViewing);
 }
 
 export async function loadUserDiaryList(
@@ -331,20 +290,12 @@ export async function loadUserDiaryList(
         100,
     );
 
-    const diaryFilter = {
-        _and: [...diaryFilters(isOwnerViewing), { author_id: { _eq: userId } }],
-    } as JsonObject;
-
-    const [rows, total] = await Promise.all([
-        readMany("app_diaries", {
-            filter: diaryFilter,
-            fields: [...DIARY_FIELDS],
-            sort: ["-date_created"],
-            limit,
-            offset,
-        }),
-        countItems("app_diaries", diaryFilter),
-    ]);
+    const { rows, total } = await listUserDiariesFromRepository({
+        userId,
+        filters: diaryFilters(isOwnerViewing),
+        limit,
+        offset,
+    });
 
     const diaryIds = rows.map((row) => row.id);
     const [images, authorMap, commentCountMap, likeCountMap] =
@@ -403,32 +354,15 @@ export async function loadUserDiaryDetail(
 
     let diary: AppDiary | null;
     if (isOwnerViewing) {
-        // owner 视角：读取时不附带 status/is_public 过滤
-        const rows = await readMany("app_diaries", {
-            filter: { short_id: { _eq: diaryId } } as JsonObject,
-            fields: [...DIARY_FIELDS],
-            limit: 1,
-        });
-        diary = (rows[0] as AppDiary | undefined) ?? null;
+        diary = await loadOwnedDiaryByShortIdFromRepository(diaryId);
     } else {
         diary = await loadPublicDiaryByShortId(diaryId);
     }
     if (!diary || diary.author_id !== userId) {
         return { status: "not_found" };
     }
-    const diaryImageFilters: JsonObject[] = [{ diary_id: { _eq: diary.id } }];
-    if (!isOwnerViewing) {
-        diaryImageFilters.push(
-            { status: { _eq: "published" } },
-            { is_public: { _eq: true } },
-        );
-    }
     const [images, authorMap] = await Promise.all([
-        readMany("app_diary_images", {
-            filter: { _and: diaryImageFilters } as JsonObject,
-            sort: ["sort", "-date_created"],
-            limit: 100,
-        }),
+        loadDiaryImagesForDiaryFromRepository(diary.id, isOwnerViewing),
         getAuthorBundle([userId]),
     ]);
 

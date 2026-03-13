@@ -1,15 +1,15 @@
 import type { AppProfileView, AppUser } from "@/types/app";
-import type { JsonObject } from "@/types/json";
 import { cacheManager } from "@/server/cache/manager";
-import {
-    readMany,
-    runWithDirectusServiceAccess,
-} from "@/server/directus/client";
 import {
     toAppProfileView,
     type AppProfileWithUser,
 } from "@/server/profile-view";
 import { buildPublicAssetUrl } from "@/server/directus-auth";
+import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
+import {
+    readProfilesWithUsersFromRepository,
+    readDirectusUsersByIdsFromRepository,
+} from "@/server/repositories/author/author.repository";
 
 export type AuthorBundleItem = {
     id: string;
@@ -104,75 +104,7 @@ function uniqueUserIds(userIds: string[]): string[] {
 }
 
 async function readProfiles(userIds: string[]): Promise<AppProfileWithUser[]> {
-    try {
-        return (await readMany("app_user_profiles", {
-            filter: {
-                user_id: { _in: userIds },
-            } as JsonObject,
-            fields: [
-                "id",
-                "user_id",
-                "username",
-                "display_name",
-                "bio_typewriter_enable",
-                "bio_typewriter_speed",
-                "header_file",
-                "profile_public",
-                "show_articles_on_profile",
-                "show_diaries_on_profile",
-                "show_bangumi_on_profile",
-                "show_albums_on_profile",
-                "show_comments_on_profile",
-                "bangumi_username",
-                "bangumi_include_private",
-                "bangumi_access_token_encrypted",
-                "social_links",
-                "home_section_order",
-                "is_official",
-                "status",
-                "user.id",
-                "user.email",
-                "user.first_name",
-                "user.last_name",
-                "user.avatar",
-                "user.description",
-            ],
-            limit: Math.max(userIds.length, 20),
-        })) as AppProfileWithUser[];
-    } catch (error) {
-        console.warn(
-            "[api/v1/author-cache] profile relation query failed, fallback:",
-            error,
-        );
-        return (await readMany("app_user_profiles", {
-            filter: {
-                user_id: { _in: userIds },
-            } as JsonObject,
-            fields: [
-                "id",
-                "user_id",
-                "username",
-                "display_name",
-                "bio_typewriter_enable",
-                "bio_typewriter_speed",
-                "header_file",
-                "profile_public",
-                "show_articles_on_profile",
-                "show_diaries_on_profile",
-                "show_bangumi_on_profile",
-                "show_albums_on_profile",
-                "show_comments_on_profile",
-                "bangumi_username",
-                "bangumi_include_private",
-                "bangumi_access_token_encrypted",
-                "social_links",
-                "home_section_order",
-                "is_official",
-                "status",
-            ],
-            limit: Math.max(userIds.length, 20),
-        })) as AppProfileWithUser[];
-    }
+    return await readProfilesWithUsersFromRepository(userIds);
 }
 
 async function fetchAuthorsForUsers(
@@ -209,21 +141,9 @@ async function fetchAuthorsForUsers(
     }
 
     if (missingUserIds.length > 0) {
-        const users = await runWithDirectusServiceAccess(
+        const users = await withServiceRepositoryContext(
             async () =>
-                await readMany("directus_users", {
-                    filter: {
-                        id: { _in: missingUserIds },
-                    } as JsonObject,
-                    fields: [
-                        "id",
-                        "email",
-                        "first_name",
-                        "last_name",
-                        "avatar",
-                    ],
-                    limit: Math.max(missingUserIds.length, 20),
-                }),
+                await readDirectusUsersByIdsFromRepository(missingUserIds),
         );
         for (const user of users) {
             userMap.set(user.id, user);

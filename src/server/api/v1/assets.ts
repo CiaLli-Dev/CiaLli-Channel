@@ -1,12 +1,12 @@
 import type { APIContext } from "astro";
 
-import {
-    readDirectusAssetResponse,
-    runWithDirectusPublicAccess,
-    runWithDirectusUserAccess,
-} from "@/server/directus/client";
+import { readDirectusAssetResponse } from "@/server/directus/client";
 import { AppError } from "@/server/api/errors";
 import { fail } from "@/server/api/response";
+import {
+    withPublicRepositoryContext,
+    withUserRepositoryContext,
+} from "@/server/repositories/directus/scope";
 
 import { parseRouteId, toDirectusAssetQuery, requireAccess } from "./shared";
 
@@ -60,8 +60,8 @@ export async function handleAuthenticatedAsset(
     try {
         const response =
             "response" in required
-                ? await runWithDirectusPublicAccess(loadAssetResponse)
-                : await runWithDirectusUserAccess(
+                ? await withPublicRepositoryContext(loadAssetResponse)
+                : await withUserRepositoryContext(
                       required.accessToken,
                       loadAssetResponse,
                   );

@@ -2,7 +2,7 @@ import {
     renderMarkdown,
     type MarkdownRenderMode,
 } from "@/server/markdown/render";
-import { updateDirectusFileMetadata } from "@/server/directus/client";
+import { updateManagedFileMetadata } from "@/server/repositories/files/file-metadata.repository";
 
 import {
     extractDirectusAssetIdsFromMarkdown,
@@ -49,12 +49,12 @@ export async function bindFileOwnerToUser(
     if (!fileId) {
         return;
     }
-    await updateDirectusFileMetadata(fileId, {
+    await updateManagedFileMetadata(fileId, {
         uploaded_by: userId,
         app_owner_user_id: userId,
         app_visibility: visibility,
         title: title?.trim() || undefined,
-    });
+    } as never);
 }
 
 export async function syncMarkdownFilesToVisibility(

@@ -9,6 +9,7 @@ declare namespace App {
         siteSettings?: import("./types/site-settings").ResolvedSiteSettings;
         requestId?: string;
         csrfToken?: string;
+        requestLanguage?: string;
     }
 }
 

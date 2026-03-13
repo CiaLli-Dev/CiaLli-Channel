@@ -5,6 +5,7 @@ import satori from "satori";
 import sharp from "sharp";
 
 import { readMany } from "@/server/directus/client";
+import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
 import type { JsonObject } from "@/types/json";
 
@@ -30,17 +31,26 @@ type OgPost = {
 export const prerender = true;
 
 export const getStaticPaths: GetStaticPaths = async () => {
-    const rows = await readMany("app_articles", {
-        filter: {
-            _and: [
-                { status: { _eq: "published" } },
-                { is_public: { _eq: true } },
-            ],
-        } as JsonObject,
-        sort: ["-date_updated", "-date_created"],
-        limit: 1000,
-        fields: ["slug", "title", "summary", "date_updated", "date_created"],
-    });
+    const rows = await withServiceRepositoryContext(
+        async () =>
+            await readMany("app_articles", {
+                filter: {
+                    _and: [
+                        { status: { _eq: "published" } },
+                        { is_public: { _eq: true } },
+                    ],
+                } as JsonObject,
+                sort: ["-date_updated", "-date_created"],
+                limit: 1000,
+                fields: [
+                    "slug",
+                    "title",
+                    "summary",
+                    "date_updated",
+                    "date_created",
+                ],
+            }),
+    );
 
     return rows
         .filter(

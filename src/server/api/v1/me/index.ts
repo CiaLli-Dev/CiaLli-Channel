@@ -1,7 +1,7 @@
 import type { APIContext } from "astro";
 
 import { fail } from "@/server/api/response";
-import { runWithDirectusUserAccess } from "@/server/directus/client";
+import { withUserRepositoryContext } from "@/server/repositories/directus/scope";
 
 import { requireAccess } from "../shared";
 import type { AppAccess } from "../shared";
@@ -113,7 +113,7 @@ export async function handleMe(
         return required.response;
     }
     const access = required.access;
-    return await runWithDirectusUserAccess(required.accessToken, async () =>
+    return await withUserRepositoryContext(required.accessToken, async () =>
         dispatchMeRoute(context, access, segments),
     );
 }

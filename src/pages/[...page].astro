@@ -8,7 +8,7 @@ import {
   DIRECTUS_ACCESS_COOKIE_NAME,
   DIRECTUS_REFRESH_COOKIE_NAME,
 } from "@/server/directus-auth";
-import { buildHomeFeed } from "@/server/recommendation/home-feed";
+import { buildHomeFeedPage } from "@/server/application/feed/home-feed.service";
 import type { HomeFeedItem } from "@/server/recommendation/home-feed.types";
 import { buildSiteDateFormatContext } from "@/utils/date-utils";
 
@@ -41,10 +41,11 @@ if (!invalidPath) {
   try {
     const sessionUser = await getSessionUser(Astro);
     sessionUserId = sessionUser?.id ?? null;
-    const homeFeed = await buildHomeFeed({
+    const homeFeed = await buildHomeFeedPage({
       viewerId: sessionUser?.id ?? null,
-      limit: 20,
-      outputLimit: 60,
+      offset: 0,
+      pageLimit: 20,
+      totalLimit: 60,
       articleCandidateLimit: 80,
       diaryCandidateLimit: 60,
     });

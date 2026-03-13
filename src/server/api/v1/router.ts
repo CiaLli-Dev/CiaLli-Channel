@@ -1,9 +1,9 @@
 import type { APIContext } from "astro";
 
 import { fail, ok } from "@/server/api/response";
-import { runWithDirectusPublicAccess } from "@/server/directus/client";
 import { getClientIp } from "@/server/directus-auth";
 import { withErrorHandler } from "@/server/middleware/error-handler";
+import { withPublicRepositoryContext } from "@/server/repositories/directus/scope";
 import { assertCsrfToken } from "@/server/security/csrf";
 import {
     applyRateLimit,
@@ -89,7 +89,7 @@ async function dispatchRoute(
     const first = segments[0];
 
     if (first === "public") {
-        return await runWithDirectusPublicAccess(async () =>
+        return await withPublicRepositoryContext(async () =>
             handlePublic(context, segments),
         );
     }

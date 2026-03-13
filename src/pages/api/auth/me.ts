@@ -1,9 +1,7 @@
 import type { APIContext } from "astro";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
-import { getAppAccessContext } from "@/server/auth/acl";
-import { getSessionUser } from "@/server/auth/session";
-import { buildDirectusAssetUrl } from "@/server/directus-auth";
+import { getAuthenticatedViewer } from "@/server/application/auth/session.service";
 
 export const prerender = false;
 const AUTH_NO_STORE = "private, no-store";
@@ -20,42 +18,14 @@ function json<T>(data: T, init?: ResponseInit): Response {
 }
 
 export async function GET(context: APIContext): Promise<Response> {
-    const user = await getSessionUser(context);
-    if (!user) {
+    const result = await getAuthenticatedViewer(context);
+    if (!result.ok && result.reason === "not_logged_in") {
         return json(
             { ok: false, message: i18n(I18nKey.interactionApiAuthNotLoggedIn) },
             { status: 401 },
         );
     }
-
-    try {
-        const access = await getAppAccessContext(user);
-        const profile = access.profile;
-        const username = String(profile.username || "").trim();
-        const displayName = String(profile.display_name || "").trim();
-        const name =
-            displayName || username || user.name || user.email || "Member";
-        const avatarUrl = profile.avatar_file
-            ? buildDirectusAssetUrl(profile.avatar_file, {
-                  width: 128,
-                  height: 128,
-                  fit: "cover",
-              })
-            : user.avatarUrl;
-
-        return json({
-            ok: true,
-            user: {
-                id: user.id,
-                email: user.email,
-                name,
-                username: username || undefined,
-                avatarUrl: avatarUrl || undefined,
-            },
-            is_admin: access.isAdmin,
-        });
-    } catch (error) {
-        void error;
+    if (!result.ok) {
         return json(
             {
                 ok: false,
@@ -64,4 +34,6 @@ export async function GET(context: APIContext): Promise<Response> {
             { status: 500 },
         );
     }
+
+    return json(result.payload);
 }

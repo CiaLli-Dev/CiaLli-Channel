@@ -1,25 +1,19 @@
 import type { APIContext } from "astro";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
+import { loginWithPassword } from "@/server/application/auth/login.service";
 import {
-    DirectusAuthError,
     DIRECTUS_ACCESS_COOKIE_NAME,
-    directusGetMe,
-    directusLogin,
     DIRECTUS_REFRESH_COOKIE_NAME,
     getCookieOptions,
     getRememberCookieOptions,
-    pickPublicUserInfo,
     REMEMBER_COOKIE_NAME,
     resolveAccessTokenMaxAgeSeconds,
-    type PublicUserInfo,
 } from "@/server/directus-auth";
 import {
     clearRegistrationRequestCookie,
-    normalizeRegistrationRequestId,
     REGISTRATION_REQUEST_COOKIE_NAME,
 } from "@/server/auth/registration-request-cookie";
-import { readMany } from "@/server/directus/client";
 import {
     applyRateLimit,
     rateLimitResponse,
@@ -64,44 +58,6 @@ function json<T>(data: T, init?: ResponseInit): Response {
 
 function normalizeRateLimitEmailKey(email: string): string {
     return `email:${email.trim().toLowerCase()}`;
-}
-
-async function shouldClearRegistrationCookieOnLogin(
-    context: APIContext,
-    userId: string,
-): Promise<boolean> {
-    const normalizedUserId = String(userId || "").trim();
-    if (!normalizedUserId) {
-        return false;
-    }
-    const requestId = normalizeRegistrationRequestId(
-        context.cookies.get(REGISTRATION_REQUEST_COOKIE_NAME)?.value,
-    );
-    if (!requestId) {
-        return false;
-    }
-    try {
-        const rows = await readMany("app_user_registration_requests", {
-            filter: { id: { _eq: requestId } } as JsonObject,
-            limit: 1,
-            fields: ["id", "request_status", "approved_user_id"],
-        });
-        const row = rows[0] as
-            | { request_status?: unknown; approved_user_id?: unknown }
-            | undefined;
-        if (!row) {
-            return true;
-        }
-        const status = String(row.request_status || "").trim();
-        const approvedUserId = String(row.approved_user_id || "").trim();
-        return status === "approved" && approvedUserId === normalizedUserId;
-    } catch (error) {
-        console.warn(
-            "[api/auth/login] skip registration cookie clear check:",
-            error,
-        );
-        return false;
-    }
 }
 
 async function applyRateLimitOrError(
@@ -173,30 +129,7 @@ function setLoginCookies(
     );
 }
 
-async function fetchPublicUserInfo(
-    accessToken: string,
-    fallback: PublicUserInfo,
-): Promise<PublicUserInfo> {
-    try {
-        const me = await directusGetMe({ accessToken });
-        const picked = pickPublicUserInfo(me);
-        return {
-            id: picked.id || fallback.id,
-            email: picked.email || fallback.email,
-            name: picked.name || fallback.name,
-            avatarUrl: picked.avatarUrl || fallback.avatarUrl,
-        };
-    } catch {
-        // 若 /users/me 失败，不影响登录态写入，前台可再调用 /api/auth/me
-        return fallback;
-    }
-}
-
-function buildLoginErrorResponse(error: unknown): Response {
-    const status =
-        error instanceof DirectusAuthError && error.directusStatus === 401
-            ? 401
-            : 500;
+function buildLoginErrorResponse(status: 401 | 500): Response {
     return json(
         {
             ok: false,
@@ -248,34 +181,33 @@ async function executeLogin(
     credentials: LoginCredentials,
     rateLimitRemaining: number,
 ): Promise<Response> {
-    const { email, password, remember } = credentials;
-    try {
-        const tokens = await directusLogin({ email, password });
-        setLoginCookies(context, tokens, remember);
-        // 登录成功后轮换 CSRF token，避免沿用登录前 token。
-        rotateCsrfCookie(context);
-
-        const fallbackUser: PublicUserInfo = { id: "", email, name: email };
-        const user = await fetchPublicUserInfo(
-            tokens.accessToken,
-            fallbackUser,
-        );
-
-        if (await shouldClearRegistrationCookieOnLogin(context, user.id)) {
-            clearRegistrationRequestCookie(context);
-        }
-
-        return json(
-            { ok: true, user },
-            {
-                headers: {
-                    "X-RateLimit-Remaining": String(rateLimitRemaining),
-                },
-            },
-        );
-    } catch (error) {
-        return buildLoginErrorResponse(error);
+    const result = await loginWithPassword({
+        email: credentials.email,
+        password: credentials.password,
+        registrationRequestCookie: context.cookies.get(
+            REGISTRATION_REQUEST_COOKIE_NAME,
+        )?.value,
+    });
+    if (!result.ok) {
+        return buildLoginErrorResponse(result.status);
     }
+
+    setLoginCookies(context, result.tokens, credentials.remember);
+    // 登录成功后轮换 CSRF token，避免沿用登录前 token。
+    rotateCsrfCookie(context);
+
+    if (result.clearRegistrationCookie) {
+        clearRegistrationRequestCookie(context);
+    }
+
+    return json(
+        { ok: true, user: result.user },
+        {
+            headers: {
+                "X-RateLimit-Remaining": String(rateLimitRemaining),
+            },
+        },
+    );
 }
 
 export async function POST(context: APIContext): Promise<Response> {

@@ -1,11 +1,14 @@
 import { defineMiddleware } from "astro:middleware";
 
-import { systemSiteConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import { assertRequiredEnv } from "@/server/env/required";
+import { registerRequestScopedI18n } from "@/server/request-context/i18n";
+import { runWithRequestContext } from "@/server/request-context";
 import { readCsrfToken } from "@/server/security/csrf";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
+
+registerRequestScopedI18n();
 
 function buildEnvErrorResponse(pathname: string): Response {
     const isApiRequest = pathname.startsWith("/api/");
@@ -39,14 +42,23 @@ function buildEnvErrorResponse(pathname: string): Response {
 export const onRequest = defineMiddleware(async (context, next) => {
     // 预渲染页面构建时，request.headers 不可用，跳过运行时逻辑
     if (context.isPrerendered) {
+        let siteSettings = context.locals.siteSettings;
         try {
-            context.locals.siteSettings = await getResolvedSiteSettings();
-            // 同步全局语言，保证服务端渲染文案与站点设置一致
-            systemSiteConfig.lang = context.locals.siteSettings.system.lang;
+            siteSettings = await getResolvedSiteSettings();
+            context.locals.siteSettings = siteSettings;
         } catch (error) {
             console.error("[middleware] failed to load site settings:", error);
         }
-        return next();
+
+        return await runWithRequestContext(
+            {
+                requestId: "prerender",
+                language: siteSettings?.system.lang ?? "en",
+                siteSettings,
+                isPrerendered: true,
+            },
+            async () => await next(),
+        );
     }
 
     // 1. 生成/复用请求 ID
@@ -66,10 +78,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
 
     // 3. 加载站点设置
+    let siteSettings = context.locals.siteSettings;
     try {
-        context.locals.siteSettings = await getResolvedSiteSettings();
-        // 站点语言是全局配置，按请求同步一次即可避免 i18n 固定为默认语言
-        systemSiteConfig.lang = context.locals.siteSettings.system.lang;
+        siteSettings = await getResolvedSiteSettings();
+        context.locals.siteSettings = siteSettings;
     } catch (error) {
         console.error("[middleware] failed to load site settings:", error);
     }
@@ -78,7 +90,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
     context.locals.csrfToken = readCsrfToken(context);
 
     // 5. 执行后续处理
-    const response = await next();
+    const response = await runWithRequestContext(
+        {
+            requestId,
+            language: siteSettings?.system.lang ?? "en",
+            siteSettings,
+        },
+        async () => await next(),
+    );
 
     // 6. 响应头附加 requestId
     response.headers.set("X-Request-ID", requestId);

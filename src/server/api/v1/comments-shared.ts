@@ -9,18 +9,19 @@ import {
     renderMarkdown,
     type MarkdownRenderMode,
 } from "@/server/markdown/render";
-import {
-    countItems,
-    countItemsGroupedByField,
-    createOne,
-    deleteOne,
-    readMany,
-    readOneById,
-} from "@/server/directus/client";
 import { fail, ok } from "@/server/api/response";
 import { parseJsonBody } from "@/server/api/utils";
 import { validateBody } from "@/server/api/validate";
 import { CommentPreviewSchema } from "@/server/api/schemas";
+import {
+    countComments,
+    countCommentLikesGrouped,
+    createDiaryCommentRecord,
+    deleteCommentById,
+    readCommentById,
+    readComments,
+    readViewerCommentLikes,
+} from "@/server/repositories/comments/comments.repository";
 
 import { buildCommentTree, requireAccess } from "./shared";
 import type { CommentRecord, CommentTreeNode } from "./shared";
@@ -39,7 +40,6 @@ export type CommentCollection = "app_article_comments" | "app_diary_comments";
 export type CommentLikeCollection =
     | "app_article_comment_likes"
     | "app_diary_comment_likes";
-type CommentLikeField = "article_comment_id" | "diary_comment_id";
 export type CommentRelationField = "article_id" | "diary_id";
 
 export type EditableCommentInput = {
@@ -68,14 +68,6 @@ export function buildCommentUpdatePayload(
     return payload;
 }
 
-function resolveCommentLikeField(
-    collection: CommentLikeCollection,
-): CommentLikeField {
-    return collection === "app_article_comment_likes"
-        ? "article_comment_id"
-        : "diary_comment_id";
-}
-
 export async function resolveCommentDepth(
     collection: CommentCollection,
     commentId: string,
@@ -89,9 +81,10 @@ export async function resolveCommentDepth(
             return null;
         }
         visited.add(currentId);
-        const comment = await readOneById(collection, currentId, {
-            fields: ["id", "parent_id"],
-        });
+        const comment = await readCommentById(collection, currentId, [
+            "id",
+            "parent_id",
+        ]);
         if (!comment) {
             return null;
         }
@@ -120,31 +113,21 @@ async function loadCommentLikeStats(
         return { countMap: new Map(), likedByViewer };
     }
 
-    const likeField = resolveCommentLikeField(collection);
-    // 评论点赞总数改为数据库聚合，避免把所有点赞明细拉到应用层再计数。
-    const countMap = await countItemsGroupedByField(collection, likeField, {
-        _and: [
-            { [likeField]: { _in: commentIds } },
-            { status: { _eq: "published" } },
-        ],
-    } as JsonObject);
+    const countMap = await countCommentLikesGrouped(collection, commentIds);
 
     if (!viewerId) {
         return { countMap, likedByViewer };
     }
 
-    const viewerLikes = (await readMany(collection, {
-        filter: {
-            _and: [
-                { [likeField]: { _in: commentIds } },
-                { status: { _eq: "published" } },
-                { user_id: { _eq: viewerId } },
-            ],
-        } as JsonObject,
-        fields: [likeField],
-        // 仅查询当前查看者点赞关系，查询范围受当前页面 commentIds 限定。
-        limit: -1,
-    })) as Array<Record<string, unknown>>;
+    const viewerLikes = await readViewerCommentLikes(
+        collection,
+        commentIds,
+        viewerId,
+    );
+    const likeField =
+        collection === "app_article_comment_likes"
+            ? "article_comment_id"
+            : "diary_comment_id";
 
     for (const like of viewerLikes) {
         const targetId = String(like[likeField] || "").trim();
@@ -283,13 +266,13 @@ export async function loadPaginatedComments(
     } as JsonObject;
 
     const [topLevelRows, totalTopLevel] = await Promise.all([
-        readMany(collection, {
+        readComments(collection, {
             filter: topLevelFilter,
             sort: ["date_created"],
             limit: pagination.limit,
             offset: pagination.offset,
         }) as Promise<CommentRecord[]>,
-        countItems(collection, topLevelFilter),
+        countComments(collection, topLevelFilter),
     ]);
 
     const topLevelIds = topLevelRows
@@ -305,7 +288,7 @@ export async function loadPaginatedComments(
         };
     }
 
-    const levelOneRows = (await readMany(collection, {
+    const levelOneRows = (await readComments(collection, {
         filter: {
             _and: [...baseFilters, { parent_id: { _in: topLevelIds } }],
         } as JsonObject,
@@ -318,7 +301,7 @@ export async function loadPaginatedComments(
 
     let levelTwoRows: CommentRecord[] = [];
     if (levelOneIds.length > 0) {
-        levelTwoRows = (await readMany(collection, {
+        levelTwoRows = (await readComments(collection, {
             filter: {
                 _and: [...baseFilters, { parent_id: { _in: levelOneIds } }],
             } as JsonObject,
@@ -353,7 +336,7 @@ export async function validateReplyParent(
     entityId: string,
     relationKey: "article_id" | "diary_id",
 ): Promise<Response | null> {
-    const parent = await readOneById(collection, parentId);
+    const parent = await readCommentById(collection, parentId);
     const relationValue = String(
         (parent as Record<string, unknown> | null)?.[relationKey] || "",
     );
@@ -361,7 +344,10 @@ export async function validateReplyParent(
         return fail("父评论不存在", 404);
     }
 
-    const parentDepth = await resolveCommentDepth(collection, parent.id);
+    const parentDepth = await resolveCommentDepth(
+        collection,
+        String(parent.id),
+    );
     if (parentDepth === null) {
         return fail("父评论不存在", 404);
     }
@@ -385,7 +371,7 @@ async function collectDescendantCommentIds(
     let frontier: string[] = [rootId];
 
     while (frontier.length > 0) {
-        const children = await readMany(collection, {
+        const children = await readComments(collection, {
             filter: {
                 parent_id: { _in: frontier },
             } as JsonObject,
@@ -421,9 +407,11 @@ export async function deleteCommentWithDescendants(
         collection,
         commentId,
     );
-    const rootComment = await readOneById(collection, commentId, {
-        fields: ["id", "body", "author_id"],
-    });
+    const rootComment = await readCommentById(collection, commentId, [
+        "id",
+        "body",
+        "author_id",
+    ]);
     const candidateFileIds = new Set<string>();
     const ownerUserIds = new Set<string>();
     if (rootComment) {
@@ -450,9 +438,9 @@ export async function deleteCommentWithDescendants(
     }
 
     for (const descendant of descendants.reverse()) {
-        await deleteOne(collection, descendant.id);
+        await deleteCommentById(collection, descendant.id);
     }
-    await deleteOne(collection, commentId);
+    await deleteCommentById(collection, commentId);
     await cleanupOwnedOrphanDirectusFiles({
         candidateFileIds: [...candidateFileIds],
         ownerUserIds: [...ownerUserIds],
@@ -536,14 +524,10 @@ export function createDiaryComment(
         is_public?: boolean;
         show_on_profile?: boolean;
     },
-): ReturnType<typeof createOne> {
-    return createOne("app_diary_comments", {
-        status: input.status,
-        diary_id: diaryId,
-        author_id: authorId,
-        parent_id: input.parent_id,
-        body: input.body,
-        is_public: input.is_public,
-        show_on_profile: input.show_on_profile,
+): ReturnType<typeof createDiaryCommentRecord> {
+    return createDiaryCommentRecord({
+        diaryId,
+        authorId,
+        input,
     });
 }

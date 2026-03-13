@@ -17,6 +17,8 @@ vi.mock("@/server/cache/manager", () => ({
 
 vi.mock("@/server/directus/client", () => ({
     readMany: readManyMock,
+    runWithDirectusServiceAccess: async <T>(task: () => Promise<T>) =>
+        await task(),
 }));
 
 import { resolveSiteSettingsPayload } from "@/server/site-settings/service";

@@ -1,6 +1,10 @@
-import type { AppAlbum, AppAlbumPhoto, AppProfile } from "@/types/app";
-import type { JsonObject } from "@/types/json";
-import { countItems, readMany } from "@/server/directus/client";
+import type { AppAlbum, AppAlbumPhoto } from "@/types/app";
+import { loadProfileByUsernameFromRepository } from "@/server/repositories/profile/profile.repository";
+import {
+    listUserAlbumsFromRepository,
+    loadAlbumPhotosForAlbumFromRepository,
+    loadOwnedAlbumByShortIdFromRepository,
+} from "@/server/repositories/public/public-data.repository";
 import { isShortId } from "@/server/utils/short-id";
 import { loadPublicAlbumByShortId, safeCsv } from "./shared";
 import type { AuthorBundleItem } from "./shared/author-cache";
@@ -23,16 +27,6 @@ export type AlbumDetail = AppAlbum & {
     photos: Array<AppAlbumPhoto & { tags: string[] }>;
 };
 
-async function loadProfileByUsername(
-    username: string,
-): Promise<AppProfile | null> {
-    const rows = await readMany("app_user_profiles", {
-        filter: { username: { _eq: username } } as JsonObject,
-        limit: 1,
-    });
-    return (rows[0] as AppProfile | undefined) ?? null;
-}
-
 export async function loadUserAlbumListHelper(
     username: string,
     options: UserAlbumListOptions & ViewerOptions,
@@ -45,7 +39,7 @@ export async function loadUserAlbumListHelper(
         PaginatedResult<AppAlbum & { tags: string[]; author: AuthorBundleItem }>
     >
 > {
-    const profile = await loadProfileByUsername(username);
+    const profile = await loadProfileByUsernameFromRepository(username);
     if (!profile) {
         return { status: "not_found" };
     }
@@ -65,18 +59,13 @@ export async function loadUserAlbumListHelper(
         100,
     );
 
-    const albumFilter = {
-        _and: [...albumFilters(isOwnerViewing), { author_id: { _eq: userId } }],
-    } as JsonObject;
-
-    const [rows, total, authorMap] = await Promise.all([
-        readMany("app_albums", {
-            filter: albumFilter,
-            sort: ["-date", "-date_created"],
+    const [{ rows, total }, authorMap] = await Promise.all([
+        listUserAlbumsFromRepository({
+            userId,
+            filters: albumFilters(isOwnerViewing),
             limit,
             offset,
         }),
-        countItems("app_albums", albumFilter),
         getAuthorBundle([userId]),
     ]);
 
@@ -98,7 +87,7 @@ export async function loadUserAlbumDetailHelper(
         userId: string,
     ) => AuthorBundleItem,
 ): Promise<ContentLoadResult<AlbumDetail>> {
-    const profile = await loadProfileByUsername(username);
+    const profile = await loadProfileByUsernameFromRepository(username);
     if (!profile) {
         return { status: "not_found" };
     }
@@ -118,30 +107,15 @@ export async function loadUserAlbumDetailHelper(
 
     let album: AppAlbum | null;
     if (isOwnerViewing) {
-        const rows = await readMany("app_albums", {
-            filter: { short_id: { _eq: albumId } } as JsonObject,
-            limit: 1,
-        });
-        album = (rows[0] as AppAlbum | undefined) ?? null;
+        album = await loadOwnedAlbumByShortIdFromRepository(albumId);
     } else {
         album = await loadPublicAlbumByShortId(albumId);
     }
     if (!album || album.author_id !== userId) {
         return { status: "not_found" };
     }
-    const photoFilters: JsonObject[] = [{ album_id: { _eq: album.id } }];
-    if (!isOwnerViewing) {
-        photoFilters.push(
-            { status: { _eq: "published" } },
-            { is_public: { _eq: true } },
-        );
-    }
     const [photos, authorMap] = await Promise.all([
-        readMany("app_album_photos", {
-            filter: { _and: photoFilters } as JsonObject,
-            sort: ["sort", "-date_created"],
-            limit: 200,
-        }) as Promise<AppAlbumPhoto[]>,
+        loadAlbumPhotosForAlbumFromRepository(album.id, isOwnerViewing),
         getAuthorBundle([userId]),
     ]);
 

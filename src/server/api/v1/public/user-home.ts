@@ -1,13 +1,13 @@
 import type { APIContext } from "astro";
 
-import {
-    runWithDirectusPublicAccess,
-    runWithDirectusUserAccess,
-} from "@/server/directus/client";
-import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
-import type { BangumiCollectionStatus } from "@/server/bangumi/types";
 import { fail, ok } from "@/server/api/response";
 import { parsePagination } from "@/server/api/utils";
+import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
+import type { BangumiCollectionStatus } from "@/server/bangumi/types";
+import {
+    withPublicRepositoryContext,
+    withUserRepositoryContext,
+} from "@/server/repositories/directus/scope";
 
 import {
     loadUserAlbumDetail,
@@ -233,7 +233,7 @@ export async function handleUserHome(
     const detailId = rawDetailId ?? "";
 
     const response = viewerId
-        ? await runWithDirectusUserAccess(
+        ? await withUserRepositoryContext(
               getSessionAccessToken(context),
               async () =>
                   await dispatchModule(
@@ -244,7 +244,7 @@ export async function handleUserHome(
                       viewerId,
                   ),
           )
-        : await runWithDirectusPublicAccess(async () =>
+        : await withPublicRepositoryContext(async () =>
               dispatchModule(
                   context,
                   moduleKey as ModuleKey,

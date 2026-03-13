@@ -1,6 +1,6 @@
 import type { AppProfile } from "@/types/app";
 import type { JsonObject } from "@/types/json";
-import { readMany } from "@/server/directus/client";
+import { loadProfileByUsernameFromRepository } from "@/server/repositories/profile/profile.repository";
 
 import { excludeSpecialArticleSlugFilter, filterPublicStatus } from "../shared";
 
@@ -49,9 +49,5 @@ export function articleFiltersApi(isOwner: boolean): JsonObject[] {
 export async function loadProfileByUsername(
     username: string,
 ): Promise<AppProfile | null> {
-    const rows = await readMany("app_user_profiles", {
-        filter: { username: { _eq: username } } as JsonObject,
-        limit: 1,
-    });
-    return rows[0] || null;
+    return await loadProfileByUsernameFromRepository(username);
 }

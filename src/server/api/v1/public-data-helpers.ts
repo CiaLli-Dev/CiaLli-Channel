@@ -15,13 +15,15 @@ import { cacheManager } from "@/server/cache/manager";
 import { loadBangumiCollections } from "@/server/bangumi/service";
 import { decryptBangumiAccessToken } from "@/server/bangumi/token";
 import { normalizeBangumiId } from "@/server/bangumi/username";
-import {
-    countItemsGroupedByField,
-    readMany,
-    runWithDirectusServiceAccess,
-} from "@/server/directus/client";
-import { toAppProfileView } from "@/server/profile-view";
 import { buildPublicAssetUrl } from "@/server/directus-auth";
+import {
+    fetchDiaryCommentCountMapFromRepository,
+    fetchDiaryLikeCountMapFromRepository,
+    listHomeAlbumsFromRepository,
+    listHomeArticlesFromRepository,
+    listHomeDiariesFromRepository,
+    loadProfileViewByFilterFromRepository,
+} from "@/server/repositories/public/public-data.repository";
 
 import type { AuthorBundleItem } from "./shared/author-cache";
 import { getAuthorBundle } from "./shared/author-cache";
@@ -95,30 +97,13 @@ export async function loadBangumiListForProfile(
 export async function fetchDiaryCommentCountMap(
     diaryIds: string[],
 ): Promise<Map<string, number>> {
-    if (diaryIds.length === 0) {
-        return new Map();
-    }
-    return await countItemsGroupedByField("app_diary_comments", "diary_id", {
-        _and: [
-            { diary_id: { _in: diaryIds } },
-            { status: { _eq: "published" } },
-            { is_public: { _eq: true } },
-        ],
-    } as JsonObject);
+    return await fetchDiaryCommentCountMapFromRepository(diaryIds);
 }
 
 export async function fetchDiaryLikeCountMap(
     diaryIds: string[],
 ): Promise<Map<string, number>> {
-    if (diaryIds.length === 0) {
-        return new Map();
-    }
-    return await countItemsGroupedByField("app_diary_likes", "diary_id", {
-        _and: [
-            { diary_id: { _in: diaryIds } },
-            { status: { _eq: "published" } },
-        ],
-    } as JsonObject);
+    return await fetchDiaryLikeCountMapFromRepository(diaryIds);
 }
 
 // ---------------------------------------------------------------------------
@@ -176,28 +161,15 @@ export async function loadHomeDataInParallel(
     const [authorMap, articles, diaries, bangumi, albums] = await Promise.all([
         getAuthorBundle([targetUserId]),
         isOwnerViewing || profile.show_articles_on_profile
-            ? readMany("app_articles", {
-                  filter: {
-                      _and: [
-                          { author_id: { _eq: targetUserId } },
-                          ...articleFilters(isOwnerViewing),
-                      ],
-                  } as JsonObject,
-                  sort: ["-date_updated", "-date_created"],
-                  limit: 5,
+            ? listHomeArticlesFromRepository({
+                  targetUserId,
+                  filters: articleFilters(isOwnerViewing),
               })
             : Promise.resolve([] as AppArticle[]),
         isOwnerViewing || profile.show_diaries_on_profile
-            ? readMany("app_diaries", {
-                  filter: {
-                      _and: [
-                          { author_id: { _eq: targetUserId } },
-                          ...diaryFilters(isOwnerViewing),
-                      ],
-                  } as JsonObject,
-                  fields: ["*"],
-                  sort: ["-date_created"],
-                  limit: 5,
+            ? listHomeDiariesFromRepository({
+                  targetUserId,
+                  filters: diaryFilters(isOwnerViewing),
               })
             : Promise.resolve([] as AppDiary[]),
         isOwnerViewing || profile.show_bangumi_on_profile
@@ -208,15 +180,9 @@ export async function loadHomeDataInParallel(
                   [] as import("@/server/bangumi/types").BangumiCollectionItem[],
               ),
         isOwnerViewing || profile.show_albums_on_profile
-            ? readMany("app_albums", {
-                  filter: {
-                      _and: [
-                          { author_id: { _eq: targetUserId } },
-                          ...albumFilters(isOwnerViewing),
-                      ],
-                  } as JsonObject,
-                  sort: ["-date", "-date_created"],
-                  limit: 5,
+            ? listHomeAlbumsFromRepository({
+                  targetUserId,
+                  filters: albumFilters(isOwnerViewing),
               })
             : Promise.resolve([] as AppAlbum[]),
     ]);
@@ -284,30 +250,7 @@ export function invalidateOfficialSidebarCache(): void {
 async function loadProfileViewByFilter(
     filter: JsonObject,
 ): Promise<AppProfileView | null> {
-    const rows = (await readMany("app_user_profiles", {
-        filter,
-        limit: 1,
-    })) as AppProfile[];
-    const profile = rows[0];
-    if (!profile) {
-        return null;
-    }
-    const users = await runWithDirectusServiceAccess(
-        async () =>
-            await readMany("directus_users", {
-                filter: { id: { _eq: profile.user_id } } as JsonObject,
-                limit: 1,
-                fields: [
-                    "id",
-                    "email",
-                    "first_name",
-                    "last_name",
-                    "avatar",
-                    "description",
-                ],
-            }).catch(() => []),
-    );
-    return toAppProfileView(profile, users[0]);
+    return await loadProfileViewByFilterFromRepository(filter);
 }
 
 export async function loadOfficialSidebarProfile(): Promise<SidebarProfileData> {

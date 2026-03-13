@@ -27,6 +27,7 @@ import type { AppUser } from "@/types/app";
 import type { JsonObject } from "@/types/json";
 import { internal } from "@/server/api/errors";
 import { getDirectusUrl } from "@/server/directus-auth";
+import { getRequestContext } from "@/server/request-context";
 import {
     isDirectusItemNotFound,
     toDirectusError,
@@ -50,7 +51,7 @@ type DirectusAssetQuery = Partial<
 
 type DirectusAggregateRow = Record<string, unknown>;
 
-type DirectusRequestScope =
+export type DirectusRequestScope =
     | { kind: "service" }
     | { kind: "public" }
     | { kind: "user"; accessToken: string };
@@ -146,7 +147,18 @@ function getServiceClient() {
 }
 
 function getCurrentScope(): DirectusRequestScope {
-    return directusScopeStorage.getStore() ?? { kind: "service" };
+    const currentScope = directusScopeStorage.getStore();
+    if (currentScope) {
+        return currentScope;
+    }
+
+    // 请求上下文内未声明 scope 时，统一回退到受控的 service 访问。
+    // 这样 SSR 页面与尚未迁移完成的调用点不会再依赖模块级隐式状态。
+    if (getRequestContext()) {
+        return { kind: "service" };
+    }
+
+    throw internal("Directus 访问缺少 request scope");
 }
 
 function getDirectusTargetHost(): string | undefined {
@@ -737,4 +749,4 @@ export async function readDirectusAssetResponse(params: {
     throw internal("资源响应格式无效");
 }
 
-export type { DirectusPolicyRecord, DirectusRoleRecord, DirectusRequestScope };
+export type { DirectusPolicyRecord, DirectusRoleRecord };

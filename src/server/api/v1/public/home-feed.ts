@@ -1,8 +1,8 @@
 import type { APIContext } from "astro";
 
 import { fail, ok } from "@/server/api/response";
+import { buildHomeFeedPage } from "@/server/application/feed/home-feed.service";
 import { getSessionUser } from "@/server/auth/session";
-import { buildHomeFeed } from "@/server/recommendation/home-feed";
 import type { HomeFeedPageResponse } from "@/server/recommendation/home-feed.types";
 import {
     DIRECTUS_ACCESS_COOKIE_NAME,
@@ -57,23 +57,13 @@ export async function handlePublicHomeFeed(
     const sessionUser = hasAuthCookies(context)
         ? await getSessionUser(context)
         : null;
-    const feed = await buildHomeFeed({
+    const result: HomeFeedPageResponse = await buildHomeFeedPage({
         viewerId: sessionUser?.id ?? null,
-        limit: HOME_FEED_TOTAL_LIMIT,
-        outputLimit: HOME_FEED_TOTAL_LIMIT,
+        offset,
+        pageLimit: limit,
+        totalLimit: HOME_FEED_TOTAL_LIMIT,
         articleCandidateLimit: HOME_FEED_ARTICLE_CANDIDATE_LIMIT,
         diaryCandidateLimit: HOME_FEED_DIARY_CANDIDATE_LIMIT,
     });
-    const items = feed.items.slice(offset, offset + limit);
-    const nextOffset = offset + items.length;
-    const result: HomeFeedPageResponse = {
-        items,
-        offset,
-        limit,
-        next_offset: nextOffset,
-        has_more: nextOffset < feed.items.length,
-        generated_at: feed.generatedAt,
-        total: feed.items.length,
-    };
     return ok(result);
 }

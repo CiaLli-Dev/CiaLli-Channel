@@ -14,7 +14,7 @@ import type { JsonObject, JsonValue } from "@/types/json";
 import { getJsonString, isJsonObject } from "@/utils/json-utils";
 import { internal } from "@/server/api/errors";
 
-type DirectusAuthTokens = {
+export type DirectusAuthTokens = {
     accessToken: string;
     refreshToken: string;
     expiresMs?: number;
