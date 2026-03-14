@@ -2,6 +2,7 @@
 import Markdown from "@components/misc/Markdown.astro";
 import { renderMarkdown } from "@/server/markdown/render";
 import { loadPublicArticleBySlug } from "@/server/api/v1/shared";
+import { runWithDirectusServiceAccess } from "@/server/directus/client";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import MainGridLayout from "../layouts/MainGridLayout.astro";
@@ -15,7 +16,9 @@ let summary = "";
 let html = "";
 
 try {
-  const article = await loadPublicArticleBySlug("about");
+  const article = await runWithDirectusServiceAccess(() =>
+    loadPublicArticleBySlug("about"),
+  );
   if (article?.title) {
     title = String(article.title).trim() || fallbackTitle;
   }

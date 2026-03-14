@@ -8,6 +8,7 @@ import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import { SOCIAL_PLATFORM_META } from "@constants/social-platforms";
 import { loadOfficialSidebarProfile } from "@/server/api/v1/public-data";
+import { runWithDirectusServiceAccess } from "@/server/directus/client";
 
 import type { SidebarProfileData, SocialLink } from "@/types/app";
 
@@ -33,7 +34,9 @@ let sidebarData: SidebarProfileData;
 if (Astro.locals.sidebarProfile) {
   sidebarData = Astro.locals.sidebarProfile;
 } else {
-  sidebarData = await loadOfficialSidebarProfile();
+  sidebarData = await runWithDirectusServiceAccess(() =>
+    loadOfficialSidebarProfile(),
+  );
 }
 
 const displayName = sidebarData.display_name || "user";

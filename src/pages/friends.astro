@@ -8,6 +8,7 @@ import {
   safeCsv,
 } from "@/server/api/v1/shared";
 import { buildPublicAssetUrl } from "@/server/directus-auth";
+import { runWithDirectusServiceAccess } from "@/server/directus/client";
 // import Icon from "../components/misc/Icon.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
@@ -75,7 +76,9 @@ function collectAllTags(items: FriendCardItem[]): string[] {
 
 let friendsDocHtml = "";
 try {
-  const article = await loadPublicArticleBySlug("friends");
+  const article = await runWithDirectusServiceAccess(() =>
+    loadPublicArticleBySlug("friends"),
+  );
   if (article?.body_markdown) {
     friendsDocHtml = await renderMarkdown(String(article.body_markdown), {
       target: "page",
@@ -91,7 +94,7 @@ if (!friendsDocHtml) {
 
 let friendsList: FriendCardItem[] = [];
 try {
-  const rows = await loadPublicFriends();
+  const rows = await runWithDirectusServiceAccess(() => loadPublicFriends());
   const mapped = rows
     .map((item): FriendCardItem | null => {
       const title = String(item.title || "").trim();
