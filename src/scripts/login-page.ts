@@ -5,19 +5,9 @@
  * i18n 字符串通过 form 元素的 data-i18n-* 属性传入，无需 define:vars。
  */
 
+import { getCsrfToken } from "@/utils/csrf";
+
 const API_LOGIN = "/api/auth/login";
-
-// ---------------------------------------------------------------------------
-// DOM / CSRF 工具
-// ---------------------------------------------------------------------------
-
-function getCsrfToken(): string {
-    const element = document.querySelector('meta[name="cialli-csrf-token"]');
-    if (!(element instanceof HTMLMetaElement)) {
-        return "";
-    }
-    return element.content || "";
-}
 
 // ---------------------------------------------------------------------------
 // 重定向目标解析

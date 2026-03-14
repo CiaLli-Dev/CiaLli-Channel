@@ -209,13 +209,8 @@ export function setFieldHint(
     element.classList.add("text-60");
 }
 
-export function getCsrfToken(): string {
-    const element = document.querySelector('meta[name="cialli-csrf-token"]');
-    if (!(element instanceof HTMLMetaElement)) {
-        return "";
-    }
-    return element.content || "";
-}
+import { getCsrfToken } from "@/utils/csrf";
+export { getCsrfToken };
 
 export function buildAssetUrl(fileId: string): string {
     const normalized = String(fileId || "").trim();

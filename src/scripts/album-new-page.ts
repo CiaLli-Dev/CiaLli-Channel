@@ -1,5 +1,6 @@
 import I18nKey from "@i18n/i18nKey";
 import { t } from "@/scripts/i18n-runtime";
+import { getCsrfToken } from "@/utils/csrf";
 import { navigate } from "astro:transitions/client";
 
 type AlbumNewRuntimeWindow = Window &
@@ -34,14 +35,6 @@ type AlbumCreateResponse = {
 
 const ALBUM_TITLE_MAX = 20;
 const CJK_RE = /[\u2E80-\u9FFF\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFFEF]/;
-
-function getCsrfToken(): string {
-    const element = document.querySelector('meta[name="cialli-csrf-token"]');
-    if (!(element instanceof HTMLMetaElement)) {
-        return "";
-    }
-    return element.content || "";
-}
 
 function wordLength(value: string): number {
     let count = 0;
