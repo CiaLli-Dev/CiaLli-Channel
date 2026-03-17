@@ -1,5 +1,6 @@
 ---
 import { Icon } from "astro-icon/components";
+import type { SharePosterPayload } from "@/utils/share-poster";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 
@@ -13,6 +14,7 @@ interface Props {
   dockToBackTop?: boolean;
   showLikeAction?: boolean;
   showCommentAction?: boolean;
+  sharePayload?: SharePosterPayload;
   editHref?: string;
   deleteEndpoint?: string;
   adminDeleteEndpoint?: string;
@@ -32,6 +34,7 @@ const {
   dockToBackTop = false,
   showLikeAction = true,
   showCommentAction = true,
+  sharePayload,
   editHref = "",
   deleteEndpoint = "",
   adminDeleteEndpoint = "",
@@ -52,6 +55,7 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
   data-comment-count={String(commentCount)}
   data-liked={likedByViewer ? "1" : "0"}
   data-dock-to-back-top={dockToBackTop ? "1" : "0"}
+  data-share-dialog-id={sharePayload ? "article-share-dialog" : ""}
   data-edit-href={editHref}
   data-delete-endpoint={deleteEndpoint}
   data-admin-delete-endpoint={adminDeleteEndpoint}
@@ -85,6 +89,21 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
         >
           <Icon name="material-symbols:comment-rounded" class="detail-icon" />
           <span class="detail-action-count">{commentCount}</span>
+        </button>
+      )
+    }
+    {
+      sharePayload && (
+        <button
+          type="button"
+          id="share-component"
+          class:list={[
+            "detail-action-btn detail-share-btn",
+            sharePayload.hiddenUntilDecrypt && "encrypted-hidden",
+          ]}
+          aria-label={i18n(I18nKey.contentShareArticle)}
+        >
+          <Icon name="material-symbols:share" class="detail-icon" />
         </button>
       )
     }
@@ -254,11 +273,13 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
       rootEl.dataset.adminDeleteLabel || "删除（管理员）",
     );
     const deleteSuccessHref = String(rootEl.dataset.deleteSuccessHref || "/");
+    const shareDialogId = String(rootEl.dataset.shareDialogId || "").trim();
 
     const els = queryDetailElements(rootEl);
     const {
       likeBtn,
       commentBtn,
+      shareBtn,
       manageBtn,
       panel,
       editBtn,
@@ -412,6 +433,13 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
       }
       navigateToPage(`${window.location.pathname}#comment-root`);
     });
+
+    shareBtn?.addEventListener("click", () => {
+      if (!shareDialogId) {
+        return;
+      }
+      runtimeWindow.cialliOpenArticleShareDialog?.(shareDialogId);
+    });
   }
 
   function initDetailActionFloat(): void {
@@ -423,6 +451,7 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
 
   type DetailActionRuntimeWindow = Window &
     typeof globalThis & {
+      cialliOpenArticleShareDialog?: (dialogId: string) => void;
       __detailActionSettledInitBound?: boolean;
     };
 

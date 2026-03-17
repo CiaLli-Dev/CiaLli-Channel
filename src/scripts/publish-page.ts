@@ -67,8 +67,52 @@ const TITLE_TOO_LONG_MESSAGE = tFmt(I18nKey.articleEditorTitleMaxLength, {
     max: ARTICLE_TITLE_MAX,
 });
 const DEFAULT_BODY_PLACEHOLDER = t(I18nKey.articleEditorBodyPlaceholder);
+const NAVIGATION_SETTLED_EVENT = "cialli:navigation:settled";
 let disposeActivePublishPage: (() => void) | null = null;
 let activePublishPageController: AbortController | null = null;
+
+type InitialPublishAuthSnapshot = {
+    isAuthenticated: boolean;
+    isAdmin: boolean;
+    userId: string;
+    username: string;
+};
+
+function resolveInitialPublishAuthSnapshot(
+    root: HTMLElement,
+): InitialPublishAuthSnapshot | null {
+    if (root.dataset.initialAuthenticated !== "true") {
+        return null;
+    }
+
+    return {
+        isAuthenticated: true,
+        isAdmin: root.dataset.initialIsAdmin === "true",
+        userId: String(root.dataset.initialUserId || ""),
+        username: String(root.dataset.initialUsername || ""),
+    };
+}
+
+function seedInitialPublishAuthState(
+    root: HTMLElement,
+    workspaceEl: HTMLElement,
+): void {
+    const snapshot = resolveInitialPublishAuthSnapshot(root);
+    if (!snapshot?.isAuthenticated) {
+        return;
+    }
+
+    // /posts/new 与 /edit 已经在服务端做过鉴权，首刷时先用服务端快照解锁工作区，
+    // 避免等待 auth cache/Monaco 首次加载期间整页只剩标题。
+    const cachedAuth = getAuthState();
+    emitAuthState({
+        isLoggedIn: true,
+        isAdmin: cachedAuth.isAdmin || snapshot.isAdmin,
+        userId: snapshot.userId || cachedAuth.userId,
+        username: snapshot.username || cachedAuth.username,
+    });
+    workspaceEl.classList.remove("hidden");
+}
 
 function normalizeEditorArticleStatus(
     value: unknown,
@@ -577,10 +621,14 @@ async function initPublishPageCore(): Promise<void> {
     }
 
     const root = document.getElementById("publish-root");
-    if (!root || root.dataset.publishBound === "1") {
+    if (
+        !root ||
+        root.dataset.publishBound === "pending" ||
+        root.dataset.publishBound === "1"
+    ) {
         return;
     }
-    root.dataset.publishBound = "1";
+    root.dataset.publishBound = "pending";
     disposeActivePublishPage?.();
     activePublishPageController?.abort();
     activePublishPageController = null;
@@ -588,8 +636,10 @@ async function initPublishPageCore(): Promise<void> {
     const runtimeWindow = window as PublishRuntimeWindow;
     const dom = collectDomRefs();
     if (!dom) {
+        root.dataset.publishBound = "";
         return;
     }
+    seedInitialPublishAuthState(root, dom.workspaceEl);
 
     let editor: PublishEditorAdapter;
     try {
@@ -598,11 +648,13 @@ async function initPublishPageCore(): Promise<void> {
             monacoHostEl: dom.editorMonacoEl,
         });
     } catch (error) {
+        root.dataset.publishBound = "";
         console.error("[publish] monaco init failed:", error);
         dom.submitErrorEl.textContent = t(I18nKey.articleEditorLoadFailedRetry);
         dom.submitErrorEl.classList.remove("hidden");
         return;
     }
+    root.dataset.publishBound = "1";
 
     const initialIdFromUrl = root.dataset.articleId || "";
     const clientShortId = generateClientShortId();
@@ -889,14 +941,31 @@ async function initPublishPageCore(): Promise<void> {
     };
     disposeActivePublishPage = disposePublishResources;
 
+    const scheduleEditorLayout = (): void => {
+        // 客户端切页时工作台高度会在收尾阶段继续调整；
+        // 这里延后两帧再 layout，确保 Monaco 在最终尺寸上完成一次重排。
+        window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+                if (disposed || pageController.signal.aborted) {
+                    return;
+                }
+                editor.layout();
+            });
+        });
+    };
+
     bindEditorEvents(ctx);
     bindScrollSync(editor, dom.previewScrollEl);
     bindCoverEvents(ctx);
     bindSubmitAndAuth(ctx, initialIdFromUrl);
     bindSettingsOverlay(ctx);
+    scheduleEditorLayout();
 
     document.addEventListener("astro:before-swap", disposePublishResources, {
         once: true,
+        signal: pageController.signal,
+    });
+    document.addEventListener(NAVIGATION_SETTLED_EVENT, scheduleEditorLayout, {
         signal: pageController.signal,
     });
     window.addEventListener("pagehide", disposePublishResources, {
@@ -913,5 +982,8 @@ export function initPublishPage(): void {
         },
         delay: 0,
         runOnPageShow: true,
+        // 客户端切页时，发布页工作台的布局与过渡要到 navigation-settled 才算稳定。
+        // 在 page-load 阶段直接起 Monaco，容易命中“第二次进入宿主尺寸/可见性还未稳定”的窗口。
+        stages: ["navigation-settled"],
     });
 }

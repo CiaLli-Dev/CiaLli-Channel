@@ -34,7 +34,7 @@ import {
     invalidateSiteSettingsCache,
     resolveSiteSettingsPayload,
 } from "@/server/site-settings/service";
-import { cleanupOrphanDirectusFiles } from "../shared/file-cleanup";
+import { cleanupOwnedOrphanDirectusFiles } from "../shared/file-cleanup";
 
 import { requireAdmin } from "../shared";
 
@@ -338,7 +338,9 @@ async function handleAdminSitePatch(
         });
     }
     invalidateSiteSettingsCache();
-    await cleanupOrphanDirectusFiles(removedFileIds);
+    await cleanupOwnedOrphanDirectusFiles({
+        candidateFileIds: removedFileIds,
+    });
     return ok({
         settings,
         updated_at: updatedAt,

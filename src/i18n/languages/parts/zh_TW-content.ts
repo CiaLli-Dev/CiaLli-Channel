@@ -51,6 +51,8 @@ export const zhTWContent: Record<string, string> = {
     [Key.contentCopied]: "已複製",
     [Key.contentCopyLink]: "複製連結",
     [Key.contentSavePoster]: "儲存海報",
+    [Key.contentShareCopyFailed]: "複製連結失敗，請稍後再試。",
+    [Key.contentSharePosterFailed]: "海報生成失敗，請稍後再試。",
     [Key.contentScanToRead]: "掃碼閱讀",
     [Key.contentShareOnSocial]: "分享",
     [Key.contentShareOnSocialDescription]:

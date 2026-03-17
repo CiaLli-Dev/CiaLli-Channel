@@ -548,5 +548,6 @@ export function bootstrapDiaryEditorPage(): void {
         },
         delay: 0,
         runOnPageShow: true,
+        stages: ["page-load"],
     });
 }

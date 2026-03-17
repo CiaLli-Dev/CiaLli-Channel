@@ -5,7 +5,7 @@ import {
 import { updateDirectusFileMetadata } from "@/server/directus/client";
 
 import {
-    extractDirectusFileIdsFromUnknown,
+    extractDirectusAssetIdsFromMarkdown,
     normalizeDirectusFileId,
 } from "../shared/file-cleanup";
 
@@ -62,7 +62,7 @@ export async function syncMarkdownFilesToVisibility(
     userId: string,
     visibility: "private" | "public",
 ): Promise<string[]> {
-    const fileIds = extractDirectusFileIdsFromUnknown(markdown);
+    const fileIds = extractDirectusAssetIdsFromMarkdown(markdown);
     for (const fileId of fileIds) {
         await bindFileOwnerToUser(fileId, userId, undefined, visibility);
     }

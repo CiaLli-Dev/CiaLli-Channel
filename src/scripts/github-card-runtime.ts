@@ -137,4 +137,5 @@ setupPageInit({
     },
     delay: 20,
     runOnPageShow: true,
+    stages: ["navigation-settled"],
 });

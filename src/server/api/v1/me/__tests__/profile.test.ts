@@ -25,7 +25,7 @@ vi.mock("@/server/api/v1/public-data", () => ({
 }));
 
 vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
-    cleanupOrphanDirectusFiles: vi.fn().mockResolvedValue([]),
+    cleanupOwnedOrphanDirectusFiles: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("@/server/api/v1/me/_helpers", () => ({

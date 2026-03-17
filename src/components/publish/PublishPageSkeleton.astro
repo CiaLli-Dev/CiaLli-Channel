@@ -1,9 +1,14 @@
 ---
 // Skeleton placeholder for the publish page (new / edit article)
+interface Props {
+  proxyVisible?: boolean;
+}
+
+const { proxyVisible = false } = Astro.props;
 ---
 
 <div
-  data-enter-skeleton-inline-placeholder
+  data-enter-skeleton-inline-placeholder={proxyVisible ? undefined : ""}
   aria-hidden="true"
   class="space-y-4 h-full min-h-0 flex flex-col"
 >

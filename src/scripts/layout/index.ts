@@ -33,13 +33,17 @@ const BANNER_HEIGHT = 35;
 const BANNER_HEIGHT_EXTEND = 30;
 const BANNER_HEIGHT_HOME = BANNER_HEIGHT + BANNER_HEIGHT_EXTEND;
 const ALBUM_GALLERY_READY_EVENT = "cialli:album-gallery:ready";
+const BANNER_TO_SPEC_TRANSITION_CLASS = "layout-banner-to-spec-transition";
+const TRANSITION_PROXY_VISIBLE_CLASS = "layout-banner-to-spec-proxy-visible";
 
 type LayoutRuntimeWindow = Window &
     typeof globalThis & {
         sakuraInitialized?: boolean;
+        __layoutDeferredPageInitPending?: boolean;
         __layoutRuntimeInitialized?: boolean;
         __layoutTransitionHooksAttached?: boolean;
         __layoutHashOffsetBound?: boolean;
+        __layoutPageLifecycleBound?: boolean;
     };
 
 export function initLayoutRuntime(): void {
@@ -154,6 +158,17 @@ export function initLayoutRuntime(): void {
     }
 }
 
+function updateBannerExtendCssVar(): void {
+    let extendPx = Math.floor(
+        window.innerHeight * (BANNER_HEIGHT_EXTEND / 100),
+    );
+    extendPx = extendPx - (extendPx % 4);
+    document.documentElement.style.setProperty(
+        "--banner-height-extend",
+        `${extendPx}px`,
+    );
+}
+
 function setupHashOffsetNavigation(runtimeWindow: LayoutRuntimeWindow): void {
     if (runtimeWindow.__layoutHashOffsetBound) {
         return;
@@ -229,9 +244,6 @@ function setupHashOffsetNavigation(runtimeWindow: LayoutRuntimeWindow): void {
     runtimeWindow.__layoutHashOffsetBound = true;
 }
 
-initLayoutRuntime();
-initRunningDaysRuntime();
-
 // ---------------------------------------------------------------------------
 // Dynamic page-specific initialization
 //
@@ -284,21 +296,50 @@ const runDynamicPageInit = async (): Promise<void> => {
     }
 };
 
-void runDynamicPageInit();
-document.addEventListener("astro:after-swap", () => {
-    resetBannerCarousel();
+function bindPageLifecycle(runtimeWindow: LayoutRuntimeWindow): void {
+    if (runtimeWindow.__layoutPageLifecycleBound) {
+        return;
+    }
 
-    let extendPx = Math.floor(
-        window.innerHeight * (BANNER_HEIGHT_EXTEND / 100),
-    );
-    extendPx = extendPx - (extendPx % 4);
-    document.documentElement.style.setProperty(
-        "--banner-height-extend",
-        `${extendPx}px`,
-    );
+    document.addEventListener("astro:after-swap", () => {
+        resetBannerCarousel();
+        updateBannerExtendCssVar();
+    });
 
+    document.addEventListener("astro:page-load", () => {
+        updateBannerExtendCssVar();
+        if (
+            document.documentElement.classList.contains(
+                BANNER_TO_SPEC_TRANSITION_CLASS,
+            ) ||
+            document.documentElement.classList.contains(
+                TRANSITION_PROXY_VISIBLE_CLASS,
+            )
+        ) {
+            runtimeWindow.__layoutDeferredPageInitPending = true;
+            return;
+        }
+        showBanner();
+        void runDynamicPageInit();
+    });
+
+    document.addEventListener("cialli:navigation:settled", () => {
+        if (!runtimeWindow.__layoutDeferredPageInitPending) {
+            return;
+        }
+        runtimeWindow.__layoutDeferredPageInitPending = false;
+        showBanner();
+        void runDynamicPageInit();
+    });
+
+    runtimeWindow.__layoutPageLifecycleBound = true;
+}
+
+export function bootstrapLayoutRuntime(): void {
+    const runtimeWindow = window as LayoutRuntimeWindow;
+    initLayoutRuntime();
+    initRunningDaysRuntime();
+    bindPageLifecycle(runtimeWindow);
+    updateBannerExtendCssVar();
     void runDynamicPageInit();
-});
-document.addEventListener("astro:page-load", () => {
-    showBanner();
-});
+}

@@ -31,8 +31,8 @@ import {
     validateReplyParent,
 } from "./comments-shared";
 import {
-    cleanupOrphanDirectusFiles,
-    extractDirectusFileIdsFromUnknown,
+    cleanupOwnedOrphanDirectusFiles,
+    extractDirectusAssetIdsFromMarkdown,
 } from "./shared/file-cleanup";
 import { syncMarkdownFilesToVisibility } from "./me/_helpers";
 
@@ -165,7 +165,9 @@ async function handleArticleCommentPatch(
 
     const body = await parseJsonBody(context.request);
     const input = validateBody(UpdateCommentSchema, body);
-    const prevBodyFileIds = extractDirectusFileIdsFromUnknown(comment.body);
+    const prevBodyFileIds = extractDirectusAssetIdsFromMarkdown(
+        String(comment.body ?? ""),
+    );
     const payload = buildCommentUpdatePayload(input);
     const updated = await updateOne("app_article_comments", commentId, payload);
     if (input.body !== undefined || input.is_public !== undefined) {
@@ -177,13 +179,16 @@ async function handleArticleCommentPatch(
     }
     if (input.body !== undefined && prevBodyFileIds.length > 0) {
         const nextBodyFileIds = new Set(
-            extractDirectusFileIdsFromUnknown(input.body),
+            extractDirectusAssetIdsFromMarkdown(input.body),
         );
         const removedBodyFileIds = prevBodyFileIds.filter(
             (id) => !nextBodyFileIds.has(id),
         );
         if (removedBodyFileIds.length > 0) {
-            await cleanupOrphanDirectusFiles(removedBodyFileIds);
+            await cleanupOwnedOrphanDirectusFiles({
+                candidateFileIds: removedBodyFileIds,
+                ownerUserId: access.user.id,
+            });
         }
     }
     await awaitCacheInvalidations(
@@ -214,7 +219,11 @@ async function handleArticleCommentDelete(
     }
     assertOwnerOrAdmin(access, comment.author_id);
 
-    await deleteCommentWithDescendants("app_article_comments", commentId);
+    await deleteCommentWithDescendants(
+        "app_article_comments",
+        commentId,
+        comment.author_id,
+    );
     await awaitCacheInvalidations(
         [
             cacheManager.invalidate("article-detail", comment.article_id),

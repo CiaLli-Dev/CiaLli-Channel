@@ -418,10 +418,6 @@ const bodyStyle = bodyFontFamily ? `font-family: ${bodyFontFamily};` : "";
             "astro:page-load",
             applyDesktopSupportState,
           );
-          document.addEventListener(
-            "astro:after-swap",
-            applyDesktopSupportState,
-          );
           window.addEventListener("desktop-force-browse-change", () => {
             applyDesktopSupportState();
           });
@@ -737,9 +733,9 @@ const bodyStyle = bodyFontFamily ? `font-family: ${bodyFontFamily};` : "";
 </style>
 
 <script>
-  import { initLayoutRuntime } from "../scripts/layout";
+  import { bootstrapLayoutRuntime } from "../scripts/layout";
 
-  initLayoutRuntime();
+  bootstrapLayoutRuntime();
 </script>
 
 <!-- Mermaid 图表渲染 -->

@@ -18,7 +18,7 @@ import type { AppAccess } from "../shared";
 import { hasOwn, parseProfileBioField } from "../shared";
 import { invalidateAuthorCache } from "../shared/author-cache";
 import { invalidateOfficialSidebarCache } from "../public-data";
-import { cleanupOrphanDirectusFiles } from "../shared/file-cleanup";
+import { cleanupOwnedOrphanDirectusFiles } from "../shared/file-cleanup";
 import { bindFileOwnerToUser } from "./_helpers";
 
 type ProfileInput = UpdateProfileInput;
@@ -152,7 +152,10 @@ async function applyAvatarFileBindings(
         prevAvatarFile &&
         prevAvatarFile !== nextAvatarFile
     ) {
-        await cleanupOrphanDirectusFiles([prevAvatarFile]);
+        await cleanupOwnedOrphanDirectusFiles({
+            candidateFileIds: [prevAvatarFile],
+            ownerUserId: access.user.id,
+        });
     }
 }
 
@@ -182,7 +185,10 @@ async function applyHeaderFileBindings(
         prevHeaderFile &&
         prevHeaderFile !== nextHeaderFile
     ) {
-        await cleanupOrphanDirectusFiles([prevHeaderFile]);
+        await cleanupOwnedOrphanDirectusFiles({
+            candidateFileIds: [prevHeaderFile],
+            ownerUserId: userId,
+        });
     }
 }
 

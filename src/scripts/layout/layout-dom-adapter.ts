@@ -23,6 +23,7 @@ const BANNER_TO_SPEC_TRANSITION_ACTIVE_CLASS =
     "layout-banner-to-spec-transition-active";
 const SPEC_TO_BANNER_TRANSITION_CLASS = "layout-spec-to-banner-transition";
 const NAVBAR_COMMIT_FREEZE_CLASS = "layout-banner-to-spec-navbar-commit-freeze";
+const NAVIGATION_PHASE_ATTR = "data-nav-phase";
 
 function syncBodyState(next: LayoutState): void {
     const body = document.body;
@@ -187,11 +188,18 @@ function compensateScrollForCollapse(
     window.scrollTo({ top: targetScroll, behavior: "instant" });
 }
 
-function isViewTransitioning(): boolean {
+function isLayoutTransitionLocked(): boolean {
     const html = document.documentElement;
+    const navigationPhase = html.getAttribute(NAVIGATION_PHASE_ATTR);
     return (
-        html.classList.contains("is-changing") ||
-        html.classList.contains("is-animating")
+        navigationPhase === "preparing" ||
+        navigationPhase === "swapped" ||
+        navigationPhase === "settling" ||
+        html.classList.contains(BANNER_TO_SPEC_TRANSITION_CLASS) ||
+        html.classList.contains(BANNER_TO_SPEC_TRANSITION_PREPARING_CLASS) ||
+        html.classList.contains(BANNER_TO_SPEC_TRANSITION_ACTIVE_CLASS) ||
+        html.classList.contains(SPEC_TO_BANNER_TRANSITION_CLASS) ||
+        html.classList.contains(NAVBAR_COMMIT_FREEZE_CLASS)
     );
 }
 
@@ -262,7 +270,7 @@ export function applyLayoutState(
     syncNavbar(next);
     syncToc(next, deps);
 
-    if (collapsingFromBanner && !isViewTransitioning()) {
+    if (collapsingFromBanner && !isLayoutTransitionLocked()) {
         compensateScrollForCollapse(deps, contentTopBeforeCollapse);
         triggerContentSoftCollapseAnimation(runtimeWindow);
     }

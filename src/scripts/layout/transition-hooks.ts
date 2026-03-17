@@ -1,13 +1,13 @@
+/* eslint-disable max-lines -- 该文件集中承载导航过渡状态机与 Astro 生命周期衔接逻辑。 */
 import type { LayoutController } from "./layout-controller";
 import {
     applySidebarProfilePatch,
     syncSidebarAvatarLoadingState,
 } from "./sidebar-profile-sync";
 import {
-    activateEnterSkeleton,
     deactivateEnterSkeleton,
     forceResetEnterSkeleton,
-    isEnterSkeletonActive,
+    resolveTransitionProxyPayloadFromPath,
     syncEnterSkeletonStateToIncomingDocument,
 } from "./enter-skeleton";
 import { scrollToHashBelowTocBaseline } from "@/utils/hash-scroll";
@@ -15,10 +15,14 @@ import {
     isCurrentHomeRoute,
     normalizePathname,
     isSameNavigationTarget,
+    shouldStartBannerToSpecTransition,
     stripOnloadAnimationClasses,
-    setBannerToSpecViewTransitionNames,
     freezeSpecLayoutStateForHomeDocument,
     applyBannerToSpecShiftVariables,
+    applyTransitionProxySkeleton,
+    clearBannerToSpecMotionTimer,
+    clearTransitionProxyEnterFrame,
+    clearTransitionProxyEnterTimer,
     syncRootRuntimeStateToIncomingDocument,
     setPageHeightExtendVisible,
     setAwaitingReplaceState,
@@ -26,13 +30,24 @@ import {
     clearDelayedPageViewTimer,
     getBannerToSpecRemainingMs,
     clearBannerToSpecTransitionVisualState,
+    markBannerToSpecMotionCompleted,
+    resolveTransitionProxyPayloadFromDocument,
+    setIncomingBannerToSpecSettledState,
+    mountTransitionProxy,
+    startTransitionProxyEnter,
     startBannerToSpecMoveTransition,
-    applyVtDurationFromElapsed,
+    startTransitionProxyReveal,
+    settleTransitionProxyEnter,
     dispatchRouteChangeWithNavbarCommitFreeze,
     resolveExpectedThemeState,
     applyThemeStateToRoot,
     BANNER_TO_SPEC_TRANSITION_CLASS,
-    BANNER_TO_SPEC_TRANSITION_PREPARING_CLASS,
+    BANNER_TO_SPEC_LIVE_CLASS,
+    BANNER_TO_SPEC_NAVBAR_SYNC_CLASS,
+    BANNER_TO_SPEC_PROXY_ENTER_DURATION_MS,
+    BANNER_TO_SPEC_PROXY_REVEAL_DURATION_MS,
+    BANNER_TO_SPEC_PROXY_VISIBLE_CLASS,
+    BANNER_TO_SPEC_SETTLED_CLASS,
     SPEC_TO_BANNER_TRANSITION_CLASS,
     BANNER_TO_SPEC_TRANSITION_DURATION_VAR,
     BANNER_TO_SPEC_TRANSITION_DURATION_MS,
@@ -45,11 +60,15 @@ type BeforePreparationEvent = Event & {
     to: URL;
     from: URL;
     direction?: string;
+    loader: () => Promise<void>;
     navigationType?: string;
 };
 
 type BeforeSwapEvent = Event & {
     newDocument: Document;
+    viewTransition?: {
+        finished: Promise<unknown>;
+    };
     swap: () => void;
 };
 
@@ -117,14 +136,26 @@ function dispatchNavigationSettledEvent(navigationToken: number): void {
 
 function resetNavigationState(state: TransitionState): void {
     state.pendingBannerToSpecRoutePath = null;
+    state.pendingTransitionProxyRoutePath = null;
     state.pendingSidebarProfilePatch = null;
+    state.pendingBannerWaveAnimationSnapshot = null;
     state.pendingSpecToBannerFreeze = false;
     state.bannerToSpecAnimationStartedAt = null;
+    state.transitionProxyMode = null;
+    state.transitionProxyLayoutKey = null;
+    state.bannerToSpecMotionCompleted = false;
+    state.bannerToSpecLoaderSettled = false;
+    state.viewTransitionFinished = null;
 }
 
 function forceResetTransitionState(state: TransitionState): void {
     state.navigationInProgress = false;
     state.didReplaceContentDuringVisit = false;
+    clearBannerToSpecMotionTimer(state);
+    if (state.proxyRevealTimerId !== null) {
+        window.clearTimeout(state.proxyRevealTimerId);
+        state.proxyRevealTimerId = null;
+    }
     resetNavigationState(state);
     clearBannerToSpecTransitionVisualState(state);
     setAwaitingReplaceState(false);
@@ -136,19 +167,71 @@ function applyBannerToSpecTransitionSetup(
     state: TransitionState,
     targetPathname: string,
 ): void {
+    const proxyPayload = resolveTransitionProxyPayloadFromPath(targetPathname);
     state.pendingBannerToSpecRoutePath = targetPathname;
+    state.pendingTransitionProxyRoutePath = targetPathname;
+    state.transitionProxyMode = proxyPayload.mode;
+    state.transitionProxyLayoutKey = proxyPayload.layoutKey;
     const root = document.documentElement;
-    applyBannerToSpecShiftVariables(undefined, root);
     root.style.setProperty(
         BANNER_TO_SPEC_TRANSITION_DURATION_VAR,
         `${BANNER_TO_SPEC_TRANSITION_DURATION_MS}ms`,
     );
     root.classList.add(BANNER_TO_SPEC_TRANSITION_CLASS);
-    root.classList.add(BANNER_TO_SPEC_TRANSITION_PREPARING_CLASS);
-    setBannerToSpecViewTransitionNames(document);
     setPageHeightExtendVisible(true);
-    void root.offsetHeight;
-    startBannerToSpecMoveTransition(state);
+}
+
+function hasPendingTransitionProxy(state: TransitionState): boolean {
+    return (
+        state.pendingTransitionProxyRoutePath !== null &&
+        state.transitionProxyMode !== null &&
+        state.transitionProxyLayoutKey !== null
+    );
+}
+
+function getPendingTransitionProxyPayload(state: TransitionState): {
+    mode: NonNullable<TransitionState["transitionProxyMode"]>;
+    layoutKey: NonNullable<TransitionState["transitionProxyLayoutKey"]>;
+} | null {
+    const mode = state.transitionProxyMode;
+    const layoutKey = state.transitionProxyLayoutKey;
+    if (
+        state.pendingTransitionProxyRoutePath === null ||
+        mode === null ||
+        layoutKey === null
+    ) {
+        return null;
+    }
+    return {
+        mode,
+        layoutKey,
+    };
+}
+
+function clearTransitionProxyEnterScheduling(state: TransitionState): void {
+    clearTransitionProxyEnterFrame(state);
+    clearTransitionProxyEnterTimer(state);
+    settleTransitionProxyEnter();
+}
+
+function scheduleTransitionProxyEnter(state: TransitionState): void {
+    clearTransitionProxyEnterScheduling(state);
+    mountTransitionProxy();
+    state.proxyEnterFrameId = window.requestAnimationFrame(() => {
+        state.proxyEnterFrameId = null;
+        startTransitionProxyEnter();
+        const prefersReducedMotion = window.matchMedia(
+            "(prefers-reduced-motion: reduce)",
+        ).matches;
+        if (prefersReducedMotion) {
+            settleTransitionProxyEnter();
+            return;
+        }
+        state.proxyEnterTimerId = window.setTimeout(() => {
+            state.proxyEnterTimerId = null;
+            settleTransitionProxyEnter();
+        }, BANNER_TO_SPEC_PROXY_ENTER_DURATION_MS);
+    });
 }
 
 // ===== Before-preparation event handler =====
@@ -204,12 +287,60 @@ function handleBeforePreparation(
     const currentIsHome =
         deps.pathsEqual(currentPathname, deps.url("/")) ||
         isCurrentHomeRoute(body);
-    const hasBannerWrapper = document.getElementById("banner-wrapper");
-    const shouldUseBannerToSpec =
-        currentIsHome && hasBannerWrapper !== null && !isTargetHome;
+    const currentBannerWrapper = document.getElementById(
+        "banner-wrapper",
+    ) as HTMLElement | null;
+    const shouldUseBannerToSpec = shouldStartBannerToSpecTransition({
+        currentIsHome,
+        isTargetHome,
+        body,
+        bannerWrapper: currentBannerWrapper,
+    });
+    const shouldUseImmediateProxy = !isTargetHome;
 
     if (shouldUseBannerToSpec) {
         applyBannerToSpecTransitionSetup(state, targetPathname);
+        applyBannerToSpecShiftVariables();
+        const pendingProxyPayload = getPendingTransitionProxyPayload(state);
+        if (
+            pendingProxyPayload &&
+            applyTransitionProxySkeleton(pendingProxyPayload, document)
+        ) {
+            scheduleTransitionProxyEnter(state);
+        }
+        // 立即在当前首页文档启动“全屏上滑”，
+        // 让代理骨架在加载阶段就可见，而不是等 incoming 文档 ready 后才开动。
+        startBannerToSpecMoveTransition(state);
+
+        const originalLoader = e.loader;
+        e.loader = async () => {
+            try {
+                const motionPromise =
+                    state.bannerToSpecMotionPromise ?? Promise.resolve();
+                // swap 进入前同时等待内容加载与宏观位移动画完成，
+                // 这样不会出现“旧页还没动，新页已经 ready”的空转窗口。
+                await Promise.all([originalLoader(), motionPromise]);
+                state.bannerToSpecLoaderSettled = true;
+                markBannerToSpecMotionCompleted(state);
+            } catch (error) {
+                forceResetTransitionState(state);
+                throw error;
+            }
+        };
+    } else if (shouldUseImmediateProxy) {
+        const proxyPayload =
+            resolveTransitionProxyPayloadFromPath(targetPathname);
+        state.pendingTransitionProxyRoutePath = targetPathname;
+        state.transitionProxyMode = proxyPayload.mode;
+        state.transitionProxyLayoutKey = proxyPayload.layoutKey;
+        if (applyTransitionProxySkeleton(proxyPayload, document)) {
+            scheduleTransitionProxyEnter(state);
+        } else {
+            state.pendingTransitionProxyRoutePath = null;
+            state.transitionProxyMode = null;
+            state.transitionProxyLayoutKey = null;
+        }
+        setPageHeightExtendVisible(false);
     } else {
         setPageHeightExtendVisible(false);
     }
@@ -225,7 +356,7 @@ function handleBeforePreparation(
         toc.classList.add("toc-not-ready");
     }
 
-    activateEnterSkeleton();
+    // 整页骨架只打到 incoming 文档，避免 outgoing 页面先闪成骨架。
 }
 
 // ===== Before-swap event handler =====
@@ -236,6 +367,12 @@ function handleBeforeSwap(
     deps: TransitionIntentSourceDependencies,
 ): void {
     const newDocument = e.newDocument;
+    state.viewTransitionFinished = e.viewTransition
+        ? Promise.resolve(e.viewTransition.finished).then(
+              () => undefined,
+              () => undefined,
+          )
+        : null;
 
     stripOnloadAnimationsInDocument(document);
 
@@ -244,7 +381,38 @@ function handleBeforeSwap(
         deps.defaultTheme,
         deps.darkMode,
     );
-    syncEnterSkeletonStateToIncomingDocument(newDocument);
+    if (hasPendingTransitionProxy(state)) {
+        const resolvedProxyPayload = resolveTransitionProxyPayloadFromDocument(
+            newDocument,
+            state.pendingTransitionProxyRoutePath ?? undefined,
+        );
+        state.transitionProxyMode = resolvedProxyPayload.mode;
+        state.transitionProxyLayoutKey = resolvedProxyPayload.layoutKey;
+        const didPrepareProxy = applyTransitionProxySkeleton(
+            resolvedProxyPayload,
+            newDocument,
+        );
+        if (didPrepareProxy) {
+            mountTransitionProxy(newDocument);
+            if (state.pendingBannerToSpecRoutePath) {
+                setIncomingBannerToSpecSettledState(newDocument);
+            }
+        } else {
+            const incomingRoot = newDocument.documentElement;
+            incomingRoot.classList.remove(BANNER_TO_SPEC_TRANSITION_CLASS);
+            incomingRoot.classList.remove(BANNER_TO_SPEC_LIVE_CLASS);
+            incomingRoot.classList.remove(BANNER_TO_SPEC_SETTLED_CLASS);
+            incomingRoot.classList.remove(BANNER_TO_SPEC_PROXY_VISIBLE_CLASS);
+            incomingRoot.classList.remove(BANNER_TO_SPEC_NAVBAR_SYNC_CLASS);
+            state.pendingBannerToSpecRoutePath = null;
+            state.pendingTransitionProxyRoutePath = null;
+            state.transitionProxyMode = null;
+            state.transitionProxyLayoutKey = null;
+            syncEnterSkeletonStateToIncomingDocument(newDocument);
+        }
+    } else {
+        syncEnterSkeletonStateToIncomingDocument(newDocument);
+    }
     stripOnloadAnimationsInDocument(newDocument);
     setNavigationPhase("swapped", newDocument);
 
@@ -264,19 +432,9 @@ function handleBeforeSwap(
         state.pendingSidebarProfilePatch = result.patch;
     }
 
-    if (
-        state.pendingBannerToSpecRoutePath &&
-        state.bannerToSpecAnimationStartedAt === null
-    ) {
-        applyBannerToSpecShiftVariables(newDocument);
-    }
-
-    applyVtDurationFromElapsed(state, newDocument);
-
     const savedSidebar = shouldPreserveSidebar
         ? document.querySelector<HTMLElement>("#sidebar")
         : null;
-    const capturedBannerPath = state.pendingBannerToSpecRoutePath;
     const capturedSpecFreeze = state.pendingSpecToBannerFreeze;
 
     const originalSwap = e.swap;
@@ -289,13 +447,59 @@ function handleBeforeSwap(
                 inDom.replaceWith(savedSidebar);
             }
         }
-        if (capturedBannerPath) {
-            setBannerToSpecViewTransitionNames(document);
-        }
         if (capturedSpecFreeze) {
             freezeSpecLayoutStateForHomeDocument();
         }
     };
+}
+
+async function finalizePageViewWhenReady(
+    state: TransitionState,
+    transitionDeps: TransitionIntentDeps,
+    sourceDeps: TransitionIntentSourceDependencies,
+    runtimeWindow: RuntimeWindowWithTOC,
+    navigationToken: number,
+): Promise<void> {
+    if (state.viewTransitionFinished) {
+        await state.viewTransitionFinished;
+    }
+
+    if (
+        navigationToken !== state.navigationToken ||
+        !state.navigationInProgress
+    ) {
+        return;
+    }
+
+    const remainingMs = getBannerToSpecRemainingMs(state);
+    if (remainingMs > 0) {
+        clearDelayedPageViewTimer(state);
+        state.delayedPageViewTimerId = window.setTimeout(() => {
+            state.delayedPageViewTimerId = null;
+            if (
+                navigationToken !== state.navigationToken ||
+                !state.navigationInProgress
+            ) {
+                return;
+            }
+            finalizePageView(
+                state,
+                transitionDeps,
+                sourceDeps,
+                runtimeWindow,
+                navigationToken,
+            );
+        }, Math.ceil(remainingMs));
+        return;
+    }
+
+    finalizePageView(
+        state,
+        transitionDeps,
+        sourceDeps,
+        runtimeWindow,
+        navigationToken,
+    );
 }
 
 // ===== After-swap event handler =====
@@ -304,9 +508,6 @@ function handleAfterSwap(state: TransitionState): void {
     state.didReplaceContentDuringVisit = true;
     setAwaitingReplaceState(false);
     setNavigationPhase("swapped");
-    if (!isEnterSkeletonActive()) {
-        activateEnterSkeleton();
-    }
 
     if (state.pendingSidebarProfilePatch) {
         applySidebarProfilePatch(state.pendingSidebarProfilePatch);
@@ -314,8 +515,14 @@ function handleAfterSwap(state: TransitionState): void {
     }
     syncSidebarAvatarLoadingState(document);
 
-    if (state.pendingBannerToSpecRoutePath) {
-        startBannerToSpecMoveTransition(state);
+    if (hasPendingTransitionProxy(state)) {
+        const root = document.documentElement;
+        if (state.pendingBannerToSpecRoutePath) {
+            root.classList.remove(BANNER_TO_SPEC_LIVE_CLASS);
+            root.classList.add(BANNER_TO_SPEC_SETTLED_CLASS);
+        }
+        root.classList.add(BANNER_TO_SPEC_PROXY_VISIBLE_CLASS);
+        state.pendingBannerWaveAnimationSnapshot = null;
     }
 }
 
@@ -331,9 +538,10 @@ function doVisitEndCleanup(
         forceResetEnterSkeleton();
     }
     const remainingMs = getBannerToSpecRemainingMs(state);
-    const hasPending = state.pendingBannerToSpecRoutePath !== null;
+    const hasPending = hasPendingTransitionProxy(state);
     if (shouldForceCleanup || (!hasPending && remainingMs <= 0)) {
         state.pendingBannerToSpecRoutePath = null;
+        state.pendingTransitionProxyRoutePath = null;
         state.pendingSidebarProfilePatch = null;
         state.pendingSpecToBannerFreeze = false;
         clearBannerToSpecTransitionVisualState(state);
@@ -377,18 +585,10 @@ function finalizePageView(
         state,
         transitionDeps,
     );
-    clearBannerToSpecTransitionVisualState(state, {
-        preserveNavbarCommitFreeze: didUseNavbarCommitFreeze,
-    });
     const isHomePage = transitionDeps.pathsEqual(
         window.location.pathname,
         transitionDeps.url("/"),
     );
-    const bannerTextOverlay = document.querySelector(".banner-text-overlay");
-    if (bannerTextOverlay) {
-        bannerTextOverlay.classList.toggle("hidden", !isHomePage);
-    }
-    setPageHeightExtendVisible(false);
     if (hash) {
         requestAnimationFrame(() => {
             scrollToHashBelowTocBaseline(hash, { behavior: "instant" });
@@ -410,51 +610,86 @@ function finalizePageView(
         applyThemeStateToRoot(currentRoot, expectedThemeState);
     }
 
-    // 过渡完成后再恢复重初始化任务，避免动画窗口内主线程抖动
-    requestAnimationFrame(() => {
+    const finishAfterReveal = (): void => {
         if (navigationToken !== state.navigationToken) {
             return;
         }
-        void sourceDeps.initFancybox();
-        sourceDeps.checkKatex();
-        sourceDeps.initKatexScrollbars();
-
-        const tocElement = document.querySelector("table-of-contents") as
-            | (HTMLElement & { init?: () => void })
-            | null;
-        const hasAnyTOCRuntime =
-            typeof tocElement?.init === "function" ||
-            typeof runtimeWindow.floatingTOCInit === "function";
-
-        if (hasAnyTOCRuntime) {
-            window.setTimeout(() => {
-                if (navigationToken !== state.navigationToken) {
-                    return;
-                }
-                tocElement?.init?.();
-                runtimeWindow.floatingTOCInit?.();
-            }, 100);
+        clearBannerToSpecTransitionVisualState(state, {
+            preserveNavbarCommitFreeze: didUseNavbarCommitFreeze,
+        });
+        state.pendingBannerToSpecRoutePath = null;
+        state.pendingTransitionProxyRoutePath = null;
+        state.pendingSidebarProfilePatch = null;
+        state.pendingSpecToBannerFreeze = false;
+        const bannerTextOverlay = document.querySelector(
+            ".banner-text-overlay",
+        );
+        if (bannerTextOverlay) {
+            bannerTextOverlay.classList.toggle("hidden", !isHomePage);
         }
-    });
+        setPageHeightExtendVisible(false);
 
-    window.setTimeout(() => {
-        if (navigationToken !== state.navigationToken) {
-            return;
+        // 过渡完成后再恢复重初始化任务，避免动画窗口内主线程抖动
+        requestAnimationFrame(() => {
+            if (navigationToken !== state.navigationToken) {
+                return;
+            }
+            void sourceDeps.initFancybox();
+            sourceDeps.checkKatex();
+            sourceDeps.initKatexScrollbars();
+
+            const tocElement = document.querySelector("table-of-contents") as
+                | (HTMLElement & { init?: () => void })
+                | null;
+            const hasAnyTOCRuntime =
+                typeof tocElement?.init === "function" ||
+                typeof runtimeWindow.floatingTOCInit === "function";
+
+            if (hasAnyTOCRuntime) {
+                window.setTimeout(() => {
+                    if (navigationToken !== state.navigationToken) {
+                        return;
+                    }
+                    tocElement?.init?.();
+                    runtimeWindow.floatingTOCInit?.();
+                }, 100);
+            }
+        });
+
+        window.setTimeout(() => {
+            if (navigationToken !== state.navigationToken) {
+                return;
+            }
+            if (document.getElementById("tcomment")) {
+                document.dispatchEvent(
+                    new CustomEvent("cialli:page:loaded", {
+                        detail: {
+                            path: window.location.pathname,
+                            timestamp: Date.now(),
+                        },
+                    }),
+                );
+            }
+        }, 300);
+        setNavigationPhase("idle");
+        dispatchNavigationSettledEvent(navigationToken);
+        doVisitEndCleanup(state, navigationToken);
+    };
+
+    if (hasPendingTransitionProxy(state)) {
+        clearTransitionProxyEnterScheduling(state);
+        startTransitionProxyReveal();
+        if (state.proxyRevealTimerId !== null) {
+            window.clearTimeout(state.proxyRevealTimerId);
         }
-        if (document.getElementById("tcomment")) {
-            document.dispatchEvent(
-                new CustomEvent("cialli:page:loaded", {
-                    detail: {
-                        path: window.location.pathname,
-                        timestamp: Date.now(),
-                    },
-                }),
-            );
-        }
-    }, 300);
-    setNavigationPhase("idle");
-    dispatchNavigationSettledEvent(navigationToken);
-    doVisitEndCleanup(state, navigationToken);
+        state.proxyRevealTimerId = window.setTimeout(() => {
+            state.proxyRevealTimerId = null;
+            finishAfterReveal();
+        }, BANNER_TO_SPEC_PROXY_REVEAL_DURATION_MS);
+        return;
+    }
+
+    finishAfterReveal();
 }
 
 // ===== Page-load event handler =====
@@ -469,30 +704,7 @@ function handlePageLoad(
         return;
     }
     const navigationToken = state.navigationToken;
-
-    const remainingMs = getBannerToSpecRemainingMs(state);
-    if (remainingMs > 0) {
-        clearDelayedPageViewTimer(state);
-        state.delayedPageViewTimerId = window.setTimeout(() => {
-            state.delayedPageViewTimerId = null;
-            if (
-                navigationToken !== state.navigationToken ||
-                !state.navigationInProgress
-            ) {
-                return;
-            }
-            finalizePageView(
-                state,
-                transitionDeps,
-                sourceDeps,
-                runtimeWindow,
-                navigationToken,
-            );
-        }, Math.ceil(remainingMs));
-        return;
-    }
-
-    finalizePageView(
+    void finalizePageViewWhenReady(
         state,
         transitionDeps,
         sourceDeps,
@@ -511,8 +723,22 @@ export function setupTransitionIntentSource(
 
     const state: TransitionState = {
         pendingBannerToSpecRoutePath: null,
+        pendingTransitionProxyRoutePath: null,
         pendingSidebarProfilePatch: null,
+        pendingBannerWaveAnimationSnapshot: null,
         bannerToSpecAnimationStartedAt: null,
+        bannerToSpecMotionDurationMs: BANNER_TO_SPEC_TRANSITION_DURATION_MS,
+        transitionProxyMode: null,
+        transitionProxyLayoutKey: null,
+        bannerToSpecMotionCompleted: false,
+        bannerToSpecMotionPromise: null,
+        bannerToSpecMotionResolve: null,
+        bannerToSpecMotionTimerId: null,
+        bannerToSpecLoaderSettled: false,
+        proxyEnterFrameId: null,
+        proxyEnterTimerId: null,
+        proxyRevealTimerId: null,
+        viewTransitionFinished: null,
         delayedPageViewTimerId: null,
         didReplaceContentDuringVisit: false,
         didForceNavbarScrolledForBannerToSpec: false,

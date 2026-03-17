@@ -26,8 +26,8 @@ import { buildCommentTree, requireAccess } from "./shared";
 import type { CommentRecord, CommentTreeNode } from "./shared";
 import { getAuthorBundle } from "./shared/author-cache";
 import {
-    cleanupOrphanDirectusFiles,
-    extractDirectusFileIdsFromUnknown,
+    cleanupOwnedOrphanDirectusFiles,
+    extractDirectusAssetIdsFromMarkdown,
 } from "./shared/file-cleanup";
 
 export type { CommentRecord, CommentTreeNode };
@@ -411,6 +411,7 @@ async function collectDescendantCommentIds(
 export async function deleteCommentWithDescendants(
     collection: CommentCollection,
     commentId: string,
+    ownerUserId: string,
 ): Promise<void> {
     const descendants = await collectDescendantCommentIds(
         collection,
@@ -421,15 +422,15 @@ export async function deleteCommentWithDescendants(
     });
     const candidateFileIds = new Set<string>();
     if (rootComment) {
-        for (const fileId of extractDirectusFileIdsFromUnknown(
-            rootComment.body,
+        for (const fileId of extractDirectusAssetIdsFromMarkdown(
+            String(rootComment.body ?? ""),
         )) {
             candidateFileIds.add(fileId);
         }
     }
     for (const descendant of descendants) {
-        for (const fileId of extractDirectusFileIdsFromUnknown(
-            descendant.body,
+        for (const fileId of extractDirectusAssetIdsFromMarkdown(
+            String(descendant.body ?? ""),
         )) {
             candidateFileIds.add(fileId);
         }
@@ -439,7 +440,10 @@ export async function deleteCommentWithDescendants(
         await deleteOne(collection, descendant.id);
     }
     await deleteOne(collection, commentId);
-    await cleanupOrphanDirectusFiles([...candidateFileIds]);
+    await cleanupOwnedOrphanDirectusFiles({
+        candidateFileIds: [...candidateFileIds],
+        ownerUserId,
+    });
 }
 
 export async function handleCommentPreview(

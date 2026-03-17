@@ -3,6 +3,8 @@ import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
 import { Icon } from "astro-icon/components";
+import AuthLoginShell from "@/components/auth/AuthLoginShell.astro";
+import AuthLoginSkeletonCard from "@/components/auth/AuthLoginSkeletonCard.astro";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
 
 export const prerender = false;
@@ -31,7 +33,7 @@ const loginI18n = {
     data-enter-skeleton-target="auth-login"
   >
     <div data-enter-skeleton-inline-content>
-      <div class="home-layout">
+      <AuthLoginShell>
         <div class="min-w-0">
           <div class="card-base rounded-(--radius-large) p-6 p-8 login-card">
             <div class="flex items-center gap-3 mb-2">
@@ -193,67 +195,11 @@ const loginI18n = {
             </div>
           </div>
         </div>
-        <div class="home-sidebar-placeholder"></div>
-      </div>
+      </AuthLoginShell>
     </div>
-    <div data-enter-skeleton-inline-placeholder aria-hidden="true">
-      <div class="home-layout">
-        <div class="min-w-0">
-          <div class="card-base rounded-(--radius-large) p-6 p-8 space-y-6">
-            <div class="flex items-center gap-3">
-              <div class="md3-skeleton-block w-12 h-12 rounded-2xl"></div>
-              <div class="space-y-2 flex-1">
-                <div
-                  class="md3-skeleton-text"
-                  style="--skeleton-width: 22%; --skeleton-height: 1.6rem;"
-                >
-                </div>
-                <div
-                  class="md3-skeleton-text"
-                  style="--skeleton-width: 52%; --skeleton-height: 0.82rem;"
-                >
-                </div>
-              </div>
-            </div>
-            <div class="space-y-4">
-              <div class="space-y-2">
-                <div
-                  class="md3-skeleton-text"
-                  style="--skeleton-width: 12%; --skeleton-height: 0.82rem;"
-                >
-                </div>
-                <div class="md3-skeleton-block h-11 rounded-lg"></div>
-              </div>
-              <div class="space-y-2">
-                <div
-                  class="md3-skeleton-text"
-                  style="--skeleton-width: 12%; --skeleton-height: 0.82rem;"
-                >
-                </div>
-                <div class="md3-skeleton-block h-11 rounded-lg"></div>
-              </div>
-              <div class="flex items-center justify-between gap-3">
-                <div class="flex items-center gap-2">
-                  <div class="md3-skeleton-circle h-5 w-9 rounded-full"></div>
-                  <div
-                    class="md3-skeleton-text"
-                    style="--skeleton-width: 6.5rem; --skeleton-height: 0.82rem;"
-                  >
-                  </div>
-                </div>
-                <div
-                  class="md3-skeleton-text"
-                  style="--skeleton-width: 8.2rem; --skeleton-height: 0.82rem;"
-                >
-                </div>
-              </div>
-              <div class="md3-skeleton-block h-11 rounded-xl"></div>
-            </div>
-          </div>
-        </div>
-        <div class="home-sidebar-placeholder"></div>
-      </div>
-    </div>
+    <AuthLoginShell>
+      <AuthLoginSkeletonCard />
+    </AuthLoginShell>
   </div>
 
   <script>
@@ -262,16 +208,6 @@ const loginI18n = {
   </script>
 
   <style>
-    .home-layout {
-      display: grid;
-      grid-template-columns: 1fr 17.5rem;
-      gap: 1rem;
-      align-items: start;
-    }
-    .home-sidebar-placeholder {
-      /* 纯占位，不渲染任何内容 */
-    }
-
     .login-card {
       animation: loginCardIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
     }

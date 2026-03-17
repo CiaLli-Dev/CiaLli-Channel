@@ -53,5 +53,6 @@ export function initRunningDaysRuntime(): void {
             ensureRunningDaysTimer();
         },
         runOnPageShow: true,
+        stages: ["page-load"],
     });
 }

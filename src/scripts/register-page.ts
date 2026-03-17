@@ -621,4 +621,5 @@ function initPage(): void {
 setupPageInit({
     key: "auth-register-page",
     init: initPage,
+    stages: ["page-load"],
 });

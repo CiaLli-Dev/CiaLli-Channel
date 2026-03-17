@@ -12,6 +12,8 @@
  * - 使用 content-visibility 隐藏屏幕外元素
  */
 
+const NAVIGATION_SETTLED_EVENT = "cialli:navigation:settled";
+
 class ThemeOptimizer {
     constructor() {
         // 代码块优化相关
@@ -25,6 +27,8 @@ class ThemeOptimizer {
 
         // 性能优化相关
         this.isOptimizing = false;
+        this.useViewTransition = false;
+        this.navigationRefreshTimer = null;
         this.heavySelectors = [
             ".float-panel",
             "#navbar",
@@ -61,14 +65,23 @@ class ThemeOptimizer {
     // ==================== Astro View Transitions 钩子设置 ====================
 
     setupTransitionHooks() {
-        // 避免 after-swap / page-load 双监听导致同一次导航重复初始化
-        document.addEventListener("astro:after-swap", () => {
-            setTimeout(() => {
+        const refreshAfterNavigation = () => {
+            if (this.navigationRefreshTimer !== null) {
+                clearTimeout(this.navigationRefreshTimer);
+            }
+            this.navigationRefreshTimer = window.setTimeout(() => {
+                this.navigationRefreshTimer = null;
                 this.observeCodeBlocks();
                 this.applyCodeBlockTransitionBehavior();
                 this.forceApplyThemeTransitionStyles();
-            }, 80);
-        });
+            }, 40);
+        };
+
+        document.addEventListener(
+            NAVIGATION_SETTLED_EVENT,
+            refreshAfterNavigation,
+        );
+        window.addEventListener("pageshow", refreshAfterNavigation);
     }
 
     forceApplyThemeTransitionStyles() {
@@ -82,9 +95,6 @@ class ThemeOptimizer {
             } else {
                 block.classList.remove("hide-during-transition");
             }
-
-            // 强制重新计算样式
-            void block.offsetWidth;
         });
 
         // 检查当前是否处于主题切换状态
@@ -153,30 +163,71 @@ class ThemeOptimizer {
     }
 
     updateTempStyleSheet() {
-        // 如果临时样式表存在，更新其内容以反映当前设置
         if (this.tempStyleSheet) {
-            // 获取当前内容
-            let content = this.tempStyleSheet.textContent;
+            this.tempStyleSheet.textContent = this.buildTempStyleSheetContent(
+                this.useViewTransition,
+            );
+        }
+    }
 
-            // 更新代码块隐藏规则
-            const hideRule = `.is-theme-transitioning .expressive-code {
+    buildTempStyleSheetContent(useViewTransition = false) {
+        const codeBlockRules = `
+      .is-theme-transitioning .expressive-code,
+      .is-theme-transitioning .expressive-code * {
+        transition: none !important;
+        animation: none !important;
+        will-change: auto !important;
+      }
+
+      .is-theme-transitioning .expressive-code {
         content-visibility: hidden !important;
-        /* 避免闪烁 */
         opacity: 0.99;
-      }`;
+      }
 
-            const showRule = `.is-theme-transitioning .expressive-code:not(.hide-during-transition) {
-        /* 保持代码块可见，但禁用过渡效果 */
+      .is-theme-transitioning .expressive-code:not(.hide-during-transition) {
         content-visibility: visible !important;
         opacity: 1 !important;
-      }`;
+      }
+    `;
 
-            // 检查是否已存在这些规则，如果不存在则添加
-            if (!content.includes(".is-theme-transitioning .expressive-code")) {
-                content += "\n" + hideRule + "\n" + showRule;
-                this.tempStyleSheet.textContent = content;
-            }
+        if (useViewTransition) {
+            return codeBlockRules;
         }
+
+        return `
+      ${codeBlockRules}
+
+      /* 临时禁用重型元素的过渡和动画 */
+      .is-theme-transitioning .float-panel:not(.float-panel-closed),
+      .is-theme-transitioning .music-player,
+      .is-theme-transitioning .widget,
+      .is-theme-transitioning .post-card,
+      .is-theme-transitioning #navbar *,
+      .is-theme-transitioning .dropdown-content,
+      .is-theme-transitioning .custom-md * {
+        transition: none !important;
+        animation: none !important;
+      }
+
+      /* 强制隔离渲染上下文 */
+      .is-theme-transitioning .float-panel,
+      .is-theme-transitioning .post-card,
+      .is-theme-transitioning .widget {
+        contain: layout style paint !important;
+      }
+
+      /* 隐藏装饰性元素 */
+      .is-theme-transitioning .gradient-overlay,
+      .is-theme-transitioning .decoration,
+      .is-theme-transitioning .animation-element {
+        visibility: hidden !important;
+      }
+
+      /* 确保打开的 TOC 面板在主题切换期间保持可点击 */
+      .is-theme-transitioning .float-panel:not(.float-panel-closed) {
+        pointer-events: auto !important;
+      }
+    `;
     }
 
     // ==================== 代码块优化 ====================
@@ -215,6 +266,9 @@ class ThemeOptimizer {
 
     observeCodeBlocks() {
         this.visibleBlocks.clear();
+        if (this.codeBlockObserver) {
+            this.codeBlockObserver.disconnect();
+        }
 
         requestAnimationFrame(() => {
             const codeBlocks = document.querySelectorAll(".expressive-code");
@@ -331,76 +385,27 @@ class ThemeOptimizer {
     optimizeThemeSwitch(useViewTransition = false) {
         this.isOptimizing = true;
         this.useViewTransition = useViewTransition;
+        this.ensureTempStyleSheet();
+        this.updateTempStyleSheet();
 
         // 如果使用 View Transitions，不需要额外的优化，让浏览器处理
         if (useViewTransition) {
             return;
         }
 
-        // 1. 临时禁用重型元素动画
-        this.disableHeavyAnimations();
-
-        // 2. 隐藏视口外的重型元素
+        // 1. 隐藏视口外的重型元素
         this.hideOffscreenHeavyElements();
 
-        // 3. 强制 GPU 合成层
+        // 2. 强制 GPU 合成层
         this.forceCompositing();
     }
 
-    disableHeavyAnimations() {
+    ensureTempStyleSheet() {
         if (!this.tempStyleSheet) {
             this.tempStyleSheet = document.createElement("style");
             this.tempStyleSheet.id = "theme-optimizer-temp";
             document.head.appendChild(this.tempStyleSheet);
         }
-
-        this.tempStyleSheet.textContent = `
-      /* 临时禁用重型元素的过渡和动画 */
-      .is-theme-transitioning .float-panel:not(.float-panel-closed),
-      .is-theme-transitioning .music-player,
-      .is-theme-transitioning .widget,
-      .is-theme-transitioning .post-card,
-      .is-theme-transitioning #navbar *,
-      .is-theme-transitioning .dropdown-content,
-      .is-theme-transitioning .custom-md * {
-        transition: none !important;
-        animation: none !important;
-      }
-      
-      /* 强制隔离渲染上下文 */
-      .is-theme-transitioning .float-panel,
-      .is-theme-transitioning .post-card,
-      .is-theme-transitioning .widget {
-        contain: layout style paint !important;
-      }
-      
-      /* 隐藏装饰性元素 */
-      .is-theme-transitioning .gradient-overlay,
-      .is-theme-transitioning .decoration,
-      .is-theme-transitioning .animation-element {
-        visibility: hidden !important;
-      }
-      
-      /* 在主题切换期间临时隐藏代码块以提升性能 */
-      /* 这个行为可以通过配置文件中的 expressiveCodeConfig.hideDuringThemeTransition 控制 */
-      .is-theme-transitioning .expressive-code {
-        content-visibility: hidden !important;
-        /* 避免闪烁 */
-        opacity: 0.99;
-      }
-      
-      /* 当禁用隐藏代码块功能时（通过JavaScript动态控制） */
-      .is-theme-transitioning .expressive-code:not(.hide-during-transition) {
-        /* 保持代码块可见，但禁用过渡效果 */
-        content-visibility: visible !important;
-        opacity: 1 !important;
-      }
-      
-      /* 确保打开的TOC面板在主题切换期间保持可点击 */
-      .is-theme-transitioning .float-panel:not(.float-panel-closed) {
-        pointer-events: auto !important;
-      }
-    `;
     }
 
     hideOffscreenHeavyElements() {
@@ -448,14 +453,9 @@ class ThemeOptimizer {
         });
     }
 
-    restoreAfterThemeSwitch(useViewTransition = false) {
+    restoreAfterThemeSwitch(_useViewTransition = false) {
         this.isOptimizing = false;
-
-        // 如果使用 View Transitions，直接清理即可
-        if (useViewTransition) {
-            this.useViewTransition = false;
-            return;
-        }
+        this.useViewTransition = false;
 
         // 延迟恢复，确保主题切换完全完成
         requestAnimationFrame(() => {

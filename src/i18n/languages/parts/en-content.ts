@@ -55,6 +55,9 @@ export const enContent: Record<string, string> = {
     [Key.contentCopied]: "Copied",
     [Key.contentCopyLink]: "Copy Link",
     [Key.contentSavePoster]: "Save Poster",
+    [Key.contentShareCopyFailed]: "Failed to copy the link. Please try again.",
+    [Key.contentSharePosterFailed]:
+        "Failed to generate the poster. Please try again later.",
     [Key.contentScanToRead]: "Scan to Read",
     [Key.contentShareOnSocial]: "Share",
     [Key.contentShareOnSocialDescription]:

@@ -1,15 +1,22 @@
+type PageInitStage = "after-swap" | "page-load" | "navigation-settled";
+
 type PageInitOptions = {
     key: string;
     init: () => void;
     cleanup?: () => void;
     delay?: number;
     runOnPageShow?: boolean;
+    stages?: PageInitStage | readonly PageInitStage[];
 };
 
 type PageInitWindow = Window & {
     __pageInitRegistry?: Set<string>;
     __pageInitLastRunByKey?: Map<string, string>;
 };
+
+const NAVIGATION_PHASE_ATTR = "data-nav-phase";
+const NAVIGATION_SETTLED_EVENT = "cialli:navigation:settled";
+const DEFAULT_STAGES: readonly PageInitStage[] = ["page-load"];
 
 const getRegistry = (): Set<string> => {
     const pageWindow = window as PageInitWindow;
@@ -36,12 +43,33 @@ const resolveNavigationSignature = (): string => {
     return `${window.location.pathname}${window.location.search}${window.location.hash}|${historyIndex}`;
 };
 
+const normalizeStages = (
+    stages: PageInitOptions["stages"],
+): PageInitStage[] => {
+    if (!stages) {
+        return [...DEFAULT_STAGES];
+    }
+    const rawStages = Array.isArray(stages) ? stages : [stages];
+    return Array.from(new Set(rawStages));
+};
+
+const canRunImmediately = (stages: PageInitStage[]): boolean => {
+    const navigationPhase =
+        document.documentElement.getAttribute(NAVIGATION_PHASE_ATTR) || "idle";
+    if (navigationPhase === "idle") {
+        return true;
+    }
+
+    return stages.includes("after-swap") && navigationPhase === "swapped";
+};
+
 export const setupPageInit = ({
     key,
     init,
     cleanup,
     delay = 0,
     runOnPageShow = false,
+    stages,
 }: PageInitOptions): void => {
     // 仅在浏览器环境运行
     if (typeof window === "undefined" || typeof document === "undefined") {
@@ -55,6 +83,7 @@ export const setupPageInit = ({
     }
     registry.add(key);
     const lastRunByKey = getLastRunByKey();
+    const resolvedStages = normalizeStages(stages);
 
     let timeoutId: number | null = null;
     const scheduleInit = (force = false) => {
@@ -80,13 +109,19 @@ export const setupPageInit = ({
 
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", onReady, { once: true });
-    } else {
+    } else if (canRunImmediately(resolvedStages)) {
         onReady();
     }
 
-    // Astro 导航事件
-    document.addEventListener("astro:page-load", onReady);
-    document.addEventListener("astro:after-swap", onReady);
+    if (resolvedStages.includes("page-load")) {
+        document.addEventListener("astro:page-load", onReady);
+    }
+    if (resolvedStages.includes("after-swap")) {
+        document.addEventListener("astro:after-swap", onReady);
+    }
+    if (resolvedStages.includes("navigation-settled")) {
+        document.addEventListener(NAVIGATION_SETTLED_EVENT, onReady);
+    }
 
     if (runOnPageShow) {
         // 处理 bfcache 恢复场景

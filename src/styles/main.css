@@ -3,7 +3,6 @@
 /* 导入追番页面样式 */
 /* 导入动画样式 */
 @import "./transition.css";
-@import "./animation-enhancements.css";
 /* 导入渐变按钮样式 */
 @import "./gradient-buttons.css";
 /* 通用弹层 */
@@ -47,16 +46,16 @@ html[data-theme="github-dark"] input[type="date"].date-picker-input::-webkit-cal
   /* 为整个文档根元素设置视图过渡 */
   html.use-view-transition::view-transition-old(root),
   html.use-view-transition::view-transition-new(root) {
-    animation-duration: 0.5s;
-    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    animation-duration: var(--theme-view-transition-duration, 220ms);
+    animation-timing-function: var(--theme-view-transition-easing, cubic-bezier(0.22, 1, 0.36, 1));
     /* 使用混合模式使颜色过渡更平滑 */
     mix-blend-mode: normal;
   }
 
   /* 视图过渡组 - 使用交叉淡化效果 */
   html.use-view-transition::view-transition-group(root) {
-    animation-duration: 0.5s;
-    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    animation-duration: var(--theme-view-transition-duration, 220ms);
+    animation-timing-function: var(--theme-view-transition-easing, cubic-bezier(0.22, 1, 0.36, 1));
   }
 
   /* 淡出旧视图 - 使用更平滑的曲线 */
@@ -100,58 +99,6 @@ html[data-theme="github-dark"] input[type="date"].date-picker-input::-webkit-cal
     transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: 0.15s;
-  }
-
-  /* 主题过渡保护类 - 仅在非 View Transitions 模式下使用 */
-  /* 当使用 View Transitions API 时，浏览器会自动处理过渡，不需要禁用 transition */
-  .is-theme-transitioning:not(.use-view-transition) *,
-  .is-theme-transitioning:not(.use-view-transition) *::before,
-  .is-theme-transitioning:not(.use-view-transition) *::after {
-    transition: none !important;
-    animation: none !important;
-  }
-
-  /* 在主题切换时禁用代码块的复杂效果以提升性能 */
-  /* 使用 View Transitions 时也需要禁用代码块动画，因为它们太多了 */
-  .is-theme-transitioning .expressive-code,
-  .is-theme-transitioning .expressive-code * {
-    transition: none !important;
-    animation: none !important;
-    will-change: auto !important;
-  }
-
-  /* 主题切换时临时隐藏代码块以提升性能 */
-  /* 这个行为可以通过配置文件中的 expressiveCodeConfig.hideDuringThemeTransition 控制 */
-  .is-theme-transitioning .expressive-code {
-    content-visibility: hidden !important;
-    /* 避免闪烁 */
-    opacity: 0.99;
-  }
-
-  /* 当禁用隐藏代码块功能时（通过JavaScript动态控制） */
-  .is-theme-transitioning .expressive-code:not(.hide-during-transition) {
-    /* 保持代码块可见，但禁用过渡效果 */
-    content-visibility: visible !important;
-    opacity: 1 !important;
-  }
-  /* 禁用复杂选择器元素的过渡 - 仅在非 View Transitions 模式下 */
-  .is-theme-transitioning:not(.use-view-transition) .float-panel,
-  .is-theme-transitioning:not(.use-view-transition) .float-panel *,
-  .is-theme-transitioning:not(.use-view-transition) .music-player,
-  .is-theme-transitioning:not(.use-view-transition) .music-player *,
-  .is-theme-transitioning:not(.use-view-transition) .widget,
-  .is-theme-transitioning:not(.use-view-transition) .widget *,
-  .is-theme-transitioning:not(.use-view-transition) .dropdown-content,
-  .is-theme-transitioning:not(.use-view-transition) .dropdown-content * {
-    transition: none !important;
-    animation: none !important;
-  }
-
-  /* 强制使用 contain 隔离渲染上下文 - 仅在非 View Transitions 模式下 */
-  .is-theme-transitioning:not(.use-view-transition) .post-card,
-  .is-theme-transitioning:not(.use-view-transition) .widget,
-  .is-theme-transitioning:not(.use-view-transition) .float-panel {
-    contain: layout style paint !important;
   }
 
   /* 波浪效果精确同步处理 - 仅在非 View Transitions 模式下 */

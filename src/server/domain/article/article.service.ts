@@ -9,7 +9,7 @@ import type { AppArticle } from "@/types/app";
 import type { JsonObject } from "@/types/json";
 import { forbidden, badRequest } from "@/server/api/errors";
 import {
-    cleanupOrphanDirectusFiles,
+    cleanupOwnedOrphanDirectusFiles,
     normalizeDirectusFileId,
 } from "@/server/api/v1/shared/file-cleanup";
 
@@ -85,6 +85,7 @@ async function cleanupOldCoverIfNeeded(
     rawBody: JsonObject | undefined,
     prevCoverFile: string | null,
     nextCoverFile: string | null,
+    articleAuthorId: string,
 ): Promise<void> {
     if (
         rawBody &&
@@ -92,7 +93,10 @@ async function cleanupOldCoverIfNeeded(
         prevCoverFile &&
         prevCoverFile !== nextCoverFile
     ) {
-        await cleanupOrphanDirectusFiles([prevCoverFile]);
+        await cleanupOwnedOrphanDirectusFiles({
+            candidateFileIds: [prevCoverFile],
+            ownerUserId: articleAuthorId,
+        });
     }
 }
 
@@ -133,7 +137,12 @@ export async function updateArticle(
 
     const updated = await articleRepo.update(articleId, payload);
 
-    await cleanupOldCoverIfNeeded(rawBody, prevCoverFile, nextCoverFile);
+    await cleanupOldCoverIfNeeded(
+        rawBody,
+        prevCoverFile,
+        nextCoverFile,
+        article.author_id,
+    );
 
     return updated;
 }
@@ -156,7 +165,10 @@ export async function deleteArticle(
     const coverFileId = normalizeDirectusFileId(article.cover_file);
     await articleRepo.remove(articleId);
     if (coverFileId) {
-        await cleanupOrphanDirectusFiles([coverFileId]);
+        await cleanupOwnedOrphanDirectusFiles({
+            candidateFileIds: [coverFileId],
+            ownerUserId: article.author_id,
+        });
     }
 }
 

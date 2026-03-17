@@ -1,8 +1,15 @@
 ---
+interface Props {
+  proxyVisible?: boolean;
+}
 
+const { proxyVisible = false } = Astro.props;
 ---
 
-<div data-enter-skeleton-inline-placeholder aria-hidden="true">
+<div
+  data-enter-skeleton-inline-placeholder={proxyVisible ? undefined : ""}
+  aria-hidden="true"
+>
   <div class="card-base rounded-(--radius-large) p-6 space-y-5">
     <div class="flex items-center gap-3">
       <div class="md3-skeleton-block w-12 h-12 rounded-2xl"></div>

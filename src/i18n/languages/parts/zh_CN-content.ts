@@ -51,6 +51,8 @@ export const zhCNContent: Record<string, string> = {
     [Key.contentCopied]: "已复制",
     [Key.contentCopyLink]: "复制链接",
     [Key.contentSavePoster]: "保存海报",
+    [Key.contentShareCopyFailed]: "复制链接失败，请稍后重试。",
+    [Key.contentSharePosterFailed]: "海报生成失败，请稍后重试。",
     [Key.contentScanToRead]: "扫码阅读",
     [Key.contentShareOnSocial]: "分享",
     [Key.contentShareOnSocialDescription]:

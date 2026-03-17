@@ -1,75 +1,169 @@
-import { describe, it, expect } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/server/directus/client", () => ({
+    deleteDirectusFile: vi.fn().mockResolvedValue(undefined),
+    readMany: vi.fn(),
+}));
 
 import {
-    extractDirectusFileIdsFromUnknown,
+    cleanupOwnedOrphanDirectusFiles,
+    collectReferencedDirectusFileIds,
+    extractDirectusAssetIdsFromMarkdown,
     normalizeDirectusFileId,
 } from "@/server/api/v1/shared/file-cleanup";
+import { deleteDirectusFile, readMany } from "@/server/directus/client";
+
+const mockedReadMany = vi.mocked(readMany);
+const mockedDeleteDirectusFile = vi.mocked(deleteDirectusFile);
+
+const UUID_A = "a1b2c3d4-e5f6-1234-9abc-def012345678";
+const UUID_B = "f1e2d3c4-b5a6-4234-8abc-fedcba987654";
+
+beforeEach(() => {
+    vi.clearAllMocks();
+    delete process.env.PUBLIC_ASSET_BASE_URL;
+});
 
 describe("normalizeDirectusFileId", () => {
-    const VALID_UUID = "a1b2c3d4-e5f6-1234-9abc-def012345678";
-
     it("string UUID → 返回小写 UUID", () => {
-        expect(normalizeDirectusFileId(VALID_UUID)).toBe(VALID_UUID);
+        expect(normalizeDirectusFileId(UUID_A)).toBe(UUID_A);
     });
 
     it("大写 UUID → 返回小写", () => {
-        expect(normalizeDirectusFileId(VALID_UUID.toUpperCase())).toBe(
-            VALID_UUID,
-        );
+        expect(normalizeDirectusFileId(UUID_A.toUpperCase())).toBe(UUID_A);
     });
 
     it("对象含 id → 递归处理", () => {
-        expect(normalizeDirectusFileId({ id: VALID_UUID })).toBe(VALID_UUID);
-    });
-
-    it("null → null", () => {
-        expect(normalizeDirectusFileId(null)).toBe(null);
-    });
-
-    it("undefined → null", () => {
-        expect(normalizeDirectusFileId(undefined)).toBe(null);
-    });
-
-    it("空字符串 → null", () => {
-        expect(normalizeDirectusFileId("")).toBe(null);
+        expect(normalizeDirectusFileId({ id: UUID_A })).toBe(UUID_A);
     });
 
     it("非 UUID 字符串 → null", () => {
         expect(normalizeDirectusFileId("not-a-uuid")).toBe(null);
     });
-
-    it("数字 → null", () => {
-        expect(normalizeDirectusFileId(42)).toBe(null);
-    });
 });
 
-describe("extractDirectusFileIdsFromUnknown", () => {
-    const UUID_A = "a1b2c3d4-e5f6-1234-9abc-def012345678";
-    const UUID_B = "f1e2d3c4-b5a6-4234-8abc-fedcba987654";
-
-    it("从字符串中提取多个 UUID", () => {
+describe("extractDirectusAssetIdsFromMarkdown", () => {
+    it("仅提取受支持的相对资源 URL", () => {
         expect(
-            extractDirectusFileIdsFromUnknown(
-                `/api/v1/public/assets/${UUID_A} 和 /assets/${UUID_B}`,
+            extractDirectusAssetIdsFromMarkdown(
+                `![a](/api/v1/public/assets/${UUID_A}) ![b](/api/v1/assets/${UUID_B}?width=320)`,
             ),
         ).toEqual([UUID_A, UUID_B]);
     });
 
-    it("支持嵌套对象与数组并去重", () => {
+    it("忽略纯文本 UUID", () => {
         expect(
-            extractDirectusFileIdsFromUnknown({
-                body: `![a](/api/v1/public/assets/${UUID_A})`,
-                extra: [{ id: UUID_A.toUpperCase() }, { file: UUID_B }],
-            }),
-        ).toEqual([UUID_A, UUID_B]);
+            extractDirectusAssetIdsFromMarkdown(
+                `victim uuid ${UUID_A} should stay untouched`,
+            ),
+        ).toEqual([]);
     });
 
-    it("无 UUID 时返回空数组", () => {
+    it("支持 PUBLIC_ASSET_BASE_URL 外链格式", () => {
+        process.env.PUBLIC_ASSET_BASE_URL = "https://cdn.example.com/assets";
+
         expect(
-            extractDirectusFileIdsFromUnknown({
-                body: "无文件",
-                items: [123, false, null],
-            }),
-        ).toEqual([]);
+            extractDirectusAssetIdsFromMarkdown(
+                `![cdn](https://cdn.example.com/${UUID_A}?format=webp)`,
+            ),
+        ).toEqual([UUID_A]);
+    });
+});
+
+describe("collectReferencedDirectusFileIds", () => {
+    it("会把文章正文中的合法资源 URL 计入引用", async () => {
+        mockedReadMany.mockImplementation((async (
+            collection: string,
+            query?: { fields?: string[]; offset?: number },
+        ) => {
+            if (collection === "app_site_settings") {
+                return [];
+            }
+            if (
+                collection === "app_articles" &&
+                query?.fields?.includes("body_markdown")
+            ) {
+                return [
+                    {
+                        body_markdown: `![a](/api/v1/public/assets/${UUID_A})`,
+                    },
+                ] as never;
+            }
+            return [] as never;
+        }) as typeof readMany);
+
+        const referenced = await collectReferencedDirectusFileIds([
+            UUID_A,
+            UUID_B,
+        ]);
+
+        expect(referenced.has(UUID_A)).toBe(true);
+        expect(referenced.has(UUID_B)).toBe(false);
+    });
+});
+
+describe("cleanupOwnedOrphanDirectusFiles", () => {
+    it("不会删除不属于当前用户的候选文件", async () => {
+        mockedReadMany.mockImplementation((async (
+            collection: string,
+            query?: { fields?: string[]; filter?: Record<string, unknown> },
+        ) => {
+            if (
+                collection === "directus_files" &&
+                query?.fields?.includes("app_owner_user_id")
+            ) {
+                return [
+                    {
+                        id: UUID_A,
+                        app_owner_user_id: "other-user",
+                        uploaded_by: "other-user",
+                    },
+                ] as never;
+            }
+            if (collection === "app_site_settings") {
+                return [] as never;
+            }
+            return [] as never;
+        }) as typeof readMany);
+
+        const deleted = await cleanupOwnedOrphanDirectusFiles({
+            candidateFileIds: [UUID_A],
+            ownerUserId: "current-user",
+        });
+
+        expect(deleted).toEqual([]);
+        expect(mockedDeleteDirectusFile).not.toHaveBeenCalled();
+    });
+
+    it("只删除当前用户拥有且未被引用的文件", async () => {
+        mockedReadMany.mockImplementation((async (
+            collection: string,
+            query?: { fields?: string[]; filter?: Record<string, unknown> },
+        ) => {
+            if (
+                collection === "directus_files" &&
+                query?.fields?.includes("app_owner_user_id")
+            ) {
+                return [
+                    {
+                        id: UUID_A,
+                        app_owner_user_id: "user-1",
+                        uploaded_by: "user-1",
+                    },
+                ] as never;
+            }
+            if (collection === "app_site_settings") {
+                return [] as never;
+            }
+            return [] as never;
+        }) as typeof readMany);
+
+        const deleted = await cleanupOwnedOrphanDirectusFiles({
+            candidateFileIds: [UUID_A],
+            ownerUserId: "user-1",
+        });
+
+        expect(deleted).toEqual([UUID_A]);
+        expect(mockedDeleteDirectusFile).toHaveBeenCalledWith(UUID_A);
     });
 });

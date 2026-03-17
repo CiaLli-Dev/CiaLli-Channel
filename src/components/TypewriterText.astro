@@ -25,6 +25,8 @@ const textData = Array.isArray(text) ? JSON.stringify(text) : text;
   data-pause-time={pauseTime}></span>
 
 <script>
+  const NAVIGATION_SETTLED_EVENT = "cialli:navigation:settled";
+
   class TypewriterEffect {
     private element: HTMLElement;
     private readonly texts: string[];
@@ -153,7 +155,7 @@ const textData = Array.isArray(text) ? JSON.stringify(text) : text;
   }
 
   document.addEventListener("DOMContentLoaded", initTypewriters);
-  document.addEventListener("astro:after-swap", initTypewriters);
+  document.addEventListener(NAVIGATION_SETTLED_EVENT, initTypewriters);
 </script>
 
 <style>

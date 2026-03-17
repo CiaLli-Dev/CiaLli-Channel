@@ -1,46 +1,43 @@
 /* Page transition animations - View Transitions API */
 
+:root {
+  --page-transition-duration: 280ms;
+  --page-transition-easing: cubic-bezier(0.22, 1, 0.36, 1);
+  --page-reveal-shift-distance: 0.625rem;
+  --theme-view-transition-duration: 220ms;
+  --theme-view-transition-easing: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /* 主要内容区域的过渡动画 */
 .transition-main {
   transition:
-    opacity 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    transform 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    opacity var(--page-transition-duration) var(--page-transition-easing),
+    transform var(--page-transition-duration) var(--page-transition-easing);
 }
 
 /* 离开动画 */
 .transition-leaving {
   transition:
-    transform 300ms cubic-bezier(0.55, 0.055, 0.675, 0.19),
-    opacity 300ms cubic-bezier(0.55, 0.055, 0.675, 0.19);
+    transform var(--page-transition-duration) var(--page-transition-easing),
+    opacity var(--page-transition-duration) var(--page-transition-easing);
 }
 
 /* 增强的淡入动画 */
 @keyframes fade-in-up {
   from {
     opacity: 0;
-    transform: translateY(1.5rem) translateX(0.5rem);
+    transform: translate3d(0, var(--page-reveal-shift-distance), 0) scale(0.996);
   }
   to {
     opacity: 1;
-    transform: translateY(0) translateX(0);
-  }
-}
-
-@keyframes fade-out-down {
-  from {
-    opacity: 1;
-    transform: translateY(0) translateX(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-1rem) translateX(-0.5rem);
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
 /* 页面加载动画 */
 .onload-animation {
   opacity: 0;
-  animation: fade-in-up 300ms ease-out forwards;
+  animation: fade-in-up var(--page-transition-duration) var(--page-transition-easing) forwards;
 }
 
 /* 高风险容器在首屏与切页都不播放 onload 位移动画，避免侧栏/TOC 二次揭幕 */
@@ -49,7 +46,7 @@
 #toc-wrapper.onload-animation {
   animation: none !important;
   opacity: 1 !important;
-  transform: translateY(0) translateX(0) scale(1) !important;
+  transform: translate3d(0, 0, 0) scale(1) !important;
 }
 
 /* 客户端导航过渡窗口期不再播放 onload 位移动画，避免切页抖动抽动 */
@@ -57,38 +54,7 @@ html[data-astro-transition] .onload-animation,
 html.enter-skeleton-active .onload-animation {
   animation: none !important;
   opacity: 1 !important;
-  transform: translateY(0) translateX(0) scale(1) !important;
-}
-
-.onload-animation-fade-in {
-  opacity: 0;
-  animation: fade-in 300ms ease-in forwards;
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* 渐进式动画延迟 */
-.onload-animation:nth-child(1) {
-  animation-delay: 0ms;
-}
-.onload-animation:nth-child(2) {
-  animation-delay: 50ms;
-}
-.onload-animation:nth-child(3) {
-  animation-delay: 100ms;
-}
-.onload-animation:nth-child(4) {
-  animation-delay: 150ms;
-}
-.onload-animation:nth-child(5) {
-  animation-delay: 200ms;
+  transform: translate3d(0, 0, 0) scale(1) !important;
 }
 
 /* 特殊元素的动画 */
@@ -137,7 +103,7 @@ html.enter-skeleton-active .onload-animation {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Banner-to-spec 过渡：完全抑制 root VT，改由布局层实时位移联动 */
+/* Banner-to-spec 过渡：关闭默认 root VT，由 incoming 文档的 live DOM 单次形变接管 */
 html.layout-banner-to-spec-transition::view-transition-group(root),
 html.layout-banner-to-spec-transition::view-transition-old(root),
 html.layout-banner-to-spec-transition::view-transition-new(root) {
@@ -149,20 +115,6 @@ html.layout-spec-to-banner-transition::view-transition-group(root),
 html.layout-spec-to-banner-transition::view-transition-old(root),
 html.layout-spec-to-banner-transition::view-transition-new(root) {
   animation: none;
-}
-
-html.layout-banner-to-spec-transition::view-transition-group(banner-route-main-panel),
-html.layout-banner-to-spec-transition::view-transition-group(banner-route-banner) {
-  animation-duration: var(--layout-banner-route-vt-duration, 920ms);
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-html.layout-banner-to-spec-transition::view-transition-old(banner-route-main-panel),
-html.layout-banner-to-spec-transition::view-transition-old(banner-route-banner),
-html.layout-banner-to-spec-transition::view-transition-new(banner-route-main-panel),
-html.layout-banner-to-spec-transition::view-transition-new(banner-route-banner) {
-  animation-duration: var(--layout-banner-route-vt-duration, 920ms);
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* 减少动画的用户偏好设置 */

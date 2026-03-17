@@ -28,6 +28,10 @@ if (!user) {
     class="h-full min-h-0 flex flex-col gap-4 text-90"
     data-mode="edit"
     data-article-id={articleId}
+    data-initial-authenticated="true"
+    data-initial-is-admin={String(user.isSystemAdmin)}
+    data-initial-user-id={user.id}
+    data-initial-username={user.name || user.email}
     data-enter-skeleton-page="publish-page"
     data-enter-skeleton-target="publish-page"
   >
@@ -54,7 +58,7 @@ if (!user) {
       <!-- 主编辑区 -->
       <section
         id="publish-workspace"
-        class="hidden min-h-0 flex-1 flex flex-col gap-4"
+        class="min-h-0 flex-1 flex flex-col gap-4"
       >
         <!-- 双栏编辑+预览 -->
         <div

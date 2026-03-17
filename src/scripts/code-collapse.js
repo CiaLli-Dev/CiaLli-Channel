@@ -1,3 +1,5 @@
+const NAVIGATION_SETTLED_EVENT = "cialli:navigation:settled";
+
 class CodeBlockCollapser {
     constructor() {
         this.processedBlocks = new WeakSet();
@@ -39,8 +41,8 @@ class CodeBlockCollapser {
             this.syncWithThemeOptimizer();
         });
 
-        // 仅在 after-swap 触发，避免与 page-load 重复执行造成二次抖动
-        document.addEventListener("astro:after-swap", () => {
+        // 在导航稳定后再同步，避免过渡窗口内再次查询代码块造成抖动
+        document.addEventListener(NAVIGATION_SETTLED_EVENT, () => {
             // 延迟同步，确保主题优化器已经处理完代码块
             setTimeout(() => {
                 this.syncWithThemeOptimizer();
@@ -320,8 +322,8 @@ const codeBlockCollapser = new CodeBlockCollapser();
 window.CodeBlockCollapser = CodeBlockCollapser;
 window.codeBlockCollapser = codeBlockCollapser;
 
-// Astro View Transitions 页面切换钩子
-document.addEventListener("astro:after-swap", () => {
+// 导航稳定后再刷新代码块折叠器，避免在过渡窗口内重建观察器
+document.addEventListener(NAVIGATION_SETTLED_EVENT, () => {
     codeBlockCollapser.processedBlocks = new WeakSet();
     setTimeout(() => {
         codeBlockCollapser.setupCodeBlocks();

@@ -28,7 +28,7 @@ vi.mock("@/server/directus/client", () => ({
 }));
 
 vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
-    cleanupOrphanDirectusFiles: vi.fn(),
+    cleanupOwnedOrphanDirectusFiles: vi.fn(),
 }));
 
 vi.mock("@/server/markdown/render", () => ({

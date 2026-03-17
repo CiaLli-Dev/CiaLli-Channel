@@ -23,11 +23,11 @@ vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
             return (v as { id: string }).id;
         return null;
     }),
-    cleanupOrphanDirectusFiles: vi.fn().mockResolvedValue([]),
+    cleanupOwnedOrphanDirectusFiles: vi.fn().mockResolvedValue([]),
 }));
 
 import * as articleRepo from "@/server/domain/article/article.repository";
-import { cleanupOrphanDirectusFiles } from "@/server/api/v1/shared/file-cleanup";
+import { cleanupOwnedOrphanDirectusFiles } from "@/server/api/v1/shared/file-cleanup";
 import {
     createArticle,
     updateArticle,
@@ -40,7 +40,7 @@ import {
 } from "@/server/domain/article/article.service";
 
 const mockedRepo = vi.mocked(articleRepo);
-const mockedCleanup = vi.mocked(cleanupOrphanDirectusFiles);
+const mockedCleanup = vi.mocked(cleanupOwnedOrphanDirectusFiles);
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -219,7 +219,10 @@ describe("updateArticle", () => {
             { cover_file: newCoverFileId }, // rawBody
         );
 
-        expect(mockedCleanup).toHaveBeenCalledWith([oldCoverFileId]);
+        expect(mockedCleanup).toHaveBeenCalledWith({
+            candidateFileIds: [oldCoverFileId],
+            ownerUserId: "user-1",
+        });
     });
 
     it("封面未变化时不清理", async () => {
@@ -285,7 +288,10 @@ describe("deleteArticle", () => {
 
         await deleteArticle("article-1", "user-1", false);
 
-        expect(mockedCleanup).toHaveBeenCalledWith([coverFileId]);
+        expect(mockedCleanup).toHaveBeenCalledWith({
+            candidateFileIds: [coverFileId],
+            ownerUserId: "user-1",
+        });
     });
 
     it("admin 可以删除他人文章", async () => {

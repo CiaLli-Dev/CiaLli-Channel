@@ -1,0 +1,260 @@
+---
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+
+import type { SharePosterPayload } from "@/utils/share-poster";
+
+interface Props {
+  payload: SharePosterPayload;
+  dialogId?: string;
+}
+
+const { payload, dialogId = "article-share-dialog" } = Astro.props;
+---
+
+<div
+  id={dialogId}
+  class="overlay-dialog article-share-dialog hidden"
+  role="dialog"
+  aria-modal="true"
+  aria-label={i18n(I18nKey.contentShareArticle)}
+  hidden
+  data-article-share-dialog
+>
+  <template data-share-payload>{JSON.stringify(payload)}</template>
+  <div class="overlay-dialog-card article-share-dialog-card">
+    <div class="overlay-dialog-body article-share-dialog-body">
+      <div class="article-share-dialog-header">
+        <div class="article-share-dialog-header-main">
+          <div class="article-share-dialog-icon" aria-hidden="true">
+            <iconify-icon icon="material-symbols:share"></iconify-icon>
+          </div>
+          <div class="article-share-dialog-copy">
+            <h3 class="article-share-dialog-title">
+              {i18n(I18nKey.contentShareOnSocial)}
+            </h3>
+            <p class="article-share-dialog-description">
+              {i18n(I18nKey.contentShareOnSocialDescription)}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="article-share-dialog-close"
+          aria-label={i18n(I18nKey.interactionCommonClose)}
+          data-share-close
+        >
+          <iconify-icon icon="material-symbols:close-rounded"></iconify-icon>
+        </button>
+      </div>
+
+      <div class="article-share-dialog-preview">
+        <div class="article-share-dialog-loading" data-share-loading>
+          <span class="article-share-dialog-spinner" aria-hidden="true"></span>
+          <span data-share-loading-text>
+            {i18n(I18nKey.contentGeneratingPoster)}
+          </span>
+        </div>
+        <img
+          class="article-share-dialog-image"
+          alt={payload.title || i18n(I18nKey.contentShareArticle)}
+          data-share-image
+          hidden
+        />
+      </div>
+
+      <p class="article-share-dialog-status" data-share-status hidden></p>
+    </div>
+
+    <div class="overlay-dialog-actions article-share-dialog-actions">
+      <button
+        type="button"
+        class="overlay-dialog-action-secondary article-share-dialog-action"
+        data-share-copy
+      >
+        <iconify-icon icon="material-symbols:link-rounded"></iconify-icon>
+        <span data-share-copy-text>{i18n(I18nKey.contentCopyLink)}</span>
+      </button>
+      <button
+        type="button"
+        class="overlay-dialog-action-primary article-share-dialog-action"
+        data-share-download
+        disabled
+      >
+        <iconify-icon icon="material-symbols:download-rounded"></iconify-icon>
+        <span>{i18n(I18nKey.contentSavePoster)}</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<style lang="stylus">
+  .article-share-dialog
+    // 共享弹窗弱化文本与关闭按钮焦点环需显式提供深浅两套值，避免 Stylus 误解析现代颜色函数。
+    --article-share-dialog-muted: rgba(0, 0, 0, .75)
+    --article-share-dialog-close-ring: rgba(0, 0, 0, .08)
+
+  :global(:root.dark) .article-share-dialog
+    --article-share-dialog-muted: rgba(255, 255, 255, .75)
+    --article-share-dialog-close-ring: rgba(255, 255, 255, .12)
+
+  .article-share-dialog-card
+    max-width: 34rem
+
+  .article-share-dialog-body
+    text-align: left
+
+  .article-share-dialog-header
+    display: flex
+    align-items: flex-start
+    justify-content: space-between
+    gap: 1rem
+    margin-bottom: 1.5rem
+
+  .article-share-dialog-header-main
+    display: flex
+    align-items: center
+    gap: 1rem
+    min-width: 0
+
+  .article-share-dialog-icon
+    flex: 0 0 auto
+    width: 3rem
+    height: 3rem
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    border-radius: 1rem
+    background: var(--btn-card-bg-active)
+    color: var(--primary)
+
+    iconify-icon
+      font-size: 1.75rem
+
+  .article-share-dialog-copy
+    min-width: 0
+
+  .article-share-dialog-title
+    margin: 0
+    font-size: 1.125rem
+    font-weight: 700
+    color: var(--deep-text)
+
+  .article-share-dialog-description
+    margin: .35rem 0 0
+    font-size: .9375rem
+    line-height: 1.6
+    color: var(--article-share-dialog-muted)
+
+  .article-share-dialog-close
+    flex: 0 0 auto
+    width: 2.5rem
+    height: 2.5rem
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    border: 1px solid var(--line-divider)
+    border-radius: .85rem
+    background: transparent
+    color: var(--article-share-dialog-muted)
+    transition: background-color .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease
+
+    &:hover
+      background: var(--btn-card-bg-active)
+      color: var(--deep-text)
+
+    &:focus-visible
+      outline: none
+      border-color: var(--primary)
+      background: var(--btn-card-bg-active)
+      color: var(--deep-text)
+      box-shadow: 0 0 0 3px var(--article-share-dialog-close-ring)
+
+    iconify-icon
+      font-size: 1.4rem
+
+  .article-share-dialog-preview
+    min-height: 17rem
+    display: flex
+    align-items: center
+    justify-content: center
+    padding: 1rem
+    border: 1px solid var(--line-divider)
+    border-radius: 1.2rem
+    background: var(--btn-regular-bg)
+    overflow: hidden
+
+  .article-share-dialog-loading
+    display: inline-flex
+    flex-direction: column
+    align-items: center
+    justify-content: center
+    gap: .75rem
+    color: var(--article-share-dialog-muted)
+    text-align: center
+
+    &[hidden]
+      display: none !important
+
+  .article-share-dialog-spinner
+    width: 2.25rem
+    height: 2.25rem
+    border-radius: 999px
+    border: 2px solid var(--line-divider)
+    border-top-color: var(--primary)
+    animation: article-share-dialog-spin .8s linear infinite
+
+  .article-share-dialog-image
+    display: block
+    max-width: 100%
+    max-height: 60vh
+    width: auto
+    height: auto
+    border-radius: 1rem
+    box-shadow: 0 12px 36px rgba(0, 0, 0, .14)
+
+    &[hidden]
+      display: none !important
+
+  .article-share-dialog-status
+    min-height: 1.5rem
+    margin: 1rem 0 0
+    font-size: .875rem
+    line-height: 1.5
+    color: var(--article-share-dialog-muted)
+
+    &[data-tone='danger']
+      color: oklch(0.62 0.22 25)
+
+    &[data-tone='success']
+      color: var(--primary)
+
+    &[hidden]
+      display: none !important
+
+  .article-share-dialog-actions
+    gap: .75rem
+
+  .article-share-dialog-action
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    gap: .5rem
+
+    &:disabled
+      cursor: not-allowed
+      opacity: .6
+
+    iconify-icon
+      font-size: 1.15rem
+
+  @keyframes article-share-dialog-spin
+    from
+      transform: rotate(0deg)
+    to
+      transform: rotate(360deg)
+</style>
+
+<script>
+  import "@/scripts/article-share-dialog";
+</script>

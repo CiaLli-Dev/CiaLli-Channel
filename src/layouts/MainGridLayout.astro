@@ -3,6 +3,7 @@ import BackToTop from "@components/control/BackToTop.astro";
 import FloatingTOC from "@components/control/FloatingTOC.astro";
 import Footer from "@components/Footer.astro";
 import RightSideBar from "@components/layout/RightSideBar.astro";
+import TransitionProxySkeletonTemplates from "@components/layout/TransitionProxySkeletonTemplates.astro";
 import Navbar from "@components/Navbar.astro";
 import SideBar from "@components/widget/SideBar.astro";
 import type { MarkdownHeading } from "astro";
@@ -282,144 +283,218 @@ const {
     class={`absolute w-full z-30 pointer-events-none main-panel-wrapper ${initialWallpaperMode === "none" ? "no-banner-layout" : ""} ${isPostEditorPage ? "post-editor-workbench" : ""}`}
     style={`top: ${finalMainPanelTop}`}
   >
+    <!-- 过渡期独立背景层：与内容同启停，但承担更快的整页封顶覆盖。 -->
+    <div class="main-panel-transition-bg" aria-hidden="true">
+      {
+        siteConfig.banner.waves?.enable && (
+          <div class="main-panel-transition-bg-wave" aria-hidden="true">
+            <svg
+              class="waves"
+              xmlns="http://www.w3.org/2000/svg"
+              xmlns:xlink="http://www.w3.org/1999/xlink"
+              viewBox="0 20 150 32"
+              preserveAspectRatio="none"
+              shape-rendering="auto"
+              style="transform: translateZ(0); backface-visibility: hidden;"
+            >
+              <defs>
+                <path
+                  id="main-panel-transition-gentle-wave"
+                  d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v48h-352z"
+                />
+              </defs>
+              <g class="parallax" style="transform: translateZ(0);">
+                <use
+                  xlink:href="#main-panel-transition-gentle-wave"
+                  x="48"
+                  y="0"
+                  class="opacity-25 fill-(--page-bg)"
+                  style="animation-delay: -2s; animation-duration: 7s; will-change: transform;"
+                />
+                <use
+                  xlink:href="#main-panel-transition-gentle-wave"
+                  x="48"
+                  y="3"
+                  class="opacity-50 fill-(--page-bg)"
+                  style="animation-delay: -3s; animation-duration: 10s; will-change: transform;"
+                />
+                <use
+                  xlink:href="#main-panel-transition-gentle-wave"
+                  x="48"
+                  y="5"
+                  class="opacity-75 fill-(--page-bg)"
+                  style="animation-delay: -4s; animation-duration: 13s; will-change: transform;"
+                />
+                <use
+                  xlink:href="#main-panel-transition-gentle-wave"
+                  x="48"
+                  y="7"
+                  class="fill-(--page-bg)"
+                  style="animation-delay: -5s; animation-duration: 20s; will-change: transform;"
+                />
+              </g>
+            </svg>
+          </div>
+        )
+      }
+    </div>
     <div
-      class={`relative pointer-events-auto ${isPostEditorPage ? "w-full px-4 post-editor-workbench-inner" : "max-w-(--page-width) mx-auto"}`}
+      id="main-panel-transition-proxy"
+      class="main-panel-transition-proxy"
+      aria-hidden="true"
+      transition:persist
+    >
+    </div>
+    <TransitionProxySkeletonTemplates />
+    <div
+      class:list={[
+        "main-panel-content-layer",
+        {
+          "post-editor-content-layer": isPostEditorPage,
+        },
+      ]}
     >
       <div
-        id="main-grid"
-        class={`transition duration-700 w-full left-0 right-0 grid ${gridCols} grid-rows-none mx-auto gap-4 ${isPostEditorPage ? "post-editor-workbench-grid" : "px-4"}`}
+        class={`relative pointer-events-auto ${isPostEditorPage ? "w-full px-4 post-editor-workbench-inner" : "max-w-(--page-width) mx-auto"}`}
       >
-        {
-          desktopShowLeftSidebar ? (
-            <SideBar class={sidebarClass} headings={headings} />
-          ) : (
-            // 保证 sidebar 容器在全宽页也存在，确保布局结构一致。
-            <div
-              id="sidebar"
-              class="hidden"
-              data-sidebar-uid="__placeholder__"
-              data-sidebar-layout-key='{"top":[],"sticky":[]}'
-              data-scrollable="false"
-              aria-hidden="true"
-            />
-          )
-        }
-
         <div
-          id="right-sidebar-slot"
-          class={`right-sidebar-container self-start ${shouldFixRightSidebarSlot ? "right-sidebar-toc-fixed" : ""} ${rightSidebarClass}`}
+          id="main-grid"
+          class={`transition duration-700 w-full left-0 right-0 grid ${gridCols} grid-rows-none mx-auto gap-4 ${isPostEditorPage ? "post-editor-workbench-grid" : "px-4"}`}
         >
           {
-            hasCustomRightSidebar ? (
-              <slot name="sidebar-right" />
-            ) : hasRightSidebarComponents ? (
-              <>
-                <RightSideBar headings={headings} />
-                {shouldRenderDedicatedPostToc && (
-                  <div
-                    id="toc-wrapper"
-                    data-post-detail-toc="1"
-                    class="w-full transition-swup-fade"
-                  >
-                    <div id="toc-inner-wrapper" class="w-full">
+            desktopShowLeftSidebar ? (
+              <SideBar class={sidebarClass} headings={headings} />
+            ) : (
+              // 保证 sidebar 容器在全宽页也存在，确保布局结构一致。
+              <div
+                id="sidebar"
+                class="hidden"
+                data-sidebar-uid="__placeholder__"
+                data-sidebar-layout-key='{"top":[],"sticky":[]}'
+                data-scrollable="false"
+                aria-hidden="true"
+              />
+            )
+          }
+
+          <div
+            id="right-sidebar-slot"
+            class={`right-sidebar-container self-start ${shouldFixRightSidebarSlot ? "right-sidebar-toc-fixed" : ""} ${rightSidebarClass}`}
+          >
+            {
+              hasCustomRightSidebar ? (
+                <slot name="sidebar-right" />
+              ) : hasRightSidebarComponents ? (
+                <>
+                  <RightSideBar headings={headings} />
+                  {shouldRenderDedicatedPostToc && (
+                    <div id="toc-wrapper" class="w-full transition-fade">
                       <div
-                        id="toc-container"
-                        class="w-full transition-swup-fade"
+                        id="toc-inner-wrapper"
+                        class="w-full max-h-[calc(100vh-10rem)] overflow-hidden"
                       >
-                        <TOC headings={headings} />
+                        <div id="toc-container" class="w-full transition-fade">
+                          <TOC headings={headings} />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </>
-            ) : shouldRenderDedicatedPostToc ? (
-              <div
-                id="toc-wrapper"
-                data-post-detail-toc="1"
-                class="w-full transition-swup-fade"
-              >
-                <div id="toc-inner-wrapper" class="w-full">
-                  <div id="toc-container" class="w-full transition-swup-fade">
-                    <TOC headings={headings} />
+                  )}
+                </>
+              ) : shouldRenderDedicatedPostToc ? (
+                <div id="toc-wrapper" class="w-full transition-fade">
+                  <div
+                    id="toc-inner-wrapper"
+                    class="w-full max-h-[calc(100vh-10rem)] overflow-hidden"
+                  >
+                    <div id="toc-container" class="w-full transition-fade">
+                      <TOC headings={headings} />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : null
-          }
-        </div>
-
-        <main
-          id="main-container"
-          data-enter-skeleton-target="fallback"
-          class={`${mainContentClass} transition-main relative ${isPostEditorPage ? "post-editor-main-container" : ""}`}
-        >
-          <div
-            id="content-wrapper"
-            data-enter-skeleton-content
-            class={`onload-animation transition-leaving ${isPostEditorPage ? "post-editor-content-wrapper" : ""}`}
-          >
-            <slot />
-            {
-              !isPostEditorPage && (
-                <div class="footer col-span-full onload-animation block">
-                  <Footer />
-                </div>
-              )
+              ) : null
             }
           </div>
-          <div
-            data-enter-skeleton-placeholder
-            aria-hidden="true"
-            class="absolute inset-0 z-20 pointer-events-none"
+
+          <main
+            id="main-container"
+            data-enter-skeleton-target="fallback"
+            class={`${mainContentClass} transition-main relative ${isPostEditorPage ? "post-editor-main-container" : ""}`}
           >
-            <div data-enter-skeleton-template="fallback" class="space-y-5">
-              <div class="md3-skeleton-surface rounded-(--radius-large) p-8">
-                <div class="flex items-start justify-between gap-4">
-                  <div class="w-full space-y-3">
+            <div
+              id="content-wrapper"
+              data-enter-skeleton-content
+              class={`onload-animation transition-leaving ${isPostEditorPage ? "post-editor-content-wrapper" : ""}`}
+            >
+              <slot />
+              {
+                !isPostEditorPage && (
+                  <div class="footer col-span-full onload-animation block">
+                    <Footer />
+                  </div>
+                )
+              }
+            </div>
+            <div
+              data-enter-skeleton-placeholder
+              aria-hidden="true"
+              class="absolute inset-0 z-20 pointer-events-none"
+            >
+              <div data-enter-skeleton-template="fallback" class="space-y-5">
+                <div class="md3-skeleton-surface rounded-(--radius-large) p-8">
+                  <div class="flex items-start justify-between gap-4">
+                    <div class="w-full space-y-3">
+                      <div
+                        class="md3-skeleton-text"
+                        style="--skeleton-width: 42%; --skeleton-height: 1.5rem;"
+                      >
+                      </div>
+                      <div
+                        class="md3-skeleton-text"
+                        style="--skeleton-width: 68%;"
+                      >
+                      </div>
+                    </div>
+                    <div class="md3-skeleton-block h-12 w-36 rounded-xl"></div>
+                  </div>
+                </div>
+
+                <div class="md3-skeleton-surface rounded-(--radius-large) p-6">
+                  <div class="space-y-3">
                     <div
                       class="md3-skeleton-text"
-                      style="--skeleton-width: 42%; --skeleton-height: 1.5rem;"
+                      style="--skeleton-width: 94%;"
                     >
                     </div>
                     <div
                       class="md3-skeleton-text"
-                      style="--skeleton-width: 68%;"
+                      style="--skeleton-width: 90%;"
+                    >
+                    </div>
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 86%;"
+                    >
+                    </div>
+                    <div
+                      class="md3-skeleton-text"
+                      style="--skeleton-width: 72%;"
                     >
                     </div>
                   </div>
-                  <div class="md3-skeleton-block h-12 w-36 rounded-xl"></div>
-                </div>
-              </div>
 
-              <div class="md3-skeleton-surface rounded-(--radius-large) p-6">
-                <div class="space-y-3">
-                  <div class="md3-skeleton-text" style="--skeleton-width: 94%;">
+                  <div class="grid grid-cols-2 gap-4 pt-4">
+                    <div class="md3-skeleton-block h-24 rounded-xl"></div>
+                    <div class="md3-skeleton-block h-24 rounded-xl"></div>
                   </div>
-                  <div class="md3-skeleton-text" style="--skeleton-width: 90%;">
-                  </div>
-                  <div class="md3-skeleton-text" style="--skeleton-width: 86%;">
-                  </div>
-                  <div class="md3-skeleton-text" style="--skeleton-width: 72%;">
-                  </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4 pt-4">
-                  <div class="md3-skeleton-block h-24 rounded-xl"></div>
-                  <div class="md3-skeleton-block h-24 rounded-xl"></div>
                 </div>
               </div>
             </div>
-          </div>
-          <!--
-            详情页右侧互动控件专用挂载锚点：
-            放在 #content-wrapper 外，避免其 transform 影响 fixed 定位
-          -->
-          <div id="detail-action-float-anchor" aria-hidden="true"></div>
-        </main>
-      </div>
+          </main>
+        </div>
 
-      <BackToTop />
-      {siteConfig.toc.enable && isFloatTOC && <FloatingTOC />}
+        <BackToTop />
+        {siteConfig.toc.enable && isFloatTOC && <FloatingTOC />}
+      </div>
     </div>
   </div>
 

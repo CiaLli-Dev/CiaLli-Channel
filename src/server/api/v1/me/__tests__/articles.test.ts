@@ -39,17 +39,16 @@ vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
         if (typeof v === "string") return v || null;
         return null;
     }),
-    extractDirectusFileIdsFromUnknown: vi.fn(() => []),
-    cleanupOrphanDirectusFiles: vi.fn().mockResolvedValue([]),
+    extractDirectusAssetIdsFromMarkdown: vi.fn(() => []),
+    cleanupOwnedOrphanDirectusFiles: vi.fn().mockResolvedValue([]),
 }));
 
-import {
-    createOne,
-    readMany,
-    updateOne,
-    deleteOne,
-} from "@/server/directus/client";
+import { createOne, readMany, updateOne } from "@/server/directus/client";
 import { ARTICLE_FIELDS } from "@/server/api/v1/shared/constants";
+import {
+    cleanupOwnedOrphanDirectusFiles,
+    extractDirectusAssetIdsFromMarkdown,
+} from "@/server/api/v1/shared/file-cleanup";
 import { createWithShortId } from "@/server/utils/short-id";
 
 import { handleMeArticles } from "@/server/api/v1/me/articles";
@@ -57,8 +56,13 @@ import { handleMeArticles } from "@/server/api/v1/me/articles";
 const mockedCreateOne = vi.mocked(createOne);
 const mockedReadMany = vi.mocked(readMany);
 const mockedUpdateOne = vi.mocked(updateOne);
-const mockedDeleteOne = vi.mocked(deleteOne);
 const mockedCreateWithShortId = vi.mocked(createWithShortId);
+const mockedCleanupOwnedOrphanDirectusFiles = vi.mocked(
+    cleanupOwnedOrphanDirectusFiles,
+);
+const mockedExtractDirectusAssetIdsFromMarkdown = vi.mocked(
+    extractDirectusAssetIdsFromMarkdown,
+);
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -485,19 +489,24 @@ describe("PATCH /me/articles/:id", () => {
             ]),
         ).rejects.toThrow();
     });
-});
 
-// ── DELETE /me/articles/:id ──
-
-describe("DELETE /me/articles/:id", () => {
-    it("删除成功", async () => {
-        const article = mockArticle({ author_id: "user-1", cover_file: null });
-        mockedReadMany.mockResolvedValue([article]);
-        mockedDeleteOne.mockResolvedValue(undefined as never);
+    it("正文纯文本 UUID 不会进入回收候选", async () => {
+        mockedReadMany.mockResolvedValue([
+            mockArticle({
+                id: "article-1",
+                author_id: "user-1",
+                body_markdown: "victim 6dc1edf9-a1f8-4191-bbe2-0fa6ff02ff69",
+            }),
+        ]);
+        mockedUpdateOne.mockResolvedValue(mockArticle({ id: "article-1" }));
+        mockedExtractDirectusAssetIdsFromMarkdown.mockReturnValue([]);
 
         const ctx = createMockAPIContext({
-            method: "DELETE",
+            method: "PATCH",
             url: "http://localhost:4321/api/v1/me/articles/article-1",
+            body: {
+                body_markdown: "safe body",
+            },
         });
         const access = createMemberAccess();
 
@@ -508,21 +517,29 @@ describe("DELETE /me/articles/:id", () => {
         );
 
         expect(res.status).toBe(200);
-        const body = await parseResponseJson<{
-            ok: boolean;
-            id: string;
-        }>(res);
-        expect(body.ok).toBe(true);
-        expect(body.id).toBe("article-1");
+        expect(mockedCleanupOwnedOrphanDirectusFiles).not.toHaveBeenCalled();
     });
 
-    it("非 owner → 404", async () => {
-        // resolveOwnedArticle 按 author_id 过滤，非 owner 查不到文章
-        mockedReadMany.mockResolvedValue([]);
+    it("正文合法资源 URL 被移除时会进入回收候选", async () => {
+        const fileId = "a1b2c3d4-e5f6-1234-9abc-def012345678";
+        mockedReadMany.mockResolvedValue([
+            mockArticle({
+                id: "article-1",
+                author_id: "user-1",
+                body_markdown: `![img](/api/v1/public/assets/${fileId})`,
+            }),
+        ]);
+        mockedUpdateOne.mockResolvedValue(mockArticle({ id: "article-1" }));
+        mockedExtractDirectusAssetIdsFromMarkdown
+            .mockReturnValueOnce([fileId])
+            .mockReturnValueOnce([]);
 
         const ctx = createMockAPIContext({
-            method: "DELETE",
+            method: "PATCH",
             url: "http://localhost:4321/api/v1/me/articles/article-1",
+            body: {
+                body_markdown: "safe body",
+            },
         });
         const access = createMemberAccess();
 
@@ -532,26 +549,10 @@ describe("DELETE /me/articles/:id", () => {
             ["articles", "article-1"],
         );
 
-        expect(res.status).toBe(404);
-    });
-});
-
-// ── 路由 fallback ──
-
-describe("路由 fallback", () => {
-    it("未知路径 → 404", async () => {
-        const ctx = createMockAPIContext({
-            method: "GET",
-            url: "http://localhost:4321/api/v1/me/articles/a/b/c",
+        expect(res.status).toBe(200);
+        expect(mockedCleanupOwnedOrphanDirectusFiles).toHaveBeenCalledWith({
+            candidateFileIds: [fileId],
+            ownerUserId: access.user.id,
         });
-        const access = createMemberAccess();
-
-        const res = await handleMeArticles(
-            ctx as unknown as APIContext,
-            access,
-            ["articles", "a", "b", "c"],
-        );
-
-        expect(res.status).toBe(404);
     });
 });

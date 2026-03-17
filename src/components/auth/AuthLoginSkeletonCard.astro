@@ -1,0 +1,64 @@
+---
+interface Props {
+  proxyVisible?: boolean;
+}
+
+const { proxyVisible = false } = Astro.props;
+---
+
+<div
+  data-enter-skeleton-inline-placeholder={proxyVisible ? undefined : ""}
+  aria-hidden="true"
+>
+  <div class="card-base rounded-(--radius-large) p-6 p-8 space-y-6">
+    <div class="flex items-center gap-3">
+      <div class="md3-skeleton-block w-12 h-12 rounded-2xl"></div>
+      <div class="space-y-2 flex-1">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 22%; --skeleton-height: 1.6rem;"
+        >
+        </div>
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 52%; --skeleton-height: 0.82rem;"
+        >
+        </div>
+      </div>
+    </div>
+    <div class="space-y-4">
+      <div class="space-y-2">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 12%; --skeleton-height: 0.82rem;"
+        >
+        </div>
+        <div class="md3-skeleton-block h-11 rounded-lg"></div>
+      </div>
+      <div class="space-y-2">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 12%; --skeleton-height: 0.82rem;"
+        >
+        </div>
+        <div class="md3-skeleton-block h-11 rounded-lg"></div>
+      </div>
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <div class="md3-skeleton-circle h-5 w-9 rounded-full"></div>
+          <div
+            class="md3-skeleton-text"
+            style="--skeleton-width: 6.5rem; --skeleton-height: 0.82rem;"
+          >
+          </div>
+        </div>
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 8.2rem; --skeleton-height: 0.82rem;"
+        >
+        </div>
+      </div>
+      <div class="md3-skeleton-block h-11 rounded-xl"></div>
+    </div>
+  </div>
+</div>

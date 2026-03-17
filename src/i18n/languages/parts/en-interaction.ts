@@ -65,6 +65,9 @@ export const enInteraction: Record<string, string> = {
     [Key.interactionCommonSelectImage]: "Select image",
     [Key.interactionCommonSelectImageFirst]: "Please select an image first",
     [Key.interactionCommonZoom]: "Zoom",
+    [Key.interactionCommonZoomIn]: "Zoom in",
+    [Key.interactionCommonZoomOut]: "Zoom out",
+    [Key.interactionCommonReset]: "Reset",
     [Key.interactionDialogAuthRequiredTitle]: "Login required",
     [Key.interactionDialogAuthRequiredMessage]:
         "You need to log in before using this feature.",

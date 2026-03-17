@@ -52,7 +52,8 @@ import {
 } from "@/server/api/schemas";
 import { invalidateOfficialSidebarCache } from "../public-data";
 import {
-    cleanupOrphanDirectusFiles,
+    cleanupOwnedOrphanDirectusFiles,
+    collectReferencedDirectusFileIds,
     collectUserOwnedFileIds,
     normalizeDirectusFileId,
 } from "../shared/file-cleanup";
@@ -247,7 +248,10 @@ async function applyAvatarFileChange(
         });
     }
     if (hasAvatarPatch && prevAvatarFile && prevAvatarFile !== nextAvatarFile) {
-        await cleanupOrphanDirectusFiles([prevAvatarFile]);
+        await cleanupOwnedOrphanDirectusFiles({
+            candidateFileIds: [prevAvatarFile],
+            ownerUserId: userId,
+        });
     }
 }
 
@@ -619,6 +623,11 @@ async function handleUserDelete(
     });
 
     const candidateFileIds = await collectCandidateFileIds(userId);
+    const referencedFileIds =
+        await collectReferencedDirectusFileIds(candidateFileIds);
+    const removableFileIds = candidateFileIds.filter(
+        (fileId) => !referencedFileIds.has(fileId),
+    );
     const referencedFilesPromise = loadReferencedFilesByUser(userId);
 
     const [profiles, registrationRequests, referencedFiles] = await Promise.all(
@@ -646,10 +655,16 @@ async function handleUserDelete(
         await deleteOne("app_user_profiles", profile.id);
     }
     await nullifyRegistrationRequestAvatars(registrationRequests);
-    await nullifyReferencedFileOwnership(referencedFiles, userId);
+    await nullifyReferencedFileOwnership(
+        referencedFiles.filter((file) => referencedFileIds.has(file.id)),
+        userId,
+    );
     await clearBlockingUserReferences(userId);
     await deleteDirectusUser(userId);
-    await cleanupOrphanDirectusFiles(candidateFileIds);
+    await cleanupOwnedOrphanDirectusFiles({
+        candidateFileIds: removableFileIds,
+        ownerUserId: userId,
+    });
     invalidateAuthorCache(userId);
     invalidateOfficialSidebarCache();
     invalidateDirectusAccessRegistry();

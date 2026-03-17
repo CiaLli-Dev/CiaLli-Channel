@@ -40,7 +40,7 @@ import { cacheManager } from "@/server/cache/manager";
 import type { AppAccess } from "../shared";
 import { hasOwn, parseRouteId, safeCsv, sanitizeSlug } from "../shared";
 import {
-    cleanupOrphanDirectusFiles,
+    cleanupOwnedOrphanDirectusFiles,
     collectAlbumFileIds,
     normalizeDirectusFileId,
 } from "../shared/file-cleanup";
@@ -286,7 +286,10 @@ async function handleAlbumPatch(
         prevCoverFile &&
         prevCoverFile !== nextCoverFile
     ) {
-        await cleanupOrphanDirectusFiles([prevCoverFile]);
+        await cleanupOwnedOrphanDirectusFiles({
+            candidateFileIds: [prevCoverFile],
+            ownerUserId: target.author_id,
+        });
     }
     if (
         input.is_public !== undefined &&
@@ -335,7 +338,10 @@ async function handleAlbumDelete(
 ): Promise<Response> {
     const fileIds = await collectAlbumFileIds(id, target.cover_file);
     await deleteOne("app_albums", id);
-    await cleanupOrphanDirectusFiles(fileIds);
+    await cleanupOwnedOrphanDirectusFiles({
+        candidateFileIds: fileIds,
+        ownerUserId: target.author_id,
+    });
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("album-list"),
@@ -520,7 +526,10 @@ async function handlePhotoPatch(
         prevFileId &&
         prevFileId !== nextFileId
     ) {
-        await cleanupOrphanDirectusFiles([prevFileId]);
+        await cleanupOwnedOrphanDirectusFiles({
+            candidateFileIds: [prevFileId],
+            ownerUserId: album?.author_id ?? access.user.id,
+        });
     }
     await awaitCacheInvalidations(
         [cacheManager.invalidate("album-detail", photo.album_id)],
@@ -532,11 +541,15 @@ async function handlePhotoPatch(
 async function handlePhotoDelete(
     photoId: string,
     photo: AppAlbumPhoto,
+    ownerUserId: string,
 ): Promise<Response> {
     const fileId = normalizeDirectusFileId(photo.file_id);
     await deleteOne("app_album_photos", photoId);
     if (fileId) {
-        await cleanupOrphanDirectusFiles([fileId]);
+        await cleanupOwnedOrphanDirectusFiles({
+            candidateFileIds: [fileId],
+            ownerUserId,
+        });
     }
     await awaitCacheInvalidations(
         [cacheManager.invalidate("album-detail", photo.album_id)],
@@ -573,7 +586,7 @@ export async function handleMeAlbumPhotos(
             return handlePhotoPatch(context, access, photoId, photo);
         }
         if (context.request.method === "DELETE") {
-            return handlePhotoDelete(photoId, photo);
+            return handlePhotoDelete(photoId, photo, album.author_id);
         }
     }
 

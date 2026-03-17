@@ -29,8 +29,9 @@ import { createWithShortId } from "@/server/utils/short-id";
 import type { AppAccess } from "../shared";
 import { DIARY_FIELDS, hasOwn, parseRouteId } from "../shared";
 import {
-    cleanupOrphanDirectusFiles,
+    cleanupOwnedOrphanDirectusFiles,
     collectDiaryFileIds,
+    extractDirectusAssetIdsFromMarkdown,
     normalizeDirectusFileId,
 } from "../shared/file-cleanup";
 import { bindFileOwnerToUser, renderMeMarkdownPreview } from "./_helpers";
@@ -280,9 +281,15 @@ async function handleDiaryDelete(
     diaryId: string,
     target: OwnedDiaryRecord,
 ): Promise<Response> {
-    const fileIds = await collectDiaryFileIds(diaryId);
+    const imageFileIds = await collectDiaryFileIds(diaryId);
+    const contentFileIds = extractDirectusAssetIdsFromMarkdown(
+        String(target.content ?? ""),
+    );
     await deleteOne("app_diaries", diaryId);
-    await cleanupOrphanDirectusFiles(fileIds);
+    await cleanupOwnedOrphanDirectusFiles({
+        candidateFileIds: [...imageFileIds, ...contentFileIds],
+        ownerUserId: target.author_id,
+    });
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("diary-list"),
@@ -453,7 +460,10 @@ async function handleDiaryImagePatch(
         );
     }
     if (hasOwn(body, "file_id") && prevFileId && prevFileId !== nextFileId) {
-        await cleanupOrphanDirectusFiles([prevFileId]);
+        await cleanupOwnedOrphanDirectusFiles({
+            candidateFileIds: [prevFileId],
+            ownerUserId: String(diary.author_id ?? access.user.id),
+        });
     }
     await awaitCacheInvalidations(
         [
@@ -476,7 +486,10 @@ async function handleDiaryImageDelete(
     const fileId = normalizeDirectusFileId(image.file_id);
     await deleteOne("app_diary_images", imageId);
     if (fileId) {
-        await cleanupOrphanDirectusFiles([fileId]);
+        await cleanupOwnedOrphanDirectusFiles({
+            candidateFileIds: [fileId],
+            ownerUserId: String(diary.author_id ?? ""),
+        });
     }
     await awaitCacheInvalidations(
         [

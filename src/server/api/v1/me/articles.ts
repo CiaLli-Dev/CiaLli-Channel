@@ -39,8 +39,8 @@ import {
     toSpecialArticleSlug,
 } from "../shared";
 import {
-    cleanupOrphanDirectusFiles,
-    extractDirectusFileIdsFromUnknown,
+    cleanupOwnedOrphanDirectusFiles,
+    extractDirectusAssetIdsFromMarkdown,
     normalizeDirectusFileId,
 } from "../shared/file-cleanup";
 import {
@@ -394,7 +394,9 @@ async function cleanupPatchedArticleFiles(
     const prevCoverFile = normalizeDirectusFileId(target.cover_file);
     const prevBodyFileIds =
         input.body_markdown !== undefined
-            ? extractDirectusFileIdsFromUnknown(target.body_markdown)
+            ? extractDirectusAssetIdsFromMarkdown(
+                  String(target.body_markdown ?? ""),
+              )
             : [];
     const nextVisibility = resolveArticleAssetVisibility(
         nextStatus,
@@ -417,17 +419,23 @@ async function cleanupPatchedArticleFiles(
         prevCoverFile &&
         prevCoverFile !== nextCoverFile
     ) {
-        await cleanupOrphanDirectusFiles([prevCoverFile]);
+        await cleanupOwnedOrphanDirectusFiles({
+            candidateFileIds: [prevCoverFile],
+            ownerUserId: access.user.id,
+        });
     }
     if (input.body_markdown !== undefined && prevBodyFileIds.length > 0) {
         const nextBodyFileIds = new Set(
-            extractDirectusFileIdsFromUnknown(input.body_markdown),
+            extractDirectusAssetIdsFromMarkdown(input.body_markdown),
         );
         const removedBodyFileIds = prevBodyFileIds.filter(
             (id) => !nextBodyFileIds.has(id),
         );
         if (removedBodyFileIds.length > 0) {
-            await cleanupOrphanDirectusFiles(removedBodyFileIds);
+            await cleanupOwnedOrphanDirectusFiles({
+                candidateFileIds: removedBodyFileIds,
+                ownerUserId: access.user.id,
+            });
         }
     }
     if (
@@ -681,14 +689,20 @@ async function handleMeArticlesPatch(
 
 async function handleMeArticlesDelete(
     target: OwnedArticleRecord,
+    access: AppAccess,
 ): Promise<Response> {
     const id = target.id;
     const coverFile = normalizeDirectusFileId(target.cover_file);
-    const bodyFileIds = extractDirectusFileIdsFromUnknown(target.body_markdown);
+    const bodyFileIds = extractDirectusAssetIdsFromMarkdown(
+        String(target.body_markdown ?? ""),
+    );
     await deleteOne("app_articles", id);
     const allFileIds = [...(coverFile ? [coverFile] : []), ...bodyFileIds];
     if (allFileIds.length > 0) {
-        await cleanupOrphanDirectusFiles(allFileIds);
+        await cleanupOwnedOrphanDirectusFiles({
+            candidateFileIds: allFileIds,
+            ownerUserId: access.user.id,
+        });
     }
     await awaitCacheInvalidations(
         [
@@ -730,7 +744,7 @@ async function handleMeArticleById(
         return handleMeArticlesPatch(context, access, target);
     }
     if (context.request.method === "DELETE") {
-        return handleMeArticlesDelete(target);
+        return handleMeArticlesDelete(target, access);
     }
 
     return fail("方法不允许", 405);

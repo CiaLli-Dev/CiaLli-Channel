@@ -1,5 +1,7 @@
 import { setupPageInit } from "@utils/page-init";
 
+import { mountMermaidInteraction } from "@/scripts/mermaid-interaction";
+
 type MermaidTheme = "default" | "dark";
 
 type MermaidRenderResult = {
@@ -196,12 +198,15 @@ const renderOne = async (
 
         element.innerHTML = svg;
         const svgElement = element.querySelector("svg");
-        if (svgElement instanceof SVGElement) {
-            svgElement.setAttribute("width", "100%");
-            svgElement.removeAttribute("height");
-            svgElement.style.maxWidth = "100%";
-            svgElement.style.height = "auto";
+        if (svgElement) {
+            if (svgElement instanceof HTMLElement) {
+                svgElement.style.maxWidth = "100%";
+                svgElement.style.width = "";
+                svgElement.style.height = "";
+            }
         }
+
+        mountMermaidInteraction(element);
 
         element.setAttribute("data-mermaid-rendered-hash", codeHash);
         element.setAttribute("data-mermaid-rendered-theme", theme);
@@ -340,6 +345,7 @@ const bootstrap = (): void => {
         },
         delay: 50,
         runOnPageShow: true,
+        stages: ["navigation-settled"],
     });
 
     document.addEventListener("cialli:page:loaded", () => {

@@ -67,6 +67,9 @@ export const jaInteraction: Record<string, string> = {
     [Key.interactionCommonSelectImage]: "画像を選択",
     [Key.interactionCommonSelectImageFirst]: "先に画像を選択してください",
     [Key.interactionCommonZoom]: "ズーム",
+    [Key.interactionCommonZoomIn]: "拡大",
+    [Key.interactionCommonZoomOut]: "縮小",
+    [Key.interactionCommonReset]: "リセット",
     [Key.interactionDialogAuthRequiredTitle]: "ログインが必要です",
     [Key.interactionDialogAuthRequiredMessage]:
         "この機能を使うにはログインが必要です。",

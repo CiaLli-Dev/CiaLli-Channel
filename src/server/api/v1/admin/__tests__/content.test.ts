@@ -32,9 +32,10 @@ vi.mock("@/server/cache/manager", () => ({
 }));
 
 vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
-    cleanupOrphanDirectusFiles: vi.fn(),
+    cleanupOwnedOrphanDirectusFiles: vi.fn(),
     collectAlbumFileIds: vi.fn().mockResolvedValue([]),
     collectDiaryFileIds: vi.fn().mockResolvedValue([]),
+    extractDirectusAssetIdsFromMarkdown: vi.fn(() => []),
     normalizeDirectusFileId: vi
         .fn()
         .mockImplementation((value: unknown) =>

@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- Monaco 适配集中承载 worker/theme/layout 恢复逻辑，保持单模块更便于排查切页问题。 */
 /**
  * 发布页 Monaco 编辑器初始化与适配。
  *
@@ -11,6 +12,10 @@ import {
     type PublishEditorSelection,
 } from "@/scripts/publish-editor-adapter";
 import { analyzeMarkdownSyntax } from "@/scripts/publish-editor-markdown-diagnostics";
+import {
+    ensurePublishMonacoStylesheet,
+    ensurePublishMonacoThemeServiceStyles,
+} from "@/scripts/publish-editor-monaco-styles";
 
 type MonacoModule = typeof import("monaco-editor");
 type MonacoEditor = import("monaco-editor").editor.IStandaloneCodeEditor;
@@ -26,6 +31,7 @@ type MonacoRuntimeWindow = Window &
 
 const PUBLISH_MONACO_LIGHT_THEME = "cialli-markdown-light";
 const PUBLISH_MONACO_DARK_THEME = "cialli-markdown-dark";
+const NAVIGATION_SETTLED_EVENT = "cialli:navigation:settled";
 
 export type CreatePublishEditorAdapterOptions = {
     textareaEl: HTMLTextAreaElement;
@@ -183,6 +189,148 @@ function bindMarkdownSyntaxDiagnostics(
         }
         disposable.dispose();
         monaco.editor.setModelMarkers(model, owner, []);
+    };
+}
+
+function hasRenderableMonacoHostRect(hostEl: HTMLElement): boolean {
+    const rect = hostEl.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+}
+
+async function waitForRenderableMonacoHost(hostEl: HTMLElement): Promise<void> {
+    if (hasRenderableMonacoHostRect(hostEl)) {
+        return;
+    }
+
+    await new Promise<void>((resolve) => {
+        let resolved = false;
+        let timeoutId: number | null = null;
+        let frameId: number | null = null;
+        let resizeObserver: ResizeObserver | null = null;
+
+        const cleanup = (): void => {
+            if (timeoutId !== null) {
+                window.clearTimeout(timeoutId);
+                timeoutId = null;
+            }
+            if (frameId !== null) {
+                window.cancelAnimationFrame(frameId);
+                frameId = null;
+            }
+            resizeObserver?.disconnect();
+            resizeObserver = null;
+            document.removeEventListener(NAVIGATION_SETTLED_EVENT, onProbe);
+        };
+
+        const finish = (): void => {
+            if (resolved) {
+                return;
+            }
+            resolved = true;
+            cleanup();
+            resolve();
+        };
+
+        const onProbe = (): void => {
+            if (hasRenderableMonacoHostRect(hostEl)) {
+                finish();
+                return;
+            }
+            if (frameId !== null) {
+                window.cancelAnimationFrame(frameId);
+            }
+            frameId = window.requestAnimationFrame(() => {
+                frameId = null;
+                if (hasRenderableMonacoHostRect(hostEl)) {
+                    finish();
+                }
+            });
+        };
+
+        if (typeof ResizeObserver !== "undefined") {
+            resizeObserver = new ResizeObserver(() => {
+                onProbe();
+            });
+            resizeObserver.observe(hostEl);
+        }
+
+        document.addEventListener(NAVIGATION_SETTLED_EVENT, onProbe);
+        timeoutId = window.setTimeout(() => {
+            // 不让编辑器初始化无限等待；若宿主仍不可测量，则交给后续补 layout 兜底。
+            finish();
+        }, 800);
+        onProbe();
+    });
+}
+
+function bindMonacoLayoutRecovery(
+    editor: MonacoEditor,
+    hostEl: HTMLElement,
+): () => void {
+    const timeoutIds = new Set<number>();
+    const frameIds = new Set<number>();
+    let resizeObserver: ResizeObserver | null = null;
+
+    const layoutIfConnected = (): void => {
+        if (!hostEl.isConnected) {
+            return;
+        }
+        editor.layout();
+    };
+
+    const scheduleLayout = (delay = 0): void => {
+        if (delay <= 0) {
+            const frameId = window.requestAnimationFrame(() => {
+                frameIds.delete(frameId);
+                layoutIfConnected();
+            });
+            frameIds.add(frameId);
+            return;
+        }
+
+        const timeoutId = window.setTimeout(() => {
+            timeoutIds.delete(timeoutId);
+            layoutIfConnected();
+        }, delay);
+        timeoutIds.add(timeoutId);
+    };
+
+    const handleNavigationSettled = (): void => {
+        scheduleLayout();
+        scheduleLayout(120);
+    };
+
+    scheduleLayout();
+    scheduleLayout(120);
+    scheduleLayout(320);
+    document.addEventListener(
+        NAVIGATION_SETTLED_EVENT,
+        handleNavigationSettled,
+    );
+
+    if (typeof ResizeObserver !== "undefined") {
+        resizeObserver = new ResizeObserver(() => {
+            scheduleLayout();
+        });
+        resizeObserver.observe(hostEl);
+    }
+
+    return () => {
+        for (const timeoutId of timeoutIds) {
+            window.clearTimeout(timeoutId);
+        }
+        timeoutIds.clear();
+
+        for (const frameId of frameIds) {
+            window.cancelAnimationFrame(frameId);
+        }
+        frameIds.clear();
+
+        resizeObserver?.disconnect();
+        document.removeEventListener(
+            NAVIGATION_SETTLED_EVENT,
+            handleNavigationSettled,
+        );
     };
 }
 
@@ -417,6 +565,16 @@ async function createMonacoAdapter(
     ]);
     const monaco = monacoModule as MonacoModule;
 
+    // Astro ClientRouter 会替换整个 document，导致旧文档里动态注入的 Monaco CSS 丢失。
+    // 若当前文档缺少样式，这里先补齐稳定入口，再创建编辑器实例。
+    await ensurePublishMonacoStylesheet();
+    // Monaco 会把主题 CSS 缓存在全局 theme service 的 style 节点里。
+    // 客户端换 document 后，这个缓存节点会留在旧文档，导致新文档丢失 `.monaco-colors`。
+    await ensurePublishMonacoThemeServiceStyles(monacoHostEl);
+    // 客户端二次进入时，发布页工作台可能仍处于切页收尾阶段；
+    // 先等待宿主容器至少变成“可测量”，避免 Monaco 在 0 尺寸窗口里创建后卡成空白框。
+    await waitForRenderableMonacoHost(monacoHostEl);
+
     const editor = monaco.editor.create(monacoHostEl, {
         value: textareaEl.value || "",
         language: "markdown",
@@ -437,9 +595,14 @@ async function createMonacoAdapter(
 
     const themeDispose = bindMonacoThemeSync(monaco);
     const diagnosticsDispose = bindMarkdownSyntaxDiagnostics(monaco, editor);
+    const layoutRecoveryDispose = bindMonacoLayoutRecovery(
+        editor,
+        monacoHostEl,
+    );
     return new MonacoEditorAdapter(monaco, editor, textareaEl, [
         themeDispose,
         diagnosticsDispose,
+        layoutRecoveryDispose,
     ]);
 }
 
