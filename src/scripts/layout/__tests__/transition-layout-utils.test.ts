@@ -53,6 +53,7 @@ function createTransitionState(): TransitionState {
         bannerToSpecMotionDurationMs: BANNER_TO_SPEC_TRANSITION_DURATION_MS,
         transitionProxyMode: "post-card",
         transitionProxyLayoutKey: "sidebar-main-right-archive",
+        preservePreparedTransitionProxyPayload: false,
         bannerToSpecMotionCompleted: false,
         bannerToSpecMotionPromise: null,
         bannerToSpecMotionResolve: null,

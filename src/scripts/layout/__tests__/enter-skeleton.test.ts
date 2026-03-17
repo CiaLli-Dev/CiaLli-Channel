@@ -59,6 +59,7 @@ describe("enter-skeleton", () => {
     });
 
     it("resolveEnterSkeletonModeFromPath 会把文章详情、归档与个人页路由映射到稳定 mode", () => {
+        expect(resolveEnterSkeletonModeFromPath("/")).toBe("fallback");
         expect(resolveEnterSkeletonModeFromPath("/posts/demo")).toBe(
             "post-detail",
         );
@@ -106,6 +107,10 @@ describe("enter-skeleton", () => {
     });
 
     it("resolveTransitionProxyPayloadFromPath 会同时返回骨架 mode 与代理壳 key", () => {
+        expect(resolveTransitionProxyPayloadFromPath("/")).toEqual({
+            mode: "fallback",
+            layoutKey: "sidebar-main",
+        });
         expect(resolveTransitionProxyPayloadFromPath("/posts/new")).toEqual({
             mode: "publish-page",
             layoutKey: "full-width-post-editor",

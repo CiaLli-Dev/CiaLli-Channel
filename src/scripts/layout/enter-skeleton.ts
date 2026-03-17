@@ -155,6 +155,7 @@ const SKELETON_PAGE_RULES: SkeletonDetectRule[] = [
 ];
 
 const SKELETON_PATH_RULES: readonly SkeletonPathRule[] = [
+    { test: /^\/$/, mode: "fallback" },
     { test: /^\/posts\/new$/, mode: "publish-page" },
     { test: /^\/posts\/[^/]+\/edit$/, mode: "publish-page" },
     { test: /^\/posts$/, mode: "post-card" },

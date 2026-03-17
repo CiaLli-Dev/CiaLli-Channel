@@ -901,6 +901,7 @@ export type TransitionState = {
     bannerToSpecMotionDurationMs: number;
     transitionProxyMode: EnterSkeletonMode | null;
     transitionProxyLayoutKey: TransitionProxyLayoutKey | null;
+    preservePreparedTransitionProxyPayload: boolean;
     bannerToSpecMotionCompleted: boolean;
     bannerToSpecMotionPromise: Promise<void> | null;
     bannerToSpecMotionResolve: (() => void) | null;
