@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
 import type { APIContext } from "astro";
 
 import type { AppUser } from "@/types/app";
+import { cacheManager } from "@/server/cache/manager";
 import { readOneById } from "@/server/directus/client";
 import {
     DIRECTUS_ACCESS_COOKIE_NAME,
@@ -25,6 +27,8 @@ export type SessionUser = {
     isSystemAdmin: boolean;
 };
 
+type SessionUserCacheEntry = SessionUser;
+
 type RefreshedTokens = Awaited<ReturnType<typeof directusRefresh>>;
 type DirectusMe = Awaited<ReturnType<typeof directusGetMe>>;
 type JwtPayload = {
@@ -37,6 +41,51 @@ const refreshResultCache = new Map<
     { tokens: RefreshedTokens; expiresAt: number }
 >();
 const REFRESH_RESULT_CACHE_TTL_MS = 5000;
+const SESSION_USER_CACHE_TTL_VERSION = "v1";
+
+function hashAccessToken(accessToken: string): string {
+    return createHash("sha256").update(accessToken).digest("hex");
+}
+
+function buildSessionUserCacheKey(accessToken: string): string {
+    return `${SESSION_USER_CACHE_TTL_VERSION}:${hashAccessToken(accessToken)}`;
+}
+
+async function loadSessionUserFromCache(
+    accessToken: string,
+): Promise<SessionUser | null> {
+    const normalizedToken = String(accessToken || "").trim();
+    if (!normalizedToken) {
+        return null;
+    }
+    return await cacheManager.get<SessionUserCacheEntry>(
+        "session-user",
+        buildSessionUserCacheKey(normalizedToken),
+    );
+}
+
+function saveSessionUserToCache(accessToken: string, user: SessionUser): void {
+    const normalizedToken = String(accessToken || "").trim();
+    if (!normalizedToken) {
+        return;
+    }
+    void cacheManager.set(
+        "session-user",
+        buildSessionUserCacheKey(normalizedToken),
+        user,
+    );
+}
+
+function invalidateSessionUserCache(accessToken: string): void {
+    const normalizedToken = String(accessToken || "").trim();
+    if (!normalizedToken) {
+        return;
+    }
+    void cacheManager.invalidate(
+        "session-user",
+        buildSessionUserCacheKey(normalizedToken),
+    );
+}
 
 function toDisplayName(params: {
     id: string;
@@ -276,10 +325,16 @@ export async function getSessionUser(
         context.cookies.get(DIRECTUS_ACCESS_COOKIE_NAME)?.value || "";
     if (accessToken) {
         try {
+            const cached = await loadSessionUserFromCache(accessToken);
+            if (cached) {
+                return cached;
+            }
             const user = await loadUserByAccessToken(accessToken);
             if (user) {
+                saveSessionUserToCache(accessToken, user);
                 return user;
             }
+            invalidateSessionUserCache(accessToken);
             clearCookie(context, DIRECTUS_ACCESS_COOKIE_NAME);
         } catch {
             return null;
@@ -299,11 +354,17 @@ export async function getSessionUser(
         const sessionOnly = isSessionOnlyMode(rememberValue);
         setSessionCookies(context, tokens, sessionOnly);
         try {
+            const cached = await loadSessionUserFromCache(tokens.accessToken);
+            if (cached) {
+                return cached;
+            }
             const user = await loadUserByAccessToken(tokens.accessToken);
             if (!user) {
+                invalidateSessionUserCache(tokens.accessToken);
                 clearSession(context);
                 return null;
             }
+            saveSessionUserToCache(tokens.accessToken, user);
             return user;
         } catch {
             return null;

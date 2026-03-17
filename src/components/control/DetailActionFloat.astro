@@ -8,6 +8,7 @@ interface Props {
   likeCount?: number;
   commentCount?: number;
   likedByViewer?: boolean;
+  dockToBackTop?: boolean;
   editHref?: string;
   deleteEndpoint?: string;
   deleteConfirmMessage?: string;
@@ -21,6 +22,7 @@ const {
   likeCount = 0,
   commentCount = 0,
   likedByViewer = false,
+  dockToBackTop = false,
   editHref = "",
   deleteEndpoint = "",
   deleteConfirmMessage = "确认删除该内容？删除后不可恢复。",
@@ -29,13 +31,14 @@ const {
 ---
 
 <div
-  class="detail-action-float"
+  class:list={["detail-action-float", dockToBackTop && "fixed-mode"]}
   data-content-type={contentType}
   data-content-id={contentId}
   data-author-id={authorId}
   data-like-count={String(likeCount)}
   data-comment-count={String(commentCount)}
   data-liked={likedByViewer ? "1" : "0"}
+  data-dock-to-back-top={dockToBackTop ? "1" : "0"}
   data-edit-href={editHref}
   data-delete-endpoint={deleteEndpoint}
   data-delete-confirm-message={deleteConfirmMessage}
@@ -86,7 +89,7 @@ const {
 <style lang="stylus">
   .detail-action-float
     position: relative
-    width: 3.75rem
+    width: var(--right-float-size, 3.75rem)
     margin-top: 9.5rem
     margin-left: 0
     margin-right: auto
@@ -94,15 +97,19 @@ const {
 
     &.fixed-mode
       position: fixed
-      right: 1rem
-      top: 36%
+      right: var(--right-float-right, 6rem)
+      bottom: calc(var(--back-to-top-bottom, 10rem) + var(--right-float-size, 3.75rem) + var(--right-float-gap, 0.75rem))
+      top: auto
       margin: 0
+
+    &[data-dock-to-back-top='1'].fixed-mode
+      transform: translateX(var(--right-float-shift-x, 5rem))
 
     &.slot-mode
       margin-top: .5rem
 
   .detail-action-bar
-    width: 3.75rem
+    width: var(--right-float-size, 3.75rem)
     display: flex
     flex-direction: column
     align-items: center
@@ -193,6 +200,7 @@ const {
 
     roots.forEach((rootEl) => {
       rootEl.dataset.bound = "1";
+      const dockToBackTop = rootEl.dataset.dockToBackTop === "1";
 
       const customSlot = document.querySelector<HTMLElement>(
         "[data-detail-float-slot]",
@@ -201,7 +209,11 @@ const {
         customSlot instanceof HTMLElement &&
         window.getComputedStyle(customSlot).display !== "none";
 
-      if (canMountToCustomSlot && rootEl.parentElement !== customSlot) {
+      if (
+        !dockToBackTop &&
+        canMountToCustomSlot &&
+        rootEl.parentElement !== customSlot
+      ) {
         customSlot.appendChild(rootEl);
       }
 
@@ -218,6 +230,7 @@ const {
         mountTarget instanceof HTMLElement &&
         window.getComputedStyle(mountTarget).display !== "none";
       if (
+        !dockToBackTop &&
         !canMountToCustomSlot &&
         canMountToSidebar &&
         rootEl.parentElement !== mountTarget
@@ -227,8 +240,28 @@ const {
 
       const sidebarHidden =
         !canMountToCustomSlot && (!mountTarget || !canMountToSidebar);
-      rootEl.classList.toggle("slot-mode", canMountToCustomSlot);
-      rootEl.classList.toggle("fixed-mode", sidebarHidden);
+      // 停靠到返回顶部按钮上方时，必须挂到不带 transform 的锚点
+      // 否则 fixed 会被祖先 transform 捕获，视觉上回退到评论区附近
+      if (dockToBackTop) {
+        const dockAnchor = document.getElementById(
+          "detail-action-float-anchor",
+        );
+        const canMountToDockAnchor =
+          dockAnchor instanceof HTMLElement &&
+          window.getComputedStyle(dockAnchor).display !== "none";
+
+        if (canMountToDockAnchor && rootEl.parentElement !== dockAnchor) {
+          dockAnchor.appendChild(rootEl);
+        }
+        if (!canMountToDockAnchor && rootEl.parentElement !== document.body) {
+          document.body.appendChild(rootEl);
+        }
+        rootEl.classList.remove("slot-mode");
+        rootEl.classList.add("fixed-mode");
+      } else {
+        rootEl.classList.toggle("slot-mode", canMountToCustomSlot);
+        rootEl.classList.toggle("fixed-mode", sidebarHidden);
+      }
 
       const contentType = String(rootEl.dataset.contentType || "");
       const contentId = String(rootEl.dataset.contentId || "");

@@ -1,10 +1,53 @@
 import type { AppAlbum, AppArticle, AppDiary, AppFriend } from "@/types/app";
 import type { JsonObject } from "@/types/json";
 import { conflict } from "@/server/api/errors";
+import { cacheManager } from "@/server/cache/manager";
 import { readMany } from "@/server/directus/client";
 
 import { DIARY_FIELDS } from "./constants";
 import { filterPublicStatus } from "./auth";
+
+function buildArticlePublicCacheKey(
+    routeType: "id" | "slug" | "short_id",
+    routeValue: string,
+): string {
+    return `v1:${routeType}:${routeValue}`;
+}
+
+async function loadPublicArticleWithCache(
+    routeType: "id" | "slug" | "short_id",
+    routeValue: string,
+): Promise<AppArticle | null> {
+    const normalizedValue = String(routeValue || "").trim();
+    if (!normalizedValue) {
+        return null;
+    }
+
+    const cacheKey = buildArticlePublicCacheKey(routeType, normalizedValue);
+    const cached = await cacheManager.get<{
+        exists: boolean;
+        article: AppArticle | null;
+    }>("article-public", cacheKey);
+    if (cached) {
+        return cached.article;
+    }
+
+    const rows = await readMany("app_articles", {
+        filter: {
+            _and: [
+                { [routeType]: { _eq: normalizedValue } },
+                filterPublicStatus(),
+            ],
+        } as JsonObject,
+        limit: 1,
+    });
+    const article = rows[0] || null;
+    void cacheManager.set("article-public", cacheKey, {
+        exists: true,
+        article,
+    });
+    return article;
+}
 
 export async function loadPublicArticleById(
     id: string,
@@ -17,26 +60,13 @@ export async function loadPublicArticleById(
     if (!isUuid) {
         return null;
     }
-
-    const rows = await readMany("app_articles", {
-        filter: {
-            _and: [{ id: { _eq: normalizedId } }, filterPublicStatus()],
-        } as JsonObject,
-        limit: 1,
-    });
-    return rows[0] || null;
+    return await loadPublicArticleWithCache("id", normalizedId);
 }
 
 export async function loadPublicArticleBySlug(
     slug: string,
 ): Promise<AppArticle | null> {
-    const rows = await readMany("app_articles", {
-        filter: {
-            _and: [{ slug: { _eq: slug } }, filterPublicStatus()],
-        } as JsonObject,
-        limit: 1,
-    });
-    return rows[0] || null;
+    return await loadPublicArticleWithCache("slug", slug);
 }
 
 export async function loadPublicFriends(): Promise<AppFriend[]> {
@@ -61,13 +91,7 @@ export async function loadArticleBySlugLoose(
 export async function loadPublicArticleByShortId(
     shortId: string,
 ): Promise<AppArticle | null> {
-    const rows = await readMany("app_articles", {
-        filter: {
-            _and: [{ short_id: { _eq: shortId } }, filterPublicStatus()],
-        } as JsonObject,
-        limit: 1,
-    });
-    return rows[0] || null;
+    return await loadPublicArticleWithCache("short_id", shortId);
 }
 
 /** 宽松版本：不检查 status/is_public（用于 owner 回退） */

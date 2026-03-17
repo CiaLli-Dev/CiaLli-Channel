@@ -182,6 +182,7 @@ export async function handleMeArticles(
                 );
             }
             void cacheManager.invalidateByDomain("article-list");
+            void cacheManager.invalidateByDomain("article-public");
             void cacheManager.invalidateByDomain("home-feed");
             return ok({ item: { ...created, tags: safeCsv(created?.tags) } });
         }
@@ -301,6 +302,7 @@ export async function handleMeArticles(
                 }
             }
             void cacheManager.invalidateByDomain("article-list");
+            void cacheManager.invalidateByDomain("article-public");
             void cacheManager.invalidate("article-detail", id);
             void cacheManager.invalidateByDomain("home-feed");
             return ok({ item: { ...updated, tags: safeCsv(updated.tags) } });
@@ -320,6 +322,7 @@ export async function handleMeArticles(
                 await cleanupOrphanDirectusFiles(allFileIds);
             }
             void cacheManager.invalidateByDomain("article-list");
+            void cacheManager.invalidateByDomain("article-public");
             void cacheManager.invalidate("article-detail", id);
             void cacheManager.invalidateByDomain("home-feed");
             return ok({ id });

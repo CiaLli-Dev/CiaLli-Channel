@@ -1,4 +1,4 @@
-import { getCsrfToken } from "@/utils/csrf";
+import { ensureCsrfToken, getCsrfToken } from "@/utils/csrf";
 
 export interface ApiResult {
     response: Response;
@@ -17,6 +17,7 @@ export async function requestApi(
     url: string,
     init: RequestInit = {},
 ): Promise<ApiResult> {
+    const csrfToken = getCsrfToken() || (await ensureCsrfToken());
     const isFormData =
         typeof FormData !== "undefined" &&
         Boolean(init.body) &&
@@ -25,7 +26,7 @@ export async function requestApi(
         credentials: "include",
         headers: {
             Accept: "application/json",
-            "x-csrf-token": getCsrfToken(),
+            "x-csrf-token": csrfToken,
             ...(init.body && !isFormData
                 ? { "Content-Type": "application/json" }
                 : {}),

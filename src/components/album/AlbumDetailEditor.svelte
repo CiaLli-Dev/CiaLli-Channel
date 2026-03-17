@@ -1243,7 +1243,6 @@
                 href={photoPreviewSrc(photo) || photoDisplaySrc(photo, mLayout)}
                 data-fancybox="album-photo-preview"
                 data-caption={photoCaption(photo) || undefined}
-                data-no-swup
                 class="block relative"
               >
                 <img

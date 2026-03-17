@@ -1,5 +1,6 @@
 import I18nKey from "@i18n/i18nKey";
 import { t } from "@/scripts/i18n-runtime";
+import { navigate } from "astro:transitions/client";
 
 type AlbumNewRuntimeWindow = Window &
     typeof globalThis & {
@@ -18,9 +19,6 @@ type AlbumNewRuntimeWindow = Window &
                 },
             ) => void;
             finishTask: (handle: number) => void;
-        };
-        swup?: {
-            navigate?: (path: string) => void;
         };
     };
 
@@ -139,18 +137,15 @@ export function initAlbumNewPage(): void {
     };
 
     const navigateInternal = (path: string): void => {
-        if (runtimeWindow.swup?.navigate) {
-            try {
-                runtimeWindow.swup.navigate(path);
-                return;
-            } catch (error) {
-                console.warn(
-                    "[album-new] swup navigation failed, fallback to location.href:",
-                    error,
-                );
-            }
+        try {
+            navigate(path);
+        } catch (error) {
+            console.warn(
+                "[album-new] Astro navigation failed, fallback to location.href:",
+                error,
+            );
+            window.location.href = path;
         }
-        window.location.href = path;
     };
 
     const abortController = new AbortController();

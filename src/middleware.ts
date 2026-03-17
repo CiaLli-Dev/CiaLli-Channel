@@ -4,7 +4,7 @@ import { systemSiteConfig } from "@/config";
 import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import { assertRequiredEnv } from "@/server/env/required";
-import { ensureCsrfCookie } from "@/server/security/csrf";
+import { readCsrfToken } from "@/server/security/csrf";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
 
 function buildEnvErrorResponse(pathname: string): Response {
@@ -72,8 +72,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
         console.error("[middleware] failed to load site settings:", error);
     }
 
-    // 4. 确保 CSRF cookie 存在，并把 token 传给 SSR 用于 <meta> 注入
-    context.locals.csrfToken = ensureCsrfCookie(context);
+    // 4. 仅透传现有 CSRF token；首次 token 改为客户端按需拉取。
+    context.locals.csrfToken = readCsrfToken(context);
 
     // 5. 执行后续处理
     const response = await next();

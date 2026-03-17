@@ -8,11 +8,6 @@ type PageInitOptions = {
 
 type PageInitWindow = Window & {
     __pageInitRegistry?: Set<string>;
-    swup?: {
-        hooks?: {
-            on: (event: string, handler: () => void) => void;
-        };
-    };
 };
 
 const getRegistry = (): Set<string> => {
@@ -65,25 +60,9 @@ export const setupPageInit = ({
         onReady();
     }
 
-    // Astro 内置导航事件
+    // Astro 导航事件
     document.addEventListener("astro:page-load", onReady);
     document.addEventListener("astro:after-swap", onReady);
-
-    const bindSwup = () => {
-        const swup = (window as PageInitWindow).swup;
-        if (!swup?.hooks?.on) {
-            return;
-        }
-        // Swup 导航事件统一走同一初始化入口
-        swup.hooks.on("content:replace", onReady);
-        swup.hooks.on("page:view", onReady);
-    };
-
-    if ((window as PageInitWindow).swup) {
-        bindSwup();
-    } else {
-        document.addEventListener("swup:enable", bindSwup, { once: true });
-    }
 
     if (runOnPageShow) {
         // 处理 bfcache 恢复场景

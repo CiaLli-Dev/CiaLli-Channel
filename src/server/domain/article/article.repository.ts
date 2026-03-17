@@ -137,6 +137,7 @@ export async function create(
 ): Promise<AppArticle> {
     const created = await createWithShortId("app_articles", payload, createOne);
     void cacheManager.invalidateByDomain("article-list");
+    void cacheManager.invalidateByDomain("article-public");
     return created;
 }
 
@@ -146,6 +147,7 @@ export async function update(
 ): Promise<AppArticle> {
     const updated = await updateOne("app_articles", id, payload);
     void cacheManager.invalidateByDomain("article-list");
+    void cacheManager.invalidateByDomain("article-public");
     void cacheManager.invalidate("article-detail", id);
     return updated;
 }
@@ -153,6 +155,7 @@ export async function update(
 export async function remove(id: string): Promise<void> {
     await deleteOne("app_articles", id);
     void cacheManager.invalidateByDomain("article-list");
+    void cacheManager.invalidateByDomain("article-public");
     void cacheManager.invalidate("article-detail", id);
 }
 

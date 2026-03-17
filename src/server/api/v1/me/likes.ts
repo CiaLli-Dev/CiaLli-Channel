@@ -16,7 +16,11 @@ import { parseJsonBody, parsePagination } from "@/server/api/utils";
 import { validateBody } from "@/server/api/validate";
 
 import type { AppAccess } from "../shared";
-import { DIARY_FIELDS } from "../shared";
+import {
+    DIARY_FIELDS,
+    invalidateArticleInteractionAggregate,
+    invalidateArticleInteractionViewerState,
+} from "../shared";
 
 const ArticleLikeSchema = z.object({
     article_id: z.string().min(1, "缺少文章 ID"),
@@ -136,6 +140,8 @@ export async function handleMeArticleLikes(
         }
 
         const likeCount = await getArticleLikeCount(articleId);
+        invalidateArticleInteractionAggregate(articleId);
+        invalidateArticleInteractionViewerState(articleId, access.user.id);
         void cacheManager.invalidateByDomain("home-feed");
         return ok({
             item,

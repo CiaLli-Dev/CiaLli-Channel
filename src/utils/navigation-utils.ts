@@ -1,8 +1,9 @@
+import { navigate } from "astro:transitions/client";
 import { scrollToHashBelowTocBaseline } from "@/utils/hash-scroll";
 
 /**
  * 导航工具函数
- * 提供统一的页面导航功能，支持 Swup 无刷新跳转
+ * 提供统一的页面导航功能，使用 Astro View Transitions navigate() API
  */
 
 /**
@@ -39,36 +40,56 @@ export function navigateToPage(
         return;
     }
 
-    // 强制整页跳转（绕过 Swup）
+    // 站内同 URL 导航直接忽略，避免重复触发过渡与组件重挂载。
+    try {
+        const target = new URL(url, window.location.origin);
+        const current = new URL(window.location.href);
+        const isSameOrigin = target.origin === current.origin;
+        const isSamePathAndSearch =
+            target.pathname === current.pathname &&
+            target.search === current.search;
+
+        if (
+            isSameOrigin &&
+            isSamePathAndSearch &&
+            target.hash &&
+            target.hash !== current.hash
+        ) {
+            history.pushState(null, "", target.hash);
+            scrollToHashBelowTocBaseline(target.hash, { behavior: "smooth" });
+            return;
+        }
+
+        if (
+            isSameOrigin &&
+            isSamePathAndSearch &&
+            target.hash === current.hash
+        ) {
+            return;
+        }
+    } catch {
+        // ignore invalid relative URL parsing and continue navigation fallback
+    }
+
+    // 强制整页跳转
     if (options?.force) {
         fallbackNavigation(url, options);
         return;
     }
 
-    // 检查 Swup 是否可用
-    if (typeof window !== "undefined" && window.swup) {
-        const swup = window.swup;
-        try {
-            // 使用 Swup 进行无刷新跳转
-            if (options?.replace) {
-                swup.navigate(url, { history: false });
-            } else {
-                swup.navigate(url);
-            }
-        } catch (error) {
-            console.error("Swup navigation failed:", error);
-            // 降级到普通跳转
-            fallbackNavigation(url, options);
-        }
-    } else {
-        // Swup 不可用时的降级处理
+    // 使用 Astro View Transitions navigate() API
+    try {
+        navigate(url, {
+            history: options?.replace ? "replace" : "push",
+        });
+    } catch (error) {
+        console.error("Astro navigation failed:", error);
         fallbackNavigation(url, options);
     }
 }
 
 /**
  * 降级导航函数
- * 当 Swup 不可用时使用普通的页面跳转
  */
 function fallbackNavigation(
     url: string,
@@ -85,59 +106,24 @@ function fallbackNavigation(
 }
 
 /**
- * 检查 Swup 是否已准备就绪
+ * ClientRouter 始终可用，返回 true
  */
-export function isSwupReady(): boolean {
-    return typeof window !== "undefined" && Boolean(window.swup);
+export function isNavigationReady(): boolean {
+    return true;
 }
 
 /**
- * 等待 Swup 准备就绪
- * @param timeout 超时时间（毫秒）
+ * ClientRouter 始终可用，立即 resolve
  */
-export function waitForSwup(timeout = 5000): Promise<boolean> {
-    return new Promise((resolve) => {
-        if (isSwupReady()) {
-            resolve(true);
-            return;
-        }
-
-        const timeoutId = setTimeout(() => {
-            document.removeEventListener("swup:enable", checkSwup);
-            resolve(false);
-        }, timeout);
-
-        const checkSwup = () => {
-            if (isSwupReady()) {
-                clearTimeout(timeoutId);
-                document.removeEventListener("swup:enable", checkSwup);
-                resolve(true);
-            }
-        };
-
-        // 监听 Swup 启用事件
-        document.addEventListener("swup:enable", checkSwup);
-    });
+export function waitForNavigation(_timeout = 5000): Promise<boolean> {
+    return Promise.resolve(true);
 }
 
 /**
- * 预加载页面
- * @param url 要预加载的页面URL
+ * 预加载页面（Astro 自动处理 prefetch）
  */
-export function preloadPage(url: string): void {
-    if (typeof url !== "string" || !url) {
-        return;
-    }
-
-    // 如果 Swup 可用，使用其预加载功能
-    const swup = typeof window !== "undefined" ? window.swup : undefined;
-    if (isSwupReady() && swup?.preload) {
-        try {
-            swup.preload(url);
-        } catch (error) {
-            console.warn("Failed to preload page:", error);
-        }
-    }
+export function preloadPage(_url: string): void {
+    // Astro prefetch 自动处理，无需手动预加载
 }
 
 /**

@@ -22,6 +22,7 @@ import {
     DIARY_FIELDS,
     type AdminModuleKey,
     hasOwn,
+    invalidateArticleInteractionAggregate,
     parseBodyTextField,
     parseRouteId,
     requireAdmin,
@@ -149,9 +150,26 @@ export async function handleAdminContent(
             module === "diaries" &&
             (context.request.method === "PATCH" ||
                 context.request.method === "DELETE");
+        const needsCommentRelation =
+            (module === "article-comments" || module === "diary-comments") &&
+            (context.request.method === "PATCH" ||
+                context.request.method === "DELETE");
         const adminVisibleDiary = needsPublicDiaryGuard
             ? await loadAdminVisibleDiary(id)
             : null;
+        const relatedCommentRows = needsCommentRelation
+            ? await readMany(collection, {
+                  filter: { id: { _eq: id } } as JsonObject,
+                  fields:
+                      module === "article-comments"
+                          ? ["id", "article_id"]
+                          : ["id", "diary_id"],
+                  limit: 1,
+              })
+            : [];
+        const relatedComment = relatedCommentRows[0] as
+            | { article_id?: string; diary_id?: string }
+            | undefined;
         if (needsPublicDiaryGuard && !adminVisibleDiary) {
             return fail("日记不存在", 404);
         }
@@ -194,6 +212,7 @@ export async function handleAdminContent(
             // 失效缓存
             if (module === "articles") {
                 void cacheManager.invalidateByDomain("article-list");
+                void cacheManager.invalidateByDomain("article-public");
                 void cacheManager.invalidate("article-detail", id);
                 void cacheManager.invalidateByDomain("home-feed");
             } else if (module === "diaries") {
@@ -208,6 +227,19 @@ export async function handleAdminContent(
             } else if (module === "albums") {
                 void cacheManager.invalidateByDomain("album-list");
                 void cacheManager.invalidate("album-detail", id);
+            } else if (module === "article-comments") {
+                const articleId = toOptionalString(relatedComment?.article_id);
+                if (articleId) {
+                    invalidateArticleInteractionAggregate(articleId);
+                    void cacheManager.invalidate("article-detail", articleId);
+                }
+                void cacheManager.invalidateByDomain("home-feed");
+            } else if (module === "diary-comments") {
+                const diaryId = toOptionalString(relatedComment?.diary_id);
+                if (diaryId) {
+                    void invalidateDiaryDetailCache(diaryId);
+                }
+                void cacheManager.invalidateByDomain("home-feed");
             }
             return ok({ item: updated });
         }
@@ -250,6 +282,7 @@ export async function handleAdminContent(
             // 失效缓存
             if (module === "articles") {
                 void cacheManager.invalidateByDomain("article-list");
+                void cacheManager.invalidateByDomain("article-public");
                 void cacheManager.invalidate("article-detail", id);
                 void cacheManager.invalidateByDomain("home-feed");
             } else if (module === "diaries") {
@@ -259,6 +292,19 @@ export async function handleAdminContent(
             } else if (module === "albums") {
                 void cacheManager.invalidateByDomain("album-list");
                 void cacheManager.invalidate("album-detail", id);
+            } else if (module === "article-comments") {
+                const articleId = toOptionalString(relatedComment?.article_id);
+                if (articleId) {
+                    invalidateArticleInteractionAggregate(articleId);
+                    void cacheManager.invalidate("article-detail", articleId);
+                }
+                void cacheManager.invalidateByDomain("home-feed");
+            } else if (module === "diary-comments") {
+                const diaryId = toOptionalString(relatedComment?.diary_id);
+                if (diaryId) {
+                    void invalidateDiaryDetailCache(diaryId);
+                }
+                void cacheManager.invalidateByDomain("home-feed");
             }
             return ok({ id, module });
         }

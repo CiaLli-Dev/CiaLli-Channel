@@ -34,6 +34,12 @@ export type RenderMarkdownOptions = {
     allowBlobImages?: boolean;
 };
 
+/**
+ * Markdown 渲染缓存版本：
+ * 当 sanitize 或渲染策略发生行为变化时递增，主动淘汰旧缓存，避免命中历史 HTML。
+ */
+const MARKDOWN_CACHE_VERSION = "v1";
+
 const expressiveCodeOptions: RehypeExpressiveCodeOptions = {
     themes: ["github-light", "github-dark"],
     plugins: [
@@ -238,7 +244,7 @@ export async function renderMarkdown(
 
     const hashInput = target === "feed" && site ? source + site.href : source;
     const hash = createHash("sha256").update(hashInput).digest("hex");
-    const cacheKey = `${target}:${mode}:${allowBlobImages ? "blob" : "strict"}:${hash}`;
+    const cacheKey = `${MARKDOWN_CACHE_VERSION}:${target}:${mode}:${allowBlobImages ? "blob" : "strict"}:${hash}`;
 
     const cached = await cacheManager.get<string>("markdown", cacheKey);
     if (cached !== null) {
@@ -351,3 +357,4 @@ export async function renderMarkdownForFeed(
 ): Promise<string> {
     return renderMarkdown(markdown, { target: "feed", site });
 }
+

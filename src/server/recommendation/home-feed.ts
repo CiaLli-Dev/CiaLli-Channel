@@ -27,9 +27,9 @@ import type {
     HomeFeedScoredCandidate,
 } from "./home-feed.types";
 
-const DEFAULT_ARTICLE_CANDIDATE_LIMIT = 240;
-const DEFAULT_DIARY_CANDIDATE_LIMIT = 160;
-const DEFAULT_OUTPUT_LIMIT = 180;
+const DEFAULT_ARTICLE_CANDIDATE_LIMIT = 80;
+const DEFAULT_DIARY_CANDIDATE_LIMIT = 60;
+const DEFAULT_OUTPUT_LIMIT = 60;
 const DEFAULT_ENGAGEMENT_WINDOW_HOURS = 72;
 const DEFAULT_PERSONALIZATION_LOOKBACK_DAYS = 30;
 
@@ -48,6 +48,7 @@ const RECENCY_DECAY_HOURS = 36;
 export const HOME_FEED_ALGO_VERSION = "home-feed-v1";
 
 const HOME_FEED_CANDIDATE_CACHE_VERSION = "home-feed-candidates-v1";
+const HOME_FEED_PROFILE_CACHE_VERSION = "home-feed-profile-v1";
 
 const ARTICLE_FEED_FIELDS = [
     "id",
@@ -57,7 +58,6 @@ const ARTICLE_FEED_FIELDS = [
     "title",
     "slug",
     "summary",
-    "body_markdown",
     "cover_file",
     "cover_url",
     "tags",
@@ -73,6 +73,12 @@ type HomeFeedCandidatePoolCachePayload = {
     articleCandidateCount: number;
     diaryCandidateCount: number;
     candidates: HomeFeedCandidate[];
+};
+
+type HomeFeedPreferenceProfileCachePayload = {
+    authorWeights: Array<[string, number]>;
+    tagWeights: Array<[string, number]>;
+    categoryWeights: Array<[string, number]>;
 };
 
 let permalinkMapInitialized = false;
@@ -160,6 +166,26 @@ function createEmptyPreferenceProfile(): HomeFeedPreferenceProfile {
         authorWeights: new Map(),
         tagWeights: new Map(),
         categoryWeights: new Map(),
+    };
+}
+
+function serializePreferenceProfile(
+    profile: HomeFeedPreferenceProfile,
+): HomeFeedPreferenceProfileCachePayload {
+    return {
+        authorWeights: Array.from(profile.authorWeights.entries()),
+        tagWeights: Array.from(profile.tagWeights.entries()),
+        categoryWeights: Array.from(profile.categoryWeights.entries()),
+    };
+}
+
+function hydratePreferenceProfile(
+    payload: HomeFeedPreferenceProfileCachePayload,
+): HomeFeedPreferenceProfile {
+    return {
+        authorWeights: new Map(payload.authorWeights),
+        tagWeights: new Map(payload.tagWeights),
+        categoryWeights: new Map(payload.categoryWeights),
     };
 }
 
@@ -364,12 +390,6 @@ function resolveArticleCover(article: AppArticle): string | undefined {
     });
 }
 
-function isProtectedContentBody(value: string | null | undefined): boolean {
-    return String(value || "")
-        .trim()
-        .startsWith("CL2:");
-}
-
 function buildArticleFeedEntry(
     article: AppArticle,
     authorMap: HomeFeedAuthorMap,
@@ -390,7 +410,8 @@ function buildArticleFeedEntry(
     return {
         id: routeId,
         slug: normalizeIdentity(article.slug) || null,
-        body: String(article.body_markdown || ""),
+        // 首页卡片优先使用 summary，避免传输正文大字段。
+        body: normalizeIdentity(article.summary),
         url: `/posts/${routeId}`,
         data: {
             article_id: articleId,
@@ -405,7 +426,7 @@ function buildArticleFeedEntry(
             like_count: articleLikeCountMap.get(articleId) || 0,
             published: publishedAt,
             updated: updatedAt,
-            encrypted: isProtectedContentBody(article.body_markdown),
+            encrypted: false,
         },
     };
 }
@@ -470,6 +491,19 @@ async function loadPreferenceProfile(
     const normalizedViewerId = normalizeIdentity(viewerId);
     if (!normalizedViewerId) {
         return createEmptyPreferenceProfile();
+    }
+    const cacheKey = hashParams({
+        cacheVersion: HOME_FEED_PROFILE_CACHE_VERSION,
+        viewerId: normalizedViewerId,
+        lookbackDays,
+    });
+    const cached =
+        await cacheManager.get<HomeFeedPreferenceProfileCachePayload>(
+            "home-feed-profile",
+            cacheKey,
+        );
+    if (cached) {
+        return hydratePreferenceProfile(cached);
     }
 
     const lookbackStartIso = new Date(
@@ -552,11 +586,18 @@ async function loadPreferenceProfile(
         incrementMapCounter(authorCounts, diary.author_id);
     }
 
-    return {
+    const profile = {
         authorWeights: normalizeWeightMap(authorCounts),
         tagWeights: normalizeWeightMap(tagCounts),
         categoryWeights: normalizeWeightMap(categoryCounts),
-    };
+    } satisfies HomeFeedPreferenceProfile;
+    // 偏好画像短 TTL 缓存，避免每次首页请求都回源统计用户互动历史。
+    void cacheManager.set(
+        "home-feed-profile",
+        cacheKey,
+        serializePreferenceProfile(profile),
+    );
+    return profile;
 }
 
 export function calculateRecencyScore(hoursSincePublish: number): number {

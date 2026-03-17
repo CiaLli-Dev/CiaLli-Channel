@@ -9,8 +9,13 @@ import ResponsiveImage from "@components/misc/ResponsiveImage.astro";
 import { systemSiteConfig } from "@/config";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
 import { renderMarkdown } from "@/server/markdown/render";
-import { buildPublicAssetUrl } from "@/server/directus-auth";
 import {
+  DIRECTUS_ACCESS_COOKIE_NAME,
+  DIRECTUS_REFRESH_COOKIE_NAME,
+  buildPublicAssetUrl,
+} from "@/server/directus-auth";
+import {
+  loadArticleInteractionSnapshot,
   isSpecialArticleSlug,
   loadArticleByShortIdLoose,
   loadArticleBySlugLoose,
@@ -25,9 +30,8 @@ import {
   loadProfileForViewerByUserId,
   profileToSidebarData,
 } from "@/server/api/v1/public-data";
-import { countItems, readMany } from "@/server/directus/client";
 import { getSessionUser } from "@/server/auth/session";
-import type { JsonObject } from "@/types/json";
+import type { AppArticle } from "@/types/app";
 import { buildOwnerArticlePasswordStorageKeys } from "@/utils/protected-content";
 import DetailActionFloat from "@components/control/DetailActionFloat.astro";
 
@@ -57,75 +61,97 @@ let articleCommentCount = 0;
 let articleLikedByViewer = false;
 let viewerIsOwner = false;
 let ownerPasswordStorageKeys: string[] = [];
+let sessionUserId: string | null = null;
+const hasSessionCookie = Boolean(
+  Astro.cookies.get(DIRECTUS_ACCESS_COOKIE_NAME)?.value ||
+  Astro.cookies.get(DIRECTUS_REFRESH_COOKIE_NAME)?.value,
+);
+
+function resolvePublicArticleByRoute(
+  routeId: string,
+): Promise<AppArticle | null> {
+  if (isShortId(routeId)) {
+    return loadPublicArticleByShortId(routeId);
+  }
+  if (isSpecialArticleSlug(routeId)) {
+    return loadPublicArticleBySlug(routeId);
+  }
+  return Promise.resolve(null);
+}
+
+function resolveOwnerArticleByRoute(
+  routeId: string,
+): Promise<AppArticle | null> {
+  if (isShortId(routeId)) {
+    return loadArticleByShortIdLoose(routeId);
+  }
+  if (isSpecialArticleSlug(routeId)) {
+    return loadArticleBySlugLoose(routeId);
+  }
+  return Promise.resolve(null);
+}
 
 if (rawId) {
   try {
-    const sessionUser = await getSessionUser(Astro);
+    // 会话与公开文章查询并行启动，减少首段串行等待。
+    const sessionUserPromise = getSessionUser(Astro);
+    const publicArticlePromise = resolvePublicArticleByRoute(rawId);
+    const [sessionUser, publicArticle] = await Promise.all([
+      sessionUserPromise,
+      publicArticlePromise,
+    ]);
+    sessionUserId = sessionUser?.id ?? null;
 
-    // First try public query
-    let rawArticle = isShortId(rawId)
-      ? await loadPublicArticleByShortId(rawId)
-      : isSpecialArticleSlug(rawId)
-        ? await loadPublicArticleBySlug(rawId)
-        : null;
+    let rawArticle = publicArticle;
 
-    // Public query failed + user is logged in → try owner fallback
+    // 公开查询失败且已登录时，才触发 owner 回退查询。
     if (!rawArticle && sessionUser) {
-      const candidate = isShortId(rawId)
-        ? await loadArticleByShortIdLoose(rawId)
-        : isSpecialArticleSlug(rawId)
-          ? await loadArticleBySlugLoose(rawId)
-          : null;
+      const candidate = await resolveOwnerArticleByRoute(rawId);
       if (candidate && candidate.author_id === sessionUser.id) {
         rawArticle = candidate;
       }
     }
 
     if (rawArticle) {
-      const authorMap = await getAuthorBundle([rawArticle.author_id]);
+      const authorMapPromise = getAuthorBundle([rawArticle.author_id]);
+      const interactionPromise = loadArticleInteractionSnapshot({
+        articleId: rawArticle.id,
+        viewerId: sessionUserId,
+      });
+      const authorProfilePromise = loadProfileForViewerByUserId(
+        rawArticle.author_id,
+        sessionUserId,
+      );
+
+      const rawBodyMarkdown = String(rawArticle.body_markdown || "");
+      const isEncryptedBody = rawBodyMarkdown.trim().startsWith("CL2:");
+      const articleHtmlPromise = isEncryptedBody
+        ? Promise.resolve("")
+        : renderMarkdown(rawBodyMarkdown, {
+            target: "page",
+          });
+
+      const [authorMap, interaction, authorProfile, renderedArticleHtml] =
+        await Promise.all([
+          authorMapPromise,
+          interactionPromise,
+          authorProfilePromise,
+          articleHtmlPromise,
+        ]);
+
       article = {
         ...rawArticle,
         tags: safeCsv(rawArticle.tags),
         author: readAuthor(authorMap, rawArticle.author_id),
       };
-
-      const [likeCount, commentCount, likedRows] = await Promise.all([
-        countItems("app_article_likes", {
-          _and: [
-            { article_id: { _eq: rawArticle.id } },
-            { status: { _eq: "published" } },
-          ],
-        } as JsonObject),
-        countItems("app_article_comments", {
-          _and: [
-            { article_id: { _eq: rawArticle.id } },
-            { status: { _eq: "published" } },
-            { is_public: { _eq: true } },
-          ],
-        } as JsonObject),
-        sessionUser?.id
-          ? readMany("app_article_likes", {
-              filter: {
-                _and: [
-                  { article_id: { _eq: rawArticle.id } },
-                  { user_id: { _eq: sessionUser.id } },
-                  { status: { _eq: "published" } },
-                ],
-              } as JsonObject,
-              limit: 1,
-              fields: ["id"],
-            })
-          : Promise.resolve([]),
-      ]);
-      articleLikeCount = likeCount;
-      articleCommentCount = commentCount;
-      articleLikedByViewer = likedRows.length > 0;
+      articleLikeCount = interaction.likeCount;
+      articleCommentCount = interaction.commentCount;
+      articleLikedByViewer = interaction.viewerLiked;
       viewerIsOwner = Boolean(
-        sessionUser?.id && rawArticle.author_id === sessionUser.id,
+        sessionUserId && rawArticle.author_id === sessionUserId,
       );
 
-      const rawBodyMarkdown = String(rawArticle.body_markdown || "");
-      if (rawBodyMarkdown.trim().startsWith("CL2:")) {
+      if (isEncryptedBody) {
         encryptedBody = rawBodyMarkdown.trim();
         ownerPasswordStorageKeys = buildOwnerArticlePasswordStorageKeys({
           id: rawArticle.id,
@@ -133,14 +159,8 @@ if (rawId) {
           slug: rawArticle.slug,
         });
       } else {
-        articleHtml = await renderMarkdown(rawBodyMarkdown, {
-          target: "page",
-        });
+        articleHtml = renderedArticleHtml;
       }
-      const authorProfile = await loadProfileForViewerByUserId(
-        rawArticle.author_id,
-        sessionUser?.id ?? null,
-      );
       if (authorProfile) {
         Astro.locals.sidebarProfile = profileToSidebarData(authorProfile);
       }
@@ -153,6 +173,18 @@ if (rawId) {
   }
 } else {
   Astro.response.status = 404;
+}
+
+const responseStatus = Astro.response.status ?? 200;
+if (responseStatus < 500) {
+  if (hasSessionCookie || sessionUserId) {
+    Astro.response.headers.set("Cache-Control", "private, no-store");
+  } else {
+    Astro.response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=60, stale-while-revalidate=300",
+    );
+  }
 }
 
 const hasCoverFile = Boolean(article?.cover_file);
@@ -343,6 +375,7 @@ const publishedMetaText = formatArticleMetaDate(article?.published_at);
           likeCount={articleLikeCount}
           commentCount={articleCommentCount}
           likedByViewer={articleLikedByViewer}
+          dockToBackTop={true}
           editHref={`/posts/${encodeURIComponent(article.short_id || rawId)}/edit`}
           deleteEndpoint={`/api/v1/me/articles/${encodeURIComponent(article.id)}`}
           deleteConfirmMessage={i18n(I18nKey.articleDeleteConfirm)}

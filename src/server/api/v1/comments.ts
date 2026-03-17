@@ -29,6 +29,7 @@ import {
 import {
     buildCommentTree,
     DIARY_FIELDS,
+    invalidateArticleInteractionAggregate,
     parseRouteId,
     requireAccess,
 } from "./shared";
@@ -616,6 +617,7 @@ async function handleArticleComments(
                 show_on_profile: input.show_on_profile,
             });
             void cacheManager.invalidate("article-detail", articleId);
+            invalidateArticleInteractionAggregate(articleId);
             void cacheManager.invalidateByDomain("home-feed");
             return ok({
                 item: await renderCommentItem(created),
@@ -649,6 +651,7 @@ async function handleArticleComments(
                 payload,
             );
             void cacheManager.invalidate("article-detail", comment.article_id);
+            invalidateArticleInteractionAggregate(comment.article_id);
             void cacheManager.invalidateByDomain("home-feed");
             return ok({
                 item: await renderCommentItem(updated),
@@ -661,6 +664,7 @@ async function handleArticleComments(
                 commentId,
             );
             void cacheManager.invalidate("article-detail", comment.article_id);
+            invalidateArticleInteractionAggregate(comment.article_id);
             void cacheManager.invalidateByDomain("home-feed");
             return ok({ id: commentId });
         }

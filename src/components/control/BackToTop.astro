@@ -9,7 +9,7 @@ import { Icon } from "astro-icon/components";
     class="back-to-top-btn hide flex items-center rounded-2xl overflow-hidden transition"
     onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
   >
-    <button aria-label="Back to Top" class="btn-card h-[3.75rem] w-[3.75rem]">
+    <button aria-label="Back to Top" class="btn-card back-to-top-btn-inner">
       <Icon name="material-symbols:keyboard-arrow-up-rounded" class="mx-auto" />
     </button>
   </div>
@@ -17,12 +17,16 @@ import { Icon } from "astro-icon/components";
 
 <style lang="stylus">
   .back-to-top-wrapper
-    width: 3.75rem
-    height: 3.75rem
+    width: var(--right-float-size, 3.75rem)
+    height: var(--right-float-size, 3.75rem)
     position: absolute
     right: 0
     top: 0
     pointer-events: none
+
+  .back-to-top-btn-inner
+    width: var(--right-float-size, 3.75rem)
+    height: var(--right-float-size, 3.75rem)
 
   .back-to-top-btn
     color: var(--primary)
@@ -30,11 +34,11 @@ import { Icon } from "astro-icon/components";
     font-weight: bold
     border: none
     position: fixed
-    bottom: 10rem
+    bottom: var(--back-to-top-bottom, 10rem)
     opacity: 1
-    right: 6rem
+    right: var(--right-float-right, 6rem)
     cursor: pointer
-    transform: translateX(5rem)
+    transform: translateX(var(--right-float-shift-x, 5rem))
     pointer-events: auto
     transition: box-shadow 1s ease-in-out
 
@@ -42,10 +46,10 @@ import { Icon } from "astro-icon/components";
       font-size: 1.75rem
 
     &.hide
-      transform: translateX(5rem) scale(0.9)
+      transform: translateX(var(--right-float-shift-x, 5rem)) scale(0.9)
       opacity: 0
       pointer-events: none
 
     &:active
-      transform: translateX(5rem) scale(0.9)
+      transform: translateX(var(--right-float-shift-x, 5rem)) scale(0.9)
 </style>

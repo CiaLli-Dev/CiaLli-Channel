@@ -3,16 +3,21 @@ export type CacheDomain =
     | "author"
     | "site-settings"
     | "sidebar"
+    | "profile-viewer"
     | "article-list"
     | "article-detail"
+    | "article-public"
+    | "article-interaction"
     | "diary-list"
     | "diary-detail"
     | "home-feed"
     | "home-feed-candidates"
+    | "home-feed-profile"
     | "album-list"
     | "album-detail"
     | "bangumi-list"
     | "user-home"
+    | "session-user"
     | "markdown";
 
 /** 缓存策略：L1 = 内存，L2 = Redis */

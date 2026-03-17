@@ -340,7 +340,6 @@ export function initDiaryEditorPage(options: InitOptions): boolean {
                 anchor.href = previewHref;
                 anchor.className = "block w-full h-full";
                 anchor.setAttribute("data-fancybox", "diary-photo-preview");
-                anchor.setAttribute("data-no-swup", "");
                 if (item.caption) {
                     anchor.setAttribute("data-caption", item.caption);
                 }
@@ -908,7 +907,7 @@ export function initDiaryEditorPage(options: InitOptions): boolean {
 }
 
 /**
- * 页面级初始化：兼容 Astro/Swup 导航后的重复进入场景。
+ * 页面级初始化：兼容 Astro View Transitions 导航后的重复进入场景。
  */
 export function bootstrapDiaryEditorPage(): void {
     setupPageInit({

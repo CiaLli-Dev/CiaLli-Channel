@@ -1,5 +1,6 @@
 import type { AppPermissions, AppProfile, AppRole, AppUser } from "@/types/app";
 import type { JsonObject } from "@/types/json";
+import { cacheManager } from "@/server/cache/manager";
 import {
     createOne,
     readMany,
@@ -289,6 +290,7 @@ export async function updateProfileUsername(
     await updateOne("app_user_profiles", profileId, {
         username: normalized,
     });
+    void cacheManager.invalidateByDomain("profile-viewer");
     return normalized;
 }
 

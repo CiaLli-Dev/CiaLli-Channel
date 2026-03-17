@@ -26,35 +26,31 @@ export class AnimationManager {
      * 初始化动画系统
      */
     init(): void {
-        this.setupSwupIntegration();
+        this.setupTransitionIntegration();
         this.setupScrollAnimations();
         console.log("🎨 Animation Manager initialized");
     }
 
     /**
-     * 设置 Swup 集成
+     * 设置 Astro View Transitions 集成
      */
-    private setupSwupIntegration(): void {
-        if (typeof window !== "undefined" && window.swup) {
-            const swup = window.swup;
-
-            // 页面离开动画
-            swup.hooks.on("animation:out:start", () => {
-                this.triggerPageLeaveAnimation();
-            });
-
-            // 页面进入动画
-            swup.hooks.on("animation:in:start", () => {
-                this.triggerPageEnterAnimation();
-            });
-
-            // 内容替换后重新初始化动画
-            swup.hooks.on("content:replace", () => {
-                setTimeout(() => {
-                    this.initializePageAnimations();
-                }, 50);
-            });
+    private setupTransitionIntegration(): void {
+        if (typeof document === "undefined") {
+            return;
         }
+
+        // DOM 替换前触发离开动画
+        document.addEventListener("astro:before-swap", () => {
+            this.triggerPageLeaveAnimation();
+        });
+
+        // DOM 替换后重新初始化动画
+        document.addEventListener("astro:after-swap", () => {
+            this.triggerPageEnterAnimation();
+            setTimeout(() => {
+                this.initializePageAnimations();
+            }, 50);
+        });
     }
 
     /**

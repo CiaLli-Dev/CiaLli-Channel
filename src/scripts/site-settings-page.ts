@@ -1,7 +1,7 @@
 /**
  * /admin/settings/site 页面运行逻辑。
  *
- * 从原始 `<script is:inline>` 抽离，确保 Swup 切页后可正确重新初始化，
+ * 从原始 `<script is:inline>` 抽离，确保页面切换后可正确重新初始化，
  * 不依赖整页刷新。
  */
 

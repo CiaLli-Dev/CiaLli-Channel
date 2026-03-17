@@ -441,6 +441,7 @@ export async function handleAdminSettings(
                 body_markdown: input.body_markdown,
             });
             void cacheManager.invalidateByDomain("article-list");
+            void cacheManager.invalidateByDomain("article-public");
             void cacheManager.invalidate("article-detail", ABOUT_ARTICLE_SLUG);
             void cacheManager.invalidate("article-detail", about.id);
             return ok({

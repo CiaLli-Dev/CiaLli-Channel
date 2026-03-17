@@ -1,4 +1,5 @@
 ---
+import { ClientRouter } from "astro:transitions";
 import Analytics from "@vercel/analytics/astro";
 import SpeedInsights from "@vercel/speed-insights/astro";
 import ConfigCarrier from "@components/ConfigCarrier.astro";
@@ -65,8 +66,8 @@ const csrfTokenFromLocals =
 const csrfToken = csrfTokenFromLocals || readCsrfToken(Astro);
 
 // 在首屏渲染时先为 body 打上类名，用于决定 banner 高度
-// 虽然 Swup 会在切页后更新 body，但时机在动画之后，会造成高度切换延迟
-// 因此仍需在点击链接时通过 Swup hooks 立即切换布局态
+// 虽然 View Transitions 会在切页后更新 body，但时机在动画之后，会造成高度切换延迟
+// 因此仍需在点击链接时通过 transition hooks 立即切换布局态
 const isHomePage = pathsEqual(Astro.url.pathname, url("/"));
 const normalizedPathname = Astro.url.pathname.replace(/\/+$/, "").toLowerCase();
 const isArchivePage =
@@ -190,6 +191,7 @@ const bodyStyle = bodyFontFamily ? `font-family: ${bodyFontFamily};` : "";
   data-overlayscrollbars-initialize
 >
   <head>
+    <ClientRouter fallback="swap" />
     <link rel="stylesheet" href={generatedFontManifest.cssHref} />
     {
       generatedFontManifest.preloadFonts.map((font) => (
@@ -401,7 +403,10 @@ const bodyStyle = bodyFontFamily ? `font-family: ${bodyFontFamily};` : "";
           window.addEventListener("resize", applyDesktopSupportState, {
             passive: true,
           });
-          document.addEventListener("swup:page:view", applyDesktopSupportState);
+          document.addEventListener(
+            "astro:page-load",
+            applyDesktopSupportState,
+          );
           document.addEventListener(
             "astro:after-swap",
             applyDesktopSupportState,
@@ -485,6 +490,34 @@ const bodyStyle = bodyFontFamily ? `font-family: ${bodyFontFamily};` : "";
     <meta name="twitter:description" content={description || pageTitle} />
     <meta name="viewport" content="width=device-width" />
     <meta name="cialli-csrf-token" content={csrfToken} />
+    <script is:inline>
+      (function bootstrapCsrfToken() {
+        const meta = document.querySelector('meta[name="cialli-csrf-token"]');
+        if (!(meta instanceof HTMLMetaElement) || meta.content) {
+          return;
+        }
+        void fetch("/api/auth/csrf", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        })
+          .then((response) =>
+            response.ok ? response.json().catch(() => null) : null,
+          )
+          .then((data) => {
+            const token =
+              data && data.ok && typeof data.token === "string"
+                ? data.token
+                : "";
+            if (token) {
+              meta.content = token;
+            }
+          })
+          .catch(() => null);
+      })();
+    </script>
     <meta name="generator" content={Astro.generator} />
     {
       favicons.map((favicon) => (
@@ -571,8 +604,8 @@ const bodyStyle = bodyFontFamily ? `font-family: ${bodyFontFamily};` : "";
           // 监听窗口尺寸变化
           window.addEventListener("resize", adjustPageScale);
 
-          // Swup 页面切换后也需要检查
-          document.addEventListener("swup:page:view", adjustPageScale);
+          // 页面切换后也需要检查
+          document.addEventListener("astro:page-load", adjustPageScale);
         }
       })();
     </script>
@@ -616,7 +649,9 @@ const bodyStyle = bodyFontFamily ? `font-family: ${bodyFontFamily};` : "";
       <!-- Music Player - 仅在启用时加载 -->
       {
         musicPlayerSettings.enable && (
-          <MusicPlayer musicPlayer={musicPlayerSettings} client:idle />
+          <div id="music-player-shell" transition:persist>
+            <MusicPlayer musicPlayer={musicPlayerSettings} client:idle />
+          </div>
         )
       }
 

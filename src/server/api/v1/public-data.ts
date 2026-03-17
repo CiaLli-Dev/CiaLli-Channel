@@ -728,16 +728,34 @@ export function profileToSidebarData(profile: AppProfile): SidebarProfileData {
 export async function loadPublicProfileByUserId(
     userId: string,
 ): Promise<AppProfile | null> {
+    const normalizedUserId = String(userId || "").trim();
+    if (!normalizedUserId) {
+        return null;
+    }
+    const cacheKey = `public:${normalizedUserId}`;
+    const cached = await cacheManager.get<{
+        exists: boolean;
+        profile: AppProfile | null;
+    }>("profile-viewer", cacheKey);
+    if (cached) {
+        return cached.profile;
+    }
+
     const rows = await readMany("app_user_profiles", {
         filter: {
             _and: [
-                { user_id: { _eq: userId } },
+                { user_id: { _eq: normalizedUserId } },
                 { profile_public: { _eq: true } },
             ],
         } as JsonObject,
         limit: 1,
     });
-    return rows[0] || null;
+    const profile = rows[0] || null;
+    void cacheManager.set("profile-viewer", cacheKey, {
+        exists: true,
+        profile,
+    });
+    return profile;
 }
 
 /**
@@ -748,15 +766,34 @@ export async function loadProfileForViewerByUserId(
     userId: string,
     viewerId?: string | null,
 ): Promise<AppProfile | null> {
-    const isOwner = Boolean(viewerId) && viewerId === userId;
+    const normalizedUserId = String(userId || "").trim();
+    if (!normalizedUserId) {
+        return null;
+    }
+    const normalizedViewerId = String(viewerId || "").trim();
+    const isOwner =
+        Boolean(normalizedViewerId) && normalizedViewerId === normalizedUserId;
     if (isOwner) {
+        const cacheKey = `owner:${normalizedUserId}`;
+        const cached = await cacheManager.get<{
+            exists: boolean;
+            profile: AppProfile | null;
+        }>("profile-viewer", cacheKey);
+        if (cached) {
+            return cached.profile;
+        }
         const rows = await readMany("app_user_profiles", {
-            filter: { user_id: { _eq: userId } } as JsonObject,
+            filter: { user_id: { _eq: normalizedUserId } } as JsonObject,
             limit: 1,
         });
-        return (rows[0] as AppProfile | undefined) ?? null;
+        const profile = (rows[0] as AppProfile | undefined) ?? null;
+        void cacheManager.set("profile-viewer", cacheKey, {
+            exists: true,
+            profile,
+        });
+        return profile;
     }
-    return loadPublicProfileByUserId(userId);
+    return loadPublicProfileByUserId(normalizedUserId);
 }
 
 export function invalidateOfficialSidebarCache(): void {

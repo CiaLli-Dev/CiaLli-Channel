@@ -21,6 +21,14 @@ const className = Astro.props.class;
   import { getTocBaselineOffset } from "@/utils/toc-offset";
 
   class TableOfContents extends HTMLElement {
+    private static readonly TOC_FADE_HEIGHT_PX = 44;
+    private static readonly AUTO_SCROLL_TRIGGER_PADDING_PX = 12;
+    private static readonly AUTO_SCROLL_SAFE_INSET_PX = 12;
+    private static readonly AUTO_SCROLL_MIN_DURATION_MS = 320;
+    private static readonly AUTO_SCROLL_MAX_DURATION_MS = 620;
+    private static readonly AUTO_SCROLL_STEP_RATIO = 0.38;
+    private static readonly AUTO_SCROLL_MIN_STEP_PX = 96;
+
     tocEl: HTMLElement | null = null;
     visibleClass = "visible";
     observer: IntersectionObserver;
@@ -32,6 +40,13 @@ const className = Astro.props.class;
     active: boolean[] = [];
     activeIndicator: HTMLElement | null = null;
     initTimeout: number | null = null;
+    programmaticScrollTimeout: number | null = null;
+    autoScrollAnimationFrame: number | null = null;
+    isPostDetailSidebarToc = false;
+    manualBrowseMode = false;
+    isProgrammaticScroll = false;
+    lastWindowScrollY = 0;
+    pageScrollDirection = 0;
 
     constructor() {
       super();
@@ -53,13 +68,124 @@ const className = Astro.props.class;
       }
     };
 
+    private clearProgrammaticScrollTimeout = (): void => {
+      if (this.programmaticScrollTimeout !== null) {
+        window.clearTimeout(this.programmaticScrollTimeout);
+        this.programmaticScrollTimeout = null;
+      }
+    };
+
+    private markProgrammaticScroll = (durationMs = 900): void => {
+      this.isProgrammaticScroll = true;
+      this.clearProgrammaticScrollTimeout();
+      this.programmaticScrollTimeout = window.setTimeout(
+        () => {
+          this.isProgrammaticScroll = false;
+          this.programmaticScrollTimeout = null;
+        },
+        Math.max(120, durationMs),
+      );
+    };
+
+    private clearAutoScrollAnimation = (): void => {
+      if (this.autoScrollAnimationFrame !== null) {
+        window.cancelAnimationFrame(this.autoScrollAnimationFrame);
+        this.autoScrollAnimationFrame = null;
+      }
+    };
+
+    private interruptProgrammaticScroll = (): void => {
+      this.clearAutoScrollAnimation();
+      this.clearProgrammaticScrollTimeout();
+      this.isProgrammaticScroll = false;
+    };
+
+    private setManualBrowseMode = (active: boolean): void => {
+      this.manualBrowseMode = active;
+      this.dataset.manualBrowse = active ? "1" : "0";
+    };
+
     private cleanupObservers = (): void => {
       this.sections.forEach((section) => this.observer.unobserve(section));
       this.observer.disconnect();
     };
 
+    private unbindInteractionListeners = (): void => {
+      if (this.tocEl) {
+        this.tocEl.removeEventListener("click", this.handleAnchorClick, true);
+        this.tocEl.removeEventListener("scroll", this.handleTocScroll);
+        this.tocEl.removeEventListener("wheel", this.handleTocPointerIntent);
+        this.tocEl.removeEventListener(
+          "touchmove",
+          this.handleTocPointerIntent,
+        );
+        this.tocEl.removeEventListener("keydown", this.handleTocKeydown);
+      }
+      window.removeEventListener("scroll", this.handleWindowScroll);
+      window.removeEventListener("resize", this.handleWindowResize);
+    };
+
+    private bindInteractionListeners = (): void => {
+      if (!this.tocEl) {
+        return;
+      }
+
+      this.tocEl.removeEventListener("click", this.handleAnchorClick, true);
+      this.tocEl.addEventListener("click", this.handleAnchorClick, true);
+
+      this.tocEl.removeEventListener("scroll", this.handleTocScroll);
+      this.tocEl.addEventListener("scroll", this.handleTocScroll, {
+        passive: true,
+      });
+
+      this.tocEl.removeEventListener("wheel", this.handleTocPointerIntent);
+      this.tocEl.addEventListener("wheel", this.handleTocPointerIntent, {
+        passive: true,
+      });
+
+      this.tocEl.removeEventListener("touchmove", this.handleTocPointerIntent);
+      this.tocEl.addEventListener("touchmove", this.handleTocPointerIntent, {
+        passive: true,
+      });
+
+      this.tocEl.removeEventListener("keydown", this.handleTocKeydown);
+      this.tocEl.addEventListener("keydown", this.handleTocKeydown);
+
+      window.removeEventListener("scroll", this.handleWindowScroll);
+      window.addEventListener("scroll", this.handleWindowScroll, {
+        passive: true,
+      });
+
+      window.removeEventListener("resize", this.handleWindowResize);
+      window.addEventListener("resize", this.handleWindowResize, {
+        passive: true,
+      });
+    };
+
+    private syncOverflowMaskState = (): void => {
+      if (!this.tocEl || !this.isPostDetailSidebarToc) {
+        this.dataset.fadeTop = "0";
+        this.dataset.fadeBottom = "0";
+        this.dataset.overflowing = "0";
+        return;
+      }
+
+      const { scrollTop, scrollHeight, clientHeight } = this.tocEl;
+      const overflowGap = scrollHeight - clientHeight;
+      const hasOverflow = overflowGap > 1;
+      const canScrollUp = scrollTop > 1;
+      const canScrollDown = scrollTop < overflowGap - 1;
+
+      this.dataset.overflowing = hasOverflow ? "1" : "0";
+      this.dataset.fadeTop = hasOverflow && canScrollUp ? "1" : "0";
+      this.dataset.fadeBottom = hasOverflow && canScrollDown ? "1" : "0";
+    };
+
     private resetState = (): void => {
       this.cleanupObservers();
+      this.unbindInteractionListeners();
+      this.clearAutoScrollAnimation();
+      this.clearProgrammaticScrollTimeout();
       this.anchorNavTarget = null;
       this.headingIdxMap.clear();
       this.headings = [];
@@ -67,6 +193,13 @@ const className = Astro.props.class;
       this.tocEntries = [];
       this.active = [];
       this.activeIndicator = null;
+      this.isProgrammaticScroll = false;
+      this.lastWindowScrollY = 0;
+      this.pageScrollDirection = 0;
+      this.dataset.postDetailSidebar = "0";
+      this.setManualBrowseMode(false);
+      this.isPostDetailSidebarToc = false;
+      this.syncOverflowMaskState();
     };
 
     private scheduleInit = (): void => {
@@ -141,8 +274,74 @@ const className = Astro.props.class;
       );
     };
 
+    private resolveAutoScrollDirection = (
+      topDistance: number,
+      bottomDistance: number,
+    ): number => {
+      if (this.pageScrollDirection !== 0) {
+        return this.pageScrollDirection > 0 ? 1 : -1;
+      }
+      if (bottomDistance < 0) {
+        return 1;
+      }
+      if (topDistance < 0) {
+        return -1;
+      }
+      return 0;
+    };
+
+    private animateAutoScrollTo = (targetTop: number): void => {
+      if (!this.tocEl) {
+        return;
+      }
+      const startTop = this.tocEl.scrollTop;
+      const distance = targetTop - startTop;
+      if (Math.abs(distance) < 1) {
+        return;
+      }
+
+      this.clearAutoScrollAnimation();
+      const duration = Math.max(
+        TableOfContents.AUTO_SCROLL_MIN_DURATION_MS,
+        Math.min(
+          TableOfContents.AUTO_SCROLL_MAX_DURATION_MS,
+          Math.abs(distance) * 1.6,
+        ),
+      );
+      this.markProgrammaticScroll(duration + 160);
+
+      const startTime = performance.now();
+      const easeOutCubic = (t: number): number => 1 - (1 - t) ** 3;
+      const step = (now: number): void => {
+        if (!this.tocEl) {
+          this.autoScrollAnimationFrame = null;
+          return;
+        }
+        const progress = Math.min(1, (now - startTime) / duration);
+        const eased = easeOutCubic(progress);
+        this.tocEl.scrollTop = startTop + distance * eased;
+        this.syncOverflowMaskState();
+
+        if (progress < 1) {
+          this.autoScrollAnimationFrame = window.requestAnimationFrame(step);
+          return;
+        }
+
+        this.tocEl.scrollTop = targetTop;
+        this.syncOverflowMaskState();
+        this.autoScrollAnimationFrame = null;
+      };
+
+      this.autoScrollAnimationFrame = window.requestAnimationFrame(step);
+    };
+
     scrollToActiveHeading = (): void => {
-      if (this.anchorNavTarget || !this.tocEl) {
+      if (
+        this.anchorNavTarget ||
+        !this.tocEl ||
+        this.manualBrowseMode ||
+        this.isProgrammaticScroll
+      ) {
         return;
       }
       const activeHeading = this.querySelectorAll<HTMLDivElement>(
@@ -155,25 +354,71 @@ const className = Astro.props.class;
       const topmost = activeHeading[0];
       const bottommost = activeHeading[activeHeading.length - 1];
       const tocHeight = this.tocEl.clientHeight;
-      const compactRange =
-        bottommost.getBoundingClientRect().bottom -
-          topmost.getBoundingClientRect().top <
-        0.9 * tocHeight;
+      const currentScrollTop = this.tocEl.scrollTop;
+      const maxScrollTop = Math.max(0, this.tocEl.scrollHeight - tocHeight);
+      if (maxScrollTop <= 1) {
+        return;
+      }
 
-      const top = compactRange
-        ? topmost.offsetTop - 32
-        : bottommost.offsetTop - tocHeight * 0.8;
-      this.tocEl.scrollTo({
-        top,
-        left: 0,
-        behavior: "smooth",
-      });
+      const activeTop = topmost.offsetTop - currentScrollTop;
+      const activeBottom =
+        bottommost.offsetTop + bottommost.offsetHeight - currentScrollTop;
+      const topDistance = activeTop;
+      const bottomDistance = tocHeight - activeBottom;
+
+      const direction = this.resolveAutoScrollDirection(
+        topDistance,
+        bottomDistance,
+      );
+      if (direction === 0) {
+        return;
+      }
+
+      const fadeZone = this.isPostDetailSidebarToc
+        ? TableOfContents.TOC_FADE_HEIGHT_PX
+        : 0;
+      const triggerZone =
+        fadeZone + TableOfContents.AUTO_SCROLL_TRIGGER_PADDING_PX;
+      const safeInset = fadeZone + TableOfContents.AUTO_SCROLL_SAFE_INSET_PX;
+
+      if (direction > 0 && bottomDistance > triggerZone) {
+        return;
+      }
+      if (direction < 0 && topDistance > triggerZone) {
+        return;
+      }
+
+      const targetTop =
+        direction > 0
+          ? bottommost.offsetTop +
+            bottommost.offsetHeight -
+            tocHeight +
+            safeInset
+          : topmost.offsetTop - safeInset;
+      const top = Math.max(0, Math.min(maxScrollTop, targetTop));
+      const delta = top - currentScrollTop;
+      if (Math.abs(delta) < 1) {
+        return;
+      }
+
+      const maxStep = Math.max(
+        TableOfContents.AUTO_SCROLL_MIN_STEP_PX,
+        tocHeight * TableOfContents.AUTO_SCROLL_STEP_RATIO,
+      );
+      const nextTop =
+        Math.abs(delta) > maxStep
+          ? currentScrollTop + Math.sign(delta) * maxStep
+          : top;
+      const clampedTop = Math.max(0, Math.min(maxScrollTop, nextTop));
+
+      this.animateAutoScrollTo(clampedTop);
     };
 
     update = (): void => {
       requestAnimationFrame(() => {
         this.toggleActiveHeading();
         this.scrollToActiveHeading();
+        this.syncOverflowMaskState();
       });
     };
 
@@ -221,6 +466,68 @@ const className = Astro.props.class;
       const idx = this.headingIdxMap.get(id);
       this.anchorNavTarget =
         typeof idx === "number" ? this.headings[idx] : null;
+      this.setManualBrowseMode(false);
+      this.syncOverflowMaskState();
+    };
+
+    private handleTocScroll = (): void => {
+      this.syncOverflowMaskState();
+      if (!this.isPostDetailSidebarToc || this.isProgrammaticScroll) {
+        return;
+      }
+      this.setManualBrowseMode(true);
+    };
+
+    private handleTocPointerIntent = (): void => {
+      if (!this.isPostDetailSidebarToc) {
+        return;
+      }
+      // 用户主动滚动 TOC 时，先暂停自动跟随
+      this.interruptProgrammaticScroll();
+      this.setManualBrowseMode(true);
+    };
+
+    private handleTocKeydown = (event: KeyboardEvent): void => {
+      if (!this.isPostDetailSidebarToc) {
+        return;
+      }
+      const key = event.key;
+      const isNavigationKey =
+        key === "ArrowUp" ||
+        key === "ArrowDown" ||
+        key === "PageUp" ||
+        key === "PageDown" ||
+        key === "Home" ||
+        key === "End" ||
+        key === " " ||
+        key === "Spacebar";
+
+      if (isNavigationKey) {
+        this.interruptProgrammaticScroll();
+        this.setManualBrowseMode(true);
+      }
+    };
+
+    private handleWindowScroll = (): void => {
+      if (!this.isPostDetailSidebarToc) {
+        return;
+      }
+      const nextScrollY = window.scrollY || document.documentElement.scrollTop;
+      const delta = nextScrollY - this.lastWindowScrollY;
+      const hasMoved = Math.abs(delta) > 0.5;
+      if (hasMoved) {
+        this.pageScrollDirection = delta > 0 ? 1 : -1;
+      }
+      this.lastWindowScrollY = nextScrollY;
+
+      if (hasMoved && this.manualBrowseMode) {
+        // 继续滚动正文意味着用户回到阅读流程，此时恢复 TOC 自动跟随
+        this.setManualBrowseMode(false);
+      }
+    };
+
+    private handleWindowResize = (): void => {
+      this.syncOverflowMaskState();
     };
 
     isInRange(value: number, min: number, max: number): boolean {
@@ -237,12 +544,14 @@ const className = Astro.props.class;
       this.observer = this.createObserver();
 
       this.tocEl = this;
-      this.tocEl.removeEventListener("click", this.handleAnchorClick, {
-        capture: true,
-      } as AddEventListenerOptions);
-      this.tocEl.addEventListener("click", this.handleAnchorClick, {
-        capture: true,
-      });
+      this.isPostDetailSidebarToc = Boolean(
+        this.closest<HTMLElement>("[data-post-detail-toc='1']"),
+      );
+      this.dataset.postDetailSidebar = this.isPostDetailSidebarToc ? "1" : "0";
+      this.lastWindowScrollY =
+        window.scrollY || document.documentElement.scrollTop;
+      this.pageScrollDirection = 0;
+      this.bindInteractionListeners();
 
       this.regenerateTOC();
       this.activeIndicator = this.querySelector("#active-indicator");
@@ -279,6 +588,7 @@ const className = Astro.props.class;
 
       this.fallback();
       this.update();
+      this.syncOverflowMaskState();
     }
 
     regenerateTOC(retryCount = 0): void {
@@ -296,6 +606,7 @@ const className = Astro.props.class;
         this.style.display = "none";
         this.innerHTML = "";
         delete this.dataset.loaded;
+        this.syncOverflowMaskState();
         return;
       }
 
@@ -375,7 +686,7 @@ const className = Astro.props.class;
               '<div class="transition w-1.5 h-1.5 rounded-sm bg-black/5 dark:bg-white/10"></div>';
           }
 
-          return `<a href="#${heading.id}" data-no-swup class="px-2 flex gap-2 relative transition w-full min-h-9 rounded-xl hover:bg-(--toc-btn-hover) active:bg-(--toc-btn-active) py-2">
+          return `<a href="#${heading.id}" class="px-2 flex gap-2 relative transition w-full min-h-9 rounded-xl hover:bg-(--toc-btn-hover) active:bg-(--toc-btn-active) py-2">
                     <div class="transition w-5 h-5 shrink-0 rounded-lg text-xs flex items-center justify-center font-bold ${depthClass} ${heading.level === 1 ? "bg-(--toc-badge-bg) text-(--btn-content)" : ""}">
                         ${badgeContent}
                     </div>
@@ -386,14 +697,15 @@ const className = Astro.props.class;
 
       this.innerHTML = `${tocHTML}<div id="active-indicator" style="opacity: 0" class="-z-10 absolute bg-(--toc-btn-hover) left-0 right-0 rounded-xl transition-all group-hover:bg-transparent border-2 border-(--toc-btn-hover) group-hover:border-(--toc-btn-active) border-dashed"></div>`;
       this.dataset.loaded = "true";
+      this.syncOverflowMaskState();
     }
 
     disconnectedCallback(): void {
       this.clearInitTimeout();
+      this.clearAutoScrollAnimation();
+      this.clearProgrammaticScrollTimeout();
       this.cleanupObservers();
-      this.tocEl?.removeEventListener("click", this.handleAnchorClick, {
-        capture: true,
-      } as AddEventListenerOptions);
+      this.unbindInteractionListeners();
     }
   }
 
@@ -409,6 +721,50 @@ const className = Astro.props.class;
     position: relative;
     scroll-behavior: smooth;
     display: block;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  #toc[data-post-detail-sidebar="1"] {
+    --toc-fade-height: 2.75rem;
+    --toc-mask-image: none;
+    max-height: var(--post-detail-toc-max-height, 100%);
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-mask-image: var(--toc-mask-image);
+    mask-image: var(--toc-mask-image);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+  }
+
+  #toc[data-post-detail-sidebar="1"][data-fade-top="0"][data-fade-bottom="1"] {
+    --toc-mask-image: linear-gradient(
+      to bottom,
+      #000 0%,
+      #000 calc(100% - var(--toc-fade-height)),
+      transparent 100%
+    );
+  }
+
+  #toc[data-post-detail-sidebar="1"][data-fade-top="1"][data-fade-bottom="0"] {
+    --toc-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      #000 var(--toc-fade-height),
+      #000 100%
+    );
+  }
+
+  #toc[data-post-detail-sidebar="1"][data-fade-top="1"][data-fade-bottom="1"] {
+    --toc-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      #000 var(--toc-fade-height),
+      #000 calc(100% - var(--toc-fade-height)),
+      transparent 100%
+    );
   }
 
   #toc::-webkit-scrollbar {

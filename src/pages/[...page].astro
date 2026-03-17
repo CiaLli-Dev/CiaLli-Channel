@@ -4,6 +4,10 @@ import { i18n } from "@i18n/translation";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
 import HomeFeedPage from "@components/home/HomeFeedPage.astro";
 import { getSessionUser } from "@/server/auth/session";
+import {
+  DIRECTUS_ACCESS_COOKIE_NAME,
+  DIRECTUS_REFRESH_COOKIE_NAME,
+} from "@/server/directus-auth";
 import { buildHomeFeed } from "@/server/recommendation/home-feed";
 import type { HomeFeedItem } from "@/server/recommendation/home-feed.types";
 
@@ -24,17 +28,37 @@ if (rawPagePath) {
 
 let homeFeedItems: HomeFeedItem[] = [];
 const invalidPath = Boolean(rawPagePath);
+let sessionUserId: string | null = null;
+const hasSessionCookie = Boolean(
+  Astro.cookies.get(DIRECTUS_ACCESS_COOKIE_NAME)?.value ||
+  Astro.cookies.get(DIRECTUS_REFRESH_COOKIE_NAME)?.value,
+);
 
 if (!invalidPath) {
   try {
     const sessionUser = await getSessionUser(Astro);
+    sessionUserId = sessionUser?.id ?? null;
     const homeFeed = await buildHomeFeed({
       viewerId: sessionUser?.id ?? null,
-      limit: 180,
+      limit: 20,
+      outputLimit: 60,
+      articleCandidateLimit: 80,
+      diaryCandidateLimit: 60,
     });
     homeFeedItems = homeFeed.items;
   } catch (error) {
     console.error("[home] failed to load mixed feed:", error);
+  }
+}
+
+if (!invalidPath) {
+  if (hasSessionCookie || sessionUserId) {
+    Astro.response.headers.set("Cache-Control", "private, no-store");
+  } else {
+    Astro.response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=60, stale-while-revalidate=300",
+    );
   }
 }
 ---
@@ -90,9 +114,220 @@ if (!invalidPath) {
     typeof globalThis & {
       __homeScrollCleanup?: () => void;
     };
+  type HomeFeedAuthor = {
+    id?: string;
+    name?: string;
+    username?: string;
+    display_name?: string;
+  };
+  type HomeFeedArticleItem = {
+    type: "article";
+    id: string;
+    entry: {
+      url: string;
+      data: {
+        title: string;
+        description?: string;
+        tags?: string[];
+        category?: string;
+        author_id: string;
+        author?: HomeFeedAuthor;
+        article_id?: string;
+        comment_count?: number;
+        like_count?: number;
+        published: string | Date;
+      };
+    };
+  };
+  type HomeFeedDiaryItem = {
+    type: "diary";
+    id: string;
+    entry: {
+      id: string;
+      short_id?: string | null;
+      content?: string;
+      author_id: string;
+      author?: HomeFeedAuthor;
+      comment_count?: number;
+      like_count?: number;
+      date_created?: string;
+      date_updated?: string;
+    };
+    publishedAt?: string | Date;
+  };
+  type HomeFeedItem = HomeFeedArticleItem | HomeFeedDiaryItem;
 
-  const INITIAL_COUNT = 5;
   const BATCH_SIZE = 5;
+
+  function escapeHtml(input: string): string {
+    return input
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function normalizeAuthorHandle(
+    author: HomeFeedAuthor | undefined,
+    fallbackId: string,
+  ): string {
+    const raw = String(author?.username || author?.name || "")
+      .trim()
+      .replace(/^@+/, "");
+    if (raw) {
+      return raw;
+    }
+    return `user-${String(fallbackId || "").slice(0, 8)}`;
+  }
+
+  function normalizeAuthorDisplayName(
+    author: HomeFeedAuthor | undefined,
+    fallbackHandle: string,
+  ): string {
+    const displayName = String(
+      author?.display_name || author?.name || "",
+    ).trim();
+    return displayName || fallbackHandle;
+  }
+
+  function formatDateMeta(value: string | Date | undefined): {
+    display: string;
+    year: string;
+    month: string;
+    day: string;
+  } {
+    const parsed = new Date(value || "");
+    const safeDate = Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
+    const year = String(safeDate.getFullYear());
+    const month = String(safeDate.getMonth() + 1).padStart(2, "0");
+    const day = String(safeDate.getDate()).padStart(2, "0");
+    return {
+      display: `${year}/${month}/${day}`,
+      year,
+      month: `${year}-${month}`,
+      day: `${year}-${month}-${day}`,
+    };
+  }
+
+  function renderArticleCard(item: HomeFeedArticleItem): string {
+    const data = item.entry.data;
+    const tags = Array.isArray(data.tags) ? data.tags : [];
+    const category = String(data.category || "");
+    const title = escapeHtml(String(data.title || "Untitled"));
+    const excerpt = escapeHtml(
+      String(data.description || "").trim() || "No summary",
+    );
+    const articleId = String(data.article_id || item.id || "");
+    const authorId = String(data.author_id || "");
+    const authorHandle = normalizeAuthorHandle(data.author, authorId);
+    const authorDisplayName = escapeHtml(
+      normalizeAuthorDisplayName(data.author, authorHandle),
+    );
+    const dateMeta = formatDateMeta(data.published);
+    const likeCount = Math.max(0, Number(data.like_count || 0));
+    const commentCount = Math.max(0, Number(data.comment_count || 0));
+    const postUrl = escapeHtml(String(item.entry.url || `/posts/${item.id}`));
+    return `
+      <div class="post-list-item" data-year="${escapeHtml(dateMeta.year)}" data-month="${escapeHtml(dateMeta.month)}" data-day="${escapeHtml(dateMeta.day)}" data-tags="${escapeHtml(JSON.stringify(tags))}" data-category="${escapeHtml(category)}" data-author-id="${escapeHtml(authorId)}" data-author-handle="${escapeHtml(authorHandle)}" data-content-type="article">
+        <article class="card-base rounded-(--radius-large) p-6" data-post-card data-article-id="${escapeHtml(articleId)}" data-author-id="${escapeHtml(authorId)}" data-author-handle="${escapeHtml(authorHandle)}">
+          <a href="${postUrl}" class="block mb-3 text-2xl font-bold text-90 hover:text-(--primary)">${title}</a>
+          <p class="mb-4 text-75 line-clamp-2">${excerpt}</p>
+          <div class="flex items-center justify-between gap-3 text-sm text-60">
+            <div class="min-w-0 truncate">
+              <a href="/${escapeHtml(authorHandle)}" class="text-90 hover:text-(--primary)">${authorDisplayName}</a>
+              <span class="mx-1">·</span>
+              <span>${escapeHtml(dateMeta.display)}</span>
+            </div>
+            <div class="flex items-center gap-4 shrink-0">
+              <button type="button" class="inline-flex items-center gap-1.5 text-50 hover:text-(--primary) post-card-action-btn" data-action="toggle-like" aria-label="Toggle like">
+                <span>Like</span>
+                <span data-like-count>${likeCount}</span>
+              </button>
+              <a href="${postUrl}#comment-root" class="inline-flex items-center gap-1.5 text-50 hover:text-(--primary)">
+                <span>Comment</span>
+                <span>${commentCount}</span>
+              </a>
+              <details class="relative post-card-menu">
+                <summary class="list-none cursor-pointer">⋯</summary>
+                <div class="absolute right-0 bottom-full mb-2 z-30 min-w-[10rem] rounded-xl border border-black/5 dark:border-white/10 bg-(--float-panel-bg) p-1.5 shadow-xl dark:shadow-none">
+                  <button type="button" class="hidden w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors" data-action="delete-own-article">Delete Article</button>
+                  <button type="button" class="hidden w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors" data-action="delete-admin-article">Delete Article (Admin)</button>
+                  <button type="button" class="w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors" data-action="block-user">Block User</button>
+                </div>
+              </details>
+            </div>
+          </div>
+        </article>
+      </div>
+    `;
+  }
+
+  function renderDiaryCard(item: HomeFeedDiaryItem): string {
+    const entry = item.entry;
+    const authorId = String(entry.author_id || "");
+    const authorHandle = normalizeAuthorHandle(entry.author, authorId);
+    const authorDisplayName = escapeHtml(
+      normalizeAuthorDisplayName(entry.author, authorHandle),
+    );
+    const diaryId = String(entry.id || item.id || "");
+    const routeId = String(entry.short_id || diaryId || "");
+    const diaryUrl = `/${escapeHtml(authorHandle)}/diary/${escapeHtml(routeId)}`;
+    const dateMeta = formatDateMeta(
+      entry.date_created || entry.date_updated || item.publishedAt,
+    );
+    const likeCount = Math.max(0, Number(entry.like_count || 0));
+    const commentCount = Math.max(0, Number(entry.comment_count || 0));
+    const excerpt = escapeHtml(
+      String(entry.content || "")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 120) || "No content",
+    );
+    return `
+      <div class="post-list-item diary-list-item" data-year="${escapeHtml(dateMeta.year)}" data-month="${escapeHtml(dateMeta.month)}" data-day="${escapeHtml(dateMeta.day)}" data-tags="[]" data-category="" data-author-id="${escapeHtml(authorId)}" data-author-handle="${escapeHtml(authorHandle)}" data-content-type="diary">
+        <article class="card-base rounded-(--radius-large) p-6" data-diary-card data-diary-id="${escapeHtml(diaryId)}" data-author-id="${escapeHtml(authorId)}" data-author-handle="${escapeHtml(authorHandle)}">
+          <a href="${diaryUrl}" class="block mb-3 text-lg font-semibold text-90 hover:text-(--primary)">${excerpt}</a>
+          <div class="flex items-center justify-between gap-3 text-sm text-60">
+            <div class="min-w-0 truncate">
+              <a href="/${escapeHtml(authorHandle)}" class="text-90 hover:text-(--primary)">${authorDisplayName}</a>
+              <span class="mx-1">·</span>
+              <span>${escapeHtml(dateMeta.display)}</span>
+            </div>
+            <div class="flex items-center gap-4 shrink-0">
+              <button type="button" class="inline-flex items-center gap-1.5 text-50 hover:text-(--primary) post-card-action-btn" data-action="toggle-like" aria-label="Toggle like">
+                <span>Like</span>
+                <span data-like-count>${likeCount}</span>
+              </button>
+              <a href="${diaryUrl}#comment-root" class="inline-flex items-center gap-1.5 text-50 hover:text-(--primary)">
+                <span>Comment</span>
+                <span>${commentCount}</span>
+              </a>
+              <details class="relative post-card-menu">
+                <summary class="list-none cursor-pointer">⋯</summary>
+                <div class="absolute right-0 bottom-full mb-2 z-30 min-w-[10rem] rounded-xl border border-black/5 dark:border-white/10 bg-(--float-panel-bg) p-1.5 shadow-xl dark:shadow-none">
+                  <button type="button" class="hidden w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors" data-action="delete-own-diary">Delete Diary</button>
+                  <button type="button" class="hidden w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors" data-action="delete-admin-diary">Delete Diary (Admin)</button>
+                  <button type="button" class="w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors" data-action="block-user">Block User</button>
+                </div>
+              </details>
+            </div>
+          </div>
+        </article>
+      </div>
+    `;
+  }
+
+  function renderFeedItems(items: HomeFeedItem[]): string {
+    return items
+      .map((item) =>
+        item.type === "article"
+          ? renderArticleCard(item as HomeFeedArticleItem)
+          : renderDiaryCard(item as HomeFeedDiaryItem),
+      )
+      .join("");
+  }
 
   function initHomeInfiniteScroll(): void {
     const rw = window as HomeRuntimeWindow;
@@ -101,7 +336,11 @@ if (!invalidPath) {
     const container = document.querySelector(".home-layout");
     if (!container) return;
 
-    const items = document.querySelectorAll<HTMLElement>(".post-list-item");
+    const postList = document.getElementById("post-list-container");
+    if (!postList) {
+      return;
+    }
+    const items = postList.querySelectorAll<HTMLElement>(".post-list-item");
     const sentinel = document.getElementById("infinite-scroll-sentinel");
     const loadingEl = document.getElementById("scroll-loading");
 
@@ -110,39 +349,77 @@ if (!invalidPath) {
       return;
     }
 
-    items.forEach((item, i) => {
-      if (i >= INITIAL_COUNT) item.classList.add("hidden");
-      else item.classList.remove("hidden");
-    });
-    let revealedCount = Math.min(INITIAL_COUNT, items.length);
+    let loadedCount = items.length;
+    let hasMore = true;
+    let isLoading = false;
+
+    const loadNextBatch = async (): Promise<void> => {
+      if (!hasMore || isLoading) {
+        return;
+      }
+      isLoading = true;
+      loadingEl?.classList.remove("hidden");
+      try {
+        const response = await fetch(
+          `/api/v1/public/home-feed?offset=${loadedCount}&limit=${BATCH_SIZE}`,
+          {
+            credentials: "include",
+            headers: {
+              Accept: "application/json",
+            },
+          },
+        );
+        const data = (await response.json().catch(() => null)) as {
+          ok?: boolean;
+          items?: HomeFeedItem[];
+          has_more?: boolean;
+          next_offset?: number;
+        } | null;
+        if (!response.ok || !data?.ok || !Array.isArray(data.items)) {
+          return;
+        }
+        if (data.items.length === 0) {
+          hasMore = false;
+          observer.disconnect();
+          sentinel.classList.add("hidden");
+          return;
+        }
+
+        const html = renderFeedItems(data.items);
+        if (html) {
+          const fragment = document
+            .createRange()
+            .createContextualFragment(html);
+          postList.appendChild(fragment);
+        }
+        loadedCount =
+          typeof data.next_offset === "number"
+            ? data.next_offset
+            : loadedCount + data.items.length;
+        hasMore = Boolean(data.has_more);
+        if (!hasMore) {
+          observer.disconnect();
+          sentinel.classList.add("hidden");
+        }
+      } catch (error) {
+        console.error("[home] load next feed batch failed:", error);
+      } finally {
+        isLoading = false;
+        loadingEl?.classList.add("hidden");
+      }
+    };
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (!entries[0].isIntersecting || revealedCount >= items.length) return;
-        loadingEl?.classList.remove("hidden");
-        const end = Math.min(revealedCount + BATCH_SIZE, items.length);
-        for (let i = revealedCount; i < end; i++) {
-          const item = items[i] as HTMLElement;
-          item.style.setProperty("--i", String(i - revealedCount));
-          item.classList.remove("hidden");
+        if (!entries[0].isIntersecting || !hasMore) {
+          return;
         }
-        revealedCount = end;
-        if (revealedCount >= items.length) {
-          observer.disconnect();
-          sentinel.classList.add("hidden");
-          loadingEl?.classList.add("hidden");
-        } else {
-          setTimeout(() => loadingEl?.classList.add("hidden"), 300);
-        }
+        void loadNextBatch();
       },
       { rootMargin: "200px" },
     );
 
-    if (revealedCount < items.length) {
-      observer.observe(sentinel);
-    } else {
-      sentinel.classList.add("hidden");
-    }
+    observer.observe(sentinel);
 
     rw.__homeScrollCleanup = () => {
       observer.disconnect();

@@ -221,26 +221,29 @@ export async function getAuthorBundle(
 ): Promise<Map<string, AuthorBundleItem>> {
     const normalizedIds = uniqueUserIds(userIds);
     const result = new Map<string, AuthorBundleItem>();
-    const missIds: string[] = [];
-
-    for (const userId of normalizedIds) {
-        const cached = await cacheManager.get<AuthorBundleItem>(
-            "author",
+    const cacheHits = await Promise.all(
+        normalizedIds.map(async (userId) => ({
             userId,
-        );
-        if (cached) {
-            result.set(userId, cached);
-            continue;
+            cached: await cacheManager.get<AuthorBundleItem>("author", userId),
+        })),
+    );
+    const missIds = cacheHits
+        .filter((entry) => !entry.cached)
+        .map((entry) => entry.userId);
+    for (const entry of cacheHits) {
+        if (entry.cached) {
+            result.set(entry.userId, entry.cached);
         }
-        missIds.push(userId);
     }
 
     if (missIds.length > 0) {
         const fetched = await fetchAuthorsForUsers(missIds);
+        const pendingSets: Array<Promise<void>> = [];
         for (const [userId, bundle] of fetched.entries()) {
-            void cacheManager.set("author", userId, bundle);
+            pendingSets.push(cacheManager.set("author", userId, bundle));
             result.set(userId, bundle);
         }
+        void Promise.all(pendingSets);
     }
 
     return result;

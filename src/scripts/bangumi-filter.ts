@@ -193,7 +193,7 @@ export function initBangumiFilter(): void {
         updateButtonStates(currentFilter);
     }
 
-    // 使用 AbortController 统一管理事件，便于 Swup 切页后清理。
+    // 使用 AbortController 统一管理事件，便于切页后清理。
     const ac = new AbortController();
     const signal = ac.signal;
 

@@ -7,6 +7,7 @@
 import type { AppProfile, AppPermissions } from "@/types/app";
 import type { JsonObject } from "@/types/json";
 import { readMany, readOneById, updateOne } from "@/server/directus/client";
+import { cacheManager } from "@/server/cache/manager";
 import { invalidateAuthorCache } from "@/server/api/v1/shared/author-cache";
 
 // ── Profile 查询 ──
@@ -45,6 +46,7 @@ export async function updateProfile(
     userId?: string,
 ): Promise<AppProfile> {
     const updated = await updateOne("app_user_profiles", profileId, payload);
+    void cacheManager.invalidateByDomain("profile-viewer");
     if (userId) {
         invalidateAuthorCache(userId);
     }

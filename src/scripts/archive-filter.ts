@@ -2,8 +2,8 @@
  * 归档页筛选与分页逻辑。
  *
  * 从 archive.astro 内联脚本抽离为模块，供全局 layout 运行时在
- * Swup 导航后动态导入并再次执行。由于 ES module 在同一文档同一 URL
- * 只会执行一次，不能依赖 SwupHeadPlugin 反复触发页面脚本。
+ * 页面导航后动态导入并再次执行。由于 ES module 在同一文档同一 URL
+ * 只会执行一次，不能依赖自动反复触发页面脚本。
  *
  * 初始化由 `layout/index.ts` 的 `runDynamicPageInit()` 统一触发。
  */
@@ -63,7 +63,7 @@ export function initArchiveFilter(): void {
         );
     }
 
-    // 每次重新获取 DOM，避免 Swup 替换后引用过期
+    // 每次重新获取 DOM，避免页面切换后引用过期
     function getPostList() {
         return document.getElementById("post-list-container");
     }

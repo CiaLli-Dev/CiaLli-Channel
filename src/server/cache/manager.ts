@@ -26,6 +26,11 @@ const STRATEGIES: Record<CacheDomain, CacheStrategy> = {
         l2TtlMs: 30 * 60_000,
         l1MaxEntries: 10,
     },
+    "profile-viewer": {
+        l1TtlMs: 60_000,
+        l2TtlMs: 2 * 60_000,
+        l1MaxEntries: 200,
+    },
     "article-list": {
         l1TtlMs: 30_000,
         l2TtlMs: 2 * 60_000,
@@ -35,6 +40,16 @@ const STRATEGIES: Record<CacheDomain, CacheStrategy> = {
         l1TtlMs: 2 * 60_000,
         l2TtlMs: 10 * 60_000,
         l1MaxEntries: 200,
+    },
+    "article-public": {
+        l1TtlMs: 60_000,
+        l2TtlMs: 5 * 60_000,
+        l1MaxEntries: 300,
+    },
+    "article-interaction": {
+        l1TtlMs: 30_000,
+        l2TtlMs: 30_000,
+        l1MaxEntries: 600,
     },
     "diary-list": {
         l1TtlMs: 30_000,
@@ -56,6 +71,11 @@ const STRATEGIES: Record<CacheDomain, CacheStrategy> = {
         l2TtlMs: 5 * 60_000,
         l1MaxEntries: 20,
     },
+    "home-feed-profile": {
+        l1TtlMs: 60_000,
+        l2TtlMs: 3 * 60_000,
+        l1MaxEntries: 400,
+    },
     "album-list": {
         l1TtlMs: 30_000,
         l2TtlMs: 2 * 60_000,
@@ -76,6 +96,11 @@ const STRATEGIES: Record<CacheDomain, CacheStrategy> = {
         l2TtlMs: 5 * 60_000,
         l1MaxEntries: 50,
     },
+    "session-user": {
+        l1TtlMs: 60_000,
+        l2TtlMs: 60_000,
+        l1MaxEntries: 500,
+    },
     markdown: {
         l1TtlMs: 5 * 60_000,
         l2TtlMs: 60 * 60_000,
@@ -89,7 +114,7 @@ const STRATEGIES: Record<CacheDomain, CacheStrategy> = {
  */
 const LINKED_DOMAIN_INVALIDATIONS: Partial<Record<CacheDomain, CacheDomain[]>> =
     {
-        "home-feed": ["home-feed-candidates"],
+        "home-feed": ["home-feed-candidates", "home-feed-profile"],
     };
 
 // ---------------------------------------------------------------------------

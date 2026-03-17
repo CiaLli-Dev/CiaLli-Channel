@@ -96,3 +96,13 @@ export type HomeFeedBuildResult = {
     generatedAt: string;
     meta: HomeFeedBuildMeta;
 };
+
+export type HomeFeedPageResponse = {
+    items: HomeFeedItem[];
+    offset: number;
+    limit: number;
+    next_offset: number;
+    has_more: boolean;
+    generated_at: string;
+    total: number;
+};

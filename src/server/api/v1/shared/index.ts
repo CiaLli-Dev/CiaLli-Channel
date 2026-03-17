@@ -63,3 +63,9 @@ export {
 } from "./loaders";
 
 export { buildCommentTree } from "./comments";
+
+export {
+    loadArticleInteractionSnapshot,
+    invalidateArticleInteractionAggregate,
+    invalidateArticleInteractionViewerState,
+} from "./article-interaction";

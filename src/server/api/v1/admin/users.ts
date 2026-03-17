@@ -18,6 +18,7 @@ import {
     updateManyItemsByFilter,
     updateOne,
 } from "@/server/directus/client";
+import { cacheManager } from "@/server/cache/manager";
 import { badRequest } from "@/server/api/errors";
 import { fail, ok } from "@/server/api/response";
 import { parseJsonBody, parsePagination } from "@/server/api/utils";
@@ -362,6 +363,7 @@ export async function handleAdminUsers(
             ]);
 
             invalidateAuthorCache(userId);
+            void cacheManager.invalidateByDomain("profile-viewer");
             invalidateOfficialSidebarCache();
             if (hasOwn(body as JsonObject, "avatar_file") && nextAvatarFile) {
                 await updateDirectusFileMetadata(nextAvatarFile, {

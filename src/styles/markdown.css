@@ -67,6 +67,15 @@
     }
   }
 
+  /* --- 相邻块级内容间距 --- */
+  :is(.expressive-code, pre) + :is(.expressive-code, pre) {
+    @apply mt-4;
+  }
+
+  .table-wrapper + .table-wrapper {
+    @apply mt-4;
+  }
+
   /* --- 列表 --- */
   ul,
   ol {

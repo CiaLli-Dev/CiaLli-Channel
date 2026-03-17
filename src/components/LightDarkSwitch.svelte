@@ -42,38 +42,14 @@
     }
   }
 
-  function bindSwupContentReplaceHook() {
-    if (typeof window === "undefined" || !window.swup?.hooks) {
-      return () => {};
-    }
-    const handleContentReplace = () => {
-      requestAnimationFrame(syncModeFromStorage);
-    };
-    window.swup.hooks.on("content:replace", handleContentReplace);
-    return () => {
-      window.swup?.hooks?.off?.("content:replace", handleContentReplace);
-    };
-  }
-
   onMount(() => {
     syncModeFromStorage();
 
-    if (typeof document === "undefined") {
-      return;
-    }
-
-    let unbindSwupHook = bindSwupContentReplaceHook();
-    const handleSwupEnable = () => {
-      unbindSwupHook();
-      unbindSwupHook = bindSwupContentReplaceHook();
-      requestAnimationFrame(syncModeFromStorage);
-    };
-
-    document.addEventListener("swup:enable", handleSwupEnable);
+    const handleSwap = () => requestAnimationFrame(syncModeFromStorage);
+    document.addEventListener("astro:after-swap", handleSwap);
 
     return () => {
-      document.removeEventListener("swup:enable", handleSwupEnable);
-      unbindSwupHook();
+      document.removeEventListener("astro:after-swap", handleSwap);
     };
   });
 </script>
