@@ -6,7 +6,8 @@ import {
   loadProfileForViewer,
   profileToSidebarData,
 } from "@/server/api/v1/public-data";
-import { getSessionUser } from "@/server/auth/session";
+import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
+import { runWithDirectusUserAccess } from "@/server/directus/client";
 
 export const prerender = false;
 
@@ -22,7 +23,10 @@ if (!sessionUser) {
   return Astro.redirect(`/${username}/diary`);
 }
 
-const profile = await loadProfileForViewer(username, sessionUser.id);
+const profile = await runWithDirectusUserAccess(
+  getSessionAccessToken(Astro),
+  async () => await loadProfileForViewer(username, sessionUser.id),
+);
 if (!profile || profile.user_id !== sessionUser.id) {
   return Astro.redirect(`/${username}/diary`);
 }

@@ -1,7 +1,7 @@
 {
   "name": "@ciallichannel/cialli",
   "type": "module",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "scripts": {
     "dev": "pnpm font:build && astro dev",
     "start": "pnpm font:build && astro dev",
