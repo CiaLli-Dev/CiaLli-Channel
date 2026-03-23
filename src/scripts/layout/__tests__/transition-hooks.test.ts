@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     resolvePreparationRouteState,
     resolvePreparationTransitionProxyPayload,
+    shouldResetViewportOnPreparation,
 } from "../transition-hooks";
 
 function createSourceDocumentWithRightSidebar(): Document {
@@ -137,6 +138,14 @@ describe("transition-hooks", () => {
             payload: null,
             preservePreparedPayload: false,
         });
+    });
+
+    it("首页 banner -> spec 准备阶段不会先触发回顶", () => {
+        expect(shouldResetViewportOnPreparation(true)).toBe(false);
+    });
+
+    it("非 banner -> spec 导航准备阶段仍会保持既有回顶策略", () => {
+        expect(shouldResetViewportOnPreparation(false)).toBe(true);
     });
 
     it("普通 spec -> spec 导航继续返回既有 proxy payload", () => {

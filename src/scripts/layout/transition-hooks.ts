@@ -254,6 +254,14 @@ function resetViewportForIncomingPage(): void {
     window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
 }
 
+export function shouldResetViewportOnPreparation(
+    shouldUseBannerToSpec: boolean,
+): boolean {
+    // 首页 banner -> spec 需要保留当前视口位置，让“整页上推”从用户当下看到的区域立即开始，
+    // 否则准备阶段先回顶会露出 banner 原始首屏，破坏空间连续性。
+    return !shouldUseBannerToSpec;
+}
+
 export function resolvePreparationTransitionProxyPayload(
     currentPathname: string,
     targetPathname: string,
@@ -444,8 +452,11 @@ function handleBeforePreparation(
     }
 
     // 整页骨架只打到 incoming 文档，避免 outgoing 页面先闪成骨架。
-    // 代理壳与骨架已经准备就绪后，立即回到顶部，确保用户看到的是骨架而不是高滚动位的留白区域。
-    resetViewportForIncomingPage();
+    // 仅非 banner -> spec 路径需要在准备阶段回顶，banner -> spec 则必须保留当前视口，
+    // 让宏观上推动画从当前所见区域直接开始。
+    if (shouldResetViewportOnPreparation(shouldUseBannerToSpec)) {
+        resetViewportForIncomingPage();
+    }
 }
 
 // ===== Before-swap event handler =====

@@ -14,7 +14,7 @@
     "astro": "astro",
     "type-check": "tsc --noEmit --isolatedDeclarations --skipLibCheck",
     "format": "prettier --write .",
-    "lint": "eslint ./src --ext .js,.cjs,.mjs,.ts,.astro,.svelte --fix",
+    "lint": "eslint ./src --ext .js,.cjs,.mjs,.ts,.astro,.svelte --fix --cache --cache-strategy content --cache-location node_modules/.cache/eslint/.eslintcache --concurrency auto",
     "preinstall": "npx only-allow pnpm",
     "font:build": "node scripts/build-font-assets.js",
     "test": "vitest run",
