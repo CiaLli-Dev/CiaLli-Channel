@@ -4,12 +4,16 @@ import { performance } from "node:perf_hooks";
 
 import type { JsonObject } from "@/types/json";
 import { assertCan, assertOwnerOrAdmin } from "@/server/auth/acl";
+import { badRequest } from "@/server/api/errors";
 import { fail, ok } from "@/server/api/response";
 import {
     CreateDiaryImageSchema,
     CreateDiarySchema,
     DiaryPreviewSchema,
+    UpsertDiaryWorkingDraftSchema,
     type UpdateDiaryImageInput,
+    type UpdateDiaryInput,
+    type UpsertDiaryWorkingDraftInput,
     UpdateDiaryImageSchema,
     UpdateDiarySchema,
 } from "@/server/api/schemas";
@@ -38,6 +42,7 @@ import {
 import {
     bindFileOwnerToUser,
     renderMeMarkdownPreview,
+    syncMarkdownFilesToVisibility,
 } from "@/server/api/v1/me/_helpers";
 
 function buildDiaryFileTitle(
@@ -75,6 +80,29 @@ type OwnedDiaryRecord = JsonObject & {
     author_id: string;
     short_id?: string | null;
 };
+
+function normalizeDiaryStatus(value: unknown): "draft" | "published" {
+    return value === "published" ? "published" : "draft";
+}
+
+function resolveDiaryAssetVisibility(
+    status: unknown,
+    praviate: unknown,
+): "private" | "public" {
+    return normalizeDiaryStatus(status) === "published" && praviate === true
+        ? "public"
+        : "private";
+}
+
+function normalizeDiaryContent(value: unknown): string {
+    return typeof value === "string" ? value.trim() : "";
+}
+
+function assertDiaryPublishable(candidate: { content: unknown }): void {
+    if (!normalizeDiaryContent(candidate.content)) {
+        throw badRequest("VALIDATION_ERROR", "content: 日记内容必填");
+    }
+}
 
 function isUuidLike(value: string): boolean {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -123,6 +151,136 @@ async function resolveOwnedDiary(
                 ? null
                 : String(first.short_id),
     };
+}
+
+async function resolveOwnedWorkingDraft(
+    ownerId: string,
+): Promise<OwnedDiaryRecord | null> {
+    const rows = await readMany("app_diaries", {
+        filter: {
+            _and: [
+                { author_id: { _eq: ownerId } },
+                { status: { _eq: "draft" } },
+            ],
+        } as JsonObject,
+        fields: [...DIARY_FIELDS],
+        sort: ["-date_updated", "-date_created"],
+        limit: 1,
+    });
+    const first = rows[0] as JsonObject | undefined;
+    if (!first) {
+        return null;
+    }
+    return {
+        ...first,
+        id: String(first.id),
+        author_id: String(first.author_id ?? "").trim(),
+        short_id:
+            first.short_id === null || first.short_id === undefined
+                ? null
+                : String(first.short_id),
+    };
+}
+
+async function loadOwnedDiaryImages(diaryId: string): Promise<JsonObject[]> {
+    return (await readMany("app_diary_images", {
+        filter: {
+            diary_id: { _eq: diaryId },
+        } as JsonObject,
+        sort: ["sort", "-date_created"],
+        limit: 100,
+    })) as JsonObject[];
+}
+
+function buildDiaryWorkingDraftCreatePayload(
+    input: UpsertDiaryWorkingDraftInput,
+    access: AppAccess,
+): JsonObject {
+    return {
+        status: "draft",
+        author_id: access.user.id,
+        content: input.content ?? "",
+        allow_comments: input.allow_comments ?? true,
+        praviate: input.praviate ?? true,
+    };
+}
+
+function buildDiaryWorkingDraftUpdatePayload(
+    input: UpsertDiaryWorkingDraftInput,
+): JsonObject {
+    return {
+        ...(input.content !== undefined ? { content: input.content } : {}),
+        ...(input.allow_comments !== undefined
+            ? { allow_comments: input.allow_comments }
+            : {}),
+        ...(input.praviate !== undefined ? { praviate: input.praviate } : {}),
+        status: "draft",
+    };
+}
+
+function buildDiaryPatchPayload(
+    input: UpdateDiaryInput,
+    target: OwnedDiaryRecord,
+): {
+    payload: JsonObject;
+    nextStatus: "draft" | "published";
+    nextPraviate: boolean;
+    nextContent: string;
+} {
+    const payload: JsonObject = {};
+    if (input.content !== undefined) {
+        payload.content = input.content;
+    }
+    if (input.allow_comments !== undefined) {
+        payload.allow_comments = input.allow_comments;
+    }
+    if (input.praviate !== undefined) {
+        payload.praviate = input.praviate;
+    }
+    const nextStatus =
+        input.status !== undefined
+            ? normalizeDiaryStatus(input.status)
+            : normalizeDiaryStatus(target.status);
+    if (input.status !== undefined) {
+        payload.status = nextStatus;
+    }
+    return {
+        payload,
+        nextStatus,
+        nextPraviate:
+            input.praviate !== undefined
+                ? input.praviate
+                : Boolean(target.praviate),
+        nextContent:
+            input.content !== undefined
+                ? String(input.content)
+                : String(target.content ?? ""),
+    };
+}
+
+async function syncDiaryFilesVisibility(
+    diaryId: string,
+    shortId: string | null | undefined,
+    ownerId: string,
+    visibility: "private" | "public",
+): Promise<void> {
+    const imageRows = await readMany("app_diary_images", {
+        filter: { diary_id: { _eq: diaryId } } as JsonObject,
+        fields: ["file_id", "is_public", "sort"],
+        limit: 200,
+    });
+    for (const image of imageRows) {
+        const fileId = normalizeDirectusFileId(image.file_id);
+        if (!fileId) {
+            continue;
+        }
+        await bindFileOwnerToUser(
+            fileId,
+            ownerId,
+            buildDiaryFileTitle(shortId, image.sort),
+            visibility === "public" && image.is_public ? "public" : "private",
+        );
+    }
 }
 
 async function handleDiaryPreview(
@@ -203,6 +361,11 @@ async function handleDiaryCreate(
                 fields: [...DIARY_FIELDS],
             }),
     );
+    await syncMarkdownFilesToVisibility(
+        created.content,
+        access.user.id,
+        resolveDiaryAssetVisibility(created.status, created.praviate),
+    );
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("diary-list"),
@@ -217,56 +380,51 @@ async function handleDiaryGet(
     diaryId: string,
     target: OwnedDiaryRecord,
 ): Promise<Response> {
-    const images = await readMany("app_diary_images", {
-        filter: {
-            diary_id: { _eq: diaryId },
-        } as JsonObject,
-        sort: ["sort", "-date_created"],
-        limit: 100,
-    });
+    const images = await loadOwnedDiaryImages(diaryId);
     return ok({ item: target, images });
 }
 
 async function handleDiaryPatch(
     context: APIContext,
     diaryId: string,
+    target: OwnedDiaryRecord,
+    access: AppAccess,
 ): Promise<Response> {
     const body = await parseJsonBody(context.request);
     const input = validateBody(UpdateDiarySchema, body);
-    const payload: JsonObject = {};
-    if (input.content !== undefined) {
-        payload.content = input.content;
+    const currentStatus = normalizeDiaryStatus(target.status);
+    const { payload, nextStatus, nextPraviate, nextContent } =
+        buildDiaryPatchPayload(input, target);
+    if (currentStatus === "published" && nextStatus === "draft") {
+        throw badRequest(
+            "INVALID_STATUS_TRANSITION",
+            "不允许从 published 转换到 draft",
+        );
     }
-    if (input.allow_comments !== undefined) {
-        payload.allow_comments = input.allow_comments;
+    if (nextStatus === "published") {
+        assertDiaryPublishable({ content: nextContent });
     }
-    if (input.praviate !== undefined) {
-        payload.praviate = input.praviate;
-    }
-    payload.status = "published";
     const updated = await updateOne("app_diaries", diaryId, payload, {
         fields: [...DIARY_FIELDS],
     });
-    if (input.praviate !== undefined) {
-        const imageRows = await readMany("app_diary_images", {
-            filter: { diary_id: { _eq: diaryId } } as JsonObject,
-            fields: ["file_id", "is_public", "sort"],
-            limit: 200,
-        });
-        for (const image of imageRows) {
-            const fileId = normalizeDirectusFileId(image.file_id);
-            if (!fileId) {
-                continue;
-            }
-            await bindFileOwnerToUser(
-                fileId,
-                updated.author_id,
-                buildDiaryFileTitle(updated.short_id, image.sort),
-                updated.praviate === true && image.is_public
-                    ? "public"
-                    : "private",
-            );
-        }
+    if (
+        input.content !== undefined ||
+        input.praviate !== undefined ||
+        input.status !== undefined
+    ) {
+        await syncMarkdownFilesToVisibility(
+            nextContent,
+            access.user.id,
+            resolveDiaryAssetVisibility(nextStatus, nextPraviate),
+        );
+    }
+    if (input.praviate !== undefined || input.status !== undefined) {
+        await syncDiaryFilesVisibility(
+            diaryId,
+            updated.short_id,
+            updated.author_id,
+            resolveDiaryAssetVisibility(nextStatus, nextPraviate),
+        );
     }
     await awaitCacheInvalidations(
         [
@@ -277,6 +435,99 @@ async function handleDiaryPatch(
         { label: "me/diaries#patch" },
     );
     return ok({ item: updated });
+}
+
+async function handleWorkingDraftGet(access: AppAccess): Promise<Response> {
+    const draft = await resolveOwnedWorkingDraft(access.user.id);
+    if (!draft) {
+        return ok({ item: null, images: [] });
+    }
+    return ok({
+        item: draft,
+        images: await loadOwnedDiaryImages(draft.id),
+    });
+}
+
+async function handleWorkingDraftPut(
+    context: APIContext,
+    access: AppAccess,
+): Promise<Response> {
+    assertCan(access, "can_manage_diaries");
+    const body = await parseJsonBody(context.request);
+    const input = validateBody(UpsertDiaryWorkingDraftSchema, body);
+    const target = await resolveOwnedWorkingDraft(access.user.id);
+
+    if (!target) {
+        const created = await createWithShortId(
+            "app_diaries",
+            buildDiaryWorkingDraftCreatePayload(input, access),
+            (collection, payload) =>
+                createOne(collection, payload, {
+                    fields: [...DIARY_FIELDS],
+                }),
+        );
+        await syncMarkdownFilesToVisibility(
+            created.content,
+            access.user.id,
+            resolveDiaryAssetVisibility(created.status, created.praviate),
+        );
+        await awaitCacheInvalidations(
+            [
+                cacheManager.invalidateByDomain("diary-list"),
+                cacheManager.invalidateByDomain("home-feed"),
+            ],
+            { label: "me/diaries#working-draft#create" },
+        );
+        return ok({
+            item: created,
+            images: await loadOwnedDiaryImages(String(created.id)),
+        });
+    }
+
+    const payload = buildDiaryWorkingDraftUpdatePayload(input);
+    const updated = await updateOne("app_diaries", target.id, payload, {
+        fields: [...DIARY_FIELDS],
+    });
+    await syncMarkdownFilesToVisibility(
+        input.content !== undefined
+            ? input.content
+            : String(target.content ?? ""),
+        access.user.id,
+        resolveDiaryAssetVisibility("draft", input.praviate ?? target.praviate),
+    );
+    if (input.praviate !== undefined) {
+        await syncDiaryFilesVisibility(
+            target.id,
+            updated.short_id,
+            updated.author_id,
+            resolveDiaryAssetVisibility("draft", input.praviate),
+        );
+    }
+    await awaitCacheInvalidations(
+        [
+            cacheManager.invalidateByDomain("diary-list"),
+            cacheManager.invalidateByDomain("home-feed"),
+            ...buildDiaryDetailInvalidationTasks(target.id, updated.short_id),
+        ],
+        { label: "me/diaries#working-draft#update" },
+    );
+    return ok({
+        item: updated,
+        images: await loadOwnedDiaryImages(target.id),
+    });
+}
+
+async function handleWorkingDraft(
+    context: APIContext,
+    access: AppAccess,
+): Promise<Response> {
+    if (context.request.method === "GET") {
+        return await handleWorkingDraftGet(access);
+    }
+    if (context.request.method === "PUT") {
+        return await handleWorkingDraftPut(context, access);
+    }
+    return fail("方法不允许", 405);
 }
 
 async function handleDiaryDelete(
@@ -326,7 +577,7 @@ async function handleSingleDiary(
         return await handleDiaryGet(diaryId, target);
     }
     if (context.request.method === "PATCH") {
-        return await handleDiaryPatch(context, diaryId);
+        return await handleDiaryPatch(context, diaryId, target, access);
     }
     if (context.request.method === "DELETE") {
         return await handleDiaryDelete(diaryId, target);
@@ -341,6 +592,9 @@ export async function handleMyDiaries(
 ): Promise<Response> {
     if (segments.length === 2 && segments[1] === "preview") {
         return await handleDiaryPreview(context, access);
+    }
+    if (segments.length === 2 && segments[1] === "working-draft") {
+        return await handleWorkingDraft(context, access);
     }
 
     if (segments.length === 1) {
@@ -396,7 +650,10 @@ async function handleDiaryImageCreate(
             created.file_id,
             access.user.id,
             buildDiaryFileTitle(diary.short_id, created.sort),
-            created.is_public && diary.praviate === true ? "public" : "private",
+            resolveDiaryAssetVisibility(diary.status, diary.praviate) ===
+                "public" && created.is_public
+                ? "public"
+                : "private",
         );
     }
     await awaitCacheInvalidations(
@@ -461,7 +718,9 @@ async function handleDiaryImagePatch(
             nextFileId,
             access.user.id,
             buildDiaryFileTitle(diary.short_id, updated.sort),
-            (updated.is_public ?? image.is_public) && diary.praviate === true
+            resolveDiaryAssetVisibility(diary.status, diary.praviate) ===
+                "public" &&
+                (updated.is_public ?? image.is_public)
                 ? "public"
                 : "private",
         );

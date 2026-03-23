@@ -40,14 +40,14 @@ import {
 /** 文章过滤：非 owner 仅按公开状态过滤 */
 export function articleFilters(isOwner: boolean): JsonObject[] {
     return isOwner
-        ? [excludeSpecialArticleSlugFilter()]
+        ? [{ status: { _eq: "published" } }, excludeSpecialArticleSlugFilter()]
         : [filterPublicStatus(), excludeSpecialArticleSlugFilter()];
 }
 
 /** 日记过滤：非 owner 仅按发布且非私有过滤 */
 export function diaryFilters(isOwner: boolean): JsonObject[] {
     return isOwner
-        ? []
+        ? [{ status: { _eq: "published" } }]
         : [{ status: { _eq: "published" } }, { praviate: { _eq: true } }];
 }
 

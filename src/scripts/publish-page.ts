@@ -23,6 +23,7 @@ import { createPublishEditorAdapter } from "@/scripts/publish-editor-monaco";
 import { showConfirmDialog } from "@/scripts/dialogs";
 import { requestApi as api } from "@/scripts/http-client";
 import { t, tFmt } from "@/scripts/i18n-runtime";
+import { showOverlayDialog } from "@/scripts/overlay-dialog";
 import { navigateToPage } from "@/utils/navigation-utils";
 import { generateClientShortId } from "@/utils/short-id";
 import {
@@ -759,19 +760,63 @@ async function initPublishPageCore(): Promise<void> {
             if (!item) {
                 return false;
             }
-            clearPendingUploads(pendingUploads);
-            state.inlineImageCounter = 0;
-            await fillForm(item);
-            state.currentItemId = toStringValue(item.id);
-            state.currentItemShortId = toStringValue(item.short_id);
-            ui.updateEditorHeader();
-            ui.updateUrlState();
-            preview.resetPreviewState();
-            ui.setSubmitError("");
-            ui.setSubmitMessage(t(I18nKey.articleEditorLocalDraftRestored));
-            preview.markPreviewDirty();
+            const decision = await showOverlayDialog({
+                ariaLabel: t(I18nKey.articleEditorWorkingDraftDetectedTitle),
+                message: t(I18nKey.articleEditorWorkingDraftDetectedMessage),
+                dismissKey: null,
+                actions: [
+                    {
+                        key: "resume",
+                        label: t(I18nKey.articleEditorWorkingDraftResume),
+                        variant: "primary",
+                    },
+                    {
+                        key: "delete",
+                        label: t(
+                            I18nKey.articleEditorWorkingDraftDeleteAndCreate,
+                        ),
+                        variant: "danger",
+                    },
+                ],
+            });
+            if (decision.actionKey === "resume") {
+                clearPendingUploads(pendingUploads);
+                state.inlineImageCounter = 0;
+                await fillForm(item);
+                state.currentItemId = toStringValue(item.id);
+                state.currentItemShortId = toStringValue(item.short_id);
+                ui.updateEditorHeader();
+                ui.updateUrlState();
+                preview.resetPreviewState();
+                ui.setSubmitError("");
+                ui.setSubmitMessage(
+                    t(I18nKey.articleEditorWorkingDraftRestored),
+                );
+                preview.markPreviewDirty();
+                markDraftSaved();
+                return true;
+            }
+            const draftId = toStringValue(item.id);
+            if (draftId) {
+                const { response: deleteResponse, data: deleteData } =
+                    await api(
+                        `/api/v1/me/articles/${encodeURIComponent(draftId)}`,
+                        { method: "DELETE" },
+                    );
+                if (!deleteResponse.ok || !deleteData?.ok) {
+                    ui.setSubmitError(
+                        getApiMessage(
+                            deleteData,
+                            t(I18nKey.interactionPostDeleteFailed),
+                        ),
+                    );
+                    return false;
+                }
+            }
+            resetForm();
+            ui.setSubmitMessage(t(I18nKey.articleEditorWorkingDraftDeleted));
             markDraftSaved();
-            return true;
+            return false;
         } catch (error) {
             console.error("[publish] load working draft failed:", error);
             ui.setSubmitError(t(I18nKey.articleEditorLoadFailedRetry));

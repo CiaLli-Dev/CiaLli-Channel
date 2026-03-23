@@ -43,6 +43,14 @@ export const jaDiaryEditor: Record<string, string> = {
     [Key.diaryEditorStagedUpload]: "画像のアップロードを一時保存しました",
     [Key.diaryEditorSubmittingDiary]: "日記を送信しています...",
     [Key.diaryEditorSyncingImageOrder]: "画像の並び順を同期しています...",
+    [Key.diaryEditorWorkingDraftDeleteAndCreate]: "下書きを削除して新規作成",
+    [Key.diaryEditorWorkingDraftDeleted]:
+        "作業用下書きを削除しました。新しい日記を開始します",
+    [Key.diaryEditorWorkingDraftDetectedMessage]:
+        "未完了の作業用下書きが見つかりました。続きを編集するか、削除して新しく作成しますか？",
+    [Key.diaryEditorWorkingDraftDetectedTitle]: "作業用下書きを検出",
+    [Key.diaryEditorWorkingDraftRestored]: "作業用下書きを復元しました",
+    [Key.diaryEditorWorkingDraftResume]: "編集を続ける",
     [Key.diaryEditorUploadFailed]: "アップロードに失敗しました",
     [Key.diaryEditorUploadFailedUnsaved]:
         "画像アップロードに失敗しました。変更は未保存です",

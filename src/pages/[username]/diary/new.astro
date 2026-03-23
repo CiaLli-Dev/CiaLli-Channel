@@ -135,6 +135,13 @@ Astro.locals.sidebarProfile = profileToSidebarData(profile);
         <span id="diary-editor-submit-msg" class="text-sm text-60"></span>
         <div class="flex items-center gap-2 ml-auto">
           <button
+            id="diary-editor-save-draft"
+            type="button"
+            class="px-4 py-2 rounded-lg border border-(--line-divider) text-sm text-75 hover:bg-(--btn-plain-bg-hover) transition"
+          >
+            {i18n(I18nKey.interactionCommonSaveDraft)}
+          </button>
+          <button
             id="diary-editor-save-published"
             type="button"
             class="px-4 py-2 rounded-lg bg-(--btn-regular-bg) text-(--btn-content) text-sm"

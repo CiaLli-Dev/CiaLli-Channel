@@ -27,6 +27,13 @@ export const zhTWArticleEditor: Record<string, string> = {
     [Key.articleEditorLoadFailedRetry]: "載入失敗，請重試",
     [Key.articleEditorLocalDraftRestored]: "已恢復目前的工作草稿",
     [Key.articleEditorLocalDraftSaved]: "工作草稿已儲存",
+    [Key.articleEditorWorkingDraftDetectedMessage]:
+        "偵測到你有一篇未完成的工作草稿，要繼續編輯，還是刪除後重新開始？",
+    [Key.articleEditorWorkingDraftDetectedTitle]: "發現工作草稿",
+    [Key.articleEditorWorkingDraftDeleteAndCreate]: "刪除草稿並新建",
+    [Key.articleEditorWorkingDraftDeleted]: "已刪除工作草稿，開始新的創作",
+    [Key.articleEditorWorkingDraftRestored]: "已恢復工作草稿",
+    [Key.articleEditorWorkingDraftResume]: "繼續編輯",
     [Key.articleEditorLoginExpired]: "登入已過期，請重新登入",
     [Key.articleEditorPasswordRequired]: "請輸入密碼",
     [Key.articleEditorPreviewFailedRetry]: "預覽失敗，請重試",

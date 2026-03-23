@@ -42,6 +42,14 @@ export const enDiaryEditor: Record<string, string> = {
     [Key.diaryEditorStagedUpload]: "Image upload staged",
     [Key.diaryEditorSubmittingDiary]: "Submitting diary...",
     [Key.diaryEditorSyncingImageOrder]: "Syncing image order...",
+    [Key.diaryEditorWorkingDraftDeleteAndCreate]: "Delete Draft and Start New",
+    [Key.diaryEditorWorkingDraftDeleted]:
+        "Working draft deleted. Starting a new diary",
+    [Key.diaryEditorWorkingDraftDetectedMessage]:
+        "A working draft was found. Do you want to continue editing it or delete it and start over?",
+    [Key.diaryEditorWorkingDraftDetectedTitle]: "Working Draft Found",
+    [Key.diaryEditorWorkingDraftRestored]: "Working draft restored",
+    [Key.diaryEditorWorkingDraftResume]: "Continue Editing",
     [Key.diaryEditorUploadFailed]: "Upload failed",
     [Key.diaryEditorUploadFailedUnsaved]:
         "Image upload failed. Current changes are not saved",

@@ -3,11 +3,9 @@
  */
 import * as z from "zod";
 
-import {
-    AppStatusSchema,
-    OptionalIntSchema,
-    OptionalStringSchema,
-} from "./common";
+import { OptionalIntSchema, OptionalStringSchema } from "./common";
+
+const DiaryStatusSchema = z.enum(["draft", "published"]);
 
 // ── 创建日记 ──
 
@@ -27,10 +25,23 @@ export const UpdateDiarySchema = z
         content: z.string().min(1),
         allow_comments: z.boolean(),
         praviate: z.boolean(),
+        status: DiaryStatusSchema,
     })
     .partial();
 
 export type UpdateDiaryInput = z.infer<typeof UpdateDiarySchema>;
+
+// ── 工作草稿（允许未完成字段） ──
+
+export const UpsertDiaryWorkingDraftSchema = z.object({
+    content: z.string().optional(),
+    allow_comments: z.boolean().optional(),
+    praviate: z.boolean().optional(),
+});
+
+export type UpsertDiaryWorkingDraftInput = z.infer<
+    typeof UpsertDiaryWorkingDraftSchema
+>;
 
 // ── 日记预览 ──
 
@@ -62,7 +73,7 @@ export const UpdateDiaryImageSchema = z
         sort: OptionalIntSchema,
         is_public: z.boolean(),
         show_on_profile: z.boolean(),
-        status: AppStatusSchema,
+        status: DiaryStatusSchema,
     })
     .partial();
 

@@ -36,6 +36,13 @@ export const zhCNDiaryEditor: Record<string, string> = {
     [Key.diaryEditorStagedUpload]: "图片已暂存上传",
     [Key.diaryEditorSubmittingDiary]: "正在提交日记...",
     [Key.diaryEditorSyncingImageOrder]: "正在同步图片顺序...",
+    [Key.diaryEditorWorkingDraftDeleteAndCreate]: "删除草稿并新建",
+    [Key.diaryEditorWorkingDraftDeleted]: "已删除工作草稿，开始新的日记",
+    [Key.diaryEditorWorkingDraftDetectedMessage]:
+        "你有一篇未完成的草稿，要继续编辑吗？",
+    [Key.diaryEditorWorkingDraftDetectedTitle]: "发现工作草稿",
+    [Key.diaryEditorWorkingDraftRestored]: "已恢复工作草稿",
+    [Key.diaryEditorWorkingDraftResume]: "继续编辑",
     [Key.diaryEditorUploadFailed]: "上传失败",
     [Key.diaryEditorUploadFailedUnsaved]: "图片上传失败，当前改动尚未保存",
     [Key.diaryEditorUploadMissingFileId]: "上传成功但未返回文件 ID",

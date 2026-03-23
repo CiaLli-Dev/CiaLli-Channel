@@ -25,12 +25,17 @@ export type SaveDiaryContext = {
     contentInput: HTMLTextAreaElement;
     allowCommentsInput: HTMLInputElement;
     isPublicInput: HTMLInputElement;
+    saveDraftBtn: HTMLButtonElement | null;
     savePublishedBtn: HTMLButtonElement;
     publishButtonIdleText: string;
     publishButtonLoadingText: string;
+    draftButtonIdleText: string;
+    draftButtonLoadingText: string;
     username: string;
     getCurrentDiaryId: () => string;
     setCurrentDiaryId: (id: string) => void;
+    getCurrentStatus: () => "draft" | "published" | "";
+    setCurrentStatus: (status: "draft" | "published") => void;
     pendingUploads: Map<string, PendingDiaryUpload>;
     getImageOrderItems: () => DiaryImageOrderItem[];
     deletedExistingImageIds: Set<string>;
@@ -45,25 +50,29 @@ export type SaveDiaryContext = {
 
 export type ExecuteSaveDiaryOptions = {
     redirectOnSuccess?: boolean;
+    targetStatus?: "draft" | "published";
 };
 
 async function saveDiaryContent(
     content: string,
     ctx: SaveDiaryContext,
+    targetStatus: "draft" | "published",
 ): Promise<{ id: string; shortId: string } | null> {
     const payload = {
         content,
         allow_comments: ctx.allowCommentsInput.checked,
         praviate: ctx.isPublicInput.checked,
-        status: "published",
+        status: targetStatus,
     };
 
     const currentDiaryId = ctx.getCurrentDiaryId();
-    const isCreate = !currentDiaryId;
-    const endpoint = isCreate
-        ? "/api/v1/me/diaries"
-        : `/api/v1/me/diaries/${encodeURIComponent(currentDiaryId)}`;
-    const method = isCreate ? "POST" : "PATCH";
+    const isDraftSave = targetStatus === "draft";
+    const endpoint = isDraftSave
+        ? "/api/v1/me/diaries/working-draft"
+        : currentDiaryId
+          ? `/api/v1/me/diaries/${encodeURIComponent(currentDiaryId)}`
+          : "/api/v1/me/diaries";
+    const method = isDraftSave ? "PUT" : currentDiaryId ? "PATCH" : "POST";
 
     const { response, data } = await api(endpoint, {
         method,
@@ -119,13 +128,18 @@ async function syncImagesAfterSave(
     }
 }
 
-function startSaveTask(ctx: SaveDiaryContext): ProgressTaskHandle {
+function startSaveTask(
+    ctx: SaveDiaryContext,
+    targetStatus: "draft" | "published",
+): ProgressTaskHandle {
     const pendingCount = ctx.pendingUploads.size;
     return startTask({
         title:
-            ctx.editorMode === "edit"
+            targetStatus === "draft"
                 ? t(I18nKey.diaryEditorSavingTitle)
-                : t(I18nKey.diaryEditorPublishingTitle),
+                : ctx.editorMode === "edit"
+                  ? t(I18nKey.diaryEditorSavingTitle)
+                  : t(I18nKey.diaryEditorPublishingTitle),
         mode: pendingCount > 0 ? "determinate" : "indeterminate",
         percent: 0,
         text:
@@ -162,6 +176,9 @@ async function runSaveDiaryCore(
 ): Promise<boolean> {
     let content = sourceContent.trim();
     let uploadStageFailed = false;
+    const targetStatus =
+        options.targetStatus ||
+        (ctx.getCurrentStatus() === "published" ? "published" : "draft");
 
     try {
         const materialized = await materializePendingUploads(
@@ -188,7 +205,7 @@ async function runSaveDiaryCore(
             ctx.contentInput.value = content;
         }
 
-        const saveResult = await saveDiaryContent(content, ctx);
+        const saveResult = await saveDiaryContent(content, ctx, targetStatus);
         if (!saveResult) {
             return false;
         }
@@ -202,6 +219,7 @@ async function runSaveDiaryCore(
         }
 
         ctx.setCurrentDiaryId(id);
+        ctx.setCurrentStatus(targetStatus);
         await syncImagesAfterSave(id, materializedUploads, ctx);
         ctx.markDraftSaved();
 
@@ -218,14 +236,18 @@ async function runSaveDiaryCore(
             ctx.setSubmitMessage(t(I18nKey.interactionCommonSaveSuccess));
         } else {
             ctx.setSubmitMessage(
-                ctx.editorMode === "edit"
-                    ? t(I18nKey.diaryEditorSaveSuccessRedirecting)
-                    : t(I18nKey.diaryEditorPublishSuccessRedirecting),
+                targetStatus === "draft"
+                    ? t(I18nKey.interactionCommonSaveSuccess)
+                    : ctx.editorMode === "edit"
+                      ? t(I18nKey.diaryEditorSaveSuccessRedirecting)
+                      : t(I18nKey.diaryEditorPublishSuccessRedirecting),
             );
-            navigateToPage(
-                `/${ctx.username}/diary/${encodeURIComponent(targetId)}`,
-                { force: true },
-            );
+            if (targetStatus === "published") {
+                navigateToPage(
+                    `/${ctx.username}/diary/${encodeURIComponent(targetId)}`,
+                    { force: true },
+                );
+            }
         }
         return true;
     } catch (error) {
@@ -246,21 +268,29 @@ export async function executeSaveDiary(
     options: ExecuteSaveDiaryOptions = {},
 ): Promise<boolean> {
     const sourceContent = String(ctx.contentInput.value || "");
-    if (!sourceContent.trim()) {
+    const targetStatus =
+        options.targetStatus ||
+        (ctx.getCurrentStatus() === "published" ? "published" : "draft");
+    if (targetStatus === "published" && !sourceContent.trim()) {
         ctx.setSubmitError(t(I18nKey.diaryEditorContentRequired));
         return false;
     }
 
-    const taskHandle = startSaveTask(ctx);
+    const taskHandle = startSaveTask(ctx, targetStatus);
     ctx.setSaveTaskHandle(taskHandle);
 
     ctx.setSubmitError("");
     ctx.setSubmitMessage(
-        ctx.editorMode === "edit"
+        targetStatus === "draft"
             ? t(I18nKey.diaryEditorSaving)
-            : t(I18nKey.diaryEditorPublishing),
+            : ctx.editorMode === "edit"
+              ? t(I18nKey.diaryEditorSaving)
+              : t(I18nKey.diaryEditorPublishing),
     );
     ctx.setSavingState(true);
 
-    return runSaveDiaryCore(sourceContent, ctx, options);
+    return runSaveDiaryCore(sourceContent, ctx, {
+        ...options,
+        targetStatus,
+    });
 }

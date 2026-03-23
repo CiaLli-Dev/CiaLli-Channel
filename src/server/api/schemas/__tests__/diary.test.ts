@@ -3,6 +3,7 @@ import * as z from "zod";
 
 import {
     CreateDiarySchema,
+    UpsertDiaryWorkingDraftSchema,
     UpdateDiarySchema,
 } from "@/server/api/schemas/diary";
 
@@ -36,9 +37,26 @@ describe("UpdateDiarySchema", () => {
     it("部分更新 → 通过", () => {
         const result = UpdateDiarySchema.parse({
             content: "更新后的内容",
+            status: "published",
             praviate: false,
         });
         expect(result.content).toBe("更新后的内容");
+        expect(result.status).toBe("published");
         expect(result.praviate).toBe(false);
+    });
+});
+
+describe("UpsertDiaryWorkingDraftSchema", () => {
+    it("空对象 → 通过", () => {
+        expect(UpsertDiaryWorkingDraftSchema.parse({})).toEqual({});
+    });
+
+    it("允许空内容草稿", () => {
+        const result = UpsertDiaryWorkingDraftSchema.parse({
+            content: "",
+            praviate: true,
+        });
+        expect(result.content).toBe("");
+        expect(result.praviate).toBe(true);
     });
 });

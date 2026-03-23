@@ -36,6 +36,13 @@ export const zhTWDiaryEditor: Record<string, string> = {
     [Key.diaryEditorStagedUpload]: "圖片已暫存上傳",
     [Key.diaryEditorSubmittingDiary]: "正在提交日記...",
     [Key.diaryEditorSyncingImageOrder]: "正在同步圖片順序...",
+    [Key.diaryEditorWorkingDraftDeleteAndCreate]: "刪除草稿並新建",
+    [Key.diaryEditorWorkingDraftDeleted]: "已刪除工作草稿，開始新的日記",
+    [Key.diaryEditorWorkingDraftDetectedMessage]:
+        "偵測到你有一篇未完成的工作草稿，要繼續編輯，還是刪除後重新開始？",
+    [Key.diaryEditorWorkingDraftDetectedTitle]: "發現工作草稿",
+    [Key.diaryEditorWorkingDraftRestored]: "已恢復工作草稿",
+    [Key.diaryEditorWorkingDraftResume]: "繼續編輯",
     [Key.diaryEditorUploadFailed]: "上傳失敗",
     [Key.diaryEditorUploadFailedUnsaved]: "圖片上傳失敗，當前變更尚未儲存",
     [Key.diaryEditorUploadMissingFileId]: "上傳成功但未返回檔案 ID",

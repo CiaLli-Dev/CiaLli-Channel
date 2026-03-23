@@ -2,6 +2,7 @@
 import { UPLOAD_LIMIT_LABELS, UPLOAD_LIMITS } from "@/constants/upload-limits";
 import I18nKey from "@/i18n/i18nKey";
 import { t, tFmt } from "@/scripts/i18n-runtime";
+import { showOverlayDialog } from "@/scripts/overlay-dialog";
 import type { ProgressTaskHandle } from "@/scripts/progress-overlay-manager";
 import { setupUnsavedChangesGuard } from "@/scripts/unsaved-changes-guard";
 import { setupPageInit } from "@/utils/page-init";
@@ -63,6 +64,7 @@ type EditorDomRefs = {
     allowCommentsInput: HTMLInputElement;
     isPublicInput: HTMLInputElement;
     contentInput: HTMLTextAreaElement;
+    saveDraftBtn: HTMLButtonElement | null;
     savePublishedBtn: HTMLButtonElement;
     submitMsgEl: HTMLElement;
     submitErrorEl: HTMLElement;
@@ -85,6 +87,9 @@ function resolveEditorDomRefs(): EditorDomRefs | null {
     ) as HTMLTextAreaElement | null;
     const savePublishedBtn = document.getElementById(
         "diary-editor-save-published",
+    ) as HTMLButtonElement | null;
+    const saveDraftBtn = document.getElementById(
+        "diary-editor-save-draft",
     ) as HTMLButtonElement | null;
     const submitMsgEl = document.getElementById("diary-editor-submit-msg");
     const submitErrorEl = document.getElementById("diary-editor-submit-error");
@@ -120,6 +125,7 @@ function resolveEditorDomRefs(): EditorDomRefs | null {
         allowCommentsInput,
         isPublicInput,
         contentInput,
+        saveDraftBtn,
         savePublishedBtn,
         submitMsgEl,
         submitErrorEl,
@@ -217,11 +223,43 @@ function stageImage(
     uploadFileInput.value = "";
 }
 
+function loadDiarySnapshot(
+    refs: EditorDomRefs,
+    item: Record<string, unknown>,
+    imagesPayload: unknown,
+    setImageOrderItems: (items: DiaryImageOrderItem[]) => void,
+    setCurrentDiaryId: (id: string) => void,
+    setCurrentDiaryStatus: (status: "draft" | "published" | "") => void,
+    renderImageOrder: () => void,
+    setSubmitMessage: (msg: string) => void,
+): void {
+    refs.allowCommentsInput.checked = toBooleanValue(item.allow_comments, true);
+    refs.isPublicInput.checked = toBooleanValue(item.praviate, true);
+    refs.contentInput.value = toStringValue(toNullableString(item.content));
+    setCurrentDiaryId(toStringValue(item.id));
+    const status = toStringValue(item.status);
+    setCurrentDiaryStatus(
+        status === "draft" || status === "published" ? status : "",
+    );
+
+    const nextOrderItems: DiaryImageOrderItem[] = [];
+    normalizeImageEntries(imagesPayload).forEach((image, index) => {
+        const orderItem = buildImageOrderItemFromEntry(image, index);
+        if (orderItem) {
+            nextOrderItems.push(orderItem);
+        }
+    });
+    setImageOrderItems(nextOrderItems);
+    renderImageOrder();
+    setSubmitMessage(t(I18nKey.diaryEditorLoadedReadyEdit));
+}
+
 async function loadDiaryDetail(
     id: string,
     refs: EditorDomRefs,
     setImageOrderItems: (items: DiaryImageOrderItem[]) => void,
     setCurrentDiaryId: (id: string) => void,
+    setCurrentDiaryStatus: (status: "draft" | "published" | "") => void,
     renderImageOrder: () => void,
     setSubmitMessage: (msg: string) => void,
     setSubmitError: (msg: string) => void,
@@ -251,24 +289,16 @@ async function loadDiaryDetail(
             setSubmitMessage("");
             return;
         }
-        refs.allowCommentsInput.checked = toBooleanValue(
-            item.allow_comments,
-            true,
+        loadDiarySnapshot(
+            refs,
+            item,
+            data.images,
+            setImageOrderItems,
+            setCurrentDiaryId,
+            setCurrentDiaryStatus,
+            renderImageOrder,
+            setSubmitMessage,
         );
-        refs.isPublicInput.checked = toBooleanValue(item.praviate, true);
-        refs.contentInput.value = toStringValue(toNullableString(item.content));
-
-        const nextOrderItems: DiaryImageOrderItem[] = [];
-        normalizeImageEntries(data.images).forEach((image, index) => {
-            const orderItem = buildImageOrderItemFromEntry(image, index);
-            if (orderItem) {
-                nextOrderItems.push(orderItem);
-            }
-        });
-        setImageOrderItems(nextOrderItems);
-        renderImageOrder();
-        setCurrentDiaryId(toStringValue(item.id));
-        setSubmitMessage(t(I18nKey.diaryEditorLoadedReadyEdit));
     } catch (error) {
         console.error("[diary-editor] load detail failed:", error);
         setSubmitError(t(I18nKey.diaryEditorLoadDiaryFailedRetry));
@@ -301,6 +331,7 @@ export function initDiaryEditorPage(options: InitOptions): boolean {
         allowCommentsInput,
         isPublicInput,
         contentInput,
+        saveDraftBtn,
         savePublishedBtn,
         submitMsgEl,
         submitErrorEl,
@@ -321,7 +352,10 @@ export function initDiaryEditorPage(options: InitOptions): boolean {
         editorMode === "edit"
             ? t(I18nKey.diaryEditorSaving)
             : t(I18nKey.diaryEditorPublishing);
+    const draftButtonIdleText = t(I18nKey.interactionCommonSaveDraft);
+    const draftButtonLoadingText = t(I18nKey.diaryEditorSaving);
     let currentDiaryId = toStringValue(options.diaryId ?? root.dataset.diaryId);
+    let currentDiaryStatus: "draft" | "published" | "" = "";
 
     const pendingUploads = new Map<string, PendingDiaryUpload>();
     let imageOrderItems: DiaryImageOrderItem[] = [];
@@ -337,6 +371,12 @@ export function initDiaryEditorPage(options: InitOptions): boolean {
 
     const setSavingState = (nextSaving: boolean): void => {
         isSaving = nextSaving;
+        if (saveDraftBtn) {
+            saveDraftBtn.disabled = nextSaving;
+            saveDraftBtn.textContent = nextSaving
+                ? draftButtonLoadingText
+                : draftButtonIdleText;
+        }
         savePublishedBtn.disabled = nextSaving;
         savePublishedBtn.textContent = nextSaving
             ? publishButtonLoadingText
@@ -394,13 +434,20 @@ export function initDiaryEditorPage(options: InitOptions): boolean {
         contentInput,
         allowCommentsInput,
         isPublicInput,
+        saveDraftBtn,
         savePublishedBtn,
         publishButtonIdleText,
         publishButtonLoadingText,
+        draftButtonIdleText,
+        draftButtonLoadingText,
         username,
         getCurrentDiaryId: () => currentDiaryId,
         setCurrentDiaryId: (id) => {
             currentDiaryId = id;
+        },
+        getCurrentStatus: () => currentDiaryStatus,
+        setCurrentStatus: (status) => {
+            currentDiaryStatus = status;
         },
         pendingUploads,
         getImageOrderItems: () => imageOrderItems,
@@ -417,7 +464,15 @@ export function initDiaryEditorPage(options: InitOptions): boolean {
     };
 
     savePublishedBtn.addEventListener("click", () => {
-        void executeSaveDiary(saveDiaryCtx);
+        void executeSaveDiary(saveDiaryCtx, {
+            targetStatus: "published",
+        });
+    });
+    saveDraftBtn?.addEventListener("click", () => {
+        void executeSaveDiary(saveDiaryCtx, {
+            redirectOnSuccess: false,
+            targetStatus: "draft",
+        });
     });
 
     contentInput.addEventListener("input", () => {
@@ -457,6 +512,9 @@ export function initDiaryEditorPage(options: InitOptions): boolean {
             (id) => {
                 currentDiaryId = id;
             },
+            (status) => {
+                currentDiaryStatus = status;
+            },
             renderImageOrder,
             setSubmitMessage,
             setSubmitError,
@@ -464,8 +522,102 @@ export function initDiaryEditorPage(options: InitOptions): boolean {
             markDraftSaved();
         });
     } else {
-        renderImageOrder();
-        markDraftSaved();
+        void (async () => {
+            renderImageOrder();
+            try {
+                const { response, data } = await api(
+                    "/api/v1/me/diaries/working-draft",
+                    { method: "GET" },
+                );
+                if (!response.ok || !data?.ok) {
+                    markDraftSaved();
+                    return;
+                }
+                const item = toRecord(data.item);
+                if (!item) {
+                    markDraftSaved();
+                    return;
+                }
+                const decision = await showOverlayDialog({
+                    ariaLabel: t(I18nKey.diaryEditorWorkingDraftDetectedTitle),
+                    message: t(I18nKey.diaryEditorWorkingDraftDetectedMessage),
+                    dismissKey: null,
+                    actions: [
+                        {
+                            key: "resume",
+                            label: t(I18nKey.diaryEditorWorkingDraftResume),
+                            variant: "primary",
+                        },
+                        {
+                            key: "delete",
+                            label: t(
+                                I18nKey.diaryEditorWorkingDraftDeleteAndCreate,
+                            ),
+                            variant: "danger",
+                        },
+                    ],
+                });
+                if (decision.actionKey === "resume") {
+                    loadDiarySnapshot(
+                        refs,
+                        item,
+                        data.images,
+                        (items) => {
+                            imageOrderItems = items;
+                        },
+                        (id) => {
+                            currentDiaryId = id;
+                        },
+                        (status) => {
+                            currentDiaryStatus = status;
+                        },
+                        renderImageOrder,
+                        setSubmitMessage,
+                    );
+                    setSubmitMessage(
+                        t(I18nKey.diaryEditorWorkingDraftRestored),
+                    );
+                    markDraftSaved();
+                    return;
+                }
+                const draftId = toStringValue(item.id);
+                if (draftId) {
+                    const { response: deleteResponse, data: deleteData } =
+                        await api(
+                            `/api/v1/me/diaries/${encodeURIComponent(draftId)}`,
+                            {
+                                method: "DELETE",
+                            },
+                        );
+                    if (!deleteResponse.ok || !deleteData?.ok) {
+                        setSubmitError(
+                            getApiMessage(
+                                deleteData,
+                                t(I18nKey.diaryEditorSaveFailedRetry),
+                            ),
+                        );
+                        markDraftSaved();
+                        return;
+                    }
+                }
+                currentDiaryId = "";
+                currentDiaryStatus = "";
+                contentInput.value = "";
+                allowCommentsInput.checked = true;
+                isPublicInput.checked = true;
+                imageOrderItems = [];
+                deletedExistingImageIds.clear();
+                renderImageOrder();
+                setSubmitMessage(t(I18nKey.diaryEditorWorkingDraftDeleted));
+            } catch (error) {
+                console.error(
+                    "[diary-editor] resolve working draft failed:",
+                    error,
+                );
+            } finally {
+                markDraftSaved();
+            }
+        })();
     }
 
     const disposeUnsavedGuard = setupUnsavedChangesGuard({
@@ -475,6 +627,10 @@ export function initDiaryEditorPage(options: InitOptions): boolean {
         saveBeforeLeave: () =>
             executeSaveDiary(saveDiaryCtx, {
                 redirectOnSuccess: false,
+                targetStatus:
+                    editorMode === "edit" && currentDiaryStatus === "published"
+                        ? "published"
+                        : "draft",
             }),
     });
     let disposed = false;

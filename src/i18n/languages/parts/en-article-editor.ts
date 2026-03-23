@@ -36,6 +36,15 @@ export const enArticleEditor: Record<string, string> = {
     [Key.articleEditorLocalDraftRestored]:
         "Restored your current working draft",
     [Key.articleEditorLocalDraftSaved]: "Working draft saved",
+    [Key.articleEditorWorkingDraftDetectedMessage]:
+        "A working draft was found. Do you want to continue editing it or delete it and start over?",
+    [Key.articleEditorWorkingDraftDetectedTitle]: "Working Draft Found",
+    [Key.articleEditorWorkingDraftDeleteAndCreate]:
+        "Delete Draft and Start New",
+    [Key.articleEditorWorkingDraftDeleted]:
+        "Working draft deleted. Starting a new article",
+    [Key.articleEditorWorkingDraftRestored]: "Working draft restored",
+    [Key.articleEditorWorkingDraftResume]: "Continue Editing",
     [Key.articleEditorLoginExpired]: "Login expired. Please log in again",
     [Key.articleEditorPasswordRequired]: "Please enter password",
     [Key.articleEditorPreviewFailedRetry]: "Preview failed. Please try again",

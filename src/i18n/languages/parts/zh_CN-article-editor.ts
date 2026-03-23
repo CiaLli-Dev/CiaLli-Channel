@@ -18,7 +18,7 @@ export const zhCNArticleEditor: Record<string, string> = {
     [Key.articleEditorEncryptHintLocked]: "加密内容已锁定",
     [Key.articleEditorEncryptUnsupported]: "当前环境不支持加密",
     [Key.articleEditorEncryptedAutoUnlockMissingPassword]:
-        "检测到加密内容，请输入密码解锁",
+        "加密内容，请输入密码解锁",
     [Key.articleEditorEncryptedAutoUnlocked]: "已自动解锁加密内容",
     [Key.articleEditorEncryptedBodyLockedPlaceholder]:
         "内容已加密，输入密码后可编辑",
@@ -27,6 +27,13 @@ export const zhCNArticleEditor: Record<string, string> = {
     [Key.articleEditorLoadFailedRetry]: "加载失败，请重试",
     [Key.articleEditorLocalDraftRestored]: "已恢复当前工作草稿",
     [Key.articleEditorLocalDraftSaved]: "工作草稿已保存",
+    [Key.articleEditorWorkingDraftDetectedMessage]:
+        "你有一篇未完成的草稿，要继续编辑吗？",
+    [Key.articleEditorWorkingDraftDetectedTitle]: "发现工作草稿",
+    [Key.articleEditorWorkingDraftDeleteAndCreate]: "删除草稿并新建",
+    [Key.articleEditorWorkingDraftDeleted]: "已删除工作草稿，开始新的创作",
+    [Key.articleEditorWorkingDraftRestored]: "已恢复工作草稿",
+    [Key.articleEditorWorkingDraftResume]: "继续编辑",
     [Key.articleEditorLoginExpired]: "登录已过期，请重新登录",
     [Key.articleEditorPasswordRequired]: "请输入密码",
     [Key.articleEditorPreviewFailedRetry]: "预览失败，请重试",

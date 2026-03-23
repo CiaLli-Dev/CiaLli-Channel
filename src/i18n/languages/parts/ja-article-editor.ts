@@ -36,6 +36,14 @@ export const jaArticleEditor: Record<string, string> = {
         "読み込みに失敗しました。再試行してください",
     [Key.articleEditorLocalDraftRestored]: "現在の作業用下書きを復元しました",
     [Key.articleEditorLocalDraftSaved]: "作業用下書きを保存しました",
+    [Key.articleEditorWorkingDraftDetectedMessage]:
+        "未完了の作業用下書きが見つかりました。続きを編集するか、削除して新しく作成しますか？",
+    [Key.articleEditorWorkingDraftDetectedTitle]: "作業用下書きを検出",
+    [Key.articleEditorWorkingDraftDeleteAndCreate]: "下書きを削除して新規作成",
+    [Key.articleEditorWorkingDraftDeleted]:
+        "作業用下書きを削除しました。新しい記事を開始します",
+    [Key.articleEditorWorkingDraftRestored]: "作業用下書きを復元しました",
+    [Key.articleEditorWorkingDraftResume]: "編集を続ける",
     [Key.articleEditorLoginExpired]:
         "ログインの有効期限が切れました。再ログインしてください",
     [Key.articleEditorPasswordRequired]: "パスワードを入力してください",
