@@ -420,8 +420,8 @@ const feedModes = ["rss-page", "atom-page"] as const;
                   ]}
                 >
                   <div class="space-y-4">
-                    <div class="flex items-center gap-2.5">
-                      <div class="md3-skeleton-block h-8 w-1 rounded-md" />
+                    <div class="relative block">
+                      <div class="absolute top-1 bottom-1 -left-4 md3-skeleton-block w-1 rounded-md lg:-left-[1.125rem]" />
                       <div
                         class="md3-skeleton-text"
                         style="--skeleton-width: 42%; --skeleton-height: 2.2rem;"

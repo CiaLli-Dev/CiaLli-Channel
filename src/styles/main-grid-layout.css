@@ -55,7 +55,13 @@
   animation: fadeInUp 1s ease-out;
   font-weight: bold;
   font-size: clamp(2.5rem, 10vw, 6rem);
-  line-height: 0.98;
+  line-height: 1.1;
+}
+
+@media (max-width: 767px) {
+  .banner-title {
+    line-height: 1.3;
+  }
 }
 
 .banner-subtitle {

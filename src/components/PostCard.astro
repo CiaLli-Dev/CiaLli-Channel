@@ -94,13 +94,13 @@ const adminDeleteLabel = i18n(I18nKey.interactionCommonDeleteAdmin);
     >
       <a
         href={url}
-        class="transition group w-full block font-bold text-2xl lg:text-3xl text-90 pr-8 lg:pr-0
+        class="relative transition w-full block font-bold text-2xl lg:text-3xl text-90
           hover:text-(--primary) dark:hover:text-(--primary)
           active:text-(--title-active) dark:active:text-(--title-active)
-          before:w-1 before:h-5 before:rounded-md before:bg-(--primary)
-          before:absolute
-          before:top-[0.75rem] before:left-0 before:block
-          lg:before:top-[2.1875rem] lg:before:left-[1.125rem]"
+          before:content-[''] before:absolute before:-left-4
+          before:top-[0.18em] before:bottom-[0.18em]
+          before:w-1 before:rounded-md before:bg-(--primary)
+          lg:before:-left-[1.125rem]"
       >
         {
           pinned && (
@@ -111,14 +111,6 @@ const adminDeleteLabel = i18n(I18nKey.interactionCommonDeleteAdmin);
           )
         }
         {title}
-        <Icon
-          class="hidden text-[2rem] text-(--primary) translate-y-0.5 absolute"
-          name="material-symbols:chevron-right-rounded"
-        />
-        <Icon
-          class="text-(--primary) text-[2rem] transition inline absolute translate-y-0.5 opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0"
-          name="material-symbols:chevron-right-rounded"
-        />
       </a>
 
       <div class="hidden lg:block h-5" aria-hidden="true"></div>
@@ -130,7 +122,7 @@ const adminDeleteLabel = i18n(I18nKey.interactionCommonDeleteAdmin);
       </div>
 
       <div
-        class="flex flex-col items-start gap-3 mt-auto lg:mt-2 lg:flex-row lg:items-center lg:justify-between"
+        class="flex flex-col items-start gap-3 mt-auto lg:-mt-2 lg:flex-row lg:items-center lg:justify-between"
       >
         <div
           class="flex min-w-0 flex-wrap items-center gap-1.5 text-50 text-sm font-medium leading-none"
@@ -285,8 +277,11 @@ const adminDeleteLabel = i18n(I18nKey.interactionCommonDeleteAdmin);
         ]}
       >
         <div class="space-y-4">
-          <div class="flex items-center gap-2.5">
-            <div class="block md3-skeleton-block h-8 w-1 rounded-md"></div>
+          <div class="relative block">
+            <div
+              class="absolute top-1 bottom-1 -left-4 md3-skeleton-block w-1 rounded-md lg:-left-[1.125rem]"
+            >
+            </div>
             <div
               class="md3-skeleton-text"
               style="--skeleton-width: 42%; --skeleton-height: 2.2rem;"
