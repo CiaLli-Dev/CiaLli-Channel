@@ -5,7 +5,6 @@ import SpeedInsights from "@vercel/speed-insights/astro";
 import ConfigCarrier from "@components/ConfigCarrier.astro";
 import MusicPlayer from "@components/widget/MusicPlayer/MusicPlayer.svelte";
 import { buildLegacySiteConfig } from "@/config";
-import { generatedFontManifest } from "@/generated/font-manifest";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
 import { readCsrfToken } from "@/server/security/csrf";
 import type { ResolvedSiteSettings } from "@/types/site-settings";
@@ -153,42 +152,6 @@ const bodyClassName = [
 ]
   .filter(Boolean)
   .join(" ");
-
-// 构建字体配置的 CSS 变量
-// ASCII 字体优先级最高（用于英文字母、数字等），CJK 字体作为回退
-let bodyFontFamily = "";
-if (siteConfig.font) {
-  const fonts: string[] = [];
-  // 先添加 ASCII 字体（优先级最高）
-  if (siteConfig.font.asciiFont?.fontFamily) {
-    const asciiFont = siteConfig.font.asciiFont.fontFamily;
-    // 字体名包含空格时需加引号
-    fonts.push(asciiFont.includes(" ") ? `"${asciiFont}"` : asciiFont);
-  }
-  // 再添加 CJK 字体（作为回退）
-  if (siteConfig.font.cjkFont?.fontFamily) {
-    const cjkFont = siteConfig.font.cjkFont.fontFamily;
-    // 字体名包含空格时需加引号
-    fonts.push(cjkFont.includes(" ") ? `"${cjkFont}"` : cjkFont);
-  }
-  // 添加系统字体作为最终兜底
-  fonts.push(
-    "system-ui",
-    "-apple-system",
-    "BlinkMacSystemFont",
-    "'Segoe UI'",
-    "Roboto",
-    "Oxygen",
-    "Ubuntu",
-    "Cantarell",
-    "'Open Sans'",
-    "'Helvetica Neue'",
-    "sans-serif",
-  );
-  // 组合为完整的 font-family 字符串
-  bodyFontFamily = fonts.join(", ");
-}
-const bodyStyle = bodyFontFamily ? `font-family: ${bodyFontFamily};` : "";
 ---
 
 <!doctype html>
@@ -200,122 +163,16 @@ const bodyStyle = bodyFontFamily ? `font-family: ${bodyFontFamily};` : "";
 >
   <head>
     <ClientRouter fallback="swap" />
-    <link rel="stylesheet" href={generatedFontManifest.cssHref} />
-    {
-      generatedFontManifest.preloadFonts.map((font) => (
-        <link
-          rel="preload"
-          href={font.href}
-          as="font"
-          type={font.type}
-          crossorigin={font.crossorigin}
-          fetchpriority={font.fetchpriority}
-        />
-      ))
-    }
-    <script
-      is:inline
-      define:vars={{
-        deferredFonts: generatedFontManifest.deferredFonts,
-        deferredWarmup: generatedFontManifest.deferredWarmup,
-      }}
-    >
-      (() => {
-        if (
-          typeof window === "undefined" ||
-          !deferredWarmup?.enabled ||
-          !Array.isArray(deferredFonts) ||
-          deferredFonts.length === 0
-        ) {
-          return;
-        }
-
-        const sessionKey = String(deferredWarmup.sessionKey || "").trim();
-        const hasWarmupFinished = () => {
-          if (!sessionKey) {
-            return false;
-          }
-          try {
-            return sessionStorage.getItem(sessionKey) === "1";
-          } catch (error) {
-            console.warn("[layout] 读取字体预热状态失败:", error);
-            return false;
-          }
-        };
-        const markWarmupFinished = () => {
-          if (!sessionKey) {
-            return;
-          }
-          try {
-            sessionStorage.setItem(sessionKey, "1");
-          } catch (error) {
-            console.warn("[layout] 写入字体预热状态失败:", error);
-          }
-        };
-
-        if (hasWarmupFinished()) {
-          return;
-        }
-
-        const warmupDeferredFonts = () => {
-          for (const font of deferredFonts) {
-            if (!font?.href) {
-              continue;
-            }
-
-            const link = document.createElement("link");
-            link.rel = "preload";
-            link.as = "font";
-            link.href = String(font.href);
-            link.type = String(font.type || "font/woff2");
-            link.crossOrigin = String(font.crossorigin || "anonymous");
-            link.setAttribute(
-              "fetchpriority",
-              String(
-                font.fetchpriority || deferredWarmup.fetchpriority || "low",
-              ),
-            );
-            link.dataset.fontDeferredWarmup = "true";
-            document.head.appendChild(link);
-          }
-
-          markWarmupFinished();
-        };
-
-        const scheduleWarmup = () => {
-          if (typeof window.requestIdleCallback === "function") {
-            window.requestIdleCallback(
-              () => {
-                warmupDeferredFonts();
-              },
-              { timeout: 4000 },
-            );
-            return;
-          }
-
-          window.setTimeout(() => {
-            warmupDeferredFonts();
-          }, 0);
-        };
-
-        if (deferredWarmup.trigger === "window-load-idle") {
-          if (document.readyState === "complete") {
-            scheduleWarmup();
-            return;
-          }
-          window.addEventListener(
-            "load",
-            () => {
-              scheduleWarmup();
-            },
-            { once: true },
-          );
-          return;
-        }
-
-        scheduleWarmup();
-      })();
-    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Long+Cang&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+Mono:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap"
+    />
 
     <script is:inline>
       (() => {
@@ -582,7 +439,6 @@ const bodyStyle = bodyFontFamily ? `font-family: ${bodyFontFamily};` : "";
   </head>
   <body
     class={bodyClassName}
-    style={bodyStyle}
     data-layout-mode={initialLayoutMode}
     data-route-home={String(isHomePage)}
     data-route-archive={String(isArchivePage)}

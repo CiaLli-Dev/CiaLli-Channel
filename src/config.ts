@@ -12,16 +12,6 @@ export const systemSiteConfig: SystemSiteConfig = {
     themeColor: {
         hue: 285,
     },
-    font: {
-        asciiFont: {
-            fontFamily: "ZenMaruGothic-Medium",
-            fontWeight: "500",
-        },
-        cjkFont: {
-            fontFamily: "LoliTi-SecondEdition",
-            fontWeight: "400",
-        },
-    },
     pageScaling: {
         targetWidth: 2000,
     },
@@ -204,7 +194,6 @@ export function buildLegacySiteConfig(
         themeColor: system.themeColor,
         navbarTitle: settings.navbarTitle,
         pageScaling: system.pageScaling,
-        font: system.font,
         wallpaperMode: settings.wallpaperMode,
         banner: settings.banner,
         toc: settings.toc,

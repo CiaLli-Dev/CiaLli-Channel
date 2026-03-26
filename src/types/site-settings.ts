@@ -60,7 +60,6 @@ export type SystemSiteConfig = {
     lang: SiteConfig["lang"];
     timeZone: string;
     themeColor: SiteConfig["themeColor"];
-    font: SiteConfig["font"];
     pageScaling: NonNullable<SiteConfig["pageScaling"]>;
     expressiveCode: ExpressiveCodeConfig;
 };

@@ -37,18 +37,6 @@ export type SiteConfig = {
         targetWidth?: number; // 目标宽度，低于此宽度时开始缩放
     };
 
-    // 添加字体配置
-    font: {
-        asciiFont: {
-            fontFamily: string;
-            fontWeight: string | number;
-        };
-        cjkFont: {
-            fontFamily: string;
-            fontWeight: string | number;
-        };
-    };
-
     // 壁纸模式配置
     wallpaperMode: {
         // 默认壁纸模式：banner=顶部横幅，none=无壁纸

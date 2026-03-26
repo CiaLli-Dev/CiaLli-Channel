@@ -13,11 +13,22 @@
 
 @config "../../tailwind.config.mjs";
 
+:root {
+  --font-sans: "Noto Sans SC", "Noto Sans JP", "Noto Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "Noto Sans Mono", ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  --font-banner-display: "Long Cang", "Noto Sans SC", "Noto Sans JP", sans-serif;
+}
+
 /* 确保平滑滚动 */
 html {
   /* 全站字号基线统一从这里控制，避免模板层写死后覆盖响应式策略 */
   font-size: 16px;
   scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
 }
 
 @media (max-width: 1279px) {

@@ -74,92 +74,77 @@ export const getStaticPaths: GetStaticPaths = async () => {
         }));
 };
 
-let fontCache: { regular: Buffer | null; bold: Buffer | null } | null = null;
+type OgFontPair = {
+    regular: Buffer;
+    bold: Buffer;
+};
 
-function loadLocalOgFonts(): { regular: Buffer | null; bold: Buffer | null } {
-    const readLocalFont = (path: string): Buffer | null => {
-        try {
-            return fs.readFileSync(path);
-        } catch (error) {
-            console.warn(`[og] failed to read local font: ${path}`, error);
-            return null;
-        }
-    };
+type OgFontCache = {
+    sc: OgFontPair;
+    jp: OgFontPair;
+};
 
-    return {
-        regular: readLocalFont(
-            "./node_modules/@fontsource/roboto/files/roboto-latin-400-normal.woff",
-        ),
-        bold: readLocalFont(
-            "./node_modules/@fontsource/roboto/files/roboto-latin-700-normal.woff",
-        ),
-    };
+let fontCache: OgFontCache | null = null;
+const OG_FONT_FETCH_RETRY_COUNT = 3;
+const OG_FONT_CDN_URLS = {
+    sc: {
+        regular:
+            "https://fonts.gstatic.com/s/notosanssc/v40/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaG9_FrYtHaA.ttf",
+        bold: "https://fonts.gstatic.com/s/notosanssc/v40/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaGzjCrYtHaA.ttf",
+    },
+    jp: {
+        regular:
+            "https://fonts.gstatic.com/s/notosansjp/v56/-F6jfjtqLzI2JPCgQBnw7HFyzSD-AsregP8VFBEj35zS1g.ttf",
+        bold: "https://fonts.gstatic.com/s/notosansjp/v56/-F6jfjtqLzI2JPCgQBnw7HFyzSD-AsregP8VFPYk35zS1g.ttf",
+    },
+} as const;
+
+function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+    });
 }
 
-async function fetchNotoSansSCFonts(): Promise<{
-    regular: Buffer | null;
-    bold: Buffer | null;
-}> {
+async function fetchFontBuffer(url: string): Promise<Buffer> {
+    let lastError: unknown = null;
+
+    for (let attempt = 1; attempt <= OG_FONT_FETCH_RETRY_COUNT; attempt += 1) {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(
+                    `Failed to fetch OG font with status ${response.status}.`,
+                );
+            }
+            return Buffer.from(await response.arrayBuffer());
+        } catch (error) {
+            lastError = error;
+            if (attempt < OG_FONT_FETCH_RETRY_COUNT) {
+                // CDN 偶发握手抖动时做短暂重试，避免单次网络闪断打断整次构建。
+                await sleep(500 * attempt);
+            }
+        }
+    }
+
+    throw lastError instanceof Error ? lastError : new Error("fetch failed");
+}
+
+async function fetchNotoOgFonts(): Promise<OgFontCache> {
     if (fontCache) {
         return fontCache;
     }
 
-    try {
-        const cssResp = await fetch(
-            "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap",
-        );
-        if (!cssResp.ok) {
-            throw new Error("Failed to fetch Google Fonts CSS");
-        }
-        const cssText = await cssResp.text();
-
-        const getUrlForWeight = (weight: number): string | null => {
-            const blockRe = new RegExp(
-                `@font-face\\s*{[^}]*font-weight:\\s*${weight}[^}]*}`,
-                "g",
-            );
-            const match = cssText.match(blockRe);
-            if (!match || match.length === 0) {
-                return null;
-            }
-            const urlMatch = match[0].match(/url\((https:[^)]+)\)/);
-            return urlMatch ? urlMatch[1] : null;
-        };
-
-        const regularUrl = getUrlForWeight(400);
-        const boldUrl = getUrlForWeight(700);
-
-        if (!regularUrl || !boldUrl) {
-            console.warn(
-                "Could not find font urls in Google Fonts CSS; falling back to local fonts.",
-            );
-            fontCache = loadLocalOgFonts();
-            return fontCache;
-        }
-
-        const [rResp, bResp] = await Promise.all([
-            fetch(regularUrl),
-            fetch(boldUrl),
-        ]);
-        if (!rResp.ok || !bResp.ok) {
-            console.warn(
-                "Failed to download font files from Google; falling back to local fonts.",
-            );
-            fontCache = loadLocalOgFonts();
-            return fontCache;
-        }
-
-        const rBuf = Buffer.from(await rResp.arrayBuffer());
-        const bBuf = Buffer.from(await bResp.arrayBuffer());
-
-        fontCache = { regular: rBuf, bold: bBuf };
-        return fontCache;
-    } catch (error) {
-        console.warn("Error fetching fonts:", error);
-        // 大陆构建环境可能无法访问 Google 字体，回退到仓库内置字体以保证 build 稳定。
-        fontCache = loadLocalOgFonts();
-        return fontCache;
-    }
+    fontCache = {
+        sc: {
+            regular: await fetchFontBuffer(OG_FONT_CDN_URLS.sc.regular),
+            bold: await fetchFontBuffer(OG_FONT_CDN_URLS.sc.bold),
+        },
+        jp: {
+            regular: await fetchFontBuffer(OG_FONT_CDN_URLS.jp.regular),
+            bold: await fetchFontBuffer(OG_FONT_CDN_URLS.jp.bold),
+        },
+    };
+    return fontCache;
 }
 
 function resolvePublishedDate(post: OgPost, timeZone: string): string {
@@ -226,8 +211,7 @@ function buildOgTemplate(p: OgTemplateParams): object {
                 display: "flex",
                 flexDirection: "column",
                 backgroundColor: p.backgroundColor,
-                fontFamily:
-                    '"Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                fontFamily: '"Noto Sans SC", "Noto Sans JP", sans-serif',
                 padding: "60px",
             },
             children: [
@@ -435,27 +419,35 @@ function buildOgFooter(
 }
 
 function buildFontList(
-    fontRegular: Buffer | null,
-    fontBold: Buffer | null,
+    scFonts: OgFontPair,
+    jpFonts: OgFontPair,
 ): FontOptions[] {
-    const fonts: FontOptions[] = [];
-    if (fontRegular) {
-        fonts.push({
+    return [
+        {
             name: "Noto Sans SC",
-            data: fontRegular,
+            data: scFonts.regular,
             weight: 400,
             style: "normal",
-        });
-    }
-    if (fontBold) {
-        fonts.push({
+        },
+        {
             name: "Noto Sans SC",
-            data: fontBold,
+            data: scFonts.bold,
             weight: 700,
             style: "normal",
-        });
-    }
-    return fonts;
+        },
+        {
+            name: "Noto Sans JP",
+            data: jpFonts.regular,
+            weight: 400,
+            style: "normal",
+        },
+        {
+            name: "Noto Sans JP",
+            data: jpFonts.bold,
+            weight: 700,
+            style: "normal",
+        },
+    ];
 }
 
 export async function GET({
@@ -465,8 +457,7 @@ export async function GET({
     const resolvedSiteSettings = await getResolvedSiteSettings();
     const settings = resolvedSiteSettings.settings;
     const system = resolvedSiteSettings.system;
-    const { regular: fontRegular, bold: fontBold } =
-        await fetchNotoSansSCFonts();
+    const { sc: scFonts, jp: jpFonts } = await fetchNotoOgFonts();
 
     const avatarBase64 = loadImageAsBase64(
         resolveLocalAssetPath(
@@ -498,7 +489,7 @@ export async function GET({
     const svg = await satori(template, {
         width: 1200,
         height: 630,
-        fonts: buildFontList(fontRegular, fontBold),
+        fonts: buildFontList(scFonts, jpFonts),
     });
 
     const png = await sharp(Buffer.from(svg)).png().toBuffer();

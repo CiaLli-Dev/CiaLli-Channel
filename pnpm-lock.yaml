@@ -38,12 +38,6 @@ importers:
       '@fancyapps/ui':
         specifier: ^6.1.13
         version: 6.1.13
-      '@fontsource-variable/jetbrains-mono':
-        specifier: ^5.2.8
-        version: 5.2.8
-      '@fontsource/roboto':
-        specifier: ^5.2.10
-        version: 5.2.10
       '@iconify-json/fa7-brands':
         specifier: ^1.2.2
         version: 1.2.2
@@ -243,9 +237,6 @@ importers:
       prettier-plugin-svelte:
         specifier: ^3.5.1
         version: 3.5.1(prettier@3.8.1)(svelte@5.55.0)
-      subset-font:
-        specifier: ^2.4.0
-        version: 2.4.0
       typescript-eslint:
         specifier: ^8.57.2
         version: 8.57.2(eslint@10.1.0(jiti@2.6.1))(typescript@5.9.3)
@@ -605,12 +596,6 @@ packages:
 
   '@fancyapps/ui@6.1.13':
     resolution: {integrity: sha512-C7EGAWxeTIRXZF2gznVUdMgFM3km6FUaz1S9IB+6+GWeKeIDk1tChwO60GfJE4Mi32OPfVynVIdx8wypNaK96A==}
-
-  '@fontsource-variable/jetbrains-mono@5.2.8':
-    resolution: {integrity: sha512-WBA9elru6Jdp5df2mES55wuOO0WIrn3kpXnI4+W2ek5u3ZgLS9XS4gmIlcQhiZOWEKl95meYdvK7xI+ETLCq/Q==}
-
-  '@fontsource/roboto@5.2.10':
-    resolution: {integrity: sha512-8HlA5FtSfz//oFSr2eL7GFXAiE7eIkcGOtx7tjsLKq+as702x9+GU7K95iDeWFapHC4M2hv9RrpXKRTGGBI8Zg==}
 
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
@@ -2219,9 +2204,6 @@ packages:
     resolution: {integrity: sha512-Wp1zXWPVUPBmfoa3Cqc9ctaKuzKAV6uLstRqlR56kSjplf5uAce+qeyYym7F+PHbGTk+tCEdkCW6RD7DX/gBZw==}
     engines: {node: '>=20'}
 
-  fontverter@2.0.0:
-    resolution: {integrity: sha512-DFVX5hvXuhi1Jven1tbpebYTCT9XYnvx6/Z+HFUPb7ZRMCW+pj2clU9VMhoTPgWKPhAs7JJDSk3CW1jNUvKCZQ==}
-
   foreground-child@3.3.1:
     resolution: {integrity: sha512-gIXjKqtFuWEgzFRJA9WCQeSJLZDjgJUOMCMzxtvFq/37KojM1BFGufqsCy0r4qSQmYLsZYMeyRqzIWOMup03sw==}
     engines: {node: '>=14'}
@@ -2280,9 +2262,6 @@ packages:
 
   h3@1.15.10:
     resolution: {integrity: sha512-YzJeWSkDZxAhvmp8dexjRK5hxziRO7I9m0N53WhvYL5NiWfkUkzssVzY9jvGu0HBoLFW6+duYmNSn6MaZBCCtg==}
-
-  harfbuzzjs@0.4.15:
-    resolution: {integrity: sha512-p1edvnlc+vpRe2kz7OKzcscf0gyFiDZpco+miDxAiiZ67cu1oNlbuOkmP/A/i1l/w938VrkF2FdZ8scNcnkPrQ==}
 
   has-flag@4.0.0:
     resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
@@ -2615,9 +2594,6 @@ packages:
   locate-path@6.0.0:
     resolution: {integrity: sha512-iPZK6eYjbxRu3uB4/WZ3EsEIMJFMqAoopl3R+zuq0UjcAm/MO6KCweDgPfP3elTztoKP3KtnVHxTn2NHBSDVUw==}
     engines: {node: '>=10'}
-
-  lodash@4.17.23:
-    resolution: {integrity: sha512-LgVTMpQtIopCi79SJeDiP0TfWi5CNEc/L/aRdTh3yIvmZXTnheWpKjSZhnvMl8iXbC1tFg9gdHHDMLoV7CnG+w==}
 
   log-update@6.1.0:
     resolution: {integrity: sha512-9ie8ItPR6tjY5uYJh8K/Zrv/RMZ5VOlOWvtZdEHYSTFKZfIBPQa9tOAEeAWhd+AnIneLJ22w5fjOYtoutpWq5w==}
@@ -2964,9 +2940,6 @@ packages:
 
   pako@0.2.9:
     resolution: {integrity: sha512-NUcwaKxUxWrZLpDG+z/xZaCgQITkA/Dv4V/T6bw7VON6l1Xz/VnrBqrYjZQ12TamKHzITTfOEIYUj48y2KXImA==}
-
-  pako@1.0.11:
-    resolution: {integrity: sha512-4hLB8Py4zZce5s4yd9XzopqwVv/yGNhV1Bl8NTmCq1763HeK2+EwVTv+leGeL13Dnh2wfbqowVPXCIO0z4taYw==}
 
   parse-css-color@0.2.1:
     resolution: {integrity: sha512-bwS/GGIFV3b6KS4uwpzCFj4w297Yl3uqnSgIPsoQkx7GMLROXfMnWvxfNkL0oh8HVhZA4hvJoEoEIqonfJ3BWg==}
@@ -3427,9 +3400,6 @@ packages:
     engines: {node: '>=16'}
     hasBin: true
 
-  subset-font@2.4.0:
-    resolution: {integrity: sha512-DA/45nIj4NiseVdfHxVdVGL7hvNo3Ol6HjEm3KSYtPyDcsr6jh8Q37vSgz+A722wMfUd6nL8kgsi7uGv9DExXQ==}
-
   suf-log@2.5.3:
     resolution: {integrity: sha512-KvC8OPjzdNOe+xQ4XWJV2whQA0aM1kGVczMQ8+dStAO6KfEB140JEVQ9dE76ONZ0/Ylf67ni4tILPJB41U0eow==}
 
@@ -3881,10 +3851,6 @@ packages:
   vscode-uri@3.1.0:
     resolution: {integrity: sha512-/BpdSx+yCQGnCvecbyXdxHDkuk55/G3xwnC0GqY4gmQ3j+A+g8kzzgB4Nk/SINjqn6+waqw3EgbVF2QKExkRxQ==}
 
-  wawoff2@2.0.1:
-    resolution: {integrity: sha512-r0CEmvpH63r4T15ebFqeOjGqU4+EgTx4I510NtK35EMciSdcTxCw3Byy3JnBonz7iyIFZ0AbVo0bbFpEVuhCYA==}
-    hasBin: true
-
   web-namespaces@2.0.1:
     resolution: {integrity: sha512-bKr1DkiNa2krS7qxNtdrtHAmzuYGFQLiQ13TsorsdT6ULTkPLKuu5+GsFpDlg6JFjUTwX2DyhMPG2be8uPrqsQ==}
 
@@ -3919,9 +3885,6 @@ packages:
     resolution: {integrity: sha512-hUrmaWBdVDcxvYqnyh09zunKzROWjbZTiNy8dBEjkS7ehEDQibXJ7XvlmtbwuTclUiIyN+CyXQD4Vmko8fNm8w==}
     engines: {node: '>=8'}
     hasBin: true
-
-  woff2sfnt-sfnt2woff@1.0.0:
-    resolution: {integrity: sha512-edK4COc1c1EpRfMqCZO1xJOvdUtM5dbVb9iz97rScvnTevqEB3GllnLWCmMVp1MfQBdF1DFg/11I0rSyAdS4qQ==}
 
   word-wrap@1.2.5:
     resolution: {integrity: sha512-BN22B5eaMMI9UMtjrGd5g5eCYPpCPDUy0FJXbYsaT5zYxjFOckS53SQDE3pWkVoWpHXVb3BrYcEN4Twa55B5cA==}
@@ -4394,10 +4357,6 @@ snapshots:
       '@expressive-code/core': 0.41.7
 
   '@fancyapps/ui@6.1.13': {}
-
-  '@fontsource-variable/jetbrains-mono@5.2.8': {}
-
-  '@fontsource/roboto@5.2.10': {}
 
   '@humanfs/core@0.19.1': {}
 
@@ -6045,11 +6004,6 @@ snapshots:
     dependencies:
       tiny-inflate: 1.0.3
 
-  fontverter@2.0.0:
-    dependencies:
-      wawoff2: 2.0.1
-      woff2sfnt-sfnt2woff: 1.0.0
-
   foreground-child@3.3.1:
     dependencies:
       cross-spawn: 7.0.6
@@ -6110,8 +6064,6 @@ snapshots:
       radix3: 1.1.2
       ufo: 1.6.3
       uncrypto: 0.1.3
-
-  harfbuzzjs@0.4.15: {}
 
   has-flag@4.0.0: {}
 
@@ -6480,8 +6432,6 @@ snapshots:
   locate-path@6.0.0:
     dependencies:
       p-locate: 5.0.0
-
-  lodash@4.17.23: {}
 
   log-update@6.1.0:
     dependencies:
@@ -7034,8 +6984,6 @@ snapshots:
   package-manager-detector@1.6.0: {}
 
   pako@0.2.9: {}
-
-  pako@1.0.11: {}
 
   parse-css-color@0.2.1:
     dependencies:
@@ -7642,13 +7590,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  subset-font@2.4.0:
-    dependencies:
-      fontverter: 2.0.0
-      harfbuzzjs: 0.4.15
-      lodash: 4.17.23
-      p-limit: 3.1.0
-
   suf-log@2.5.3:
     dependencies:
       s.color: 0.0.15
@@ -8074,10 +8015,6 @@ snapshots:
 
   vscode-uri@3.1.0: {}
 
-  wawoff2@2.0.1:
-    dependencies:
-      argparse: 2.0.1
-
   web-namespaces@2.0.1: {}
 
   webidl-conversions@3.0.1: {}
@@ -8105,10 +8042,6 @@ snapshots:
     dependencies:
       siginfo: 2.0.0
       stackback: 0.0.2
-
-  woff2sfnt-sfnt2woff@1.0.0:
-    dependencies:
-      pako: 1.0.11
 
   word-wrap@1.2.5: {}
 

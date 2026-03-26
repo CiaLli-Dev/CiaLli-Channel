@@ -1,5 +1,4 @@
 /** @type {import('tailwindcss').Config} */
-import defaultTheme from "tailwindcss/defaultTheme";
 import typography from "@tailwindcss/typography";
 
 export default {
@@ -8,7 +7,8 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ["Roboto", "sans-serif", ...defaultTheme.fontFamily.sans],
+                sans: ["var(--font-sans)"],
+                mono: ["var(--font-mono)"],
             },
             screens: {
                 md: "768px", // 原默认值: 768px, 增大后navbar会更早坍缩

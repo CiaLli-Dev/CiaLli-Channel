@@ -31,9 +31,26 @@ const SCALE = 2;
 const WIDTH = 425 * SCALE;
 const PADDING = 24 * SCALE;
 const CONTENT_WIDTH = WIDTH - PADDING * 2;
-const FONT_FAMILY = "'Roboto', sans-serif";
+const FONT_FAMILY = '"Noto Sans SC", "Noto Sans JP", sans-serif';
 const DEFAULT_THEME_COLOR = "#558e88";
 const FOOTER_BOTTOM_PADDING = 18 * SCALE;
+
+async function ensurePosterFontsReady(): Promise<void> {
+    if (typeof document === "undefined" || !("fonts" in document)) {
+        return;
+    }
+
+    const fontLoads = [
+        '400 16px "Noto Sans SC"',
+        '700 16px "Noto Sans SC"',
+        '400 16px "Noto Sans JP"',
+        '700 16px "Noto Sans JP"',
+    ];
+
+    await Promise.allSettled(
+        fontLoads.map((fontDescriptor) => document.fonts.load(fontDescriptor)),
+    );
+}
 
 function getPosterTitle(payload: SharePosterPayload): string {
     return payload.title.trim() || payload.siteTitle.trim() || "CiaLli";
@@ -415,6 +432,8 @@ export async function generateSharePosterImage(
     payload: SharePosterPayload,
     options: SharePosterRenderOptions = {},
 ): Promise<string> {
+    await ensurePosterFontsReady();
+
     const themeColor = options.themeColor || DEFAULT_THEME_COLOR;
     const qrCodeUrl = await QRCode.toDataURL(payload.url, {
         margin: 1,
