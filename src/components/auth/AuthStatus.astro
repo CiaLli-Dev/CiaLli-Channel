@@ -7,7 +7,7 @@ import { url } from "@utils/url-utils";
   <a
     id="auth-login"
     href={url("/auth/login")}
-    class="btn-plain scale-animation rounded-lg w-11 h-11 active:scale-90 flex items-center justify-center"
+    class="auth-status-btn btn-plain scale-animation rounded-lg w-11 h-11 active:scale-90 flex items-center justify-center"
     aria-label="Login"
     title="登录"
   >
@@ -48,7 +48,7 @@ import { url } from "@utils/url-utils";
     <a
       id="auth-admin"
       href="/admin"
-      class="auth-admin-only btn-plain scale-animation rounded-lg w-9 h-9 active:scale-90 items-center justify-center"
+      class="auth-status-btn auth-admin-only btn-plain scale-animation rounded-lg w-9 h-9 active:scale-90 items-center justify-center"
       aria-label="Admin"
       title="管理台"
     >
@@ -61,7 +61,7 @@ import { url } from "@utils/url-utils";
     <button
       id="auth-logout"
       type="button"
-      class="btn-plain scale-animation rounded-lg w-9 h-9 active:scale-90 flex items-center justify-center"
+      class="auth-status-btn btn-plain scale-animation rounded-lg w-9 h-9 active:scale-90 flex items-center justify-center"
       aria-label="Logout"
       title="退出"
     >
@@ -69,6 +69,16 @@ import { url } from "@utils/url-utils";
     </button>
   </div>
 </div>
+
+<style>
+  .auth-status-btn {
+    color: rgb(0 0 0 / 0.75);
+  }
+
+  :global(:root.dark) .auth-status-btn {
+    color: rgb(255 255 255 / 0.75);
+  }
+</style>
 
 <script>
   import { emitAuthState } from "@/scripts/auth-state";

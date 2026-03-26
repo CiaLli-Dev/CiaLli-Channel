@@ -95,13 +95,13 @@ const adminDeleteLabel = i18n(I18nKey.interactionCommonDeleteAdmin);
     </a>
     <div
       class:list={[
-        "relative flex flex-col gap-3.5 px-4 py-4 sm:px-5 sm:py-5 lg:gap-4 lg:pl-9 lg:pr-2 lg:pt-7 lg:pb-6",
+        "post-card-body relative flex flex-col gap-4 px-5 py-5 lg:pl-9 lg:pr-2 lg:pt-7 lg:pb-6",
         desktopBodyWidthClass,
       ]}
     >
       <a
         href={url}
-        class="relative z-20 transition w-full block font-bold text-xl leading-tight sm:text-2xl lg:text-3xl text-90
+        class="post-card-title post-card-primary-text relative z-20 transition w-full block font-bold text-2xl lg:text-3xl
           hover:text-(--primary) dark:hover:text-(--primary)
           active:text-(--title-active) dark:active:text-(--title-active)
           before:content-[''] before:absolute before:-left-4
@@ -123,27 +123,27 @@ const adminDeleteLabel = i18n(I18nKey.interactionCommonDeleteAdmin);
       <div class="hidden lg:block h-5" aria-hidden="true"></div>
 
       <div
-        class="transition text-sm leading-6 text-75 mb-0 md:text-base lg:-mt-3 lg:mb-3.5 lg:pr-4 line-clamp-2 md:line-clamp-3 lg:line-clamp-1"
+        class="post-card-excerpt transition text-75 mb-0 lg:-mt-3 lg:mb-3.5 lg:pr-4 line-clamp-2 lg:line-clamp-1"
       >
         {excerpt}
       </div>
 
       <div
-        class="flex flex-col items-start gap-3 mt-auto md:gap-3.5 lg:-mt-2 lg:flex-row lg:items-center lg:justify-between"
+        class="post-card-footer flex flex-col items-start gap-3 mt-auto lg:-mt-2 lg:flex-row lg:items-center lg:justify-between"
       >
         <div
-          class="flex min-w-0 flex-wrap items-center gap-1.5 text-50 text-xs font-medium leading-5 sm:text-sm sm:leading-none"
+          class="post-card-meta flex min-w-0 flex-wrap items-center gap-1.5 text-50 text-sm font-medium leading-none"
         >
           <div class="max-w-[14rem] min-w-0 inline-flex items-baseline gap-1">
             <a
               href={`/${authorHandle}`}
-              class="relative z-20 truncate text-90 border-b border-transparent hover:border-current"
+              class="post-card-primary-text relative z-20 truncate border-b border-transparent hover:border-current"
             >
               {authorDisplayName}
             </a>
             <a
               href={`/${authorHandle}`}
-              class="relative z-20 shrink-0 text-60 hover:text-(--primary) transition-colors"
+              class="post-card-secondary-text relative z-20 shrink-0 hover:text-(--primary) transition-colors"
             >
               {"@"}
               {authorHandle}
@@ -153,7 +153,7 @@ const adminDeleteLabel = i18n(I18nKey.interactionCommonDeleteAdmin);
           <span>{publishedDate}</span>
         </div>
         <div
-          class="flex w-full items-center justify-between gap-3 shrink-0 post-card-actions leading-none md:gap-4 lg:ml-3 lg:mr-2 lg:w-auto lg:justify-start"
+          class="post-card-actions flex w-full items-center justify-between gap-4 shrink-0 leading-none lg:ml-3 lg:mr-2 lg:w-auto lg:justify-start"
         >
           <button
             type="button"
@@ -161,7 +161,7 @@ const adminDeleteLabel = i18n(I18nKey.interactionCommonDeleteAdmin);
               "relative z-20 inline-flex h-6 items-center gap-1.5 text-base font-medium hover:text-(--primary) transition-colors post-card-action-btn",
               {
                 "text-(--primary)": viewerState.hasLiked,
-                "text-50": !viewerState.hasLiked,
+                "post-card-muted-text": !viewerState.hasLiked,
               },
             ]}
             data-action="toggle-like"
@@ -174,14 +174,14 @@ const adminDeleteLabel = i18n(I18nKey.interactionCommonDeleteAdmin);
           </button>
           <a
             href={`${url}#comment-root`}
-            class="relative z-20 inline-flex h-6 items-center gap-1.5 text-50 text-base font-medium hover:text-(--primary) transition-colors"
+            class="post-card-muted-text relative z-20 inline-flex h-6 items-center gap-1.5 text-base font-medium hover:text-(--primary) transition-colors"
           >
             <Icon name="material-symbols:comment-rounded" class="text-xl" />
             <span>{comment_count}</span>
           </a>
           <details class="relative z-20 post-card-menu">
             <summary
-              class="list-none cursor-pointer inline-flex items-center justify-center w-8 h-8 rounded-lg text-50 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) active:bg-(--btn-plain-bg-active) transition-colors"
+              class="post-card-muted-text list-none cursor-pointer inline-flex items-center justify-center w-8 h-8 rounded-lg hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) active:bg-(--btn-plain-bg-active) transition-colors"
               aria-label="更多操作"
             >
               <Icon name="material-symbols:more-horiz" class="text-xl" />
@@ -216,7 +216,7 @@ const adminDeleteLabel = i18n(I18nKey.interactionCommonDeleteAdmin);
               <button
                 type="button"
                 class:list={[
-                  "w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors",
+                  "post-card-panel-text w-full text-left px-3 py-2 text-sm rounded-lg hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors",
                   {
                     hidden: !viewerState.canBlock,
                   },
@@ -237,7 +237,7 @@ const adminDeleteLabel = i18n(I18nKey.interactionCommonDeleteAdmin);
           href={url}
           aria-label={title}
           class:list={[
-            "group relative mx-4 mb-4 block h-44 rounded-xl overflow-hidden active:scale-95 sm:mx-5 sm:mb-5 sm:h-48 md:h-52 lg:absolute lg:top-3 lg:right-3 lg:bottom-3 lg:mx-0 lg:mb-0 lg:h-auto",
+            "post-card-cover group relative mx-5 mb-5 block h-52 rounded-xl overflow-hidden active:scale-95 lg:absolute lg:top-3 lg:right-3 lg:bottom-3 lg:mx-0 lg:mb-0 lg:h-auto",
             desktopEnterLinkClass,
           ]}
         >
@@ -277,11 +277,11 @@ const adminDeleteLabel = i18n(I18nKey.interactionCommonDeleteAdmin);
     <div class="relative flex h-full flex-col lg:block">
       <div
         class:list={[
-          "px-4 py-4 flex flex-col gap-3.5 sm:px-5 sm:py-5 lg:h-full lg:gap-4 lg:pl-9 lg:pr-2 lg:pt-7 lg:pb-6",
+          "post-card-skeleton-body px-5 py-5 flex flex-col gap-4 lg:h-full lg:pl-9 lg:pr-2 lg:pt-7 lg:pb-6",
           desktopBodyWidthClass,
         ]}
       >
-        <div class="space-y-3.5 lg:space-y-4">
+        <div class="post-card-skeleton-stack flex flex-col gap-4">
           <div class="relative block">
             <div
               class="absolute top-1 bottom-1 -left-4 md3-skeleton-block w-1 rounded-md lg:-left-[1.125rem]"
@@ -301,7 +301,7 @@ const adminDeleteLabel = i18n(I18nKey.interactionCommonDeleteAdmin);
           </div>
         </div>
         <div
-          class="mt-auto flex flex-col items-start gap-3 pt-2 md:gap-3.5 lg:flex-row lg:items-center lg:justify-between lg:gap-4 lg:pt-2.5"
+          class="post-card-skeleton-footer mt-auto flex flex-col items-start gap-3 pt-2.5 lg:flex-row lg:items-center lg:justify-between lg:gap-4"
         >
           <div class="flex min-w-0 flex-wrap items-center gap-2">
             <div
@@ -330,7 +330,7 @@ const adminDeleteLabel = i18n(I18nKey.interactionCommonDeleteAdmin);
         hasCover ? (
           <div
             class:list={[
-              "relative mx-4 mb-4 block h-44 rounded-xl overflow-hidden sm:mx-5 sm:mb-5 sm:h-48 md:h-52 lg:absolute lg:top-3 lg:right-3 lg:bottom-3 lg:mx-0 lg:mb-0 lg:h-auto",
+              "post-card-skeleton-cover relative mx-5 mb-5 block h-52 rounded-xl overflow-hidden lg:absolute lg:top-3 lg:right-3 lg:bottom-3 lg:mx-0 lg:mb-0 lg:h-auto",
               desktopEnterLinkClass,
             ]}
           >
@@ -362,5 +362,121 @@ const adminDeleteLabel = i18n(I18nKey.interactionCommonDeleteAdmin);
 <style>
   .post-card-menu summary::-webkit-details-marker {
     display: none;
+  }
+
+  .post-card-primary-text {
+    color: rgb(0 0 0 / 0.9);
+  }
+
+  .post-card-secondary-text {
+    color: rgb(0 0 0 / 0.6);
+  }
+
+  .post-card-muted-text {
+    color: rgb(0 0 0 / 0.5);
+  }
+
+  .post-card-panel-text {
+    color: rgb(0 0 0 / 0.75);
+  }
+
+  :global(:root.dark) .post-card-primary-text {
+    color: rgb(255 255 255 / 0.9);
+  }
+
+  :global(:root.dark) .post-card-secondary-text {
+    color: rgb(255 255 255 / 0.6);
+  }
+
+  :global(:root.dark) .post-card-muted-text {
+    color: rgb(255 255 255 / 0.5);
+  }
+
+  :global(:root.dark) .post-card-panel-text {
+    color: rgb(255 255 255 / 0.75);
+  }
+
+  /* 移动端改用媒体查询收敛尺寸，避免较小断点的 padding 规则在桌面宽度下反向覆盖。 */
+  @media (max-width: 1279px) {
+    .post-card-body,
+    .post-card-skeleton-body {
+      gap: 0.875rem;
+      padding: 1rem;
+    }
+
+    .post-card-title {
+      font-size: 1.25rem;
+      line-height: 1.25;
+    }
+
+    .post-card-excerpt {
+      font-size: 0.875rem;
+      line-height: 1.5rem;
+    }
+
+    .post-card-meta {
+      font-size: 0.75rem;
+      line-height: 1.25rem;
+    }
+
+    .post-card-actions,
+    .post-card-footer,
+    .post-card-skeleton-footer {
+      gap: 0.75rem;
+    }
+
+    .post-card-skeleton-footer {
+      padding-top: 0.5rem;
+    }
+
+    .post-card-cover,
+    .post-card-skeleton-cover {
+      margin-inline: 1rem;
+      margin-bottom: 1rem;
+      height: 11rem;
+    }
+  }
+
+  @media (min-width: 640px) and (max-width: 1279px) {
+    .post-card-body,
+    .post-card-skeleton-body {
+      padding: 1.25rem;
+    }
+
+    .post-card-title {
+      font-size: 1.5rem;
+    }
+
+    .post-card-meta {
+      font-size: 0.875rem;
+      line-height: 1;
+    }
+
+    .post-card-actions {
+      gap: 1rem;
+    }
+
+    .post-card-cover,
+    .post-card-skeleton-cover {
+      margin-inline: 1.25rem;
+      margin-bottom: 1.25rem;
+      height: 12rem;
+    }
+  }
+
+  @media (min-width: 768px) and (max-width: 1279px) {
+    .post-card-excerpt {
+      -webkit-line-clamp: 3;
+    }
+
+    .post-card-footer,
+    .post-card-skeleton-footer {
+      gap: 0.875rem;
+    }
+
+    .post-card-cover,
+    .post-card-skeleton-cover {
+      height: 13rem;
+    }
   }
 </style>

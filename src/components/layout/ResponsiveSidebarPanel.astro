@@ -59,6 +59,22 @@ const panelId = `sidebar-panel-${Math.random().toString(36).slice(2, 10)}`;
 <style>
   @reference "../../styles/main.css";
 
+  .responsive-sidebar-toggle {
+    color: rgb(0 0 0 / 0.9);
+  }
+
+  .responsive-sidebar-toggle-icon {
+    color: rgb(0 0 0 / 0.6);
+  }
+
+  :global(:root.dark) .responsive-sidebar-toggle {
+    color: rgb(255 255 255 / 0.9);
+  }
+
+  :global(:root.dark) .responsive-sidebar-toggle-icon {
+    color: rgb(255 255 255 / 0.6);
+  }
+
   .responsive-sidebar-panel[data-open="true"] .responsive-sidebar-toggle-icon {
     @apply rotate-180 text-(--primary);
   }

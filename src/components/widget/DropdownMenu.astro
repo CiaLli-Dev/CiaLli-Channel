@@ -62,7 +62,7 @@ const linkHref = resolveHref(link.url, link.external);
     hasChildren ? (
       <>
         <button
-          class="btn-plain scale-animation rounded-lg h-11 font-bold w-11 lg:w-auto lg:px-5 active:scale-95 dropdown-trigger flex items-center justify-center lg:justify-start whitespace-nowrap"
+          class="navbar-menu-action btn-plain scale-animation rounded-lg h-11 font-bold w-11 lg:w-auto lg:px-5 active:scale-95 dropdown-trigger flex items-center justify-center lg:justify-start whitespace-nowrap"
           aria-expanded="false"
           aria-haspopup="true"
           data-dropdown-trigger
@@ -104,7 +104,7 @@ const linkHref = resolveHref(link.url, link.external);
                   {child.external && (
                     <Icon
                       name="fa7-solid:arrow-up-right-from-square"
-                      class="text-[0.75rem] text-black/25 dark:text-white/25 ml-2"
+                      class="navbar-menu-external-indicator text-[0.75rem] ml-2"
                     />
                   )}
                 </a>
@@ -120,7 +120,7 @@ const linkHref = resolveHref(link.url, link.external);
         target={link.external ? "_blank" : null}
         rel={link.external ? "noopener noreferrer" : null}
         class:list={[
-          "btn-plain scale-animation rounded-lg h-11 font-bold w-11 lg:w-auto lg:px-5 active:scale-95 flex items-center justify-center lg:justify-start whitespace-nowrap",
+          "navbar-menu-action btn-plain scale-animation rounded-lg h-11 font-bold w-11 lg:w-auto lg:px-5 active:scale-95 flex items-center justify-center lg:justify-start whitespace-nowrap",
           isAdminOnly && "hidden",
         ]}
         data-admin-only={isAdminOnly ? "true" : undefined}
@@ -134,7 +134,7 @@ const linkHref = resolveHref(link.url, link.external);
         {link.external && (
           <Icon
             name="fa7-solid:arrow-up-right-from-square"
-            class="text-[0.875rem] transition -translate-y-px ml-1 text-black/20 dark:text-white/20 shrink-0 hidden lg:inline"
+            class="navbar-menu-external-indicator text-[0.875rem] transition -translate-y-px ml-1 shrink-0 hidden lg:inline"
           />
         )}
       </a>
@@ -144,6 +144,23 @@ const linkHref = resolveHref(link.url, link.external);
 
 <style>
   @reference "../../styles/main.css";
+
+  /* 导航栏按钮显式同步深色文字，避免按钮元素在 dark 下退回黑字。 */
+  .navbar-menu-action {
+    color: rgb(0 0 0 / 0.75);
+  }
+
+  :global(:root.dark) .navbar-menu-action {
+    color: rgb(255 255 255 / 0.75);
+  }
+
+  .navbar-menu-external-indicator {
+    color: rgb(0 0 0 / 0.2);
+  }
+
+  :global(:root.dark) .navbar-menu-external-indicator {
+    color: rgb(255 255 255 / 0.2);
+  }
 
   .dropdown-container {
     @apply relative;

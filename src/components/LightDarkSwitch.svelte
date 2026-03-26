@@ -86,6 +86,14 @@
 </div>
 
 <style>
+  .theme-switch-btn {
+    color: rgb(0 0 0 / 0.75);
+  }
+
+  :global(:root.dark) .theme-switch-btn {
+    color: rgb(255 255 255 / 0.75);
+  }
+
   /* 确保主题切换按钮的背景色即时更新 */
   .theme-switch-btn::before {
     transition:

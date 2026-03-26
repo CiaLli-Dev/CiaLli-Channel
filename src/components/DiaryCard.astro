@@ -160,7 +160,7 @@ function resolveDiaryImageSrc(image: AppDiaryImage): string {
             "inline-flex h-6 items-center gap-1.5 text-base font-medium hover:text-(--primary) transition-colors post-card-action-btn",
             {
               "text-(--primary)": viewerState.hasLiked,
-              "text-50": !viewerState.hasLiked,
+              "diary-card-muted-text": !viewerState.hasLiked,
             },
           ]}
           data-action="toggle-like"
@@ -173,14 +173,14 @@ function resolveDiaryImageSrc(image: AppDiaryImage): string {
         </button>
         <a
           href={`${diaryUrl}#comment-root`}
-          class="inline-flex h-6 items-center gap-1.5 text-50 text-base font-medium hover:text-(--primary) transition-colors"
+          class="diary-card-muted-text inline-flex h-6 items-center gap-1.5 text-base font-medium hover:text-(--primary) transition-colors"
         >
           <Icon name="material-symbols:comment-rounded" class="text-xl" />
           <span>{comment_count}</span>
         </a>
         <details class="relative post-card-menu">
           <summary
-            class="list-none cursor-pointer inline-flex items-center justify-center w-8 h-8 rounded-lg text-50 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) active:bg-(--btn-plain-bg-active) transition-colors"
+            class="diary-card-muted-text list-none cursor-pointer inline-flex items-center justify-center w-8 h-8 rounded-lg hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) active:bg-(--btn-plain-bg-active) transition-colors"
             aria-label="更多操作"
           >
             <Icon name="material-symbols:more-horiz" class="text-xl" />
@@ -191,7 +191,7 @@ function resolveDiaryImageSrc(image: AppDiaryImage): string {
             <button
               type="button"
               class:list={[
-                "w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors",
+                "diary-card-panel-text w-full text-left px-3 py-2 text-sm rounded-lg hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors",
                 {
                   hidden: !viewerState.canDeleteOwn,
                 },
@@ -203,7 +203,7 @@ function resolveDiaryImageSrc(image: AppDiaryImage): string {
             <button
               type="button"
               class:list={[
-                "w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors",
+                "diary-card-panel-text w-full text-left px-3 py-2 text-sm rounded-lg hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors",
                 {
                   hidden: !viewerState.canDeleteAdmin,
                 },
@@ -215,7 +215,7 @@ function resolveDiaryImageSrc(image: AppDiaryImage): string {
             <button
               type="button"
               class:list={[
-                "w-full text-left px-3 py-2 text-sm rounded-lg text-black/75 dark:text-white/75 hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors",
+                "diary-card-panel-text w-full text-left px-3 py-2 text-sm rounded-lg hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors",
                 {
                   hidden: !viewerState.canBlock,
                 },
@@ -236,6 +236,22 @@ function resolveDiaryImageSrc(image: AppDiaryImage): string {
 </div>
 
 <style>
+  .diary-card-muted-text {
+    color: rgb(0 0 0 / 0.5);
+  }
+
+  .diary-card-panel-text {
+    color: rgb(0 0 0 / 0.75);
+  }
+
+  :global(:root.dark) .diary-card-muted-text {
+    color: rgb(255 255 255 / 0.5);
+  }
+
+  :global(:root.dark) .diary-card-panel-text {
+    color: rgb(255 255 255 / 0.75);
+  }
+
   .post-card-menu summary::-webkit-details-marker {
     display: none;
   }

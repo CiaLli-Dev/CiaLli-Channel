@@ -35,7 +35,7 @@ const style = Astro.props.style;
       <div>
         <a
           href="/bulletin"
-          class="btn-regular rounded-lg px-3 py-1.5 text-sm font-medium active:scale-95 transition-transform"
+          class="announcement-action-btn btn-regular rounded-lg px-3 py-1.5 text-sm font-medium active:scale-95 transition-transform"
         >
           了解更多
         </a>
@@ -44,7 +44,7 @@ const style = Astro.props.style;
       {
         config.closable && (
           <button
-            class="btn-regular rounded-lg h-8 w-8 text-sm hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+            class="announcement-action-btn btn-regular rounded-lg h-8 w-8 text-sm hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
             data-announce-close
             aria-label={i18n(I18nKey.coreAnnouncementClose)}
           >
@@ -55,6 +55,16 @@ const style = Astro.props.style;
     </div>
   </div>
 </WidgetLayout>
+
+<style>
+  .announcement-action-btn {
+    color: var(--btn-content);
+  }
+
+  :global(:root.dark) .announcement-action-btn {
+    color: rgb(255 255 255 / 0.75);
+  }
+</style>
 
 <script>
   const announcementSelector = 'widget-layout[data-id="announcement"]';
