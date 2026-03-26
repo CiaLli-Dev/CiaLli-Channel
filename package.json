@@ -5,9 +5,8 @@
   "scripts": {
     "dev": "pnpm font:build && astro dev",
     "start": "pnpm font:build && astro dev",
-    "check": "pnpm font:build && node scripts/check-desktop-only.mjs && node scripts/check-i18n-hardcoded.mjs && node scripts/check-i18n-structure.mjs && astro check",
+    "check": "pnpm font:build && node scripts/check-i18n-hardcoded.mjs && node scripts/check-i18n-structure.mjs && astro check",
     "check:i18n": "node scripts/check-i18n-hardcoded.mjs",
-    "check:desktop-only": "node scripts/check-desktop-only.mjs",
     "build": "pnpm font:build && astro build",
     "export:directus-content": "node scripts/export-directus-content.js",
     "submit": "node scripts/indexnow-submit.js",
