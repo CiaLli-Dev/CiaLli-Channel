@@ -12,6 +12,10 @@ import type {
     HomeFeedViewerState,
 } from "@/server/recommendation/home-feed.types";
 
+/**
+ * 首页首屏固定收敛到 10 条；公共 API 默认分页继续保持 20，避免影响既有调用方。
+ */
+export const HOME_FEED_HOME_PAGE_LIMIT = 10;
 export const DEFAULT_HOME_FEED_PAGE_LIMIT = 20;
 export const MAX_HOME_FEED_PAGE_LIMIT = 20;
 export const DEFAULT_HOME_FEED_TOTAL_LIMIT = 60;

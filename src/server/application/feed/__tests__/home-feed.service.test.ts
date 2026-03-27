@@ -169,6 +169,44 @@ describe("buildHomeFeedPage", () => {
         });
     });
 
+    it("分页切片会按 10 条返回首页首屏结果", async () => {
+        buildHomeFeedMock.mockResolvedValue(
+            createBuildResult(
+                Array.from({ length: 12 }, (_, index) =>
+                    createArticleItem({
+                        id: `article-${index + 1}`,
+                        authorId: `author-${index + 1}`,
+                    }),
+                ),
+            ),
+        );
+
+        const result = await buildHomeFeedPage({
+            viewerId: null,
+            offset: 0,
+            pageLimit: 10,
+            totalLimit: 12,
+        });
+
+        expect(readManyMock).not.toHaveBeenCalled();
+        expect(result.items).toHaveLength(10);
+        expect(result.items.map((item) => item.id)).toEqual([
+            "article-1",
+            "article-2",
+            "article-3",
+            "article-4",
+            "article-5",
+            "article-6",
+            "article-7",
+            "article-8",
+            "article-9",
+            "article-10",
+        ]);
+        expect(result.next_offset).toBe(10);
+        expect(result.has_more).toBe(true);
+        expect(result.total).toBe(12);
+    });
+
     it("登录用户在服务端过滤已屏蔽作者并附带 viewerState", async () => {
         buildHomeFeedMock.mockResolvedValue(
             createBuildResult([

@@ -18,6 +18,7 @@ export const zhCNCore: Record<string, string> = {
     [Key.coreDarkMode]: "暗色",
     [Key.coreSystemMode]: "跟随系统",
     [Key.coreMore]: "更多",
+    [Key.coreViewMore]: "查看更多",
     [Key.coreNoData]: "暂无数据",
     [Key.coreNotFound]: "404",
     [Key.coreNotFoundTitle]: "页面未找到",

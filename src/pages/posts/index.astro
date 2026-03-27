@@ -10,6 +10,7 @@ import {
   DIRECTUS_ACCESS_COOKIE_NAME,
   DIRECTUS_REFRESH_COOKIE_NAME,
 } from "@/server/directus-auth";
+import type { HomeFeedPageItem } from "@/server/recommendation/home-feed.types";
 import {
   getSortedPosts,
   getTagList,
@@ -29,6 +30,19 @@ const allPosts = await getSortedPosts(viewerId);
 const tags = await getTagList(viewerId);
 const categories = await getCategoryList(viewerId);
 const uncategorizedLabel = i18n(I18nKey.contentUncategorized);
+const archiveFeedItems: HomeFeedPageItem[] = allPosts.map((entry) => ({
+  type: "article",
+  id: entry.data.article_id,
+  authorId: entry.data.author_id,
+  publishedAt: entry.data.published,
+  entry,
+  viewerState: {
+    hasLiked: false,
+    canDeleteOwn: false,
+    canDeleteAdmin: false,
+    canBlock: false,
+  },
+}));
 
 if (hasSessionCookie || viewerId) {
   Astro.response.headers.set("Cache-Control", "private, no-store");
@@ -52,7 +66,7 @@ if (hasSessionCookie || viewerId) {
           暂无公开文章。
         </div>
       ) : (
-        <PostPage page={{ data: allPosts }} maxAnimationIndex={15} />
+        <PostPage items={archiveFeedItems} maxAnimationIndex={15} />
       )
     }
 

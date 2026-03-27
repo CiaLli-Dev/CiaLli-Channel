@@ -17,6 +17,7 @@ export enum CoreKey {
     coreDarkMode = "coreDarkMode",
     coreSystemMode = "coreSystemMode",
     coreMore = "coreMore",
+    coreViewMore = "coreViewMore",
     coreNoData = "coreNoData",
     coreNotFound = "coreNotFound",
     coreNotFoundTitle = "coreNotFoundTitle",

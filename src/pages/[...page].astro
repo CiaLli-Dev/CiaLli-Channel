@@ -5,8 +5,8 @@ import MainGridLayout from "@layouts/MainGridLayout.astro";
 import HomeFeedPage from "@components/home/HomeFeedPage.astro";
 import {
   buildHomeFeedPage,
-  DEFAULT_HOME_FEED_PAGE_LIMIT,
   DEFAULT_HOME_FEED_TOTAL_LIMIT,
+  HOME_FEED_HOME_PAGE_LIMIT,
 } from "@/server/application/feed/home-feed.service";
 import { getSessionUser } from "@/server/auth/session";
 import {
@@ -30,8 +30,6 @@ if (rawPagePath) {
 }
 
 let homeFeedItems: HomeFeedPageItem[] = [];
-let homeFeedNextOffset = 0;
-let homeFeedHasMore = false;
 const invalidPath = Boolean(rawPagePath);
 let sessionUserId: string | null = null;
 const hasSessionCookie = Boolean(
@@ -48,12 +46,10 @@ if (!invalidPath) {
       viewerRoleName: sessionUser?.roleName ?? null,
       isViewerSystemAdmin: sessionUser?.isSystemAdmin ?? false,
       offset: 0,
-      pageLimit: DEFAULT_HOME_FEED_PAGE_LIMIT,
+      pageLimit: HOME_FEED_HOME_PAGE_LIMIT,
       totalLimit: DEFAULT_HOME_FEED_TOTAL_LIMIT,
     });
     homeFeedItems = homeFeed.items;
-    homeFeedNextOffset = homeFeed.next_offset;
-    homeFeedHasMore = homeFeed.has_more;
   } catch (error) {
     console.error("[home] failed to load mixed feed:", error);
   }
@@ -84,26 +80,16 @@ if (!invalidPath) {
       <div class="home-layout">
         <div class="min-w-0">
           {homeFeedItems.length === 0 ? (
-            <div class="card-base p-8 rounded-(--radius-large) text-70">
+            <div class="card-base p-8 rounded-(--radius-large) text-70 mb-4">
               {i18n(I18nKey.contentPageNoPublicPosts)}
             </div>
           ) : (
             <HomeFeedPage items={homeFeedItems} maxAnimationIndex={15} />
           )}
-
-          {/* 无限滚动哨兵 */}
-          <div
-            id="infinite-scroll-sentinel"
-            class:list={["h-1", { hidden: !homeFeedHasMore }]}
-            data-next-offset={homeFeedNextOffset}
-            data-has-more={homeFeedHasMore ? "true" : "false"}
-          />
-          <div
-            id="scroll-loading"
-            class="hidden text-center py-4 text-sm text-60"
-          >
-            {i18n(I18nKey.interactionCommonLoading)}
-          </div>
+          {/* 首页首屏收敛后仅保留归档入口，不再继续下拉加载 */}
+          <a href="/posts" class="home-archive-cta card-base">
+            {i18n(I18nKey.coreViewMore)}
+          </a>
         </div>
         {/* 右侧占位，与归档页筛选面板等宽 */}
         <div class="home-sidebar-placeholder" />
@@ -123,6 +109,26 @@ if (!invalidPath) {
     display: none;
   }
 
+  .home-archive-cta {
+    display: inline-flex;
+    width: 100%;
+    min-height: 4.5rem;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: rgb(0 0 0 / 0.9);
+  }
+
+  .home-archive-cta:hover {
+    color: var(--primary);
+  }
+
+  :global(:root.dark) .home-archive-cta {
+    color: rgb(255 255 255 / 0.9);
+  }
+
   @media (min-width: 1280px) {
     .home-layout {
       grid-template-columns: 1fr 17.5rem;
@@ -133,9 +139,3 @@ if (!invalidPath) {
     }
   }
 </style>
-
-<script>
-  import { setupHomeFeedInfiniteScroll } from "@/scripts/home-feed-infinite-scroll";
-
-  setupHomeFeedInfiniteScroll();
-</script>

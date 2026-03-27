@@ -18,6 +18,7 @@ export const zhTWCore: Record<string, string> = {
     [Key.coreDarkMode]: "暗色",
     [Key.coreSystemMode]: "跟隨系統",
     [Key.coreMore]: "更多",
+    [Key.coreViewMore]: "查看更多",
     [Key.coreNoData]: "暫無資料",
     [Key.coreNotFound]: "404",
     [Key.coreNotFoundTitle]: "頁面未找到",

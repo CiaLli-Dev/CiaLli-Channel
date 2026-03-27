@@ -1,69 +1,25 @@
 ---
+import HomeFeedItems from "@/components/home/HomeFeedItems.astro";
+import type { HomeFeedPageItem } from "@/server/recommendation/home-feed.types";
 import { widgetManager } from "@utils/widget-manager";
-import { formatDateToYYYYMMDD } from "@utils/date-utils";
-import type { DirectusPostEntry } from "@/utils/content-utils";
-import { resolveAuthorIdentity } from "@/utils/author-identity";
-
-import PostCard from "./PostCard.astro";
-
-interface PostListPage {
-  data: DirectusPostEntry[];
-}
 
 interface Props {
-  page: PostListPage;
+  items: HomeFeedPageItem[];
   maxAnimationIndex?: number;
 }
 
-const { page, maxAnimationIndex } = Astro.props;
-
-// 检查是否启用右侧边栏（通过检查右侧是否有组件）
+const { items, maxAnimationIndex } = Astro.props;
 const hasRightSidebars =
   widgetManager.getComponentsByPosition("top", "right").length > 0 ||
   widgetManager.getComponentsByPosition("sticky", "right").length > 0;
-
-const initialLayoutClass = "list-mode";
 ---
 
 <div
   id="post-list-container"
-  class={`transition-all duration-500 ease-in-out rounded-(--radius-large) bg-(--card-bg) bg-transparent mb-4 ${initialLayoutClass}`}
+  class="transition-all duration-500 ease-in-out rounded-(--radius-large) bg-(--card-bg) bg-transparent mb-4 list-mode"
   data-both-sidebars={hasRightSidebars}
 >
-  {
-    page.data.map((entry, index) => {
-      const date = formatDateToYYYYMMDD(entry.data.published);
-      const [year, month] = date.split("-");
-      const monthKey = `${year}-${month}`;
-      const { username: authorHandle } = resolveAuthorIdentity(
-        {
-          id: entry.data.author?.id,
-          name: entry.data.author?.name,
-          username: entry.data.author?.username,
-          display_name: entry.data.author?.display_name,
-        },
-        entry.data.author_id,
-      );
-      return (
-        <div
-          class="post-list-item"
-          data-year={year}
-          data-month={monthKey}
-          data-day={date}
-          data-tags={JSON.stringify(entry.data.tags || [])}
-          data-category={entry.data.category || ""}
-          data-author-id={entry.data.author_id}
-          data-author-handle={authorHandle}
-        >
-          <PostCard
-            entry={entry}
-            class:list="onload-animation"
-            style={`--i: ${maxAnimationIndex !== undefined ? Math.min(index, maxAnimationIndex) : index}; --interval: 50ms;`}
-          />
-        </div>
-      );
-    })
-  }
+  <HomeFeedItems items={items} maxAnimationIndex={maxAnimationIndex} />
 </div>
 
 <script>
@@ -75,18 +31,15 @@ const initialLayoutClass = "list-mode";
 <style>
   @reference "../styles/main.css";
 
-  /* 基础容器 */
   #post-list-container {
     min-height: 200px;
     transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* 布局模式 - 列表模式 */
   #post-list-container.list-mode {
     @apply flex flex-col gap-4;
   }
 
-  /* 内容可见性 (视口外不渲染) */
   #post-list-container > :global(*) {
     content-visibility: auto;
     contain-intrinsic-size: 200px;

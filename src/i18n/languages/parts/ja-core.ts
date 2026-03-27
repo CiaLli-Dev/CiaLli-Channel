@@ -18,6 +18,7 @@ export const jaCore: Record<string, string> = {
     [Key.coreDarkMode]: "ダーク",
     [Key.coreSystemMode]: "システム",
     [Key.coreMore]: "詳細を表示",
+    [Key.coreViewMore]: "もっと見る",
     [Key.coreNoData]: "データなし",
     [Key.coreNotFound]: "404",
     [Key.coreNotFoundTitle]: "ページが見つかりません",

@@ -18,6 +18,7 @@ export const enCore: Record<string, string> = {
     [Key.coreDarkMode]: "Dark",
     [Key.coreSystemMode]: "System",
     [Key.coreMore]: "More",
+    [Key.coreViewMore]: "View More",
     [Key.coreNoData]: "No data",
     [Key.coreNotFound]: "404",
     [Key.coreNotFoundTitle]: "Page Not Found",

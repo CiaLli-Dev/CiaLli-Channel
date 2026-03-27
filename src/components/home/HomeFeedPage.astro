@@ -1,7 +1,6 @@
 ---
-import HomeFeedItems from "@/components/home/HomeFeedItems.astro";
+import PostPage from "@components/PostPage.astro";
 import type { HomeFeedPageItem } from "@/server/recommendation/home-feed.types";
-import { widgetManager } from "@utils/widget-manager";
 
 interface Props {
   items: HomeFeedPageItem[];
@@ -9,41 +8,6 @@ interface Props {
 }
 
 const { items, maxAnimationIndex } = Astro.props;
-const hasRightSidebars =
-  widgetManager.getComponentsByPosition("top", "right").length > 0 ||
-  widgetManager.getComponentsByPosition("sticky", "right").length > 0;
 ---
 
-<div
-  id="post-list-container"
-  class="transition-all duration-500 ease-in-out rounded-(--radius-large) bg-(--card-bg) bg-transparent mb-4 list-mode"
-  data-both-sidebars={hasRightSidebars}
->
-  <HomeFeedItems items={items} maxAnimationIndex={maxAnimationIndex} />
-</div>
-
-<script>
-  import { initPostInteractions } from "@/scripts/post-interactions";
-
-  initPostInteractions();
-</script>
-
-<style>
-  @reference "../../styles/main.css";
-
-  #post-list-container {
-    min-height: 200px;
-    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  #post-list-container.list-mode {
-    @apply flex flex-col gap-4;
-  }
-
-  #post-list-container > :global(*) {
-    content-visibility: auto;
-    contain-intrinsic-size: 200px;
-    opacity: 1;
-    transform: none;
-  }
-</style>
+<PostPage items={items} maxAnimationIndex={maxAnimationIndex} />
