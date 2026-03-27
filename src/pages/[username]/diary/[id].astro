@@ -1,5 +1,6 @@
 ---
 import Comment from "@components/comment/index.astro";
+import DetailMobileProfile from "@components/DetailMobileProfile.astro";
 import ContentNotVisible from "@components/misc/ContentNotVisible.astro";
 import ExternalImage from "@components/misc/ExternalImage.astro";
 import Markdown from "@components/misc/Markdown.astro";
@@ -192,6 +193,7 @@ const diaryMetaText = formatSiteDateTime(diary?.date_created, siteDateContext);
 <MainGridLayout
   title={i18n(I18nKey.contentDiaryDetailTitle)}
   description={diary?.content || ""}
+  mobileLeftSidebarPlacement="hidden"
 >
   {
     !diary ? (
@@ -354,6 +356,8 @@ const diaryMetaText = formatSiteDateTime(diary?.date_created, siteDateContext);
               )}
               deleteSuccessHref={`/${username}/diary`}
             />
+
+            <DetailMobileProfile />
 
             <Comment
               module="diaries"
