@@ -91,6 +91,7 @@ const items = result.status === "ok" ? result.data.items : [];
 <MainGridLayout
   title={i18n(I18nKey.contentDiary)}
   description={i18n(I18nKey.contentDiaryPublicSubtitle)}
+  leftSidebarMobilePreset="without-announcement"
 >
   {
     result.status === "not_found" || result.status === "permission_denied" ? (

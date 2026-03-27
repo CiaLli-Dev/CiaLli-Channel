@@ -1,8 +1,8 @@
 ---
 import Comment from "@components/comment/index.astro";
-import DetailMobileProfile from "@components/DetailMobileProfile.astro";
 import ContentNotVisible from "@components/misc/ContentNotVisible.astro";
 import ArticleShareDialog from "@components/misc/ArticleShareDialog.astro";
+import Profile from "@components/widget/Profile.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import ExternalImage from "@components/misc/ExternalImage.astro";
@@ -302,7 +302,8 @@ const articleSharePayload: SharePosterPayload | undefined =
     ? article.title || i18n(I18nKey.contentUntitled)
     : i18n(I18nKey.contentArticleNotFoundTitle)}
   description={article?.summary || ""}
-  mobileLeftSidebarPlacement="hidden"
+  leftSidebarMobilePreset="hidden"
+  rightSidebarMobilePreset="drawer"
 >
   {
     coverPreloadUrl && (
@@ -475,7 +476,9 @@ const articleSharePayload: SharePosterPayload | undefined =
           deleteSuccessHref="/"
         />
 
-        <DetailMobileProfile />
+        <section class="mb-4 lg:hidden">
+          <Profile />
+        </section>
 
         <Comment
           module="articles"

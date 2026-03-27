@@ -7,6 +7,7 @@ import ResponsiveSidebarPanel from "@components/layout/ResponsiveSidebarPanel.as
 import TransitionProxySkeletonTemplates from "@components/layout/TransitionProxySkeletonTemplates.astro";
 import Navbar from "@components/Navbar.astro";
 import SideBar from "@components/widget/SideBar.astro";
+import SideBarComponentList from "@components/widget/SideBarComponentList.astro";
 import type { MarkdownHeading } from "astro";
 import IconifyLoader from "../components/misc/IconifyLoader.astro";
 import ImageWrapper from "../components/misc/ImageWrapper.astro";
@@ -18,7 +19,11 @@ import { BANNER_HEIGHT_EXTEND } from "../constants/constants";
 import Layout from "@layouts/Layout.astro";
 import {
   buildMainGridLayoutState,
+  hasSidebarComponents,
   getBannerImages,
+  resolveLeftSidebarMobileBuckets,
+  type LeftSidebarMobilePreset,
+  type RightSidebarMobilePreset,
 } from "@utils/main-grid-layout-utils";
 import "@/styles/main-grid-layout.css";
 
@@ -29,7 +34,8 @@ interface Props {
   lang?: string;
   setOGTypeArticle?: boolean;
   headings?: MarkdownHeading[];
-  mobileLeftSidebarPlacement?: "footer" | "hidden";
+  leftSidebarMobilePreset?: LeftSidebarMobilePreset;
+  rightSidebarMobilePreset?: RightSidebarMobilePreset;
 }
 
 const resolvedSiteSettings =
@@ -47,13 +53,13 @@ const {
   lang,
   setOGTypeArticle,
   headings = [],
-  mobileLeftSidebarPlacement = "footer",
+  leftSidebarMobilePreset = "footer",
+  rightSidebarMobilePreset = "panel",
 } = Astro.props;
 
 const hasCustomRightSidebar = Astro.slots.has("sidebar-right");
 const {
   isFloatTOC,
-  isPostDetailPage,
   isPostEditorPage,
   showHomeText,
   initialWallpaperMode,
@@ -68,24 +74,39 @@ const {
   mainContentClass,
   hasCarousel,
   hasRightSidebarComponents,
+  leftSidebarBuckets,
+  rightSidebarBuckets,
 } = buildMainGridLayoutState(
   siteConfig,
   bannerImages,
   Astro.url.pathname,
   hasCustomRightSidebar,
 );
+const mobileLeftSidebarBuckets = resolveLeftSidebarMobileBuckets(
+  leftSidebarBuckets,
+  leftSidebarMobilePreset,
+);
+const shouldRenderMobileLeftSidebarList =
+  !isPostEditorPage &&
+  leftSidebarMobilePreset !== "footer" &&
+  hasSidebarComponents(mobileLeftSidebarBuckets);
 const rightSidebarPanelTitle = shouldRenderDedicatedPostToc
   ? "目录与页面工具"
   : "页面工具";
 const shouldRenderMobilePostToolsDrawer =
-  isPostDetailPage &&
-  (hasRightSidebarComponents || (siteConfig.toc.enable && headings.length > 0));
+  rightSidebarMobilePreset === "drawer" &&
+  !isPostEditorPage &&
+  (hasCustomRightSidebar ||
+    hasRightSidebarComponents ||
+    (siteConfig.toc.enable && headings.length > 0));
 const shouldRenderMobileDedicatedToc =
   siteConfig.toc.enable && headings.length > 0 && !hasRightSidebarTocWidget;
+const rightSidebarMobileVisibilityClass =
+  rightSidebarMobilePreset === "panel" ? "" : "hidden lg:block";
 const shouldRenderMobileLeftSidebarAnchor =
   !isPostEditorPage &&
   desktopShowLeftSidebar &&
-  mobileLeftSidebarPlacement === "footer";
+  leftSidebarMobilePreset === "footer";
 ---
 
 <Layout
@@ -385,7 +406,11 @@ const shouldRenderMobileLeftSidebarAnchor =
                 data-responsive-sidebar-desktop-anchor
               >
                 <div data-responsive-sidebar-node class="w-full min-w-0">
-                  <SideBar headings={headings} />
+                  <SideBar
+                    headings={headings}
+                    topComponents={leftSidebarBuckets.topComponents}
+                    stickyComponents={leftSidebarBuckets.stickyComponents}
+                  />
                 </div>
               </div>
             ) : (
@@ -403,7 +428,7 @@ const shouldRenderMobileLeftSidebarAnchor =
 
           <div
             id="right-sidebar-slot"
-            class={`right-sidebar-container self-start ${shouldFixRightSidebarSlot ? "right-sidebar-toc-fixed" : ""} ${rightSidebarClass} ${isPostDetailPage ? "hidden lg:block" : ""}`}
+            class={`right-sidebar-container self-start ${shouldFixRightSidebarSlot ? "right-sidebar-toc-fixed" : ""} ${rightSidebarClass} ${rightSidebarMobileVisibilityClass}`}
           >
             <ResponsiveSidebarPanel
               title={rightSidebarPanelTitle}
@@ -416,7 +441,11 @@ const shouldRenderMobileLeftSidebarAnchor =
                   <slot name="sidebar-right" />
                 ) : hasRightSidebarComponents ? (
                   <>
-                    <RightSideBar headings={headings} />
+                    <RightSideBar
+                      headings={headings}
+                      topComponents={rightSidebarBuckets.topComponents}
+                      stickyComponents={rightSidebarBuckets.stickyComponents}
+                    />
                     {shouldRenderDedicatedPostToc && (
                       <div
                         id="toc-wrapper"
@@ -474,6 +503,26 @@ const shouldRenderMobileLeftSidebarAnchor =
                     class="mobile-footer-sidebar-slot lg:hidden"
                     data-responsive-sidebar-mobile-anchor
                   />
+                )
+              }
+              {
+                shouldRenderMobileLeftSidebarList && (
+                  <section class="mb-4 lg:hidden">
+                    <div class="flex flex-col gap-4">
+                      {mobileLeftSidebarBuckets.topComponents.length > 0 && (
+                        <SideBarComponentList
+                          components={mobileLeftSidebarBuckets.topComponents}
+                          headings={headings}
+                        />
+                      )}
+                      {mobileLeftSidebarBuckets.stickyComponents.length > 0 && (
+                        <SideBarComponentList
+                          components={mobileLeftSidebarBuckets.stickyComponents}
+                          headings={headings}
+                        />
+                      )}
+                    </div>
+                  </section>
                 )
               }
               {
@@ -622,8 +671,16 @@ const shouldRenderMobileLeftSidebarAnchor =
                       </div>
                     </div>
                   )}
-                  {hasRightSidebarComponents && (
-                    <RightSideBar headings={headings} />
+                  {hasCustomRightSidebar ? (
+                    <slot name="sidebar-right" />
+                  ) : (
+                    hasRightSidebarComponents && (
+                      <RightSideBar
+                        headings={headings}
+                        topComponents={rightSidebarBuckets.topComponents}
+                        stickyComponents={rightSidebarBuckets.stickyComponents}
+                      />
+                    )
                   )}
                 </div>
               </aside>

@@ -54,7 +54,10 @@ if (hasSessionCookie || viewerId) {
 }
 ---
 
-<MainGridLayout title={i18n(I18nKey.coreArchive)}>
+<MainGridLayout
+  title={i18n(I18nKey.coreArchive)}
+  leftSidebarMobilePreset="supplementary"
+>
   <!-- 默认 slot: 文章列表 -->
   <div
     class="archive-posts min-w-0"

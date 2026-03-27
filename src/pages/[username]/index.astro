@@ -5,7 +5,6 @@ import ArticleCardCompact from "@components/home/ArticleCardCompact.astro";
 import BangumiCardCompact from "@components/home/BangumiCardCompact.astro";
 import DiaryCardCompact from "@components/home/DiaryCardCompact.astro";
 import HorizontalScrollSection from "@components/home/HorizontalScrollSection.astro";
-import UserHomeMobileSupplementary from "@components/home/UserHomeMobileSupplementary.astro";
 import ExternalImage from "@components/misc/ExternalImage.astro";
 import ImageWrapper from "@components/misc/ImageWrapper.astro";
 import I18nKey from "@i18n/i18nKey";
@@ -109,7 +108,7 @@ const sectionOrder =
 <MainGridLayout
   title={payload?.owner?.name || i18n(I18nKey.contentUserProfileTitle)}
   description={payload?.profile?.bio || ""}
-  mobileLeftSidebarPlacement="hidden"
+  leftSidebarMobilePreset="supplementary-without-announcement"
 >
   {
     result.status === "not_found" || result.status === "permission_denied" ? (
@@ -269,8 +268,6 @@ const sectionOrder =
               }
               return null;
             })}
-
-            <UserHomeMobileSupplementary />
           </div>
 
           {/* ── 骨架屏 ── */}

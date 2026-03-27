@@ -144,6 +144,7 @@ const hasSidebarContent = tagList.length > 0 || categoryList.length > 0;
 <MainGridLayout
   title={i18n(I18nKey.contentAlbums)}
   description={i18n(I18nKey.contentAlbumsPublicSubtitle)}
+  leftSidebarMobilePreset="without-announcement"
 >
   {
     result.status === "not_found" || result.status === "permission_denied" ? (

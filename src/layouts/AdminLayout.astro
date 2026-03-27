@@ -49,6 +49,7 @@ if (user) {
       lang={props.lang}
       setOGTypeArticle={props.setOGTypeArticle}
       headings={props.headings}
+      leftSidebarMobilePreset="hidden"
     >
       <slot />
       <slot name="modal" slot="modal" />
@@ -59,6 +60,7 @@ if (user) {
       banner={props.banner}
       description="您没有权限访问此页面"
       lang={props.lang}
+      leftSidebarMobilePreset="hidden"
     >
       <ContentNotVisible
         mode="permission_denied"
