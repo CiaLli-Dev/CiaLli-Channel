@@ -10,7 +10,7 @@ import type { LinkPreset } from "@/types/config";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import { type NavBarLink } from "@/types/config";
-import { isAdminOnlyLink } from "@utils/nav-link-utils";
+import { isAdminOnlyLink, isPublishLink } from "@utils/nav-link-utils";
 import { url } from "@utils/url-utils";
 import LightDarkSwitch from "./LightDarkSwitch.svelte";
 import AuthStatus from "./auth/AuthStatus.astro";
@@ -110,9 +110,33 @@ function withoutAdminChildren(link: NavBarLink): NavBarLink | null {
   return { ...link, children };
 }
 
-const links: NavBarLink[] = navBarConfig.links
+function withoutMobilePublishChildren(link: NavBarLink): NavBarLink | null {
+  if (isPublishLink(link)) {
+    return null;
+  }
+  const childrenSource = Array.isArray(link.children)
+    ? link.children.map((child) => resolveLink(child))
+    : [];
+  if (childrenSource.length === 0) {
+    return link;
+  }
+  const children = childrenSource.filter((child) => !isPublishLink(child));
+  if (children.length === 0) {
+    const rawUrl = String(link.url || "").trim();
+    if (!rawUrl || rawUrl === "#") {
+      return null;
+    }
+  }
+  return { ...link, children };
+}
+
+const desktopLinks: NavBarLink[] = navBarConfig.links
   .map((item) => resolveLink(item))
   .map((item) => withoutAdminChildren(item))
+  .filter((item): item is NavBarLink => Boolean(item));
+// 移动端导航隐藏发布入口（含子菜单），桌面端保持不变。
+const mobileLinks: NavBarLink[] = desktopLinks
+  .map((item) => withoutMobilePublishChildren(item))
   .filter((item): item is NavBarLink => Boolean(item));
 ---
 
@@ -206,7 +230,7 @@ const links: NavBarLink[] = navBarConfig.links
       class="hidden lg:flex items-center space-x-1 transition-opacity duration-300"
     >
       {
-        links.map((l) => {
+        desktopLinks.map((l) => {
           return <DropdownMenu link={l} />;
         })
       }
@@ -258,11 +282,10 @@ const links: NavBarLink[] = navBarConfig.links
       </div>
       <nav class="mobile-nav-list" aria-label="移动端导航">
         {
-          links.map((linkItem) => {
-            const drawerChildren =
-              linkItem.children?.map((child) =>
-                typeof child === "number" ? LinkPresets[child] : child,
-              ) ?? [];
+          mobileLinks.map((linkItem) => {
+            const drawerChildren = (linkItem.children ?? []).map((child) =>
+              resolveLink(child),
+            );
 
             return drawerChildren.length > 0 ? (
               <details class="mobile-nav-group">

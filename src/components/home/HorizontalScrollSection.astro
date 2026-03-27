@@ -25,9 +25,9 @@ const className = Astro.props.class;
       moreHref && (
         <a
           href={moreHref}
-          class="shrink-0 inline-flex min-h-11 items-center gap-1 rounded-full px-2 text-sm text-black/55 transition-colors hover:text-(--primary) dark:text-white/70"
+          class="shrink-0 inline-flex min-h-11 items-center gap-1 rounded-full px-2 text-[0.8125rem] font-medium text-black/55 transition-colors hover:text-(--primary) dark:text-white/70 sm:text-sm"
         >
-          查看更多
+          <span>查看更多</span>
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
             <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
           </svg>
@@ -75,7 +75,9 @@ const className = Astro.props.class;
             <svg class="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
               <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
             </svg>
-            <span class="text-sm font-medium">查看更多</span>
+            <span class="text-[0.8125rem] font-medium sm:text-sm">
+              查看更多
+            </span>
           </a>
         )
       }
