@@ -1,3 +1,7 @@
+/* 必须先声明全局 layer 顺序，避免本地组件样式先创建 components 层，
+ * 导致 Tailwind base 里的按钮重置反过来覆盖 .btn-card 等共享按钮样式。 */
+@layer theme, base, components, utilities;
+
 /* 导入相册样式 */
 @import "./albums.css";
 /* 导入追番页面样式 */
