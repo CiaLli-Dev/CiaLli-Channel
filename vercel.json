@@ -26,7 +26,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://cdn.jsdelivr.net https://unpkg.com https://code.iconify.design; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https:; media-src 'self' https: http: blob:; frame-src 'self' https://www.googletagmanager.com https://www.youtube.com https://player.bilibili.com https://www.notion.so https://notion.so https://*.notion.site; worker-src 'self' blob:; manifest-src 'self'"
+          "value": "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://cdn.jsdelivr.net https://unpkg.com https://code.iconify.design https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https:; media-src 'self' https: http: blob:; frame-src 'self' https://www.googletagmanager.com https://www.youtube.com https://player.bilibili.com https://www.notion.so https://notion.so https://*.notion.site; worker-src 'self' blob:; manifest-src 'self'"
         }
       ]
     },
