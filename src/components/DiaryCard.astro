@@ -8,6 +8,7 @@ import type { HomeFeedViewerState } from "@/server/recommendation/home-feed.type
 import { buildPublicAssetUrl } from "@/server/directus-auth";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
 import { resolveAuthorIdentity } from "@/utils/author-identity";
+import { resolveDiaryDisplayDateSource } from "@/utils/diary-date";
 import { buildSiteDateFormatContext, formatSiteDate } from "@/utils/date-utils";
 
 interface Props {
@@ -20,12 +21,14 @@ interface Props {
   };
   username: string;
   viewerState?: HomeFeedViewerState;
+  displayDateOverride?: Date | string | null;
   titleSerif?: boolean;
 }
 
 const { entry, username } = Astro.props;
 const className = Astro.props.class;
 const titleSerif = Astro.props.titleSerif === true;
+const displayDateOverride = Astro.props.displayDateOverride;
 const viewerState: HomeFeedViewerState = Astro.props.viewerState ?? {
   hasLiked: false,
   canDeleteOwn: false,
@@ -67,9 +70,16 @@ const bodyText = String(content || "")
 const excerpt =
   bodyText.length > 180 ? `${bodyText.slice(0, 180)}...` : bodyText;
 
-const publishedDate = date_created
+const publishedDateSource = resolveDiaryDisplayDateSource(
+  displayDateOverride,
+  date_created,
+);
+const publishedDate = publishedDateSource
   ? (() => {
-      const formattedDate = formatSiteDate(date_created, siteDateContext);
+      const formattedDate = formatSiteDate(
+        publishedDateSource,
+        siteDateContext,
+      );
       return formattedDate || "1970/01/01";
     })()
   : "1970/01/01";

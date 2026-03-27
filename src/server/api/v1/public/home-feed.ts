@@ -3,8 +3,6 @@ import type { APIContext } from "astro";
 import { fail, ok } from "@/server/api/response";
 import {
     buildHomeFeedPage,
-    DEFAULT_HOME_FEED_ARTICLE_CANDIDATE_LIMIT,
-    DEFAULT_HOME_FEED_DIARY_CANDIDATE_LIMIT,
     DEFAULT_HOME_FEED_PAGE_LIMIT,
     DEFAULT_HOME_FEED_TOTAL_LIMIT,
     MAX_HOME_FEED_PAGE_LIMIT,
@@ -65,8 +63,6 @@ export async function handlePublicHomeFeed(
         offset,
         pageLimit: limit,
         totalLimit: DEFAULT_HOME_FEED_TOTAL_LIMIT,
-        articleCandidateLimit: DEFAULT_HOME_FEED_ARTICLE_CANDIDATE_LIMIT,
-        diaryCandidateLimit: DEFAULT_HOME_FEED_DIARY_CANDIDATE_LIMIT,
     });
     return ok(result);
 }

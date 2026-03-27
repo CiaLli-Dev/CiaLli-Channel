@@ -78,7 +78,7 @@ describe("cache/manager", () => {
         );
     });
 
-    it("整域失效时会联动递增 home-feed 关联域版本号", async () => {
+    it("整域失效时只递增当前 home-feed 域版本号", async () => {
         const redis = createRedisClientMock();
         redis.incr.mockResolvedValue(1);
         getUpstashRedisClientMock.mockReturnValue(redis);
@@ -89,8 +89,6 @@ describe("cache/manager", () => {
 
         expect(redis.incr.mock.calls.map(([key]) => key)).toEqual([
             "v1:home-feed:__ver__",
-            "v1:home-feed-candidates:__ver__",
-            "v1:home-feed-profile:__ver__",
         ]);
     });
 

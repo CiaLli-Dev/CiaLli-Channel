@@ -5,8 +5,6 @@ import MainGridLayout from "@layouts/MainGridLayout.astro";
 import HomeFeedPage from "@components/home/HomeFeedPage.astro";
 import {
   buildHomeFeedPage,
-  DEFAULT_HOME_FEED_ARTICLE_CANDIDATE_LIMIT,
-  DEFAULT_HOME_FEED_DIARY_CANDIDATE_LIMIT,
   DEFAULT_HOME_FEED_PAGE_LIMIT,
   DEFAULT_HOME_FEED_TOTAL_LIMIT,
 } from "@/server/application/feed/home-feed.service";
@@ -52,8 +50,6 @@ if (!invalidPath) {
       offset: 0,
       pageLimit: DEFAULT_HOME_FEED_PAGE_LIMIT,
       totalLimit: DEFAULT_HOME_FEED_TOTAL_LIMIT,
-      articleCandidateLimit: DEFAULT_HOME_FEED_ARTICLE_CANDIDATE_LIMIT,
-      diaryCandidateLimit: DEFAULT_HOME_FEED_DIARY_CANDIDATE_LIMIT,
     });
     homeFeedItems = homeFeed.items;
     homeFeedNextOffset = homeFeed.next_offset;

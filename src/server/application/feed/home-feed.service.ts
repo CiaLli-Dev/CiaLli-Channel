@@ -6,7 +6,6 @@ import {
 } from "@/server/directus/client";
 import { buildHomeFeed } from "@/server/recommendation/home-feed";
 import type {
-    HomeFeedBuildOptions,
     HomeFeedItem,
     HomeFeedPageItem,
     HomeFeedPageResponse,
@@ -16,13 +15,9 @@ import type {
 export const DEFAULT_HOME_FEED_PAGE_LIMIT = 20;
 export const MAX_HOME_FEED_PAGE_LIMIT = 20;
 export const DEFAULT_HOME_FEED_TOTAL_LIMIT = 60;
-export const DEFAULT_HOME_FEED_ARTICLE_CANDIDATE_LIMIT = 80;
-export const DEFAULT_HOME_FEED_DIARY_CANDIDATE_LIMIT = 60;
 
-export type HomeFeedPageInput = Pick<
-    HomeFeedBuildOptions,
-    "viewerId" | "articleCandidateLimit" | "diaryCandidateLimit"
-> & {
+export type HomeFeedPageInput = {
+    viewerId?: string | null;
     viewerRoleName?: string | null;
     isViewerSystemAdmin?: boolean;
     offset: number;
@@ -186,11 +181,7 @@ export async function buildHomeFeedPage(
     input: HomeFeedPageInput,
 ): Promise<HomeFeedPageResponse> {
     const feed = await buildHomeFeed({
-        viewerId: input.viewerId ?? null,
         limit: input.totalLimit,
-        outputLimit: input.totalLimit,
-        articleCandidateLimit: input.articleCandidateLimit,
-        diaryCandidateLimit: input.diaryCandidateLimit,
     });
     const normalizedViewerId = normalizeIdentity(input.viewerId);
     const isViewerAdmin = resolveViewerAdminState(input);

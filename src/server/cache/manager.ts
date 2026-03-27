@@ -68,16 +68,6 @@ const STRATEGIES: Record<CacheDomain, CacheStrategy> = {
         l2TtlMs: 2 * 60_000,
         l1MaxEntries: 80,
     },
-    "home-feed-candidates": {
-        l1TtlMs: 60_000,
-        l2TtlMs: 5 * 60_000,
-        l1MaxEntries: 20,
-    },
-    "home-feed-profile": {
-        l1TtlMs: 60_000,
-        l2TtlMs: 3 * 60_000,
-        l1MaxEntries: 400,
-    },
     "album-list": {
         l1TtlMs: 30_000,
         l2TtlMs: 2 * 60_000,
@@ -110,14 +100,8 @@ const STRATEGIES: Record<CacheDomain, CacheStrategy> = {
     },
 };
 
-/**
- * 缓存域联动失效：
- * - 首页聚合缓存失效时，同时失效首页候选池，保证互动计数与列表内容一致。
- */
 const LINKED_DOMAIN_INVALIDATIONS: Partial<Record<CacheDomain, CacheDomain[]>> =
-    {
-        "home-feed": ["home-feed-candidates", "home-feed-profile"],
-    };
+    {};
 
 // ---------------------------------------------------------------------------
 // L1 — 进程内缓存

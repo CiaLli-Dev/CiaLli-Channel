@@ -3,8 +3,6 @@ import HomeFeedItemsContent from "@/components/home/HomeFeedItems.astro";
 import { getSessionUser } from "@/server/auth/session";
 import {
   buildHomeFeedPage,
-  DEFAULT_HOME_FEED_ARTICLE_CANDIDATE_LIMIT,
-  DEFAULT_HOME_FEED_DIARY_CANDIDATE_LIMIT,
   DEFAULT_HOME_FEED_TOTAL_LIMIT,
   MAX_HOME_FEED_PAGE_LIMIT,
 } from "@/server/application/feed/home-feed.service";
@@ -50,8 +48,6 @@ const result = await buildHomeFeedPage({
   offset,
   pageLimit: limit,
   totalLimit: DEFAULT_HOME_FEED_TOTAL_LIMIT,
-  articleCandidateLimit: DEFAULT_HOME_FEED_ARTICLE_CANDIDATE_LIMIT,
-  diaryCandidateLimit: DEFAULT_HOME_FEED_DIARY_CANDIDATE_LIMIT,
 });
 
 Astro.response.headers.set(
