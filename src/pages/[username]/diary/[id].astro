@@ -348,6 +348,7 @@ const diaryMetaText = formatSiteDateTime(diary?.date_created, siteDateContext);
               commentCount={diaryCommentCount}
               likedByViewer={diaryLikedByViewer}
               dockToBackTop={true}
+              showCommentAction={diary!.allow_comments}
               editHref={`/${username}/diary/${encodeURIComponent(diary!.short_id || diary!.id)}/edit`}
               deleteEndpoint={`/api/v1/me/diaries/${encodeURIComponent(diary!.id)}`}
               adminDeleteEndpoint={`/api/v1/admin/content/diaries/${encodeURIComponent(diary!.id)}`}

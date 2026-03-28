@@ -11,10 +11,14 @@
   --transition-proxy-easing: cubic-bezier(0.22, 1, 0.36, 1);
   --transition-proxy-reveal-blur: 3px;
   --transition-proxy-content-reveal-blur: 3px;
+  --detail-mobile-bar-height: clamp(4rem, 12vw, 4.35rem);
+  --detail-mobile-bar-gap: 0.85rem;
+  --detail-mobile-bar-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  --mobile-bottom-bar-offset: 0px;
   --mobile-float-size: clamp(3rem, 12vw, 3.75rem);
   --mobile-float-gap: 0.75rem;
   --mobile-float-rail-right: max(1rem, env(safe-area-inset-right, 0px) + 1rem);
-  --mobile-float-rail-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+  --mobile-float-rail-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem + var(--mobile-bottom-bar-offset));
   --mobile-float-launcher-count: 0;
   --right-float-size: clamp(3rem, 12vw, 3.75rem);
   --right-float-right: max(1rem, env(safe-area-inset-right, 0px) + 1rem);
@@ -24,6 +28,14 @@
   --z-float-backdrop: 72;
   --z-float-panel: 75;
   --z-float-toast: 80;
+}
+
+:root.has-detail-mobile-bar {
+  --mobile-bottom-bar-offset: calc(var(--detail-mobile-bar-height) + var(--detail-mobile-bar-gap));
+}
+
+:root.has-fancybox-open {
+  --mobile-bottom-bar-offset: 0px;
 }
 
 @media (min-width: 1280px) {
@@ -129,6 +141,20 @@
   :root {
     --mobile-float-size: clamp(2.65rem, 10vw, 3.2rem);
     --mobile-float-gap: 0.65rem;
+  }
+
+  body.has-detail-mobile-bar #content-wrapper {
+    padding-bottom: calc(var(--detail-mobile-bar-height) + var(--detail-mobile-bar-gap) + 0.9rem);
+  }
+
+  body.has-fancybox-open #content-wrapper {
+    padding-bottom: 0;
+  }
+
+  html.has-fancybox-open .detail-action-float-mobile {
+    opacity: 0;
+    pointer-events: none;
+    transform: translate3d(-50%, calc(100% + 0.35rem), 0) scale(0.985);
   }
 
   .mobile-edge-drawer-root {

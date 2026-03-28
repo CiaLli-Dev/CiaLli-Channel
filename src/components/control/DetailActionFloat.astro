@@ -137,7 +137,7 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
 
 <div
   class="detail-action-float detail-action-float-mobile lg:hidden"
-  data-mobile-drawer="1"
+  data-mobile-bar="1"
   data-content-type={contentType}
   data-content-id={contentId}
   data-author-id={authorId}
@@ -155,141 +155,80 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
   data-admin-delete-label={adminDeleteLabel}
   data-delete-success-href={deleteSuccessHref}
 >
-  <div class="mobile-edge-drawer-root" data-mobile-edge-drawer-root>
-    <button
-      type="button"
-      class="mobile-edge-launcher btn-card"
-      data-mobile-edge-drawer-toggle
-      data-mobile-float-launcher
-      data-mobile-float-order="2"
-      aria-label="打开互动操作"
-      aria-controls={`detail-action-panel-${contentType}-${contentId}`}
-      aria-expanded="false"
-    >
-      <span class="mobile-edge-launcher-icon">
-        <Icon name="material-symbols:favorite-rounded" class="text-[1.35rem]" />
-      </span>
-    </button>
+  <div class="detail-mobile-bar card-base rounded-full" data-mobile-bar-shell>
+    {
+      showCommentAction && (
+        <button
+          type="button"
+          class="detail-action-btn detail-comment-btn detail-mobile-comment-entry"
+          aria-label="发布评论"
+        >
+          <span class="detail-mobile-comment-entry-text">发布评论</span>
+        </button>
+      )
+    }
 
-    <div class="mobile-edge-drawer-layer">
-      <button
-        type="button"
-        class="mobile-edge-drawer-backdrop"
-        data-mobile-edge-drawer-backdrop
-        aria-label="关闭互动操作"
-      >
-      </button>
-      <aside
-        id={`detail-action-panel-${contentType}-${contentId}`}
-        class="mobile-edge-drawer-panel"
-        data-mobile-edge-drawer-panel
-        aria-hidden="true"
-      >
-        <div class="mobile-edge-drawer-head">
-          <div class="space-y-1">
-            <p
-              class="text-xs font-semibold uppercase tracking-[0.16em] text-50"
-            >
-              Actions
-            </p>
-            <p class="text-base font-semibold text-90">互动操作</p>
-          </div>
+    <div class="detail-mobile-action-trailing">
+      {
+        showLikeAction && (
           <button
             type="button"
-            class="btn-plain scale-animation flex h-10 w-10 items-center justify-center rounded-lg active:scale-90"
-            data-mobile-edge-drawer-close
-            aria-label="关闭互动操作"
+            class="detail-action-btn detail-like-btn detail-mobile-icon-btn detail-mobile-like-btn"
+            aria-label="点赞"
           >
-            <Icon name="material-symbols:close-rounded" class="text-[1.3rem]" />
+            <Icon
+              name="material-symbols:thumb-up-rounded"
+              class="detail-icon"
+            />
+            <span class="detail-mobile-like-count" data-like-count-text>
+              {likeCount}
+            </span>
           </button>
-        </div>
-
-        <div class="mobile-edge-drawer-body">
-          <div class="detail-mobile-action-list">
-            {
-              showLikeAction && (
-                <button
-                  type="button"
-                  class="detail-action-btn detail-like-btn detail-mobile-action-btn"
-                  aria-label="点赞"
-                >
-                  <span class="detail-mobile-action-main">
-                    <Icon
-                      name="material-symbols:thumb-up-rounded"
-                      class="detail-mobile-action-icon"
-                    />
-                    <span>点赞</span>
-                  </span>
-                  <span class="detail-action-count" data-like-count-text>
-                    {likeCount}
-                  </span>
-                </button>
-              )
-            }
-            {
-              showCommentAction && (
-                <button
-                  type="button"
-                  class="detail-action-btn detail-comment-btn detail-mobile-action-btn"
-                  aria-label="查看评论"
-                >
-                  <span class="detail-mobile-action-main">
-                    <Icon
-                      name="material-symbols:comment-rounded"
-                      class="detail-mobile-action-icon"
-                    />
-                    <span>评论</span>
-                  </span>
-                  <span class="detail-action-count">{commentCount}</span>
-                </button>
-              )
-            }
-            {
-              sharePayload && (
-                <button
-                  type="button"
-                  id="share-component"
-                  class:list={[
-                    "detail-action-btn detail-share-btn detail-mobile-action-btn",
-                    sharePayload.hiddenUntilDecrypt && "encrypted-hidden",
-                  ]}
-                  aria-label={i18n(I18nKey.contentShareArticle)}
-                >
-                  <span class="detail-mobile-action-main">
-                    <Icon
-                      name="material-symbols:share"
-                      class="detail-mobile-action-icon"
-                    />
-                    <span>{i18n(I18nKey.contentShareArticle)}</span>
-                  </span>
-                </button>
-              )
-            }
-          </div>
-
-          <div
-            class="detail-mobile-manage-group hidden"
-            data-mobile-manage-group
+        )
+      }
+      {
+        sharePayload && (
+          <button
+            type="button"
+            class:list={[
+              "detail-action-btn detail-share-btn detail-mobile-icon-btn",
+              sharePayload.hiddenUntilDecrypt && "encrypted-hidden",
+            ]}
+            aria-label={i18n(I18nKey.contentShareArticle)}
           >
-            <div class="detail-mobile-group-title">管理</div>
-            <div class="detail-mobile-manage-list">
-              <button
-                type="button"
-                class="detail-manage-edit hidden detail-mobile-manage-btn"
-              >
-                编辑
-              </button>
-              <button
-                type="button"
-                class="detail-manage-delete hidden detail-mobile-manage-btn detail-mobile-manage-btn-danger"
-              >
-                {deleteLabel}
-              </button>
-            </div>
-          </div>
-        </div>
-      </aside>
+            <Icon name="material-symbols:share" class="detail-icon" />
+          </button>
+        )
+      }
+      <button
+        type="button"
+        class="detail-action-btn detail-manage-toggle hidden detail-mobile-icon-btn"
+        aria-label="更多操作"
+        aria-controls={`detail-action-panel-${contentType}-${contentId}`}
+        aria-expanded="false"
+      >
+        <Icon name="material-symbols:more-horiz" class="detail-icon" />
+      </button>
     </div>
+  </div>
+
+  <div
+    id={`detail-action-panel-${contentType}-${contentId}`}
+    class="detail-manage-panel"
+    aria-hidden="true"
+  >
+    <button
+      type="button"
+      class="detail-manage-edit hidden w-full text-left px-3 py-2 rounded-lg text-sm text-90 hover:bg-black/5 dark:hover:bg-white/10"
+    >
+      编辑
+    </button>
+    <button
+      type="button"
+      class="detail-manage-delete hidden w-full text-left px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-black/5 dark:hover:bg-white/10"
+    >
+      {deleteLabel}
+    </button>
   </div>
 </div>
 
@@ -392,79 +331,131 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
     transform: translate(0, 0) scale(1)
 
   .detail-action-float-mobile
+    position: fixed
+    left: 50%
+    bottom: unquote("var(--detail-mobile-bar-bottom, calc(env(safe-area-inset-bottom, 0px) + .75rem))")
+    width: unquote("min(40rem, calc(100vw - max(1rem, env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px) + 1rem)))")
+    z-index: var(--z-float-panel, 75)
+    pointer-events: auto
+    transform: translate3d(-50%, 0, 0)
+    transition: transform .42s cubic-bezier(.2, .84, .32, 1), opacity .32s ease
+    will-change: transform, opacity
+
+    &.is-hidden-by-scroll
+      opacity: 0
+      pointer-events: none
+      transform: translate3d(-50%, calc(100% + .35rem), 0) scale(.985)
+
+  .detail-mobile-bar
     position: relative
-    z-index: var(--z-float-rail, 70)
-
-  .detail-mobile-action-list,
-  .detail-mobile-manage-list
-    display: flex
-    flex-direction: column
-    gap: .75rem
-
-  .detail-mobile-action-btn,
-  .detail-mobile-manage-btn
-    width: 100%
-    min-height: 3.25rem
-    border-radius: 1rem
     display: flex
     align-items: center
-    justify-content: space-between
-    gap: .75rem
-    padding: .9rem 1rem
-    background: unquote("color-mix(in oklch, var(--card-bg) 72%, var(--btn-plain-bg-hover) 28%)")
-    border: 1px solid unquote("color-mix(in oklch, var(--line-divider) 78%, var(--primary) 22%)")
-    color: var(--deep-text)
+    gap: .65rem
+    width: 100%
+    min-height: var(--detail-mobile-bar-height, 4.2rem)
+    padding: .55rem .65rem
+    border: 1px solid var(--line-divider)
+    box-shadow: 0 14px 36px rgba(15, 23, 42, 0.18)
+    backdrop-filter: blur(12px)
+    overflow: visible
 
-  .detail-mobile-manage-btn
-    text-align: left
-
-  .detail-mobile-manage-btn-danger
-    color: rgb(239, 68, 68)
-
-  .detail-mobile-action-main
+  .detail-mobile-comment-entry
+    flex: 1 1 auto
+    min-width: 0
+    min-height: 3rem
+    border-radius: 999px
     display: inline-flex
     align-items: center
-    gap: .75rem
-    min-width: 0
-    font-size: .95rem
-    font-weight: 600
+    justify-content: flex-start
+    padding: 0 1rem
+    background: unquote("color-mix(in oklch, var(--card-bg) 78%, var(--btn-plain-bg-hover) 22%)")
+    border: 1px solid unquote("color-mix(in oklch, var(--line-divider) 84%, var(--primary) 16%)")
     color: var(--deep-text)
 
-  .detail-mobile-action-icon
-    font-size: 1.35rem
-    color: var(--primary)
-    flex-shrink: 0
-
-  .detail-mobile-manage-group
-    display: flex
-    flex-direction: column
-    gap: .75rem
-
-  .detail-mobile-group-title
-    font-size: .82rem
-    font-weight: 700
-    text-transform: uppercase
-    letter-spacing: .12em
+  .detail-mobile-comment-entry-text
+    width: 100%
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+    font-size: .95rem
     color: var(--content-meta)
 
-  .detail-action-float-mobile .mobile-edge-drawer-panel
-    color: var(--deep-text)
+  .detail-mobile-action-trailing
+    display: inline-flex
+    align-items: center
+    justify-content: flex-end
+    gap: .4rem
+    flex-shrink: 0
 
-  .detail-action-float-mobile .mobile-edge-drawer-head
-    color: var(--deep-text)
+  .detail-mobile-icon-btn
+    position: relative
+    width: 2.9rem
+    height: 2.9rem
+    border-radius: 999px
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    background: unquote("color-mix(in oklch, var(--card-bg) 82%, var(--btn-plain-bg-hover) 18%)")
+    border: 1px solid unquote("color-mix(in oklch, var(--line-divider) 84%, var(--primary) 16%)")
+
+  .detail-mobile-like-count
+    position: absolute
+    right: -.1rem
+    bottom: -.1rem
+    min-width: 1.2rem
+    height: 1.2rem
+    padding: 0 .25rem
+    border-radius: 999px
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    background: var(--card-bg)
+    border: 1px solid var(--line-divider)
+    font-size: .68rem
+    line-height: 1
+    color: var(--content-meta)
+
+  .detail-action-float-mobile .detail-manage-panel
+    left: auto
+    right: .25rem
+    bottom: calc(100% + .55rem)
+    min-width: 11rem
+    z-index: 2
+    transform: translateY(.7rem) scale(.96)
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.22)
+
+  .detail-action-float-mobile .detail-manage-panel.show
+    transform: translateY(0) scale(1)
 
   @media (max-width: 1279px)
     .detail-action-count
       font-size: .88rem
       color: var(--content-meta)
+
+    .detail-icon
+      font-size: 1.4rem
+
+  @media (max-width: 767px)
+    .detail-action-float-mobile
+      width: unquote("calc(100vw - max(1rem, env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px) + 1rem))")
+
+    .detail-mobile-bar
+      min-height: 4rem
+      padding: .5rem .55rem
+
+    .detail-mobile-comment-entry
+      min-height: 2.85rem
+      padding: 0 .9rem
+
+    .detail-mobile-icon-btn
+      width: 2.8rem
+      height: 2.8rem
 </style>
 
 <script>
   import { getAuthState, subscribeAuthState } from "@/scripts/auth-state";
   import type { AuthState } from "@/scripts/auth-state";
   import { showAuthRequiredDialog } from "@/scripts/dialogs";
-  import { closeMobileEdgeDrawerRoot } from "@/scripts/mobile-edge-drawer";
-  import { syncMobileFloatStack } from "@/scripts/mobile-float-stack";
   import { navigateToPage } from "@/utils/navigation-utils";
   import {
     queryDetailElements,
@@ -482,22 +473,29 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
     button.textContent = label;
   }
 
-  function scheduleMobileFloatSync(): void {
-    window.requestAnimationFrame(() => {
-      syncMobileFloatStack();
-    });
+  function syncDetailMobileBarState(): void {
+    // 统一给全局布局打标，供底部留白和右下角浮动轨道抬升复用。
+    const hasMobileBar = Boolean(
+      document.querySelector(
+        ".detail-action-float-mobile[data-mobile-bar='1']",
+      ),
+    );
+    document.documentElement.classList.toggle(
+      "has-detail-mobile-bar",
+      hasMobileBar,
+    );
+    document.body.classList.toggle("has-detail-mobile-bar", hasMobileBar);
   }
 
-  // 同一组件同时承载桌面浮条与移动端抽屉，需要在绑定时分流布局行为。
+  // 同一组件同时承载桌面浮条与移动端底部浮条，需要在绑定时分流布局行为。
   // eslint-disable-next-line complexity -- 该组件需在单一绑定点整合多种交互状态
   function bindDetailRoot(rootEl: HTMLElement): void {
     rootEl.dataset.bound = "1";
     const dockToBackTop = rootEl.dataset.dockToBackTop === "1";
-    const isMobileDrawer = rootEl.dataset.mobileDrawer === "1";
-    if (isMobileDrawer) {
-      // 移动端浮层也要脱离正文滤镜层，否则 fixed 按钮会被文章层级吞掉。
+    const isMobileBar = rootEl.dataset.mobileBar === "1";
+    if (isMobileBar) {
+      // 移动端浮条也要脱离正文滤镜层，否则 fixed 容器会被文章层级吞掉。
       mountToFloatingAnchor(rootEl);
-      scheduleMobileFloatSync();
     } else {
       resolveAndMountElement({ rootEl, dockToBackTop });
     }
@@ -533,7 +531,6 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
       editBtn,
       deleteBtn,
       likeCountText,
-      mobileManageGroup,
     } = els;
 
     const likeState: LikeActionState = {
@@ -543,28 +540,24 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
     };
     let currentAuthState: AuthState = getAuthState();
     let isOpen = false;
+    let mobileBarHidden = false;
+    let lastScrollY = Math.max(
+      window.scrollY || document.documentElement.scrollTop || 0,
+      0,
+    );
+    let mobileBarScrollTicking = false;
 
-    function closeMobileDrawer(): void {
-      if (!isMobileDrawer) {
-        return;
-      }
-      const drawerRoot = rootEl.querySelector<HTMLElement>(
-        "[data-mobile-edge-drawer-root]",
-      );
-      if (drawerRoot) {
-        closeMobileEdgeDrawerRoot(drawerRoot);
-      }
+    function syncManageA11yState(): void {
+      manageBtn?.setAttribute("aria-expanded", isOpen ? "true" : "false");
+      panel?.setAttribute("aria-hidden", isOpen ? "false" : "true");
     }
 
-    function runAfterMobileDrawerClose(task: () => void): void {
-      closeMobileDrawer();
-      if (!isMobileDrawer) {
-        task();
+    function setMobileBarHidden(hidden: boolean): void {
+      if (!isMobileBar || mobileBarHidden === hidden) {
         return;
       }
-      window.requestAnimationFrame(() => {
-        task();
-      });
+      mobileBarHidden = hidden;
+      rootEl.classList.toggle("is-hidden-by-scroll", hidden);
     }
 
     function applyLikeUI(): void {
@@ -576,6 +569,10 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
       likeBtn?.classList.toggle("is-pending", likeState.likePending);
       if (likeBtn) {
         likeBtn.disabled = likeState.likePending;
+        likeBtn.setAttribute(
+          "aria-pressed",
+          likeState.liked ? "true" : "false",
+        );
       }
       if (likeCountText) {
         likeCountText.textContent = String(count);
@@ -604,33 +601,107 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
         );
       }
 
-      if (isMobileDrawer) {
-        mobileManageGroup?.classList.toggle("hidden", !canOpenPanel);
-        return;
-      }
-
       manageBtn?.classList.toggle("hidden", !canOpenPanel);
       if (!canOpenPanel && isOpen) {
-        panel?.classList.remove("show");
-        isOpen = false;
+        closePanel();
       }
     }
 
     function openPanel(): void {
       isOpen = true;
+      setMobileBarHidden(false);
       panel?.classList.add("show");
       manageBtn?.classList.add("active");
+      syncManageA11yState();
     }
 
     function closePanel(): void {
       isOpen = false;
       panel?.classList.remove("show");
       manageBtn?.classList.remove("active");
+      syncManageA11yState();
+    }
+
+    function openCommentEditorFromPrimaryEntry(): boolean {
+      // 直接触发评论区已有按钮，避免复制登录校验与弹层打开逻辑。
+      const openEditorBtn = document.getElementById("comment-open-editor");
+      if (!(openEditorBtn instanceof HTMLButtonElement)) {
+        return false;
+      }
+      openEditorBtn.click();
+      return true;
+    }
+
+    function bindMobileBarVisibility(): void {
+      if (!isMobileBar) {
+        return;
+      }
+
+      // 仅在滚动方向稳定后切换显隐，避免轻微抖动导致浮条频繁闪烁。
+      const updateVisibility = (): void => {
+        mobileBarScrollTicking = false;
+        if (!rootEl.isConnected) {
+          window.removeEventListener("scroll", onMobileBarScroll);
+          window.removeEventListener("resize", onMobileBarResize);
+          return;
+        }
+
+        const nextScrollY = Math.max(
+          window.scrollY || document.documentElement.scrollTop || 0,
+          0,
+        );
+        const delta = nextScrollY - lastScrollY;
+        if (Math.abs(delta) < 12) {
+          return;
+        }
+        lastScrollY = nextScrollY;
+
+        if (isOpen || nextScrollY <= 48) {
+          setMobileBarHidden(false);
+          return;
+        }
+        if (delta > 0 && nextScrollY > 96) {
+          setMobileBarHidden(true);
+          return;
+        }
+        if (delta < 0) {
+          setMobileBarHidden(false);
+        }
+      };
+
+      const onMobileBarScroll = (): void => {
+        if (mobileBarScrollTicking) {
+          return;
+        }
+        mobileBarScrollTicking = true;
+        window.requestAnimationFrame(updateVisibility);
+      };
+
+      const onMobileBarResize = (): void => {
+        if (!rootEl.isConnected) {
+          window.removeEventListener("scroll", onMobileBarScroll);
+          window.removeEventListener("resize", onMobileBarResize);
+          return;
+        }
+        if (window.innerWidth >= 1280) {
+          setMobileBarHidden(false);
+          return;
+        }
+        lastScrollY = Math.max(
+          window.scrollY || document.documentElement.scrollTop || 0,
+          0,
+        );
+      };
+
+      window.addEventListener("scroll", onMobileBarScroll, { passive: true });
+      window.addEventListener("resize", onMobileBarResize, { passive: true });
     }
 
     applyLikeUI();
+    syncManageA11yState();
     applyActionVisibility(getAuthState());
     subscribeAuthState((state) => applyActionVisibility(state));
+    bindMobileBarVisibility();
 
     manageBtn?.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -641,25 +712,22 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
       }
     });
 
-    if (!isMobileDrawer) {
-      document.addEventListener("click", (event) => {
-        if (!isOpen) return;
-        if (!rootEl.contains(event.target as Node)) {
-          closePanel();
-        }
-      });
+    document.addEventListener("click", (event) => {
+      if (!isOpen) return;
+      if (!rootEl.contains(event.target as Node)) {
+        closePanel();
+      }
+    });
 
-      document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape" && isOpen) {
-          closePanel();
-        }
-      });
-    }
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && isOpen) {
+        closePanel();
+      }
+    });
 
     editBtn?.addEventListener("click", () => {
       if (!editHref) return;
       closePanel();
-      closeMobileDrawer();
       navigateToPage(editHref, { force: contentType === "diary" });
     });
 
@@ -681,20 +749,16 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
         deleteSuccessHref,
         contentType,
         deleteBtn,
-        closePanel: () => {
-          closePanel();
-          closeMobileDrawer();
-        },
+        closePanel,
       });
     });
 
     likeBtn?.addEventListener("click", () => {
+      closePanel();
       if (likeState.likePending || !contentId) return;
       const auth = getAuthState();
       if (!auth.isLoggedIn) {
-        runAfterMobileDrawerClose(() => {
-          showAuthRequiredDialog();
-        });
+        showAuthRequiredDialog();
         return;
       }
       if (!likeBtn) return;
@@ -710,33 +774,34 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
     });
 
     commentBtn?.addEventListener("click", () => {
-      const commentRoot = document.getElementById("comment-root");
-      if (commentRoot) {
-        runAfterMobileDrawerClose(() => {
-          commentRoot.scrollIntoView({ behavior: "smooth", block: "start" });
-        });
+      closePanel();
+      if (isMobileBar && openCommentEditorFromPrimaryEntry()) {
         return;
       }
-      runAfterMobileDrawerClose(() => {
-        navigateToPage(`${window.location.pathname}#comment-root`);
-      });
+      const commentRoot = document.getElementById("comment-root");
+      if (commentRoot) {
+        commentRoot.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      navigateToPage(`${window.location.pathname}#comment-root`);
     });
 
     shareBtn?.addEventListener("click", () => {
+      closePanel();
       if (!shareDialogId) {
         return;
       }
-      runAfterMobileDrawerClose(() => {
-        runtimeWindow.cialliOpenArticleShareDialog?.(shareDialogId);
-      });
+      runtimeWindow.cialliOpenArticleShareDialog?.(shareDialogId);
     });
   }
 
   function initDetailActionFloat(): void {
+    syncDetailMobileBarState();
     const roots = document.querySelectorAll<HTMLElement>(
       ".detail-action-float:not([data-bound='1'])",
     );
     roots.forEach((rootEl) => bindDetailRoot(rootEl));
+    syncDetailMobileBarState();
   }
 
   type DetailActionRuntimeWindow = Window &

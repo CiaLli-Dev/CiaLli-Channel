@@ -464,7 +464,9 @@ const articleSharePayload: SharePosterPayload | undefined =
           likedByViewer={articleLikedByViewer}
           dockToBackTop={true}
           showLikeAction={articleSupportsPublicInteraction}
-          showCommentAction={articleSupportsPublicInteraction}
+          showCommentAction={
+            articleSupportsPublicInteraction && article.allow_comments
+          }
           sharePayload={articleSharePayload}
           editHref={`/posts/${encodeURIComponent(article.short_id || rawId)}/edit`}
           deleteEndpoint={`/api/v1/me/articles/${encodeURIComponent(article.id)}`}

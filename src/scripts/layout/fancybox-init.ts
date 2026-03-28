@@ -10,7 +10,6 @@ type FancyboxStatic = {
 
 type FancyboxConfig = {
     Hash?: boolean | object;
-    Thumbs?: object;
     Toolbar?: object;
     animated?: boolean;
     dragToClose?: boolean;
@@ -30,9 +29,11 @@ const ALBUM_PREVIEW_GROUP = "album-photo-preview";
 
 type FancyboxSlideLike = {
     index?: number;
+    thumb?: string | HTMLImageElement | null;
     thumbEl?: {
         getAttribute: (name: string) => string | null;
     } | null;
+    thumbSrc?: string | null;
     referrerPolicy?: unknown;
     crossOrigin?: unknown;
 };
@@ -52,6 +53,66 @@ type FancyboxCarouselLike = {
     };
 };
 
+type FancyboxImageRequestAttributes = ReturnType<
+    typeof resolveFancyboxSlideImageRequestAttributes
+>;
+
+function syncFancyboxOpenState(open: boolean): void {
+    const root = document.documentElement;
+    root.classList.toggle("has-fancybox-open", open);
+    document.body.classList.toggle("has-fancybox-open", open);
+}
+
+function syncThumbImageRequestAttributes(
+    thumbImage: HTMLImageElement,
+    imageAttributes: FancyboxImageRequestAttributes,
+): boolean {
+    const currentReferrerPolicy =
+        thumbImage.getAttribute("referrerpolicy") || null;
+    const currentCrossOrigin = thumbImage.getAttribute("crossorigin") || null;
+    let changed = false;
+
+    if (imageAttributes.referrerPolicy) {
+        if (currentReferrerPolicy !== imageAttributes.referrerPolicy) {
+            thumbImage.setAttribute(
+                "referrerpolicy",
+                imageAttributes.referrerPolicy,
+            );
+            changed = true;
+        }
+    } else if (currentReferrerPolicy !== null) {
+        thumbImage.removeAttribute("referrerpolicy");
+        changed = true;
+    }
+
+    if (imageAttributes.crossOrigin) {
+        if (currentCrossOrigin !== imageAttributes.crossOrigin) {
+            thumbImage.setAttribute("crossorigin", imageAttributes.crossOrigin);
+            changed = true;
+        }
+    } else if (currentCrossOrigin !== null) {
+        thumbImage.removeAttribute("crossorigin");
+        changed = true;
+    }
+
+    return changed;
+}
+
+function retryThumbImageRequest(
+    thumbImage: HTMLImageElement,
+    src: string,
+): void {
+    const currentRetrySrc =
+        thumbImage.dataset.fancyboxThumbRetriedSrc?.trim() || "";
+    if (!src || currentRetrySrc === src) {
+        return;
+    }
+
+    thumbImage.dataset.fancyboxThumbRetriedSrc = src;
+    thumbImage.removeAttribute("src");
+    thumbImage.setAttribute("src", src);
+}
+
 function syncFancyboxThumbAttributes(carousel: FancyboxCarouselLike): void {
     const thumbsCarousel = carousel.getPlugins().Thumbs?.getCarousel();
     const thumbsContainer = thumbsCarousel?.getContainer();
@@ -59,37 +120,50 @@ function syncFancyboxThumbAttributes(carousel: FancyboxCarouselLike): void {
         return;
     }
 
+    const slidesByIndex = new Map<number, FancyboxSlideLike>();
     for (const slide of carousel.getSlides()) {
-        const slideIndex =
-            typeof slide.index === "number" ? slide.index : undefined;
-        if (slideIndex === undefined) {
-            continue;
-        }
-
-        const thumbImage = thumbsContainer.querySelector<HTMLImageElement>(
-            `[index="${slideIndex}"] img`,
-        );
-        if (!thumbImage) {
-            continue;
-        }
-
-        const imageAttributes =
-            resolveFancyboxSlideImageRequestAttributes(slide);
-        if (imageAttributes.referrerPolicy) {
-            thumbImage.setAttribute(
-                "referrerpolicy",
-                imageAttributes.referrerPolicy,
-            );
-        } else {
-            thumbImage.removeAttribute("referrerpolicy");
-        }
-
-        if (imageAttributes.crossOrigin) {
-            thumbImage.setAttribute("crossorigin", imageAttributes.crossOrigin);
-        } else {
-            thumbImage.removeAttribute("crossorigin");
+        if (typeof slide.index === "number") {
+            slidesByIndex.set(slide.index, slide);
         }
     }
+
+    thumbsContainer
+        .querySelectorAll<HTMLImageElement>("[index] img")
+        .forEach((thumbImage) => {
+            const slideIndex = Number(
+                thumbImage.closest("[index]")?.getAttribute("index"),
+            );
+            if (!Number.isFinite(slideIndex)) {
+                return;
+            }
+
+            const slide = slidesByIndex.get(slideIndex);
+            if (!slide) {
+                return;
+            }
+
+            const imageAttributes =
+                resolveFancyboxSlideImageRequestAttributes(slide);
+            const attributesChanged = syncThumbImageRequestAttributes(
+                thumbImage,
+                imageAttributes,
+            );
+            const currentSrc = String(
+                thumbImage.getAttribute("src") ||
+                    thumbImage.getAttribute("data-lazy-src") ||
+                    "",
+            ).trim();
+
+            // 远处缩略图节点是在后续滚动过程中才动态挂进 DOM 的。
+            // 如果没有先补齐 referrer/cors 属性，这些第三方图床请求会直接失败并留下黑色占位。
+            if (
+                currentSrc &&
+                (attributesChanged ||
+                    (thumbImage.complete && thumbImage.naturalWidth === 0))
+            ) {
+                retryThumbImageRequest(thumbImage, currentSrc);
+            }
+        });
 }
 
 export type FancyboxController = {
@@ -101,6 +175,49 @@ export function createFancyboxController(): FancyboxController {
     let fancyboxSelectors: string[] = [];
     let fancyboxInitializing = false;
     let Fancybox: FancyboxStatic | undefined;
+    let thumbMutationObserver: MutationObserver | undefined;
+    let thumbSyncFrame = 0;
+
+    function cleanupThumbMutationObserver(): void {
+        if (thumbSyncFrame) {
+            cancelAnimationFrame(thumbSyncFrame);
+            thumbSyncFrame = 0;
+        }
+        thumbMutationObserver?.disconnect();
+        thumbMutationObserver = undefined;
+    }
+
+    function observeFancyboxThumbs(carousel: FancyboxCarouselLike): void {
+        cleanupThumbMutationObserver();
+
+        const thumbsContainer = carousel
+            .getPlugins()
+            .Thumbs?.getCarousel()
+            ?.getContainer();
+        if (!thumbsContainer) {
+            return;
+        }
+
+        const scheduleSync = (): void => {
+            if (thumbSyncFrame) {
+                cancelAnimationFrame(thumbSyncFrame);
+            }
+            thumbSyncFrame = requestAnimationFrame(() => {
+                thumbSyncFrame = 0;
+                syncFancyboxThumbAttributes(carousel);
+            });
+        };
+
+        thumbMutationObserver = new MutationObserver(() => {
+            scheduleSync();
+        });
+        thumbMutationObserver.observe(thumbsContainer, {
+            childList: true,
+            subtree: true,
+        });
+
+        scheduleSync();
+    }
 
     async function initFancybox(): Promise<void> {
         if (fancyboxInitializing || fancyboxSelectors.length > 0) {
@@ -129,12 +246,21 @@ export function createFancyboxController(): FancyboxController {
                 return;
             }
 
+            const commonThumbsConfig = {
+                showOnStart: true,
+                thumbTpl:
+                    '<button aria-label="Slide to #{{page}}"><img draggable="false" alt="{{alt}}" src="{{src}}" /></button>',
+            };
+
+            const commonCarouselConfig = {
+                Thumbs: commonThumbsConfig,
+                Zoomable: {
+                    tpl: buildFancyboxZoomableImageTpl,
+                },
+            };
+
             const commonConfig: FancyboxConfig = {
                 Hash: false,
-                Thumbs: {
-                    autoStart: true,
-                    showOnStart: "yes",
-                },
                 Toolbar: {
                     display: {
                         left: ["infobar"],
@@ -168,12 +294,11 @@ export function createFancyboxController(): FancyboxController {
                 infinite: true,
                 Panzoom: { maxScale: 3, minScale: 1 },
                 caption: false,
-                Carousel: {
-                    Zoomable: {
-                        tpl: buildFancyboxZoomableImageTpl,
-                    },
-                },
+                Carousel: commonCarouselConfig,
                 on: {
+                    ready: () => {
+                        syncFancyboxOpenState(true);
+                    },
                     "Carousel.thumbs:ready": (
                         _instance: unknown,
                         carousel: unknown,
@@ -182,8 +307,13 @@ export function createFancyboxController(): FancyboxController {
                             | FancyboxCarouselLike
                             | undefined;
                         if (fancyboxCarousel) {
+                            observeFancyboxThumbs(fancyboxCarousel);
                             syncFancyboxThumbAttributes(fancyboxCarousel);
                         }
+                    },
+                    destroy: () => {
+                        cleanupThumbMutationObserver();
+                        syncFancyboxOpenState(false);
                     },
                 },
             };
@@ -210,9 +340,7 @@ export function createFancyboxController(): FancyboxController {
                 ...commonConfig,
                 groupAll: true,
                 Carousel: {
-                    Zoomable: {
-                        tpl: buildFancyboxZoomableImageTpl,
-                    },
+                    ...commonCarouselConfig,
                     transition: "slide",
                     preload: 2,
                 },
@@ -238,6 +366,8 @@ export function createFancyboxController(): FancyboxController {
 
     function cleanupFancybox(): void {
         const fancybox = Fancybox;
+        cleanupThumbMutationObserver();
+        syncFancyboxOpenState(false);
         if (!fancybox) {
             return;
         }

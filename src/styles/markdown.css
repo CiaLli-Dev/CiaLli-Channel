@@ -12,10 +12,15 @@
     }
 
     /* 正文衬线字重与字号略微抬高，避免 Garamond 在正文场景下观感过细。 */
-    :is(p, li, blockquote, figcaption, td) {
+    :is(p, li, blockquote, td) {
       font-weight: 500;
-      font-size: 1.0625em;
+      font-size: 1.1em;
     }
+  }
+
+  .md-image-caption {
+    font-size: 0.875em;
+    line-height: 1.6;
   }
 
   :is(h1, h2, h3, h4, h5, h6) {
