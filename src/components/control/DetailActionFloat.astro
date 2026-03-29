@@ -325,7 +325,8 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
     transition: transform .42s cubic-bezier(.2, .84, .32, 1), opacity .32s ease
     will-change: transform, opacity
 
-    &.is-hidden-by-scroll
+    &.is-hidden-by-scroll,
+    &.is-hidden-near-footer
       opacity: 0
       pointer-events: none
       transform: translate3d(-50%, calc(100% + .35rem), 0) scale(.985)
@@ -525,7 +526,8 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
     };
     let currentAuthState: AuthState = getAuthState();
     let isOpen = false;
-    let mobileBarHidden = false;
+    let mobileBarHiddenByScroll = false;
+    let mobileBarHiddenNearFooter = false;
     let lastScrollY = Math.max(
       window.scrollY || document.documentElement.scrollTop || 0,
       0,
@@ -537,12 +539,34 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
       panel?.setAttribute("aria-hidden", isOpen ? "false" : "true");
     }
 
-    function setMobileBarHidden(hidden: boolean): void {
-      if (!isMobileBar || mobileBarHidden === hidden) {
+    function syncMobileBarHiddenState(): void {
+      if (!isMobileBar) {
         return;
       }
-      mobileBarHidden = hidden;
-      rootEl.classList.toggle("is-hidden-by-scroll", hidden);
+      rootEl.classList.toggle("is-hidden-by-scroll", mobileBarHiddenByScroll);
+      rootEl.classList.toggle(
+        "is-hidden-near-footer",
+        mobileBarHiddenNearFooter,
+      );
+    }
+
+    function setMobileBarHiddenByScroll(hidden: boolean): void {
+      if (!isMobileBar || mobileBarHiddenByScroll === hidden) {
+        return;
+      }
+      mobileBarHiddenByScroll = hidden;
+      syncMobileBarHiddenState();
+    }
+
+    function setMobileBarHiddenNearFooter(hidden: boolean): void {
+      if (!isMobileBar || mobileBarHiddenNearFooter === hidden) {
+        return;
+      }
+      mobileBarHiddenNearFooter = hidden;
+      if (hidden && isOpen) {
+        closePanel();
+      }
+      syncMobileBarHiddenState();
     }
 
     function applyLikeUI(): void {
@@ -594,7 +618,7 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
 
     function openPanel(): void {
       isOpen = true;
-      setMobileBarHidden(false);
+      setMobileBarHiddenByScroll(false);
       panel?.classList.add("show");
       manageBtn?.classList.add("active");
       syncManageA11yState();
@@ -633,12 +657,55 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
         return;
       }
 
+      let footerObserver: IntersectionObserver | null = null;
+
+      function cleanupMobileBarBindings(): void {
+        window.removeEventListener("scroll", onMobileBarScroll);
+        window.removeEventListener("resize", onMobileBarResize);
+        footerObserver?.disconnect();
+        footerObserver = null;
+      }
+
+      function observeFooterVisibility(): void {
+        footerObserver?.disconnect();
+        footerObserver = null;
+
+        if (typeof IntersectionObserver === "undefined") {
+          return;
+        }
+
+        const footer = document.querySelector("#content-wrapper > .footer");
+        if (!(footer instanceof HTMLElement)) {
+          setMobileBarHiddenNearFooter(false);
+          return;
+        }
+
+        // 在页脚真正贴近底部浮条前就提前隐藏，避免与 footer 发生遮挡。
+        const footerHideOffset = Math.ceil(
+          rootEl.getBoundingClientRect().height,
+        );
+        footerObserver = new IntersectionObserver(
+          (entries) => {
+            if (!rootEl.isConnected) {
+              cleanupMobileBarBindings();
+              return;
+            }
+            const nearFooter = entries.some((entry) => entry.isIntersecting);
+            setMobileBarHiddenNearFooter(nearFooter);
+          },
+          {
+            threshold: 0.01,
+            rootMargin: `0px 0px ${footerHideOffset}px 0px`,
+          },
+        );
+        footerObserver.observe(footer);
+      }
+
       // 仅在滚动方向稳定后切换显隐，避免轻微抖动导致浮条频繁闪烁。
       const updateVisibility = (): void => {
         mobileBarScrollTicking = false;
         if (!rootEl.isConnected) {
-          window.removeEventListener("scroll", onMobileBarScroll);
-          window.removeEventListener("resize", onMobileBarResize);
+          cleanupMobileBarBindings();
           return;
         }
 
@@ -653,15 +720,15 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
         lastScrollY = nextScrollY;
 
         if (isOpen || nextScrollY <= 48) {
-          setMobileBarHidden(false);
+          setMobileBarHiddenByScroll(false);
           return;
         }
         if (delta > 0 && nextScrollY > 96) {
-          setMobileBarHidden(true);
+          setMobileBarHiddenByScroll(true);
           return;
         }
         if (delta < 0) {
-          setMobileBarHidden(false);
+          setMobileBarHiddenByScroll(false);
         }
       };
 
@@ -675,22 +742,26 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
 
       const onMobileBarResize = (): void => {
         if (!rootEl.isConnected) {
-          window.removeEventListener("scroll", onMobileBarScroll);
-          window.removeEventListener("resize", onMobileBarResize);
+          cleanupMobileBarBindings();
           return;
         }
         if (window.innerWidth >= 1280) {
-          setMobileBarHidden(false);
+          setMobileBarHiddenByScroll(false);
+          setMobileBarHiddenNearFooter(false);
+          footerObserver?.disconnect();
+          footerObserver = null;
           return;
         }
         lastScrollY = Math.max(
           window.scrollY || document.documentElement.scrollTop || 0,
           0,
         );
+        observeFooterVisibility();
       };
 
       window.addEventListener("scroll", onMobileBarScroll, { passive: true });
       window.addEventListener("resize", onMobileBarResize, { passive: true });
+      observeFooterVisibility();
     }
 
     applyLikeUI();

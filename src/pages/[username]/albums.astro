@@ -145,6 +145,8 @@ const hasSidebarContent = tagList.length > 0 || categoryList.length > 0;
   title={i18n(I18nKey.contentAlbums)}
   description={i18n(I18nKey.contentAlbumsPublicSubtitle)}
   leftSidebarMobilePreset="without-announcement"
+  rightSidebarMobilePreset="drawer"
+  hasCustomRightSidebarContent={result.status === "ok" && hasSidebarContent}
 >
   {
     result.status === "not_found" || result.status === "permission_denied" ? (

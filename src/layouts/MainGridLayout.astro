@@ -37,6 +37,7 @@ interface Props {
   headings?: MarkdownHeading[];
   leftSidebarMobilePreset?: LeftSidebarMobilePreset;
   rightSidebarMobilePreset?: RightSidebarMobilePreset;
+  hasCustomRightSidebarContent?: boolean;
 }
 
 const resolvedSiteSettings =
@@ -56,9 +57,15 @@ const {
   headings = [],
   leftSidebarMobilePreset = "footer",
   rightSidebarMobilePreset = "panel",
+  hasCustomRightSidebarContent: hasCustomRightSidebarContentProp,
 } = Astro.props;
 
-const hasCustomRightSidebar = Astro.slots.has("sidebar-right");
+const hasCustomRightSidebarSlot = Astro.slots.has("sidebar-right");
+// 允许页面显式声明右侧栏是否有内容，避免条件 slot 被编译期误判为“非空”。
+const hasCustomRightSidebarContent =
+  typeof hasCustomRightSidebarContentProp === "boolean"
+    ? hasCustomRightSidebarContentProp
+    : hasCustomRightSidebarSlot;
 const {
   isFloatTOC,
   isPostDetailPage,
@@ -81,7 +88,7 @@ const {
   siteConfig,
   bannerImages,
   Astro.url.pathname,
-  hasCustomRightSidebar,
+  hasCustomRightSidebarContent,
 );
 const mobileLeftSidebarBuckets = resolveLeftSidebarMobileBuckets(
   leftSidebarBuckets,
@@ -91,6 +98,13 @@ const shouldRenderMobileLeftSidebarList =
   !isPostEditorPage &&
   leftSidebarMobilePreset !== "footer" &&
   hasSidebarComponents(mobileLeftSidebarBuckets);
+// 仅在移动端内联补充区里包含 Profile 卡片时补顶部分隔，避免个人资料与正文直接贴住。
+const shouldApplyMobileLeftSidebarTopGap =
+  shouldRenderMobileLeftSidebarList &&
+  [
+    ...mobileLeftSidebarBuckets.topComponents,
+    ...mobileLeftSidebarBuckets.stickyComponents,
+  ].some((component) => component.type === "profile");
 const rightSidebarPanelTitle = shouldRenderDedicatedPostToc
   ? "目录与页面工具"
   : "页面工具";
@@ -103,7 +117,7 @@ const shouldRenderMobileRightSidebarDrawer =
   rightSidebarMobilePreset === "drawer" &&
   !isPostEditorPage &&
   !isPostDetailPage &&
-  (hasCustomRightSidebar || hasRightSidebarComponents);
+  (hasCustomRightSidebarContent || hasRightSidebarComponents);
 const rightSidebarMobileVisibilityClass =
   rightSidebarMobilePreset === "panel" ? "" : "hidden lg:block";
 const shouldRenderMobileLeftSidebarAnchor =
@@ -117,7 +131,7 @@ const rightSidebarPanelIcon = shouldRenderDedicatedPostToc
 // 右侧栏在移动抽屉模式下只保留一个真实实例，避免桌面/移动双渲染造成重复 ID。
 const shouldRelocateRightSidebarContent =
   shouldRenderMobileRightSidebarDrawer &&
-  (hasCustomRightSidebar || hasRightSidebarComponents);
+  (hasCustomRightSidebarContent || hasRightSidebarComponents);
 ---
 
 <Layout
@@ -455,7 +469,7 @@ const shouldRelocateRightSidebarContent =
                       class="w-full min-w-0"
                       data-responsive-right-sidebar-node
                     >
-                      {hasCustomRightSidebar ? (
+                      {hasCustomRightSidebarContent ? (
                         <slot name="sidebar-right" />
                       ) : (
                         hasRightSidebarComponents && (
@@ -470,7 +484,7 @@ const shouldRelocateRightSidebarContent =
                       )}
                     </div>
                   </div>
-                ) : hasCustomRightSidebar ? (
+                ) : hasCustomRightSidebarContent ? (
                   <slot name="sidebar-right" />
                 ) : hasRightSidebarComponents ? (
                   <>
@@ -540,7 +554,14 @@ const shouldRelocateRightSidebarContent =
               }
               {
                 shouldRenderMobileLeftSidebarList && (
-                  <section class="mb-4 lg:hidden">
+                  <section
+                    class:list={[
+                      "mb-4 lg:hidden",
+                      {
+                        "mt-4": shouldApplyMobileLeftSidebarTopGap,
+                      },
+                    ]}
+                  >
                     <div class="flex flex-col gap-4">
                       {mobileLeftSidebarBuckets.topComponents.length > 0 && (
                         <SideBarComponentList
@@ -768,7 +789,7 @@ const shouldRelocateRightSidebarContent =
                       class="w-full min-w-0"
                       data-responsive-right-sidebar-mobile-anchor
                     />
-                  ) : hasCustomRightSidebar ? (
+                  ) : hasCustomRightSidebarContent ? (
                     <slot name="sidebar-right" />
                   ) : (
                     hasRightSidebarComponents && (

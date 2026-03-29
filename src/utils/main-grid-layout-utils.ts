@@ -16,6 +16,7 @@ export type MainGridLayoutProps = {
     headings?: MarkdownHeading[];
     leftSidebarMobilePreset?: LeftSidebarMobilePreset;
     rightSidebarMobilePreset?: RightSidebarMobilePreset;
+    hasCustomRightSidebarContent?: boolean;
 };
 
 export type LeftSidebarMobilePreset =

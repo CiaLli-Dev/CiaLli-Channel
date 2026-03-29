@@ -143,14 +143,6 @@
     --mobile-float-gap: 0.65rem;
   }
 
-  body.has-detail-mobile-bar #content-wrapper {
-    padding-bottom: calc(var(--detail-mobile-bar-height) + var(--detail-mobile-bar-gap) + 0.9rem);
-  }
-
-  body.has-fancybox-open #content-wrapper {
-    padding-bottom: 0;
-  }
-
   html.has-fancybox-open .detail-action-float-mobile {
     opacity: 0;
     pointer-events: none;

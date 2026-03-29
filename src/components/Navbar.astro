@@ -797,7 +797,10 @@ const mobileLinks: NavBarLink[] = desktopLinks
 
   .mobile-nav-drawer {
     position: fixed;
-    inset: 0;
+    top: calc(4.5rem + env(safe-area-inset-top, 0px));
+    right: 0;
+    bottom: 0;
+    left: 0;
     z-index: 70;
     pointer-events: none;
     opacity: 0;
@@ -813,12 +816,12 @@ const mobileLinks: NavBarLink[] = desktopLinks
     position: absolute;
     inset: 0;
     border: none;
-    background: rgba(15, 23, 42, 0.45);
+    background: rgba(15, 23, 42, 0.12);
   }
 
   .mobile-nav-panel {
     position: absolute;
-    top: calc(4.5rem + env(safe-area-inset-top, 0px) + 0.5rem);
+    top: 0.5rem;
     right: max(1rem, env(safe-area-inset-right, 0px) + 1rem);
     left: max(1rem, env(safe-area-inset-left, 0px) + 1rem);
     max-height: calc(100dvh - 6rem - env(safe-area-inset-top, 0px));
