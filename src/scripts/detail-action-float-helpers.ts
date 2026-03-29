@@ -5,13 +5,13 @@ import { getCsrfToken } from "@/utils/csrf";
 export type DetailElements = {
     likeBtn: HTMLButtonElement | null;
     commentBtn: HTMLButtonElement | null;
+    commentEntryBtn: HTMLButtonElement | null;
     shareBtn: HTMLButtonElement | null;
     manageBtn: HTMLButtonElement | null;
     panel: HTMLElement | null;
     editBtn: HTMLButtonElement | null;
     deleteBtn: HTMLButtonElement | null;
     likeCountText: HTMLElement | null;
-    mobileManageGroup: HTMLElement | null;
 };
 
 export type DetailMountContext = {
@@ -25,6 +25,9 @@ export function queryDetailElements(rootEl: HTMLElement): DetailElements {
         commentBtn: rootEl.querySelector<HTMLButtonElement>(
             ".detail-comment-btn",
         ),
+        commentEntryBtn: rootEl.querySelector<HTMLButtonElement>(
+            ".detail-mobile-comment-entry",
+        ),
         shareBtn: rootEl.querySelector<HTMLButtonElement>(".detail-share-btn"),
         manageBtn: rootEl.querySelector<HTMLButtonElement>(
             ".detail-manage-toggle",
@@ -36,9 +39,6 @@ export function queryDetailElements(rootEl: HTMLElement): DetailElements {
         ),
         likeCountText: rootEl.querySelector<HTMLElement>(
             "[data-like-count-text]",
-        ),
-        mobileManageGroup: rootEl.querySelector<HTMLElement>(
-            "[data-mobile-manage-group]",
         ),
     };
 }

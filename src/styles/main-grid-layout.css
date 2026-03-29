@@ -175,12 +175,29 @@
     color: var(--primary);
     z-index: var(--z-float-rail, 70);
     pointer-events: auto;
+    background: color-mix(in oklch, var(--card-bg) 82%, var(--btn-plain-bg-hover) 18%);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
   }
 
   .mobile-edge-launcher-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+  }
+
+  .mobile-edge-launcher[data-mobile-post-toc-launcher] {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+  }
+
+  .mobile-edge-launcher-progress {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.25rem;
+    line-height: 1;
+    font-size: 0.88rem;
+    font-weight: 700;
   }
 
   .mobile-edge-drawer-layer {
@@ -254,6 +271,39 @@
   .mobile-edge-drawer-panel .card-base,
   .mobile-edge-drawer-panel .playlist-panel {
     border-radius: 1.5rem 0 0 1.5rem;
+  }
+
+  .mobile-post-toc-drawer-body {
+    overflow: hidden;
+  }
+
+  .mobile-post-toc-card {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+
+  .mobile-post-toc-title {
+    flex-shrink: 0;
+  }
+
+  .mobile-post-toc-shell {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0 1rem 1rem;
+    overflow: hidden;
+  }
+
+  .mobile-post-toc-shell > table-of-contents[data-toc-root],
+  .mobile-post-toc-list {
+    width: 100%;
+    flex: 1 1 auto;
+    height: 100%;
+    max-height: 100%;
   }
 }
 

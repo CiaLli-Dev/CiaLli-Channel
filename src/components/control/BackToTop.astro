@@ -27,6 +27,7 @@ import { Icon } from "astro-icon/components";
   .back-to-top-btn-inner
     width: var(--right-float-size, 3.75rem)
     height: var(--right-float-size, 3.75rem)
+    border-radius: inherit
 
   .back-to-top-btn
     color: var(--primary)
@@ -62,12 +63,15 @@ import { Icon } from "astro-icon/components";
     .back-to-top-btn-inner
       width: var(--mobile-float-size, 3.2rem)
       height: var(--mobile-float-size, 3.2rem)
+      background: unquote("color-mix(in oklch, var(--card-bg) 82%, var(--btn-plain-bg-hover) 18%)")
 
     .back-to-top-btn
       font-size: 2rem
       right: var(--mobile-float-rail-right, 1rem)
       bottom: calc(var(--mobile-float-rail-bottom, 1rem) + (var(--mobile-float-size, 3.75rem) + var(--mobile-float-gap, 0.75rem)) * var(--mobile-float-launcher-count, 0) + 0.85rem)
       transform: none
+      overflow: visible
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12)
 
       &.hide
         transform: scale(0.9)

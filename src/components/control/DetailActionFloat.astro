@@ -160,7 +160,7 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
       showCommentAction && (
         <button
           type="button"
-          class="detail-action-btn detail-comment-btn detail-mobile-comment-entry"
+          class="detail-action-btn detail-mobile-comment-entry"
           aria-label="发布评论"
         >
           <span class="detail-mobile-comment-entry-text">发布评论</span>
@@ -180,9 +180,21 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
               name="material-symbols:thumb-up-rounded"
               class="detail-icon"
             />
-            <span class="detail-mobile-like-count" data-like-count-text>
+            <span class="detail-mobile-count-badge" data-like-count-text>
               {likeCount}
             </span>
+          </button>
+        )
+      }
+      {
+        showCommentAction && (
+          <button
+            type="button"
+            class="detail-action-btn detail-comment-btn detail-mobile-icon-btn detail-mobile-comment-btn"
+            aria-label="跳转到评论区"
+          >
+            <Icon name="material-symbols:comment-rounded" class="detail-icon" />
+            <span class="detail-mobile-count-badge">{commentCount}</span>
           </button>
         )
       }
@@ -200,35 +212,7 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
           </button>
         )
       }
-      <button
-        type="button"
-        class="detail-action-btn detail-manage-toggle hidden detail-mobile-icon-btn"
-        aria-label="更多操作"
-        aria-controls={`detail-action-panel-${contentType}-${contentId}`}
-        aria-expanded="false"
-      >
-        <Icon name="material-symbols:more-horiz" class="detail-icon" />
-      </button>
     </div>
-  </div>
-
-  <div
-    id={`detail-action-panel-${contentType}-${contentId}`}
-    class="detail-manage-panel"
-    aria-hidden="true"
-  >
-    <button
-      type="button"
-      class="detail-manage-edit hidden w-full text-left px-3 py-2 rounded-lg text-sm text-90 hover:bg-black/5 dark:hover:bg-white/10"
-    >
-      编辑
-    </button>
-    <button
-      type="button"
-      class="detail-manage-delete hidden w-full text-left px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-black/5 dark:hover:bg-white/10"
-    >
-      {deleteLabel}
-    </button>
   </div>
 </div>
 
@@ -398,7 +382,7 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
     background: unquote("color-mix(in oklch, var(--card-bg) 82%, var(--btn-plain-bg-hover) 18%)")
     border: 1px solid unquote("color-mix(in oklch, var(--line-divider) 84%, var(--primary) 16%)")
 
-  .detail-mobile-like-count
+  .detail-mobile-count-badge
     position: absolute
     right: -.1rem
     bottom: -.1rem
@@ -531,6 +515,7 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
       editBtn,
       deleteBtn,
       likeCountText,
+      commentEntryBtn,
     } = els;
 
     const likeState: LikeActionState = {
@@ -630,6 +615,17 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
       }
       openEditorBtn.click();
       return true;
+    }
+
+    function jumpToCommentAnchor(): void {
+      const commentHash = "#comment-root";
+      if (window.location.hash === commentHash) {
+        navigateToPage(commentHash);
+        return;
+      }
+      navigateToPage(
+        `${window.location.pathname}${window.location.search}${commentHash}`,
+      );
     }
 
     function bindMobileBarVisibility(): void {
@@ -773,17 +769,14 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
       });
     });
 
+    commentEntryBtn?.addEventListener("click", () => {
+      closePanel();
+      openCommentEditorFromPrimaryEntry();
+    });
+
     commentBtn?.addEventListener("click", () => {
       closePanel();
-      if (isMobileBar && openCommentEditorFromPrimaryEntry()) {
-        return;
-      }
-      const commentRoot = document.getElementById("comment-root");
-      if (commentRoot) {
-        commentRoot.scrollIntoView({ behavior: "smooth", block: "start" });
-        return;
-      }
-      navigateToPage(`${window.location.pathname}#comment-root`);
+      jumpToCommentAnchor();
     });
 
     shareBtn?.addEventListener("click", () => {

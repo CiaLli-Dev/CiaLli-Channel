@@ -1,7 +1,6 @@
 /* Fancybox 自定义样式 */
 .fancybox__container {
   --fancybox-bg: rgba(0, 0, 0, 0.9);
-  --fancybox-preview-strip-mask: rgba(0, 0, 0, 0.18);
   --fancybox-thumbs-width: 64px;
   --fancybox-thumbs-ratio: 1;
   --fancybox-thumbs-border-radius: 4px;
@@ -28,17 +27,8 @@
 }
 
 .fancybox__thumbs {
-  background: linear-gradient(var(--fancybox-preview-strip-mask), var(--fancybox-preview-strip-mask)), var(--fancybox-backdrop-bg, rgba(24, 24, 27, 0.95));
   padding: 2px;
   border-radius: 8px;
-}
-
-.fancybox__container.is-compact .fancybox__footer {
-  background: linear-gradient(var(--fancybox-preview-strip-mask), var(--fancybox-preview-strip-mask)), var(--fancybox-backdrop-bg, rgba(24, 24, 27, 0.95));
-}
-
-.fancybox__container.is-compact .fancybox__thumbs {
-  background: transparent;
 }
 
 .fancybox__thumb {

@@ -60,6 +60,7 @@ const {
 const hasCustomRightSidebar = Astro.slots.has("sidebar-right");
 const {
   isFloatTOC,
+  isPostDetailPage,
   isPostEditorPage,
   showHomeText,
   initialWallpaperMode,
@@ -67,7 +68,6 @@ const {
   shouldRenderDedicatedPostToc,
   shouldFixRightSidebarSlot,
   desktopShowLeftSidebar,
-  hasRightSidebarTocWidget,
   gridCols,
   sidebarClass,
   rightSidebarClass,
@@ -93,14 +93,16 @@ const shouldRenderMobileLeftSidebarList =
 const rightSidebarPanelTitle = shouldRenderDedicatedPostToc
   ? "目录与页面工具"
   : "页面工具";
-const shouldRenderMobilePostToolsDrawer =
+const shouldRenderMobileArticleTocDrawer =
   rightSidebarMobilePreset === "drawer" &&
   !isPostEditorPage &&
-  (hasCustomRightSidebar ||
-    hasRightSidebarComponents ||
-    (siteConfig.toc.enable && headings.length > 0));
-const shouldRenderMobileDedicatedToc =
-  siteConfig.toc.enable && headings.length > 0 && !hasRightSidebarTocWidget;
+  siteConfig.toc.enable &&
+  isPostDetailPage;
+const shouldRenderMobileRightSidebarDrawer =
+  rightSidebarMobilePreset === "drawer" &&
+  !isPostEditorPage &&
+  !isPostDetailPage &&
+  (hasCustomRightSidebar || hasRightSidebarComponents);
 const rightSidebarMobileVisibilityClass =
   rightSidebarMobilePreset === "panel" ? "" : "hidden lg:block";
 const shouldRenderMobileLeftSidebarAnchor =
@@ -597,7 +599,88 @@ const shouldRenderMobileLeftSidebarAnchor =
       -->
       <div id="detail-action-float-anchor" aria-hidden="true"></div>
       {
-        shouldRenderMobilePostToolsDrawer && (
+        shouldRenderMobileArticleTocDrawer && (
+          <div
+            class="mobile-edge-drawer-root lg:hidden"
+            data-mobile-edge-drawer-root
+            data-mobile-post-toc-root
+            hidden
+          >
+            <button
+              type="button"
+              class="mobile-edge-launcher btn-card"
+              data-mobile-edge-drawer-toggle
+              data-mobile-post-toc-launcher
+              data-mobile-float-launcher
+              data-mobile-float-order="2"
+              aria-label="打开文章目录"
+              aria-controls="mobile-post-toc-panel"
+              aria-expanded="false"
+            >
+              <span
+                class="mobile-edge-launcher-progress"
+                data-mobile-post-toc-progress
+              >
+                0
+              </span>
+            </button>
+            <div class="mobile-edge-drawer-layer">
+              <button
+                type="button"
+                class="mobile-edge-drawer-backdrop"
+                data-mobile-edge-drawer-backdrop
+                aria-label="关闭文章目录"
+              />
+              <aside
+                id="mobile-post-toc-panel"
+                class="mobile-edge-drawer-panel"
+                data-mobile-edge-drawer-panel
+                aria-hidden="true"
+              >
+                <div class="mobile-edge-drawer-head">
+                  <div class="space-y-1">
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-50">
+                      TOC
+                    </p>
+                    <p class="text-base font-semibold text-90">文章目录</p>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn-plain scale-animation flex h-10 w-10 items-center justify-center rounded-lg active:scale-90"
+                    data-mobile-edge-drawer-close
+                    aria-label="关闭文章目录"
+                  >
+                    <span
+                      class="iconify text-[1.3rem]"
+                      data-icon="material-symbols:close-rounded"
+                    />
+                  </button>
+                </div>
+                <div class="mobile-edge-drawer-body mobile-post-toc-drawer-body">
+                  <div class="mobile-post-toc-card">
+                    <div
+                      class="mobile-post-toc-title font-bold transition text-lg text-neutral-900 dark:text-neutral-100 relative ml-8 mt-4 mb-2 flex items-center
+                        before:w-1 before:h-4 before:rounded-md before:bg-(--primary)
+                        before:absolute before:left-[-16px] before:top-[5.5px]"
+                    >
+                      目录
+                    </div>
+                    <div class="mobile-post-toc-shell" data-post-detail-toc="1">
+                      <TOC
+                        id="mobile-post-toc"
+                        class="mobile-post-toc-list"
+                        headings={headings}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        )
+      }
+      {
+        shouldRenderMobileRightSidebarDrawer && (
           <div
             class="mobile-edge-drawer-root lg:hidden"
             data-mobile-edge-drawer-root
@@ -608,7 +691,7 @@ const shouldRenderMobileLeftSidebarAnchor =
               data-mobile-edge-drawer-toggle
               data-mobile-float-launcher
               data-mobile-float-order="3"
-              aria-label="打开目录与页面工具"
+              aria-label="打开页面工具"
               aria-controls="mobile-post-tools-panel"
               aria-expanded="false"
             >
@@ -624,7 +707,7 @@ const shouldRenderMobileLeftSidebarAnchor =
                 type="button"
                 class="mobile-edge-drawer-backdrop"
                 data-mobile-edge-drawer-backdrop
-                aria-label="关闭目录与页面工具"
+                aria-label="关闭页面工具"
               />
               <aside
                 id="mobile-post-tools-panel"
@@ -637,15 +720,13 @@ const shouldRenderMobileLeftSidebarAnchor =
                     <p class="text-xs font-semibold uppercase tracking-[0.16em] text-50">
                       Tools
                     </p>
-                    <p class="text-base font-semibold text-90">
-                      目录与页面工具
-                    </p>
+                    <p class="text-base font-semibold text-90">页面工具</p>
                   </div>
                   <button
                     type="button"
                     class="btn-plain scale-animation flex h-10 w-10 items-center justify-center rounded-lg active:scale-90"
                     data-mobile-edge-drawer-close
-                    aria-label="关闭目录与页面工具"
+                    aria-label="关闭页面工具"
                   >
                     <span
                       class="iconify text-[1.3rem]"
@@ -654,23 +735,6 @@ const shouldRenderMobileLeftSidebarAnchor =
                   </button>
                 </div>
                 <div class="mobile-edge-drawer-body">
-                  {shouldRenderMobileDedicatedToc && (
-                    <div class="card-base rounded-(--radius-large) pb-4">
-                      <div
-                        class="font-bold transition text-lg text-neutral-900 dark:text-neutral-100 relative ml-8 mt-4 mb-2 flex items-center
-                          before:w-1 before:h-4 before:rounded-md before:bg-(--primary)
-                          before:absolute before:left-[-16px] before:top-[5.5px]"
-                      >
-                        目录
-                      </div>
-                      <div
-                        class="px-4 max-h-[min(55dvh,24rem)] overflow-hidden"
-                        data-post-detail-toc="1"
-                      >
-                        <TOC id="mobile-post-tools-toc" headings={headings} />
-                      </div>
-                    </div>
-                  )}
                   {hasCustomRightSidebar ? (
                     <slot name="sidebar-right" />
                   ) : (
@@ -708,6 +772,7 @@ const shouldRenderMobileLeftSidebarAnchor =
   <slot name="modal" />
   <script>
     import "@/scripts/mobile-edge-drawer";
+    import "@/scripts/mobile-post-toc-drawer";
     import "@/scripts/responsive-sidebar-placement";
   </script>
 </Layout>
