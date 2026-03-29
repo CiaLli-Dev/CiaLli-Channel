@@ -8,6 +8,7 @@ import TransitionProxySkeletonTemplates from "@components/layout/TransitionProxy
 import Navbar from "@components/Navbar.astro";
 import SideBar from "@components/widget/SideBar.astro";
 import SideBarComponentList from "@components/widget/SideBarComponentList.astro";
+import { Icon } from "astro-icon/components";
 import type { MarkdownHeading } from "astro";
 import IconifyLoader from "../components/misc/IconifyLoader.astro";
 import ImageWrapper from "../components/misc/ImageWrapper.astro";
@@ -109,6 +110,14 @@ const shouldRenderMobileLeftSidebarAnchor =
   !isPostEditorPage &&
   desktopShowLeftSidebar &&
   leftSidebarMobilePreset === "footer";
+// 让右侧栏卡片与移动端抽屉按钮共用同一套图标决策，避免不同页面分叉。
+const rightSidebarPanelIcon = shouldRenderDedicatedPostToc
+  ? "material-symbols:format-list-bulleted-rounded"
+  : "material-symbols:tune-rounded";
+// 右侧栏在移动抽屉模式下只保留一个真实实例，避免桌面/移动双渲染造成重复 ID。
+const shouldRelocateRightSidebarContent =
+  shouldRenderMobileRightSidebarDrawer &&
+  (hasCustomRightSidebar || hasRightSidebarComponents);
 ---
 
 <Layout
@@ -434,12 +443,34 @@ const shouldRenderMobileLeftSidebarAnchor =
           >
             <ResponsiveSidebarPanel
               title={rightSidebarPanelTitle}
-              icon={shouldRenderDedicatedPostToc
-                ? "material-symbols:format-list-bulleted-rounded"
-                : "material-symbols:tune-rounded"}
+              icon={rightSidebarPanelIcon}
             >
               {
-                hasCustomRightSidebar ? (
+                shouldRelocateRightSidebarContent ? (
+                  <div
+                    class="w-full min-w-0"
+                    data-responsive-right-sidebar-desktop-anchor
+                  >
+                    <div
+                      class="w-full min-w-0"
+                      data-responsive-right-sidebar-node
+                    >
+                      {hasCustomRightSidebar ? (
+                        <slot name="sidebar-right" />
+                      ) : (
+                        hasRightSidebarComponents && (
+                          <RightSideBar
+                            headings={headings}
+                            topComponents={rightSidebarBuckets.topComponents}
+                            stickyComponents={
+                              rightSidebarBuckets.stickyComponents
+                            }
+                          />
+                        )
+                      )}
+                    </div>
+                  </div>
+                ) : hasCustomRightSidebar ? (
                   <slot name="sidebar-right" />
                 ) : hasRightSidebarComponents ? (
                   <>
@@ -650,9 +681,9 @@ const shouldRenderMobileLeftSidebarAnchor =
                     data-mobile-edge-drawer-close
                     aria-label="关闭文章目录"
                   >
-                    <span
-                      class="iconify text-[1.3rem]"
-                      data-icon="material-symbols:close-rounded"
+                    <Icon
+                      name="material-symbols:close-rounded"
+                      class="text-[1.3rem]"
                     />
                   </button>
                 </div>
@@ -690,16 +721,13 @@ const shouldRenderMobileLeftSidebarAnchor =
               class="mobile-edge-launcher btn-card"
               data-mobile-edge-drawer-toggle
               data-mobile-float-launcher
-              data-mobile-float-order="3"
+              data-mobile-float-order="2"
               aria-label="打开页面工具"
               aria-controls="mobile-post-tools-panel"
               aria-expanded="false"
             >
               <span class="mobile-edge-launcher-icon">
-                <span
-                  class="iconify text-[1.45rem]"
-                  data-icon="material-symbols:format-list-bulleted-rounded"
-                />
+                <Icon name={rightSidebarPanelIcon} class="text-[1.45rem]" />
               </span>
             </button>
             <div class="mobile-edge-drawer-layer">
@@ -728,14 +756,19 @@ const shouldRenderMobileLeftSidebarAnchor =
                     data-mobile-edge-drawer-close
                     aria-label="关闭页面工具"
                   >
-                    <span
-                      class="iconify text-[1.3rem]"
-                      data-icon="material-symbols:close-rounded"
+                    <Icon
+                      name="material-symbols:close-rounded"
+                      class="text-[1.3rem]"
                     />
                   </button>
                 </div>
                 <div class="mobile-edge-drawer-body">
-                  {hasCustomRightSidebar ? (
+                  {shouldRelocateRightSidebarContent ? (
+                    <div
+                      class="w-full min-w-0"
+                      data-responsive-right-sidebar-mobile-anchor
+                    />
+                  ) : hasCustomRightSidebar ? (
                     <slot name="sidebar-right" />
                   ) : (
                     hasRightSidebarComponents && (

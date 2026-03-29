@@ -241,6 +241,10 @@
     transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
+  :root:not(.dark) .mobile-edge-drawer-panel {
+    background: color-mix(in oklch, var(--page-bg) 72%, var(--float-panel-bg) 28%);
+  }
+
   .mobile-edge-drawer-root.is-open .mobile-edge-drawer-panel {
     transform: translateX(0);
   }

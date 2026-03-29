@@ -57,10 +57,11 @@ if (hasSessionCookie || viewerId) {
 <MainGridLayout
   title={i18n(I18nKey.coreArchive)}
   leftSidebarMobilePreset="supplementary"
+  rightSidebarMobilePreset="drawer"
 >
   <!-- 默认 slot: 文章列表 -->
   <div
-    class="archive-posts min-w-0"
+    class="archive-posts min-w-0 mb-4 lg:mb-0"
     data-uncategorized-label={uncategorizedLabel}
   >
     {
