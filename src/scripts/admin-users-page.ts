@@ -465,81 +465,143 @@ function resolveUserSortRoleRank(row: UnknownRecord): number {
     return 2;
 }
 
+type UsersSortSnapshot = {
+    email: string;
+    username: string;
+    roleRank: number;
+};
+
+type IndexedUsersSortRow = {
+    item: UnknownRecord;
+    index: number;
+    snapshot: UsersSortSnapshot;
+};
+
+function compareUsersSortTextAsc(
+    leftValue: string,
+    rightValue: string,
+): number {
+    return leftValue.localeCompare(rightValue);
+}
+
+function applyUsersSortOrder(
+    diff: number,
+    sortOrder: AdminUsersSortOrder,
+): number {
+    return sortOrder === "desc" ? -diff : diff;
+}
+
+function buildUsersSortSnapshot(row: UnknownRecord): UsersSortSnapshot {
+    const user =
+        typeof row.user === "object" && row.user
+            ? (row.user as UnknownRecord)
+            : null;
+    const profile =
+        typeof row.profile === "object" && row.profile
+            ? (row.profile as UnknownRecord)
+            : null;
+    return {
+        email: normalizeSortText(user?.email),
+        username: normalizeSortText(profile?.username),
+        roleRank: resolveUserSortRoleRank(row),
+    };
+}
+
+function compareRoleSortedUsersRows(
+    left: IndexedUsersSortRow,
+    right: IndexedUsersSortRow,
+    sortOrder: AdminUsersSortOrder,
+): number {
+    const rankDiff = left.snapshot.roleRank - right.snapshot.roleRank;
+    if (rankDiff !== 0) {
+        return applyUsersSortOrder(rankDiff, sortOrder);
+    }
+
+    const usernameDiff = compareUsersSortTextAsc(
+        left.snapshot.username,
+        right.snapshot.username,
+    );
+    if (usernameDiff !== 0) {
+        return usernameDiff;
+    }
+
+    const emailDiff = compareUsersSortTextAsc(
+        left.snapshot.email,
+        right.snapshot.email,
+    );
+    if (emailDiff !== 0) {
+        return emailDiff;
+    }
+
+    return left.index - right.index;
+}
+
+function compareTextSortedUsersRows(
+    left: IndexedUsersSortRow,
+    right: IndexedUsersSortRow,
+    sortBy: Exclude<AdminUsersSortBy, "role">,
+    sortOrder: AdminUsersSortOrder,
+): number {
+    const leftValue =
+        sortBy === "email" ? left.snapshot.email : left.snapshot.username;
+    const rightValue =
+        sortBy === "email" ? right.snapshot.email : right.snapshot.username;
+
+    const leftMissing = leftValue.length === 0;
+    const rightMissing = rightValue.length === 0;
+    if (leftMissing && rightMissing) {
+        return left.index - right.index;
+    }
+    if (leftMissing) {
+        return 1;
+    }
+    if (rightMissing) {
+        return -1;
+    }
+
+    const primaryDiff = compareUsersSortTextAsc(leftValue, rightValue);
+    if (primaryDiff !== 0) {
+        return applyUsersSortOrder(primaryDiff, sortOrder);
+    }
+
+    const emailDiff = compareUsersSortTextAsc(
+        left.snapshot.email,
+        right.snapshot.email,
+    );
+    if (emailDiff !== 0) {
+        return emailDiff;
+    }
+
+    return left.index - right.index;
+}
+
+function compareUsersRowsBySort(
+    left: IndexedUsersSortRow,
+    right: IndexedUsersSortRow,
+    sortBy: AdminUsersSortBy,
+    sortOrder: AdminUsersSortOrder,
+): number {
+    if (sortBy === "role") {
+        return compareRoleSortedUsersRows(left, right, sortOrder);
+    }
+    return compareTextSortedUsersRows(left, right, sortBy, sortOrder);
+}
+
 function sortUsersRows(
     rows: UnknownRecord[],
     sortBy: AdminUsersSortBy,
     sortOrder: AdminUsersSortOrder,
 ): UnknownRecord[] {
-    const indexedRows = rows.map((item, index) => ({ item, index }));
-    indexedRows.sort((left, right) => {
-        const leftUser =
-            typeof left.item.user === "object" && left.item.user
-                ? (left.item.user as UnknownRecord)
-                : null;
-        const rightUser =
-            typeof right.item.user === "object" && right.item.user
-                ? (right.item.user as UnknownRecord)
-                : null;
-        const leftProfile =
-            typeof left.item.profile === "object" && left.item.profile
-                ? (left.item.profile as UnknownRecord)
-                : null;
-        const rightProfile =
-            typeof right.item.profile === "object" && right.item.profile
-                ? (right.item.profile as UnknownRecord)
-                : null;
+    const indexedRows: IndexedUsersSortRow[] = rows.map((item, index) => ({
+        item,
+        index,
+        snapshot: buildUsersSortSnapshot(item),
+    }));
 
-        const leftEmail = normalizeSortText(leftUser?.email);
-        const rightEmail = normalizeSortText(rightUser?.email);
-        const leftUsername = normalizeSortText(leftProfile?.username);
-        const rightUsername = normalizeSortText(rightProfile?.username);
+    indexedRows.sort((left, right) =>
+        compareUsersRowsBySort(left, right, sortBy, sortOrder),
+    );
 
-        const compareAsc = (leftValue: string, rightValue: string): number =>
-            leftValue.localeCompare(rightValue);
-        const applyOrder = (diff: number): number =>
-            sortOrder === "desc" ? -diff : diff;
-
-        if (sortBy === "role") {
-            const rankDiff =
-                resolveUserSortRoleRank(left.item) -
-                resolveUserSortRoleRank(right.item);
-            if (rankDiff !== 0) {
-                return applyOrder(rankDiff);
-            }
-            const usernameDiff = compareAsc(leftUsername, rightUsername);
-            if (usernameDiff !== 0) {
-                return usernameDiff;
-            }
-            const emailDiff = compareAsc(leftEmail, rightEmail);
-            if (emailDiff !== 0) {
-                return emailDiff;
-            }
-            return left.index - right.index;
-        }
-
-        const leftValue = sortBy === "email" ? leftEmail : leftUsername;
-        const rightValue = sortBy === "email" ? rightEmail : rightUsername;
-        const leftMissing = leftValue.length === 0;
-        const rightMissing = rightValue.length === 0;
-        if (leftMissing && rightMissing) {
-            return left.index - right.index;
-        }
-        if (leftMissing) {
-            return 1;
-        }
-        if (rightMissing) {
-            return -1;
-        }
-        const primaryDiff = compareAsc(leftValue, rightValue);
-        if (primaryDiff !== 0) {
-            return applyOrder(primaryDiff);
-        }
-        const emailDiff = compareAsc(leftEmail, rightEmail);
-        if (emailDiff !== 0) {
-            return emailDiff;
-        }
-        return left.index - right.index;
-    });
     return indexedRows.map((entry) => entry.item);
 }
 

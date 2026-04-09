@@ -9,6 +9,12 @@ import {
 } from "@/server/auth/directus-access";
 import { loadDirectusAccessRegistry } from "@/server/auth/directus-registry";
 import {
+    cacheDistributedRefreshResult,
+    getDistributedRefreshResult,
+    tryAcquireDistributedRefreshLock,
+    waitDistributedRefreshResult,
+} from "@/server/auth/refresh-coordinator";
+import {
     readOneById,
     runWithDirectusServiceAccess,
 } from "@/server/directus/client";
@@ -342,6 +348,49 @@ function sweepExpiredRefreshCache(): void {
     }
 }
 
+function cacheLocalRefreshResult(
+    sourceRefreshToken: string,
+    tokens: RefreshedTokens,
+): void {
+    const cachedValue = {
+        tokens,
+        expiresAt: Date.now() + REFRESH_RESULT_CACHE_TTL_MS,
+    };
+    refreshResultCache.set(sourceRefreshToken, cachedValue);
+    refreshResultCache.set(tokens.refreshToken, cachedValue);
+    sweepExpiredRefreshCache();
+}
+
+async function runRefreshTask(
+    refreshToken: string,
+    releaseDistributedLock?: () => Promise<void>,
+): Promise<RefreshedTokens> {
+    const task = (async () => {
+        try {
+            const tokens = await directusRefresh({ refreshToken });
+            cacheLocalRefreshResult(refreshToken, tokens);
+            void cacheDistributedRefreshResult({
+                sourceRefreshToken: refreshToken,
+                tokens,
+            });
+            return tokens;
+        } finally {
+            if (releaseDistributedLock) {
+                try {
+                    await releaseDistributedLock();
+                } catch {
+                    // 分布式锁释放失败时依赖 TTL 自动回收
+                }
+            }
+        }
+    })().finally(() => {
+        refreshTaskMap.delete(refreshToken);
+    });
+
+    refreshTaskMap.set(refreshToken, task);
+    return await task;
+}
+
 async function refreshWithLock(refreshToken: string): Promise<RefreshedTokens> {
     const cached = refreshResultCache.get(refreshToken);
     if (cached && cached.expiresAt > Date.now()) {
@@ -351,27 +400,51 @@ async function refreshWithLock(refreshToken: string): Promise<RefreshedTokens> {
         refreshResultCache.delete(refreshToken);
     }
 
+    const distributedCached = await getDistributedRefreshResult(refreshToken);
+    if (distributedCached) {
+        cacheLocalRefreshResult(refreshToken, distributedCached);
+        return distributedCached;
+    }
+
     const activeTask = refreshTaskMap.get(refreshToken);
     if (activeTask) {
         return await activeTask;
     }
 
-    const task = directusRefresh({ refreshToken })
-        .then((tokens) => {
-            const cachedValue = {
-                tokens,
-                expiresAt: Date.now() + REFRESH_RESULT_CACHE_TTL_MS,
-            };
-            refreshResultCache.set(refreshToken, cachedValue);
-            refreshResultCache.set(tokens.refreshToken, cachedValue);
-            sweepExpiredRefreshCache();
-            return tokens;
-        })
-        .finally(() => {
-            refreshTaskMap.delete(refreshToken);
-        });
-    refreshTaskMap.set(refreshToken, task);
-    return await task;
+    const distributedLock =
+        await tryAcquireDistributedRefreshLock(refreshToken);
+    if (distributedLock.status === "busy") {
+        const waitedTokens = await waitDistributedRefreshResult(refreshToken);
+        if (waitedTokens) {
+            cacheLocalRefreshResult(refreshToken, waitedTokens);
+            return waitedTokens;
+        }
+
+        const retryLock = await tryAcquireDistributedRefreshLock(refreshToken);
+        if (retryLock.status === "acquired") {
+            return await runRefreshTask(refreshToken, retryLock.release);
+        }
+        if (retryLock.status === "busy") {
+            const retriedWaitTokens = await waitDistributedRefreshResult(
+                refreshToken,
+                {
+                    timeoutMs: 800,
+                },
+            );
+            if (retriedWaitTokens) {
+                cacheLocalRefreshResult(refreshToken, retriedWaitTokens);
+                return retriedWaitTokens;
+            }
+        }
+
+        return await runRefreshTask(refreshToken);
+    }
+
+    if (distributedLock.status === "acquired") {
+        return await runRefreshTask(refreshToken, distributedLock.release);
+    }
+
+    return await runRefreshTask(refreshToken);
 }
 
 async function resolveUserFromAccessToken(
@@ -430,6 +503,55 @@ async function resolveUserFromRefreshedTokens(
     }
 }
 
+function resolveSessionOnlyMode(context: APIContext): boolean {
+    const rememberValue =
+        context.cookies.get(REMEMBER_COOKIE_NAME)?.value ?? undefined;
+    return isSessionOnlyMode(rememberValue);
+}
+
+async function tryRecoverUserFromDistributedRefresh(
+    context: APIContext,
+    refreshToken: string,
+): Promise<SessionUser | null | undefined> {
+    const recoveredTokens = await getDistributedRefreshResult(refreshToken);
+    if (!recoveredTokens) {
+        return undefined;
+    }
+    const sessionOnly = resolveSessionOnlyMode(context);
+    setSessionCookies(context, recoveredTokens, sessionOnly);
+    return await resolveUserFromRefreshedTokens(context, recoveredTokens);
+}
+
+async function resolveUserFromRefreshToken(
+    context: APIContext,
+    refreshToken: string,
+): Promise<SessionUser | null> {
+    try {
+        const tokens = await refreshWithLock(refreshToken);
+        const sessionOnly = resolveSessionOnlyMode(context);
+        setSessionCookies(context, tokens, sessionOnly);
+        return await resolveUserFromRefreshedTokens(context, tokens);
+    } catch (error) {
+        const isDefinitiveAuthError =
+            error instanceof DirectusAuthError &&
+            (error.directusStatus === 401 || error.directusStatus === 403);
+        if (!isDefinitiveAuthError) {
+            return null;
+        }
+
+        const recoveredUser = await tryRecoverUserFromDistributedRefresh(
+            context,
+            refreshToken,
+        );
+        if (recoveredUser !== undefined) {
+            return recoveredUser;
+        }
+
+        clearSession(context);
+        return null;
+    }
+}
+
 export async function getSessionUser(
     context: APIContext,
 ): Promise<SessionUser | null> {
@@ -448,22 +570,7 @@ export async function getSessionUser(
         return null;
     }
 
-    try {
-        const tokens = await refreshWithLock(refreshToken);
-        const rememberValue =
-            context.cookies.get(REMEMBER_COOKIE_NAME)?.value ?? undefined;
-        const sessionOnly = isSessionOnlyMode(rememberValue);
-        setSessionCookies(context, tokens, sessionOnly);
-        return await resolveUserFromRefreshedTokens(context, tokens);
-    } catch (error) {
-        const isDefinitiveAuthError =
-            error instanceof DirectusAuthError &&
-            (error.directusStatus === 401 || error.directusStatus === 403);
-        if (isDefinitiveAuthError) {
-            clearSession(context);
-        }
-        return null;
-    }
+    return await resolveUserFromRefreshToken(context, refreshToken);
 }
 
 export function getSessionAccessToken(context: APIContext): string {

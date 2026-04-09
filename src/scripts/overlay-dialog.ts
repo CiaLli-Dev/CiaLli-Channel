@@ -73,6 +73,17 @@ type OverlayDialogControl = {
     element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 };
 
+type OverlayDialogRuntimeElements = {
+    overlay: HTMLElement;
+    card: HTMLElement;
+    body: HTMLElement;
+    message: HTMLElement;
+    content: HTMLElement;
+    customContent: HTMLElement;
+    fields: HTMLElement;
+    actions: HTMLElement;
+};
+
 let overlayEl: HTMLElement | null = null;
 let cardEl: HTMLElement | null = null;
 let bodyEl: HTMLElement | null = null;
@@ -201,6 +212,64 @@ function splitClassNames(input: string): string[] {
         .split(/\s+/)
         .map((item) => item.trim())
         .filter(Boolean);
+}
+
+function resolveRuntimeElements(): OverlayDialogRuntimeElements | null {
+    if (
+        !overlayEl ||
+        !cardEl ||
+        !bodyEl ||
+        !messageEl ||
+        !contentEl ||
+        !customContentEl ||
+        !fieldsEl ||
+        !actionsEl
+    ) {
+        return null;
+    }
+
+    return {
+        overlay: overlayEl,
+        card: cardEl,
+        body: bodyEl,
+        message: messageEl,
+        content: contentEl,
+        customContent: customContentEl,
+        fields: fieldsEl,
+        actions: actionsEl,
+    };
+}
+
+function buildDismissResult(
+    dismissKey: OverlayDialogOptions["dismissKey"],
+): OverlayDialogResult {
+    return {
+        actionKey: dismissKey || "",
+        values: {},
+    };
+}
+
+function applyOptionalClassName(
+    element: HTMLElement,
+    className?: string,
+): void {
+    if (!className) {
+        return;
+    }
+    element.classList.add(...splitClassNames(className));
+}
+
+function applyDialogShellClasses(
+    elements: OverlayDialogRuntimeElements,
+    options: OverlayDialogOptions,
+): void {
+    elements.card.className = "overlay-dialog-card";
+    elements.body.className = "overlay-dialog-body";
+    elements.actions.className = "overlay-dialog-actions";
+
+    applyOptionalClassName(elements.card, options.cardClassName);
+    applyOptionalClassName(elements.body, options.bodyClassName);
+    applyOptionalClassName(elements.actions, options.actionsClassName);
 }
 
 function closeWithoutAnimation(result?: OverlayDialogResult): void {
@@ -595,20 +664,9 @@ export function showOverlayDialog(
     options: OverlayDialogOptions,
 ): Promise<OverlayDialogResult> {
     ensureDOM();
-    if (
-        !overlayEl ||
-        !cardEl ||
-        !bodyEl ||
-        !messageEl ||
-        !contentEl ||
-        !customContentEl ||
-        !fieldsEl ||
-        !actionsEl
-    ) {
-        return Promise.resolve({
-            actionKey: options.dismissKey || "",
-            values: {},
-        });
+    const elements = resolveRuntimeElements();
+    if (!elements) {
+        return Promise.resolve(buildDismissResult(options.dismissKey));
     }
 
     if (activeResolve) {
@@ -618,20 +676,9 @@ export function showOverlayDialog(
         });
     }
 
-    overlayEl.setAttribute("aria-label", options.ariaLabel);
-    cardEl.className = "overlay-dialog-card";
-    bodyEl.className = "overlay-dialog-body";
-    actionsEl.className = "overlay-dialog-actions";
-    if (options.cardClassName) {
-        cardEl.classList.add(...splitClassNames(options.cardClassName));
-    }
-    if (options.bodyClassName) {
-        bodyEl.classList.add(...splitClassNames(options.bodyClassName));
-    }
-    if (options.actionsClassName) {
-        actionsEl.classList.add(...splitClassNames(options.actionsClassName));
-    }
-    messageEl.textContent = options.message;
+    elements.overlay.setAttribute("aria-label", options.ariaLabel);
+    applyDialogShellClasses(elements, options);
+    elements.message.textContent = options.message;
     clearDialogError();
     renderContent(options.content, options.contentColumns || 1);
     renderCustomContent(options.customContent);
@@ -642,8 +689,8 @@ export function showOverlayDialog(
     savedOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    overlayEl.classList.remove("is-closing");
-    overlayEl.hidden = false;
+    elements.overlay.classList.remove("is-closing");
+    elements.overlay.hidden = false;
     document.addEventListener("keydown", onKeyDown);
 
     return new Promise<OverlayDialogResult>((resolve) => {
