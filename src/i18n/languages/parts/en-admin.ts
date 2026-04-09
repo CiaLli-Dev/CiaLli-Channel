@@ -208,8 +208,6 @@ export const enAdmin: Record<string, string> = {
     [Key.adminSiteSettingsTocDepth]: "TOC depth",
     [Key.adminSiteSettingsTocMode]: "TOC mode",
     [Key.adminSiteSettingsTypeSpeedMs]: "Typing speed (ms)",
-    [Key.adminSiteSettingsUmamiEnable]: "Enable Umami analytics",
-    [Key.adminSiteSettingsUmamiTitle]: "Umami settings",
     [Key.adminSiteSettingsUploadFailedCanceled]:
         "Upload failed or was canceled",
     [Key.adminSiteSettingsUrlOrFileId]: "Enter URL or file ID",

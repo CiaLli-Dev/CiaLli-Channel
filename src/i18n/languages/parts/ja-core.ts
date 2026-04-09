@@ -78,8 +78,4 @@ export const jaCore: Record<string, string> = {
     [Key.coreCalendarOctober]: "10月",
     [Key.coreCalendarNovember]: "11月",
     [Key.coreCalendarDecember]: "12月",
-    [Key.coreProfileStatsLoading]: "統計を読み込み中...",
-    [Key.coreProfileStatsPageViews]: "ページの閲覧",
-    [Key.coreProfileStatsVisits]: "訪問",
-    [Key.coreProfileStatsUnavailable]: "統計は利用できません",
 };

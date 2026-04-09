@@ -14,16 +14,11 @@ declare namespace App {
 }
 
 interface ImportMetaEnv {
-    readonly UMAMI_API_KEY?: string;
     readonly DIRECTUS_URL?: string;
     readonly DIRECTUS_STATIC_TOKEN?: string;
     readonly BANGUMI_TOKEN_ENCRYPTION_KEY?: string;
     readonly KV_REST_API_URL?: string;
     readonly KV_REST_API_TOKEN?: string;
-    readonly DIRECTUS_EXPORT_INCLUDE_DRAFTS?: string;
-    readonly DIRECTUS_EXPORT_CLEAN?: string;
-    readonly DIRECTUS_POSTS_COLLECTION?: string;
-    readonly DIRECTUS_SPEC_COLLECTION?: string;
 }
 
 interface ImportMeta {

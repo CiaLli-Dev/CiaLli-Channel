@@ -77,8 +77,4 @@ export const enCore: Record<string, string> = {
     [Key.coreCalendarOctober]: "Oct",
     [Key.coreCalendarNovember]: "Nov",
     [Key.coreCalendarDecember]: "Dec",
-    [Key.coreProfileStatsLoading]: "Loading stats...",
-    [Key.coreProfileStatsPageViews]: "Page views",
-    [Key.coreProfileStatsVisits]: "Visits",
-    [Key.coreProfileStatsUnavailable]: "Stats unavailable",
 };

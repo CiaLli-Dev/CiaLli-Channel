@@ -168,12 +168,7 @@ export const defaultSiteSettings: SiteSettingsPayload = {
     sakura: {
         enable: false,
     },
-    umami: {
-        enabled: false,
-        baseUrl: "https://api.umami.is",
-        scripts:
-            '<script defer src="XXXX.XXX" data-website-id="ABCD1234"></script>',
-    },
+
     analytics: {
         gtmId: "GTM-KRX3XGVH",
         clarityId: "tjr3vkhj8i",

@@ -25,7 +25,6 @@ import {
     normalizeSiteFavicon,
     normalizeSiteInfo,
     normalizeToc,
-    normalizeUmami,
     readRawBannerSrc,
 } from "./normalize-helpers";
 
@@ -137,7 +136,6 @@ function normalizeSettings(
     normalizeAnnouncement(merged);
     normalizeMusicPlayer(merged);
     merged.sakura.enable = Boolean(merged.sakura.enable);
-    normalizeUmami(merged);
     normalizeAnalytics(merged, base);
 
     return merged;

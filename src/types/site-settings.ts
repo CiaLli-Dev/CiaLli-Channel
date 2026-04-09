@@ -14,12 +14,6 @@ export type ProfileRuntimeSettings = {
     name: string;
 };
 
-export type UmamiRuntimeSettings = {
-    enabled: boolean;
-    baseUrl: string;
-    scripts: string;
-};
-
 export type AnalyticsRuntimeSettings = {
     gtmId: string;
     clarityId: string;
@@ -47,7 +41,7 @@ export type EditableSiteSettings = {
     announcement: AnnouncementConfig;
     musicPlayer: MusicPlayerConfig;
     sakura: SakuraConfig;
-    umami: UmamiRuntimeSettings;
+
     analytics: AnalyticsRuntimeSettings;
 };
 

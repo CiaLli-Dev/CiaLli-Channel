@@ -75,8 +75,4 @@ export enum CoreKey {
     coreCalendarOctober = "coreCalendarOctober",
     coreCalendarNovember = "coreCalendarNovember",
     coreCalendarDecember = "coreCalendarDecember",
-    coreProfileStatsLoading = "coreProfileStatsLoading",
-    coreProfileStatsPageViews = "coreProfileStatsPageViews",
-    coreProfileStatsVisits = "coreProfileStatsVisits",
-    coreProfileStatsUnavailable = "coreProfileStatsUnavailable",
 }

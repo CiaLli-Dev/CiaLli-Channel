@@ -186,8 +186,6 @@ export enum AdminKey {
     adminSiteSettingsTocDepth = "adminSiteSettingsTocDepth",
     adminSiteSettingsTocMode = "adminSiteSettingsTocMode",
     adminSiteSettingsTypeSpeedMs = "adminSiteSettingsTypeSpeedMs",
-    adminSiteSettingsUmamiEnable = "adminSiteSettingsUmamiEnable",
-    adminSiteSettingsUmamiTitle = "adminSiteSettingsUmamiTitle",
     adminSiteSettingsUploadFailedCanceled = "adminSiteSettingsUploadFailedCanceled",
     adminSiteSettingsUrlOrFileId = "adminSiteSettingsUrlOrFileId",
     adminSiteSettingsUseJapaneseTocBadge = "adminSiteSettingsUseJapaneseTocBadge",

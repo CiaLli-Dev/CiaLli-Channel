@@ -152,31 +152,6 @@ const supportedTimeZones = getSupportedSiteTimeZones();
       <div id="ss-favicon-list" class="space-y-2"></div>
     </div>
     <hr class="border-(--line-divider) lg:col-span-2" />
-    <h3 class="text-lg font-medium text-75 lg:col-span-2">
-      {i18n(I18nKey.adminSiteSettingsUmamiTitle)}
-    </h3>
-    <label
-      class="settings-console-toggle-label flex items-center gap-3 text-75 cursor-pointer select-none lg:col-span-2"
-    >
-      <input type="checkbox" id="ss-umami-enabled" class="toggle-checkbox" />
-      <span class="toggle-track"><span class="toggle-knob"></span></span>
-      {i18n(I18nKey.adminSiteSettingsUmamiEnable)}
-    </label>
-    <label class="space-y-1.5">
-      <span class="text-sm text-60">Umami Base URL</span>
-      <input
-        id="ss-umami-url"
-        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
-        placeholder="https://umami.example.com"
-      />
-    </label>
-    <label class="space-y-1.5 lg:col-span-2">
-      <span class="text-sm text-60">Umami Scripts</span>
-      <textarea
-        id="ss-umami-scripts"
-        class="w-full min-h-24 rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 font-mono text-xs placeholder:text-50"
-        placeholder="<script ...></script>"></textarea>
-    </label>
     <hr class="border-(--line-divider) lg:col-span-2" />
     <h3 class="text-lg font-medium text-75 lg:col-span-2">
       {i18n(I18nKey.adminSiteSettingsAnalyticsTitle)}

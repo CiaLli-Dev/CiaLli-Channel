@@ -76,8 +76,4 @@ export const zhTWCore: Record<string, string> = {
     [Key.coreCalendarOctober]: "10月",
     [Key.coreCalendarNovember]: "11月",
     [Key.coreCalendarDecember]: "12月",
-    [Key.coreProfileStatsLoading]: "統計載入中...",
-    [Key.coreProfileStatsPageViews]: "瀏覽次數",
-    [Key.coreProfileStatsVisits]: "造訪次數",
-    [Key.coreProfileStatsUnavailable]: "統計不可用",
 };

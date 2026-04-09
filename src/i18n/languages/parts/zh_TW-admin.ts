@@ -189,8 +189,6 @@ export const zhTWAdmin: Record<string, string> = {
     [Key.adminSiteSettingsTocDepth]: "目錄深度",
     [Key.adminSiteSettingsTocMode]: "目錄模式",
     [Key.adminSiteSettingsTypeSpeedMs]: "打字速度（毫秒）",
-    [Key.adminSiteSettingsUmamiEnable]: "啟用 Umami 統計",
-    [Key.adminSiteSettingsUmamiTitle]: "Umami 設定",
     [Key.adminSiteSettingsUploadFailedCanceled]: "上傳失敗或已取消",
     [Key.adminSiteSettingsUrlOrFileId]: "請輸入 URL 或檔案 ID",
     [Key.adminSiteSettingsUseJapaneseTocBadge]: "使用日文目錄徽章",

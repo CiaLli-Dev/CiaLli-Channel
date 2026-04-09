@@ -59,13 +59,7 @@ function bindSiteBasicFields(site: SettingsObj, profile: SettingsObj): void {
     setVal("ss-profile-name", String(profile.name ?? ""));
 }
 
-function bindSiteAnalyticsFields(
-    umami: SettingsObj,
-    analytics: SettingsObj,
-): void {
-    setChecked("ss-umami-enabled", Boolean(umami.enabled));
-    setVal("ss-umami-url", String(umami.baseUrl ?? ""));
-    setVal("ss-umami-scripts", String(umami.scripts ?? ""));
+function bindSiteAnalyticsFields(analytics: SettingsObj): void {
     setVal("ss-gtm-id", String(analytics.gtmId ?? ""));
     setVal("ss-clarity-id", String(analytics.clarityId ?? ""));
 }
@@ -73,11 +67,10 @@ function bindSiteAnalyticsFields(
 function bindSiteSection(s: SettingsObj): void {
     const site = (s.site ?? {}) as SettingsObj;
     const profile = (s.profile ?? {}) as SettingsObj;
-    const umami = (s.umami ?? {}) as SettingsObj;
     const analytics = (s.analytics ?? {}) as SettingsObj;
 
     bindSiteBasicFields(site, profile);
-    bindSiteAnalyticsFields(umami, analytics);
+    bindSiteAnalyticsFields(analytics);
 
     if (faviconListContainer) {
         fillFaviconList(
@@ -250,11 +243,6 @@ export function collectSitePayload(current: SettingsObj): SettingsObj {
         profile: {
             ...((current.profile ?? {}) as SettingsObj),
             name: inputVal("ss-profile-name"),
-        },
-        umami: {
-            enabled: checked("ss-umami-enabled"),
-            baseUrl: inputVal("ss-umami-url"),
-            scripts: textareaVal("ss-umami-scripts"),
         },
         analytics: {
             ...((current.analytics ?? {}) as SettingsObj),

@@ -5,14 +5,6 @@ import type { ProgressOverlayApi } from "./scripts/progress-overlay-manager";
 
 export {};
 
-type UmamiWebsiteStats = {
-    pageviews?: number;
-    visits?: number;
-    visitors?: number;
-    bounces?: number;
-    totaltime?: number;
-};
-
 declare global {
     interface HTMLElementTagNameMap {
         "iconify-icon": HTMLElement;
@@ -34,21 +26,6 @@ declare global {
         _calendarFilterListenerAttached?: boolean;
 
         panelManager?: typeof import("./utils/panel-manager").panelManager;
-
-        getUmamiWebsiteStats?: (
-            baseUrl: string,
-            apiKey: string,
-            websiteId: string,
-        ) => Promise<UmamiWebsiteStats>;
-        getUmamiPageStats?: (
-            baseUrl: string,
-            apiKey: string,
-            websiteId: string,
-            urlPath: string,
-            startAt?: number,
-            endAt?: number,
-        ) => Promise<{ pageviews?: number; visitors?: number }>;
-        clearUmamiShareCache?: () => void;
 
         floatingTOCInit?: () => void;
         iconifyLoaded?: boolean;

@@ -505,15 +505,6 @@ export function normalizeMusicPlayer(merged: SiteSettingsPayload): void {
 }
 
 /**
- * 规范化 umami 字段（enabled、baseUrl、scripts）。
- */
-export function normalizeUmami(merged: SiteSettingsPayload): void {
-    merged.umami.enabled = Boolean(merged.umami.enabled);
-    merged.umami.baseUrl = String(merged.umami.baseUrl || "").trim();
-    merged.umami.scripts = String(merged.umami.scripts || "").trim();
-}
-
-/**
  * 规范化 analytics 字段（gtmId、clarityId）。
  */
 export function normalizeAnalytics(

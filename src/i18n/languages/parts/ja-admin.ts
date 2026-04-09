@@ -206,8 +206,6 @@ export const jaAdmin: Record<string, string> = {
     [Key.adminSiteSettingsTocDepth]: "目次の深さ",
     [Key.adminSiteSettingsTocMode]: "目次モード",
     [Key.adminSiteSettingsTypeSpeedMs]: "入力速度（ms）",
-    [Key.adminSiteSettingsUmamiEnable]: "Umami 分析を有効化",
-    [Key.adminSiteSettingsUmamiTitle]: "Umami 設定",
     [Key.adminSiteSettingsUploadFailedCanceled]:
         "アップロードに失敗したか、キャンセルされました",
     [Key.adminSiteSettingsUrlOrFileId]: "URL またはファイル ID を入力",

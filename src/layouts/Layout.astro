@@ -47,12 +47,6 @@ const siteConfig = buildLegacySiteConfig(
 );
 const profileName = resolvedSiteSettings.settings.profile.name;
 const musicPlayerSettings = resolvedSiteSettings.settings.musicPlayer;
-const umamiConfig = {
-  enabled: resolvedSiteSettings.settings.umami.enabled,
-  apiKey: import.meta.env.UMAMI_API_KEY || "api_xxxxxxxx",
-  baseUrl: resolvedSiteSettings.settings.umami.baseUrl,
-  scripts: resolvedSiteSettings.settings.umami.scripts,
-};
 const analyticsConfig = {
   gtmId: String(resolvedSiteSettings.settings.analytics.gtmId || "").trim(),
   clarityId: String(
@@ -132,8 +126,6 @@ const pageWidthRem = `${PAGE_WIDTH}rem`;
 const bannerHeightHomeVh = `${BANNER_HEIGHT_HOME}vh`;
 const bannerHeightVh = `${BANNER_HEIGHT}vh`;
 
-const umamiEnabled = umamiConfig.enabled || false;
-const umamiScripts = umamiConfig.scripts || ""; // 获取 Umami scripts 配置
 const gtmId = analyticsConfig.gtmId;
 const clarityId = analyticsConfig.clarityId;
 const analyticsEnabled = Boolean(gtmId || clarityId);
@@ -433,9 +425,6 @@ const bodyClassName = [
       title={profileName}
       href={`${Astro.site}rss.xml`}
     />
-
-    <!-- Umami 统计 -->
-    {umamiEnabled && umamiScripts && <Fragment set:html={umamiScripts} />}
   </head>
   <body
     class={bodyClassName}

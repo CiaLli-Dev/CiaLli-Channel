@@ -189,8 +189,6 @@ export const zhCNAdmin: Record<string, string> = {
     [Key.adminSiteSettingsTocDepth]: "目录深度",
     [Key.adminSiteSettingsTocMode]: "目录模式",
     [Key.adminSiteSettingsTypeSpeedMs]: "打字速度（毫秒）",
-    [Key.adminSiteSettingsUmamiEnable]: "启用 Umami 统计",
-    [Key.adminSiteSettingsUmamiTitle]: "Umami 设置",
     [Key.adminSiteSettingsUploadFailedCanceled]: "上传失败或已取消",
     [Key.adminSiteSettingsUrlOrFileId]: "请输入 URL 或文件 ID",
     [Key.adminSiteSettingsUseJapaneseTocBadge]: "使用日文目录徽章",

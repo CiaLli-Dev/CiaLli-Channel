@@ -76,8 +76,4 @@ export const zhCNCore: Record<string, string> = {
     [Key.coreCalendarOctober]: "10月",
     [Key.coreCalendarNovember]: "11月",
     [Key.coreCalendarDecember]: "12月",
-    [Key.coreProfileStatsLoading]: "统计加载中...",
-    [Key.coreProfileStatsPageViews]: "浏览量",
-    [Key.coreProfileStatsVisits]: "访问次数",
-    [Key.coreProfileStatsUnavailable]: "统计不可用",
 };
