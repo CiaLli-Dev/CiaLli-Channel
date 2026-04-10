@@ -79,6 +79,7 @@ export const enMe: Record<string, string> = {
     [Key.meSettingsCropAvatarHint]: "Drag or zoom, then save the crop",
     [Key.meSettingsCropAvatarTitle]: "Crop avatar",
     [Key.meSettingsCropInitFailed]: "Failed to initialize crop",
+    [Key.meSettingsDangerZoneTitle]: "Danger zone",
     [Key.meSettingsDescription]:
         "Edit your profile, privacy preferences, and social links here.",
     [Key.meSettingsDisplayNameClickEdit]: "Click to edit display name",
@@ -86,6 +87,15 @@ export const enMe: Record<string, string> = {
     [Key.meSettingsDisplayNameRequired]: "Display name cannot be empty",
     [Key.meSettingsDisplayNameTooLong]: "Display name is too long",
     [Key.meSettingsDragSort]: "Drag to sort",
+    [Key.meSettingsLogoutButton]: "Log out",
+    [Key.meSettingsLogoutConfirmMessage]:
+        "After logging out, you will return to the homepage and any unsaved settings on this page will be lost.",
+    [Key.meSettingsLogoutConfirmTitle]: "Confirm logout",
+    [Key.meSettingsLogoutDescription]:
+        "Logging out will return you to the homepage. Any unsaved settings on this page will not be kept.",
+    [Key.meSettingsLogoutFailedMessage]:
+        "Failed to log out. Please try again later.",
+    [Key.meSettingsLogoutFailedTitle]: "Logout failed",
     [Key.meSettingsPrivacyContent]: "Privacy details",
     [Key.meSettingsPrivacyDirtyNotice]:
         "Privacy settings have changed. Don't forget to save.",

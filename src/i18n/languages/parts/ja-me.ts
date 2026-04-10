@@ -81,6 +81,7 @@ export const jaMe: Record<string, string> = {
         "ドラッグまたは拡大縮小して保存してください",
     [Key.meSettingsCropAvatarTitle]: "アバターを切り抜き",
     [Key.meSettingsCropInitFailed]: "切り抜きの初期化に失敗しました",
+    [Key.meSettingsDangerZoneTitle]: "危険な操作",
     [Key.meSettingsDescription]:
         "ここでプロフィール、プライバシー、SNSリンクを編集できます。",
     [Key.meSettingsDisplayNameClickEdit]: "クリックして表示名を編集",
@@ -88,6 +89,15 @@ export const jaMe: Record<string, string> = {
     [Key.meSettingsDisplayNameRequired]: "表示名は必須です",
     [Key.meSettingsDisplayNameTooLong]: "表示名が長すぎます",
     [Key.meSettingsDragSort]: "ドラッグで並び替え",
+    [Key.meSettingsLogoutButton]: "ログアウト",
+    [Key.meSettingsLogoutConfirmMessage]:
+        "ログアウトするとホームへ戻り、このページで未保存の設定は破棄されます。",
+    [Key.meSettingsLogoutConfirmTitle]: "ログアウト確認",
+    [Key.meSettingsLogoutDescription]:
+        "ログアウトするとホームへ戻ります。このページで未保存の設定は保持されません。",
+    [Key.meSettingsLogoutFailedMessage]:
+        "ログアウトに失敗しました。しばらくしてからもう一度お試しください。",
+    [Key.meSettingsLogoutFailedTitle]: "ログアウト失敗",
     [Key.meSettingsPrivacyContent]: "プライバシー説明",
     [Key.meSettingsPrivacyDirtyNotice]:
         "プライバシー設定が変更されました。保存をお忘れなく。",

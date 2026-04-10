@@ -57,16 +57,6 @@ import { url } from "@utils/url-utils";
         class="text-[1.1rem]"
       />
     </a>
-
-    <button
-      id="auth-logout"
-      type="button"
-      class="auth-status-btn btn-plain scale-animation rounded-lg w-9 h-9 active:scale-90 flex items-center justify-center"
-      aria-label="Logout"
-      title="退出"
-    >
-      <Icon name="material-symbols:logout-rounded" class="text-[1.1rem]" />
-    </button>
   </div>
 </div>
 
@@ -83,10 +73,8 @@ import { url } from "@utils/url-utils";
 <script>
   import { emitAuthState } from "@/scripts/auth/state";
   import { buildLoginUrl } from "@utils/login-url";
-  import { getCsrfToken } from "@/utils/csrf";
 
   const API_ME = "/api/auth/me";
-  const API_LOGOUT = "/api/auth/logout";
   const AUTH_ME_RETRY_DELAY_MS = 220;
   type AuthPayload = {
     ok?: boolean;
@@ -282,7 +270,6 @@ import { url } from "@utils/url-utils";
       return;
     }
     initTask = (async () => {
-      const logoutBtn = document.getElementById("auth-logout");
       const avatarEl = document.getElementById(
         "auth-user-avatar",
       ) as HTMLImageElement | null;
@@ -294,28 +281,6 @@ import { url } from "@utils/url-utils";
           avatarEl.removeAttribute("src");
           avatarEl.classList.add("hidden");
           iconEl.classList.remove("hidden");
-        });
-      }
-
-      if (logoutBtn && !logoutBtn.dataset.bound) {
-        logoutBtn.dataset.bound = "1";
-        logoutBtn.addEventListener("click", async () => {
-          try {
-            await fetch(API_LOGOUT, {
-              method: "POST",
-              credentials: "include",
-              headers: {
-                "Content-Type": "application/json",
-                "x-csrf-token": getCsrfToken(),
-              },
-              body: JSON.stringify({}),
-            });
-          } catch (error) {
-            console.error("Logout failed:", error);
-          } finally {
-            setAuthState(null);
-            window.location.href = "/";
-          }
         });
       }
 

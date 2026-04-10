@@ -359,6 +359,26 @@ try {
             </form>
           </div>
         </section>
+
+        <section
+          class="card-base settings-console-card rounded-(--radius-large) space-y-4"
+        >
+          <h2 class="text-2xl font-semibold text-90">
+            {i18n(I18nKey.meSettingsDangerZoneTitle)}
+          </h2>
+          <p class="text-sm text-60">
+            {i18n(I18nKey.meSettingsLogoutDescription)}
+          </p>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              id="me-logout-btn"
+              class="px-4 h-9 rounded-lg text-sm font-medium transition cursor-pointer border border-red-400/60 text-red-500 hover:bg-red-500 hover:text-white"
+            >
+              {i18n(I18nKey.meSettingsLogoutButton)}
+            </button>
+          </div>
+        </section>
       </div>
     </div>
     <div

@@ -41,6 +41,9 @@ export function queryDom(): MePageDom | null {
         authenticatedSections,
         profileMsg: document.getElementById("me-profile-msg"),
         privacyMsg: document.getElementById("me-privacy-msg"),
+        logoutBtn: document.getElementById(
+            "me-logout-btn",
+        ) as HTMLButtonElement | null,
         emailInput: document.getElementById(
             "me-email",
         ) as HTMLInputElement | null,

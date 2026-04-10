@@ -105,6 +105,7 @@ export interface MePageDom {
     authenticatedSections: HTMLElement;
     profileMsg: HTMLElement | null;
     privacyMsg: HTMLElement | null;
+    logoutBtn: HTMLButtonElement | null;
     emailInput: HTMLInputElement | null;
     usernameDisplayBtn: HTMLButtonElement | null;
     usernameDisplayText: HTMLElement | null;

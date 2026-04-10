@@ -28,6 +28,7 @@ import {
     bindProfileForm,
     bindSocialSaveBtn,
     bindPrivacyForm,
+    bindLogoutAction,
     buildOutsideClickHandler,
     runInit,
 } from "@/scripts/me/page-helpers";
@@ -72,6 +73,7 @@ export function initMePage(): void {
     bindProfileForm(dom, state);
     bindSocialSaveBtn(dom);
     bindPrivacyForm(dom, state);
+    bindLogoutAction(dom);
 
     // 外部点击：先移除旧监听，再注册新监听
     const previousOutsideClick = runtimeWindow[OUTSIDE_CLICK_KEY];

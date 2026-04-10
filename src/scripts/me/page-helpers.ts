@@ -10,6 +10,7 @@ import I18nKey from "@/i18n/i18nKey";
 import { t } from "@/scripts/shared/i18n-runtime";
 import { runWithTask } from "@/scripts/shared/progress-overlay-manager";
 import type { ProgressTaskHandle } from "@/scripts/shared/progress-overlay-manager";
+import { showConfirmDialog, showNoticeDialog } from "@/scripts/shared/dialogs";
 import {
     getApiErrorMessage,
     requestApi as api,
@@ -480,4 +481,60 @@ async function handlePrivacyFormSubmit(
             );
         },
     );
+}
+
+// ---------------------------------------------------------------------------
+// bindLogoutAction：绑定退出登录动作
+// ---------------------------------------------------------------------------
+
+export function bindLogoutAction(dom: MePageDom): void {
+    const { logoutBtn } = dom;
+    if (!logoutBtn || logoutBtn.hasAttribute(DATA_BOUND)) {
+        return;
+    }
+
+    logoutBtn.setAttribute(DATA_BOUND, "");
+    logoutBtn.addEventListener("click", () => {
+        void handleLogoutAction(logoutBtn);
+    });
+}
+
+async function handleLogoutAction(logoutBtn: HTMLButtonElement): Promise<void> {
+    const confirmed = await showConfirmDialog({
+        ariaLabel: t(I18nKey.meSettingsLogoutConfirmTitle),
+        message: t(I18nKey.meSettingsLogoutConfirmMessage),
+        confirmText: t(I18nKey.meSettingsLogoutButton),
+        cancelText: t(I18nKey.interactionCommonCancel),
+        confirmVariant: "danger",
+    });
+    if (!confirmed) {
+        return;
+    }
+
+    logoutBtn.disabled = true;
+    try {
+        const { response, data } = await api("/api/auth/logout", {
+            method: "POST",
+            body: JSON.stringify({}),
+        });
+        if (!response.ok || !data?.ok) {
+            await showNoticeDialog({
+                ariaLabel: t(I18nKey.meSettingsLogoutFailedTitle),
+                message: getApiErrorMessage(
+                    data,
+                    t(I18nKey.meSettingsLogoutFailedMessage),
+                ),
+            });
+            return;
+        }
+        window.location.href = "/";
+    } catch (error) {
+        console.error("[me-page] logout failed", error);
+        await showNoticeDialog({
+            ariaLabel: t(I18nKey.meSettingsLogoutFailedTitle),
+            message: t(I18nKey.meSettingsLogoutFailedMessage),
+        });
+    } finally {
+        logoutBtn.disabled = false;
+    }
 }
