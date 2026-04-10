@@ -230,7 +230,8 @@ describe("overlay-dialog custom content", () => {
     });
 
     it("支持挂载自定义内容并在关闭后回收节点", async () => {
-        const { showOverlayDialog } = await import("@/scripts/overlay-dialog");
+        const { showOverlayDialog } =
+            await import("@/scripts/shared/overlay-dialog");
         const customNode = fakeDocument.createElement("section");
         customNode.textContent = "users-table";
 
@@ -273,7 +274,8 @@ describe("overlay-dialog custom content", () => {
     });
 
     it("二次打开时不会残留上一次的扩展样式", async () => {
-        const { showOverlayDialog } = await import("@/scripts/overlay-dialog");
+        const { showOverlayDialog } =
+            await import("@/scripts/shared/overlay-dialog");
         const firstDialogPromise = showOverlayDialog({
             ariaLabel: "第一次",
             message: "第一次",

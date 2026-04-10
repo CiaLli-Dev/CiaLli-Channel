@@ -187,8 +187,8 @@ const calendarTitle = isChinese ? "日期" : "Date";
 </script>
 
 <script>
-  import { initCalendarWidget } from "@/scripts/calendar-widget";
-  import type { CalendarConfig } from "@/scripts/calendar-widget";
+  import { initCalendarWidget } from "@/scripts/widgets/calendar/index";
+  import type { CalendarConfig } from "@/scripts/widgets/calendar/index";
 
   const rw = window as Window & {
     __calendarWidgetConfig?: CalendarConfig;

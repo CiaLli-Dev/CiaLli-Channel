@@ -3,8 +3,8 @@
   import { slide } from "svelte/transition";
   import Key from "../../../i18n/i18nKey";
   import { i18n } from "../../../i18n/translation";
-  import { getAssetPath } from "../../../scripts/music-player-helpers";
-  import type { Song } from "../../../scripts/music-player-helpers";
+  import { getAssetPath } from "@/scripts/widgets/music-player/helpers";
+  import type { Song } from "@/scripts/widgets/music-player/helpers";
 
   export let playlist: Song[];
   export let currentIndex: number;

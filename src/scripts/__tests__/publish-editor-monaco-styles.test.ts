@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     ensurePublishMonacoStylesheet,
     restoreDetachedMonacoThemeServiceStyles,
-} from "../publish-editor-monaco-styles";
+} from "@/scripts/publish/editor-monaco-styles";
 
 type MockCssRule = {
     cssText?: string;

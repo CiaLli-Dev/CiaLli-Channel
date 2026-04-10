@@ -2,9 +2,9 @@ import "overlayscrollbars/overlayscrollbars.css";
 import "@/styles/progress-overlay.css";
 
 import { DARK_MODE, DEFAULT_THEME } from "@/constants/constants";
-import { setupCodeCopyDelegation } from "@/scripts/code-copy";
-import { ensureProgressOverlayBridge } from "@/scripts/progress-overlay-manager";
-import { initRunningDaysRuntime } from "@/scripts/running-days-runtime";
+import { setupCodeCopyDelegation } from "@/scripts/markdown/code-copy";
+import { ensureProgressOverlayBridge } from "@/scripts/shared/progress-overlay-manager";
+import { initRunningDaysRuntime } from "@/scripts/layout/running-days-runtime";
 import {
     encodeHashId,
     resolveSamePageHashLink,
@@ -256,42 +256,42 @@ function setupHashOffsetNavigation(runtimeWindow: LayoutRuntimeWindow): void {
 const runDynamicPageInit = async (): Promise<void> => {
     const path = window.location.pathname.replace(/\/+$/, "") || "/";
     if (path === "/me") {
-        const { initMePage } = await import("@/scripts/me-page");
+        const { initMePage } = await import("@/scripts/me/page");
         initMePage();
     } else if (path === "/posts/new" || /^\/posts\/[^/]+\/edit$/.test(path)) {
-        const { initPublishPage } = await import("@/scripts/publish-page");
+        const { initPublishPage } = await import("@/scripts/publish/page");
         initPublishPage();
     } else if (path === "/posts") {
-        const { initArchiveFilter } = await import("@/scripts/archive-filter");
+        const { initArchiveFilter } = await import("@/scripts/archives/filter");
         initArchiveFilter();
     } else if (/^\/[^/]+\/albums\/?$/.test(path)) {
-        const { initAlbumFilter } = await import("@/scripts/album-filter");
+        const { initAlbumFilter } = await import("@/scripts/albums/filter");
         initAlbumFilter();
     } else if (/^\/[^/]+\/bangumi\/?$/.test(path)) {
-        const { initBangumiFilter } = await import("@/scripts/bangumi-filter");
+        const { initBangumiFilter } = await import("@/scripts/bangumi/filter");
         initBangumiFilter();
     } else if (/^\/[^/]+\/albums\/new\/?$/.test(path)) {
-        const { initAlbumNewPage } = await import("@/scripts/album-new-page");
+        const { initAlbumNewPage } = await import("@/scripts/albums/new-page");
         initAlbumNewPage();
     } else if (path === "/admin/settings/site") {
         const { initSiteSettingsPage } =
-            await import("@/scripts/site-settings-page");
+            await import("@/scripts/site-settings/page");
         initSiteSettingsPage();
     } else if (path === "/admin/users") {
         const { initAdminUsersPage } =
-            await import("@/scripts/admin-users-page");
+            await import("@/scripts/admin/users-page");
         initAdminUsersPage();
     } else if (path === "/admin/settings/bulletin") {
         const { initAdminBulletinPage } =
-            await import("@/scripts/admin-bulletin-page");
+            await import("@/scripts/admin/bulletin-page");
         initAdminBulletinPage();
     } else if (path === "/admin/settings/about") {
         const { initAdminAboutPage } =
-            await import("@/scripts/admin-about-page");
+            await import("@/scripts/admin/about-page");
         initAdminAboutPage();
     } else if (path === "/me/homepage") {
         const { initMeHomepagePage } =
-            await import("@/scripts/me-homepage-page");
+            await import("@/scripts/me/homepage-page");
         initMeHomepagePage();
     }
 };

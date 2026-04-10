@@ -7,8 +7,8 @@
   import {
     closeAllMobileEdgeDrawers,
     MOBILE_EDGE_DRAWER_OPEN_EVENT,
-  } from "../../../scripts/mobile-edge-drawer";
-  import { syncMobileFloatStack } from "../../../scripts/mobile-float-stack";
+  } from "@/scripts/layout/mobile-edge-drawer";
+  import { syncMobileFloatStack } from "@/scripts/layout/mobile-float-stack";
   import type { MusicPlayerConfig } from "../../../types/config";
   import {
     fetchPlaylistFromMeting,
@@ -25,11 +25,11 @@
     saveVolumeSettings,
     scheduleMarqueeResume,
     updateTitleMarquee,
-  } from "../../../scripts/music-player-helpers";
+  } from "@/scripts/widgets/music-player/helpers";
   import type {
     PlayerDisplayMode,
     Song,
-  } from "../../../scripts/music-player-helpers";
+  } from "@/scripts/widgets/music-player/helpers";
   import MusicPlayerPlaylist from "./MusicPlayerPlaylist.svelte";
 
   export let musicPlayer: MusicPlayerConfig = {

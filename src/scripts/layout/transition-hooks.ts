@@ -13,7 +13,7 @@ import type { TransitionProxyPayload } from "./enter-skeleton";
 import {
     getTocRuntimeElements,
     reinitAllTocInstances,
-} from "@/scripts/toc-runtime";
+} from "@/scripts/toc/runtime";
 import { scrollToHashBelowTocBaseline } from "@/utils/hash-scroll";
 import {
     isCurrentHomeRoute,

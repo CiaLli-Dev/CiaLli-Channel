@@ -3,7 +3,7 @@
   import {
     buildGoogleMapsSearchUrl,
     formatAlbumDateDisplay,
-  } from "@/scripts/album-editor-helpers";
+  } from "@/scripts/albums/editor-helpers";
 
   export let editing: boolean;
   export let mTitle: string;

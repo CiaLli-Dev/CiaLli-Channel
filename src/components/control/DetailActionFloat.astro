@@ -438,9 +438,9 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
 </style>
 
 <script>
-  import { getAuthState, subscribeAuthState } from "@/scripts/auth-state";
-  import type { AuthState } from "@/scripts/auth-state";
-  import { showAuthRequiredDialog } from "@/scripts/dialogs";
+  import { getAuthState, subscribeAuthState } from "@/scripts/auth/state";
+  import type { AuthState } from "@/scripts/auth/state";
+  import { showAuthRequiredDialog } from "@/scripts/shared/dialogs";
   import { navigateToPage } from "@/utils/navigation-utils";
   import {
     queryDetailElements,
@@ -448,8 +448,8 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
     mountToFloatingAnchor,
     handleDeleteAction,
     handleLikeAction,
-  } from "@/scripts/detail-action-float-helpers";
-  import type { LikeActionState } from "@/scripts/detail-action-float-helpers";
+  } from "@/scripts/interactions/detail-action-float-helpers";
+  import type { LikeActionState } from "@/scripts/interactions/detail-action-float-helpers";
 
   function applyDeleteButtonLabel(
     button: HTMLButtonElement,

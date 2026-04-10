@@ -3,7 +3,7 @@
   import type {
     PendingLocalPhoto,
     PendingExternalPhoto,
-  } from "@/scripts/album-editor-helpers";
+  } from "@/scripts/albums/editor-helpers";
 
   export let saving: boolean;
   export let savedPhotoCount: number;

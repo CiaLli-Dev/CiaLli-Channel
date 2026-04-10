@@ -116,7 +116,7 @@ describe("progress-overlay-manager", () => {
 
     it("300ms 内完成时不展示 overlay", async () => {
         const { startTask, finishTask } =
-            await import("@/scripts/progress-overlay-manager");
+            await import("@/scripts/shared/progress-overlay-manager");
         const handle = startTask({
             title: "正在保存",
             delayMs: 300,
@@ -131,7 +131,7 @@ describe("progress-overlay-manager", () => {
 
     it("超过 300ms 展示 overlay 并锁定滚动", async () => {
         const { startTask } =
-            await import("@/scripts/progress-overlay-manager");
+            await import("@/scripts/shared/progress-overlay-manager");
         startTask({
             title: "正在发布",
             text: "请稍候",
@@ -153,7 +153,7 @@ describe("progress-overlay-manager", () => {
 
     it("并发任务只显示最新活跃任务，结束后回退到上一任务", async () => {
         const { finishTask, startTask } =
-            await import("@/scripts/progress-overlay-manager");
+            await import("@/scripts/shared/progress-overlay-manager");
         const taskA = startTask({
             title: "任务 A",
             text: "A 阶段",
@@ -183,7 +183,7 @@ describe("progress-overlay-manager", () => {
 
     it("determinate 与 indeterminate 模式渲染正确", async () => {
         const { startTask, updateTask } =
-            await import("@/scripts/progress-overlay-manager");
+            await import("@/scripts/shared/progress-overlay-manager");
         const handle = startTask({
             title: "上传中",
             mode: "determinate",

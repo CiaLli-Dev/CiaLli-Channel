@@ -8,7 +8,7 @@ import {
     clampMermaidOffsets,
     mountMermaidInteraction,
     zoomMermaidState,
-} from "@/scripts/mermaid-interaction";
+} from "@/scripts/markdown/mermaid/interaction";
 
 class FakeClassList {
     private readonly values = new Set<string>();

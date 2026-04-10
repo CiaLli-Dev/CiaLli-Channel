@@ -1,12 +1,15 @@
 <script lang="ts">
   import { onDestroy, onMount, tick } from "svelte";
-  import { showConfirmDialog, showNoticeDialog } from "@/scripts/dialogs";
+  import {
+    showConfirmDialog,
+    showNoticeDialog,
+  } from "@/scripts/shared/dialogs";
   import {
     finishTask,
     startTask,
     updateTask,
     type ProgressTaskHandle,
-  } from "@/scripts/progress-overlay-manager";
+  } from "@/scripts/shared/progress-overlay-manager";
   import { navigateToPage } from "@/utils/navigation-utils";
   import {
     UPLOAD_LIMITS,
@@ -23,7 +26,7 @@
     type PhotoItem,
     type PendingLocalPhoto,
     type PendingExternalPhoto,
-  } from "@/scripts/album-editor-helpers";
+  } from "@/scripts/albums/editor-helpers";
   import AlbumPhotoEditModal from "./AlbumPhotoEditModal.svelte";
   import AlbumPhotoGallery from "./AlbumPhotoGallery.svelte";
   import AlbumUploadSection from "./AlbumUploadSection.svelte";

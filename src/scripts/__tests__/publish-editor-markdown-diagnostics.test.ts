@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { analyzeMarkdownSyntax } from "@/scripts/publish-editor-markdown-diagnostics";
+import { analyzeMarkdownSyntax } from "@/scripts/publish/editor-markdown-diagnostics";
 
 describe("publish-editor-markdown-diagnostics", () => {
     it("未闭合代码块围栏会返回 error", () => {

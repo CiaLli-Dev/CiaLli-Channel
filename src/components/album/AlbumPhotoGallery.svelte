@@ -4,7 +4,7 @@
     photoDisplaySrc,
     photoPreviewSrc,
     type PhotoItem,
-  } from "@/scripts/album-editor-helpers";
+  } from "@/scripts/albums/editor-helpers";
 
   export let photos: PhotoItem[];
   export let layout: "grid" | "masonry";

@@ -6,7 +6,7 @@ import {
     isModifiedPrimaryClick,
     isSameDocumentHashNavigation,
     shouldIgnoreAnchorNavigation,
-} from "@/scripts/unsaved-changes-guard-helpers";
+} from "@/scripts/shared/unsaved-changes-guard-helpers";
 
 describe("unsaved-changes-guard helpers", () => {
     it("提取 Astro history index 时会严格校验数值类型", () => {
