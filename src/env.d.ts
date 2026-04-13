@@ -17,8 +17,11 @@ interface ImportMetaEnv {
     readonly DIRECTUS_URL?: string;
     readonly DIRECTUS_STATIC_TOKEN?: string;
     readonly BANGUMI_TOKEN_ENCRYPTION_KEY?: string;
+    readonly REDIS_NAMESPACE?: string;
     readonly KV_REST_API_URL?: string;
     readonly KV_REST_API_TOKEN?: string;
+    readonly VERCEL_ENV?: string;
+    readonly VERCEL_GIT_COMMIT_REF?: string;
 }
 
 interface ImportMeta {

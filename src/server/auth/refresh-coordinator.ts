@@ -1,9 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 
 import type { DirectusAuthTokens } from "@/server/directus-auth";
+import { prefixRedisKey } from "@/server/upstash/namespace";
 import { getUpstashRedisClient } from "@/server/upstash/redis";
 
-const DISTRIBUTED_REFRESH_KEY_PREFIX = "cialli:auth:refresh:v1";
+const DISTRIBUTED_REFRESH_KEY_PREFIX = "auth:refresh:v1";
 const DISTRIBUTED_REFRESH_LOCK_TTL_SECONDS = 3;
 const DISTRIBUTED_REFRESH_RESULT_TTL_SECONDS = 10;
 const DISTRIBUTED_REFRESH_WAIT_TIMEOUT_MS = 1_500;
@@ -30,11 +31,15 @@ function hashRefreshToken(refreshToken: string): string {
 }
 
 function buildResultKey(refreshToken: string): string {
-    return `${DISTRIBUTED_REFRESH_KEY_PREFIX}:result:${hashRefreshToken(refreshToken)}`;
+    return prefixRedisKey(
+        `${DISTRIBUTED_REFRESH_KEY_PREFIX}:result:${hashRefreshToken(refreshToken)}`,
+    );
 }
 
 function buildLockKey(refreshToken: string): string {
-    return `${DISTRIBUTED_REFRESH_KEY_PREFIX}:lock:${hashRefreshToken(refreshToken)}`;
+    return prefixRedisKey(
+        `${DISTRIBUTED_REFRESH_KEY_PREFIX}:lock:${hashRefreshToken(refreshToken)}`,
+    );
 }
 
 function toStoredTokensJson(tokens: DirectusAuthTokens): string {
@@ -115,11 +120,10 @@ export async function getDistributedRefreshResult(
     if (!redis) {
         return null;
     }
+    const key = buildResultKey(normalizedRefreshToken);
 
     try {
-        const raw = await redis.get<string>(
-            buildResultKey(normalizedRefreshToken),
-        );
+        const raw = await redis.get<string>(key);
         if (typeof raw !== "string" || !raw) {
             return null;
         }

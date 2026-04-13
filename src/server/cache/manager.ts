@@ -4,10 +4,11 @@
  * L1: 进程内 Map（按域隔离，FIFO 淘汰）
  * L2: Upstash Redis 官方 SDK（可选，不可用时静默降级）
  *
- * 域版本号机制：每个域维护 v1:<domain>:__ver__ 计数器，
- * 完整键 = v1:<domain>:v<ver>:<key>。invalidateByDomain() 递增版本号，
+ * 域版本号机制：每个域维护 cache:v1:<domain>:__ver__ 计数器，
+ * 完整键 = cache:v1:<domain>:v<ver>:<key>。invalidateByDomain() 递增版本号，
  * 旧键自然过期，无需 scan。
  */
+import { prefixRedisKey } from "@/server/upstash/namespace";
 import { getUpstashRedisClient } from "@/server/upstash/redis";
 
 import type { CacheDomain, CacheMetrics, CacheStrategy } from "./types";
@@ -183,8 +184,9 @@ async function l2Get(
     if (!redis) {
         return null;
     }
+    const redisKey = prefixRedisKey(fullKey);
     try {
-        const value = await redis.get<string>(fullKey);
+        const value = await redis.get<string>(redisKey);
         if (value === null) {
             return null;
         }
@@ -208,8 +210,9 @@ async function l2Set(
     if (!redis) {
         return;
     }
+    const redisKey = prefixRedisKey(fullKey);
     try {
-        await redis.set(fullKey, value, { ex: ttlSeconds });
+        await redis.set(redisKey, value, { ex: ttlSeconds });
     } catch {
         // Redis 不可用时静默降级到仅 L1
     }
@@ -222,8 +225,9 @@ async function l2Delete(fullKey: string): Promise<void> {
     if (!redis) {
         return;
     }
+    const redisKey = prefixRedisKey(fullKey);
     try {
-        await redis.del(fullKey);
+        await redis.del(redisKey);
     } catch {
         // Redis 不可用时静默降级到仅 L1
     }
@@ -242,7 +246,7 @@ const localVersions = new Map<CacheDomain, LocalDomainVersionEntry>();
 const DOMAIN_VERSION_REFRESH_MS = 5_000;
 
 function versionKey(domain: CacheDomain): string {
-    return `v1:${domain}:__ver__`;
+    return `cache:v1:${domain}:__ver__`;
 }
 
 async function getDomainVersion(domain: CacheDomain): Promise<number> {
@@ -257,8 +261,9 @@ async function getDomainVersion(domain: CacheDomain): Promise<number> {
     });
     let ver = 0;
     if (redis) {
+        const redisKey = prefixRedisKey(versionKey(domain));
         try {
-            const value = await redis.get<string>(versionKey(domain));
+            const value = await redis.get<string>(redisKey);
             ver = value !== null ? parseInt(String(value), 10) : 0;
         } catch {
             ver = 0;
@@ -278,8 +283,9 @@ async function incrementDomainVersion(domain: CacheDomain): Promise<number> {
     });
     let ver = 1;
     if (redis) {
+        const redisKey = prefixRedisKey(versionKey(domain));
         try {
-            ver = await redis.incr(versionKey(domain));
+            ver = await redis.incr(redisKey);
         } catch {
             ver = 1;
         }
@@ -293,7 +299,7 @@ async function incrementDomainVersion(domain: CacheDomain): Promise<number> {
 }
 
 function buildFullKey(domain: CacheDomain, ver: number, key: string): string {
-    return `v1:${domain}:v${ver}:${key}`;
+    return `cache:v1:${domain}:v${ver}:${key}`;
 }
 
 // ---------------------------------------------------------------------------

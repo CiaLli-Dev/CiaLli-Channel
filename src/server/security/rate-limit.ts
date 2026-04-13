@@ -7,6 +7,7 @@
 import { Ratelimit } from "@upstash/ratelimit";
 
 import { internal } from "@/server/api/errors";
+import { prefixRedisKey } from "@/server/upstash/namespace";
 import {
     getUpstashRedisClient,
     getUpstashRedisConfig,
@@ -35,19 +36,19 @@ type CategoryConfig = {
 };
 
 const CATEGORY_CONFIG: Record<RateLimitCategory, CategoryConfig> = {
-    auth: { limit: 10, windowSeconds: 300, prefix: "cialli:rl:auth" },
+    auth: { limit: 10, windowSeconds: 300, prefix: "rl:auth" },
     "registration-check": {
         limit: 20,
         windowSeconds: 60,
-        prefix: "cialli:rl:registration-check",
+        prefix: "rl:registration-check",
     },
-    write: { limit: 60, windowSeconds: 60, prefix: "cialli:rl:write" },
-    upload: { limit: 60, windowSeconds: 60, prefix: "cialli:rl:upload" },
-    comment: { limit: 15, windowSeconds: 60, prefix: "cialli:rl:comment" },
+    write: { limit: 60, windowSeconds: 60, prefix: "rl:write" },
+    upload: { limit: 60, windowSeconds: 60, prefix: "rl:upload" },
+    comment: { limit: 15, windowSeconds: 60, prefix: "rl:comment" },
     "admin-write": {
         limit: 120,
         windowSeconds: 60,
-        prefix: "cialli:rl:admin",
+        prefix: "rl:admin",
     },
 };
 
@@ -71,7 +72,7 @@ function getInstance(category: RateLimitCategory): Ratelimit {
         redis,
         limiter: Ratelimit.slidingWindow(cat.limit, `${cat.windowSeconds} s`),
         analytics: false,
-        prefix: cat.prefix,
+        prefix: prefixRedisKey(cat.prefix),
     });
     instanceCache.set(category, instance);
     return instance;

@@ -30,6 +30,7 @@ vi.mock("@/server/upstash/redis", () => ({
 }));
 
 const originalNodeEnv = process.env.NODE_ENV;
+const originalRedisNamespace = process.env.REDIS_NAMESPACE;
 
 beforeEach(() => {
     vi.resetModules();
@@ -40,6 +41,7 @@ beforeEach(() => {
     getUpstashRedisClientMock.mockReset();
     getUpstashRedisConfigMock.mockReset();
     process.env.NODE_ENV = "development";
+    process.env.REDIS_NAMESPACE = "test-rate-limit";
 });
 
 describe("security/rate-limit", () => {
@@ -106,7 +108,7 @@ describe("security/rate-limit", () => {
         expect(ratelimitConstructorMock.mock.calls[0]?.[0]).toMatchObject({
             redis,
             analytics: false,
-            prefix: "cialli:rl:auth",
+            prefix: "cialli:test-rate-limit:rl:auth",
         });
         expect(limitMock).toHaveBeenCalledTimes(2);
     });
@@ -117,5 +119,11 @@ afterEach(() => {
         delete process.env.NODE_ENV;
     } else {
         process.env.NODE_ENV = originalNodeEnv;
+    }
+
+    if (originalRedisNamespace === undefined) {
+        delete process.env.REDIS_NAMESPACE;
+    } else {
+        process.env.REDIS_NAMESPACE = originalRedisNamespace;
     }
 });

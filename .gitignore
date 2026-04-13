@@ -46,6 +46,7 @@ yarn.lock
 
 # Directus
 /directus/
+/directus-config/
 
 # AGENTS & MCP
 .claude/
