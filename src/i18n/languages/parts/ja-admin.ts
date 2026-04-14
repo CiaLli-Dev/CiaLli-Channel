@@ -172,9 +172,6 @@ export const jaAdmin: Record<string, string> = {
     [Key.adminSiteSettingsPlaylistId]: "プレイリスト ID",
     [Key.adminSiteSettingsPresetLink]: "プリセットリンク {index}",
     [Key.adminSiteSettingsProfileAvatarLabel]: "プロフィールアバター",
-    [Key.adminSiteSettingsProfileNameLabel]: "プロフィール名",
-    [Key.adminSiteSettingsProfileNamePlaceholder]:
-        "プロフィール名を入力してください",
     [Key.adminSiteSettingsSakuraEffect]: "桜エフェクト",
     [Key.adminSiteSettingsSaveArticle]: "記事設定を保存",
     [Key.adminSiteSettingsSaveHome]: "ホーム設定を保存",

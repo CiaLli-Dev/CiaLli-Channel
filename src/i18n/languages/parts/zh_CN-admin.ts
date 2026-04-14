@@ -156,8 +156,6 @@ export const zhCNAdmin: Record<string, string> = {
     [Key.adminSiteSettingsPlaylistId]: "歌单 ID",
     [Key.adminSiteSettingsPresetLink]: "预设链接 {index}",
     [Key.adminSiteSettingsProfileAvatarLabel]: "资料头像",
-    [Key.adminSiteSettingsProfileNameLabel]: "资料名称",
-    [Key.adminSiteSettingsProfileNamePlaceholder]: "请输入资料名称",
     [Key.adminSiteSettingsSakuraEffect]: "樱花效果",
     [Key.adminSiteSettingsSaveArticle]: "保存文章设置",
     [Key.adminSiteSettingsSaveHome]: "保存首页设置",

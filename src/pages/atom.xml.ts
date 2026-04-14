@@ -37,7 +37,7 @@ export async function GET(context: APIContext): Promise<Response> {
             target: "feed",
             site: context.site as URL,
         });
-        atomFeed += `\n  <entry>\n    <title>${escapeXml(post.data.title)}</title>\n    <link href="${postUrl}" rel="alternate" type="text/html"/>\n    <id>${postUrl}</id>\n    <published>${post.data.published.toISOString()}</published>\n    <updated>${(post.data.updated || post.data.published).toISOString()}</updated>\n    <summary>${escapeXml(post.data.description || "")}</summary>\n    <content type="html"><![CDATA[${content}]]></content>\n    <author>\n      <name>${escapeXml(settings.profile.name)}</name>\n    </author>`;
+        atomFeed += `\n  <entry>\n    <title>${escapeXml(post.data.title)}</title>\n    <link href="${postUrl}" rel="alternate" type="text/html"/>\n    <id>${postUrl}</id>\n    <published>${post.data.published.toISOString()}</published>\n    <updated>${(post.data.updated || post.data.published).toISOString()}</updated>\n    <summary>${escapeXml(post.data.description || "")}</summary>\n    <content type="html"><![CDATA[${content}]]></content>\n    <author>\n      <name>${escapeXml(post.data.author.name)}</name>\n    </author>`;
 
         if (post.data.category) {
             atomFeed += `\n    <category term="${escapeXml(post.data.category)}"></category>`;

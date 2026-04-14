@@ -11,7 +11,6 @@ import type {
 
 export type ProfileRuntimeSettings = {
     avatar: string;
-    name: string;
 };
 
 export type AnalyticsRuntimeSettings = {

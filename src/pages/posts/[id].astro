@@ -286,7 +286,7 @@ const articleSharePayload: SharePosterPayload | undefined =
         author:
           article.author?.display_name ||
           article.author?.name ||
-          defaultSiteSettings.profile.name,
+          defaultSiteSettings.site.title,
         description: article.summary || "",
         pubDate: article.date_created || article.date_updated || "",
         coverImage: coverUrl,

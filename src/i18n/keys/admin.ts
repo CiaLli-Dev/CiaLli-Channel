@@ -154,8 +154,6 @@ export enum AdminKey {
     adminSiteSettingsPlaylistId = "adminSiteSettingsPlaylistId",
     adminSiteSettingsPresetLink = "adminSiteSettingsPresetLink",
     adminSiteSettingsProfileAvatarLabel = "adminSiteSettingsProfileAvatarLabel",
-    adminSiteSettingsProfileNameLabel = "adminSiteSettingsProfileNameLabel",
-    adminSiteSettingsProfileNamePlaceholder = "adminSiteSettingsProfileNamePlaceholder",
     adminSiteSettingsSakuraEffect = "adminSiteSettingsSakuraEffect",
     adminSiteSettingsSaveArticle = "adminSiteSettingsSaveArticle",
     adminSiteSettingsSaveHome = "adminSiteSettingsSaveHome",

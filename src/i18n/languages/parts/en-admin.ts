@@ -175,8 +175,6 @@ export const enAdmin: Record<string, string> = {
     [Key.adminSiteSettingsPlaylistId]: "Playlist ID",
     [Key.adminSiteSettingsPresetLink]: "Preset link {index}",
     [Key.adminSiteSettingsProfileAvatarLabel]: "Profile avatar",
-    [Key.adminSiteSettingsProfileNameLabel]: "Profile name",
-    [Key.adminSiteSettingsProfileNamePlaceholder]: "Enter profile name",
     [Key.adminSiteSettingsSakuraEffect]: "Sakura effect",
     [Key.adminSiteSettingsSaveArticle]: "Save article settings",
     [Key.adminSiteSettingsSaveHome]: "Save homepage settings",

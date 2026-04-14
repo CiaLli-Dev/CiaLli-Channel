@@ -45,7 +45,6 @@ const siteConfig = buildLegacySiteConfig(
   resolvedSiteSettings.system,
   resolvedSiteSettings.settings,
 );
-const profileName = resolvedSiteSettings.settings.profile.name;
 const musicPlayerSettings = resolvedSiteSettings.settings.musicPlayer;
 const analyticsConfig = {
   gtmId: String(resolvedSiteSettings.settings.analytics.gtmId || "").trim(),
@@ -279,7 +278,6 @@ const bodyClassName = [
         <meta name="keywords" content={siteConfig.keywords.join(", ")} />
       )
     }
-    <meta name="author" content={profileName} />
     <meta property="og:site_name" content={siteConfig.title} />
     <meta property="og:url" content={Astro.url} />
     <meta property="og:title" content={pageTitle} />
@@ -422,7 +420,7 @@ const bodyClassName = [
     <link
       rel="alternate"
       type="application/rss+xml"
-      title={profileName}
+      title={siteConfig.title}
       href={`${Astro.site}rss.xml`}
     />
   </head>

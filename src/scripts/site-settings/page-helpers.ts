@@ -39,7 +39,7 @@ export type SettingsObj = Record<string, unknown>;
 // bindSettings — 按分区拆分为独立函数
 // ---------------------------------------------------------------------------
 
-function bindSiteBasicFields(site: SettingsObj, profile: SettingsObj): void {
+function bindSiteBasicFields(site: SettingsObj): void {
     setVal("ss-title", String(site.title ?? ""));
     setVal("ss-subtitle", String(site.subtitle ?? ""));
     setSelect("ss-language", String(site.lang ?? "zh_CN"));
@@ -56,7 +56,6 @@ function bindSiteBasicFields(site: SettingsObj, profile: SettingsObj): void {
             : "",
     );
     setVal("ss-start-date", String(site.siteStartDate ?? ""));
-    setVal("ss-profile-name", String(profile.name ?? ""));
 }
 
 function bindSiteAnalyticsFields(analytics: SettingsObj): void {
@@ -66,10 +65,9 @@ function bindSiteAnalyticsFields(analytics: SettingsObj): void {
 
 function bindSiteSection(s: SettingsObj): void {
     const site = (s.site ?? {}) as SettingsObj;
-    const profile = (s.profile ?? {}) as SettingsObj;
     const analytics = (s.analytics ?? {}) as SettingsObj;
 
-    bindSiteBasicFields(site, profile);
+    bindSiteBasicFields(site);
     bindSiteAnalyticsFields(analytics);
 
     if (faviconListContainer) {
@@ -239,10 +237,6 @@ export function collectSitePayload(current: SettingsObj): SettingsObj {
             favicon: faviconListContainer
                 ? collectFaviconList(faviconListContainer)
                 : ((current.site as SettingsObj | undefined)?.favicon ?? []),
-        },
-        profile: {
-            ...((current.profile ?? {}) as SettingsObj),
-            name: inputVal("ss-profile-name"),
         },
         analytics: {
             ...((current.analytics ?? {}) as SettingsObj),

@@ -7,7 +7,7 @@ const currentYear = new Date().getFullYear();
 const packageVersion = packageJson.version;
 const resolvedSiteSettings =
   Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
-const profileName = resolvedSiteSettings.settings.profile.name;
+const siteTitle = resolvedSiteSettings.settings.site.title;
 ---
 
 <div
@@ -25,7 +25,7 @@ const profileName = resolvedSiteSettings.settings.profile.name;
     >
       <p class="px-2">
         &copy; <span id="copyright-year">{currentYear}</span>
-        {profileName}. All Rights Reserved.
+        {siteTitle}. All Rights Reserved.
       </p>
       <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
         <a

@@ -156,8 +156,6 @@ export const zhTWAdmin: Record<string, string> = {
     [Key.adminSiteSettingsPlaylistId]: "播放清單 ID",
     [Key.adminSiteSettingsPresetLink]: "預設連結 {index}",
     [Key.adminSiteSettingsProfileAvatarLabel]: "個人資料頭像",
-    [Key.adminSiteSettingsProfileNameLabel]: "個人資料名稱",
-    [Key.adminSiteSettingsProfileNamePlaceholder]: "請輸入個人資料名稱",
     [Key.adminSiteSettingsSakuraEffect]: "櫻花效果",
     [Key.adminSiteSettingsSaveArticle]: "儲存文章設定",
     [Key.adminSiteSettingsSaveHome]: "儲存首頁設定",

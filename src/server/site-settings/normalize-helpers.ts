@@ -461,16 +461,17 @@ export function normalizeNavBarLinks(merged: SiteSettingsPayload): void {
 const SITE_PROFILE_AVATAR_PATH = "assets/images/avatar.webp";
 
 /**
- * 规范化 profile 字段（avatar、name）。
+ * 规范化 profile 字段（avatar）。
  */
 export function normalizeProfile(
     merged: SiteSettingsPayload,
-    base: SiteSettingsPayload,
+    _base: SiteSettingsPayload,
 ): void {
     merged.profile.avatar = SITE_PROFILE_AVATAR_PATH;
-    merged.profile.name =
-        String(merged.profile.name || base.profile.name).trim() ||
-        base.profile.name;
+    const profileRecord = merged.profile as Record<string, unknown>;
+    if (Object.prototype.hasOwnProperty.call(profileRecord, "name")) {
+        delete profileRecord.name;
+    }
 }
 
 /**
