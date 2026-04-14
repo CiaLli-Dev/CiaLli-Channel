@@ -1,0 +1,18 @@
+---
+interface Props {
+  label: string;
+  hint?: string;
+  className?: string;
+}
+
+const { label, hint = "", className = "" } = Astro.props;
+const hasHint = hint.trim().length > 0;
+---
+
+<label class:list={["space-y-1.5 block", className]}>
+  <span class="text-sm text-60">{label}</span>
+  <slot />
+  <p class="settings-field-hint text-xs text-50 leading-5">
+    {hasHint ? hint : <span aria-hidden="true">&nbsp;</span>}
+  </p>
+</label>

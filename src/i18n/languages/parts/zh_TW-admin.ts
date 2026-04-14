@@ -151,6 +151,7 @@ export const zhTWAdmin: Record<string, string> = {
     [Key.adminSiteSettingsOptimizeWavePerformance]: "最佳化波浪效能",
     [Key.adminSiteSettingsPageIntro]: "在這裡設定網站展示資訊與功能開關。",
     [Key.adminSiteSettingsPauseTimeMs]: "停頓時間（毫秒）",
+    [Key.adminSiteSettingsPauseTimeMsHint]: "每輪打字完成後的停頓時長。",
     [Key.adminSiteSettingsPlaylistId]: "播放清單 ID",
     [Key.adminSiteSettingsPresetLink]: "預設連結 {index}",
     [Key.adminSiteSettingsProfileAvatarLabel]: "個人資料頭像",
@@ -170,8 +171,16 @@ export const zhTWAdmin: Record<string, string> = {
     [Key.adminSiteSettingsSelectImageFile]: "請選擇圖片檔案",
     [Key.adminSiteSettingsShowBannerCopy]: "顯示橫幅版權",
     [Key.adminSiteSettingsSiteKeywords]: "網站關鍵字",
+    [Key.adminSiteSettingsSiteKeywordsHint]:
+        "多個關鍵字請用英文逗號分隔，用於 SEO 中繼資訊。",
     [Key.adminSiteSettingsSiteLanguage]: "網站語言",
+    [Key.adminSiteSettingsSiteLanguageHint]: "設定預設介面語言。",
+    [Key.adminSiteSettingsSiteStartDateHint]:
+        "用於計算網站運行天數等展示資訊。",
     [Key.adminSiteSettingsSiteTimeZone]: "網站時區",
+    [Key.adminSiteSettingsSiteSubtitleHint]: "用於首頁或導覽等位置的補充描述。",
+    [Key.adminSiteSettingsSiteTitleHint]:
+        "用於瀏覽器分頁標題與網站主標題顯示。",
     [Key.adminSiteSettingsTimeZoneFollowEnvironment]: "跟隨環境",
     [Key.adminSiteSettingsTimeZoneHint]:
         "用於控制文章、日記、留言等系統時間的顯示時區。",
@@ -185,6 +194,19 @@ export const zhTWAdmin: Record<string, string> = {
     [Key.adminSiteSettingsTocDepth]: "目錄深度",
     [Key.adminSiteSettingsTocMode]: "目錄模式",
     [Key.adminSiteSettingsTypeSpeedMs]: "打字速度（毫秒）",
+    [Key.adminSiteSettingsTypeSpeedMsHint]: "數值越小，打字越快。",
+    [Key.adminSiteSettingsDeleteSpeedMsHint]: "數值越小，刪除越快。",
+    [Key.adminSiteSettingsHomeTitleHint]: "顯示於首頁橫幅的主標題文字。",
+    [Key.adminSiteSettingsHomeSubtitleLinesHint]:
+        "每行一條副標題，可搭配打字機效果輪播。",
+    [Key.adminSiteSettingsWallpaperModeHint]:
+        "控制首頁預設使用的桌布來源模式。",
+    [Key.adminSiteSettingsBannerAlignmentHint]:
+        "控制橫幅主視覺在容器內的對齊方式。",
+    [Key.adminSiteSettingsCarouselIntervalSecondsHint]:
+        "設定桌面桌布輪播間隔，單位為秒。",
+    [Key.adminSiteSettingsBannerApiUrlHint]:
+        "啟用橫幅 API 後，會從此網址拉取圖片。",
     [Key.adminSiteSettingsUploadFailedCanceled]: "上傳失敗或已取消",
     [Key.adminSiteSettingsUrlOrFileId]: "請輸入 URL 或檔案 ID",
     [Key.adminSiteSettingsUseJapaneseTocBadge]: "使用日文目錄徽章",

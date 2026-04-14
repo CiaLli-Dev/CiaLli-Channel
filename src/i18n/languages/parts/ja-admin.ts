@@ -166,6 +166,8 @@ export const jaAdmin: Record<string, string> = {
     [Key.adminSiteSettingsPageIntro]:
         "ここでサイト表示情報と機能スイッチを設定できます。",
     [Key.adminSiteSettingsPauseTimeMs]: "停止時間（ms）",
+    [Key.adminSiteSettingsPauseTimeMsHint]:
+        "各タイピングサイクル完了後の待機時間です。",
     [Key.adminSiteSettingsPlaylistId]: "プレイリスト ID",
     [Key.adminSiteSettingsPresetLink]: "プリセットリンク {index}",
     [Key.adminSiteSettingsProfileAvatarLabel]: "プロフィールアバター",
@@ -185,8 +187,18 @@ export const jaAdmin: Record<string, string> = {
     [Key.adminSiteSettingsSelectImageFile]: "画像ファイルを選択してください",
     [Key.adminSiteSettingsShowBannerCopy]: "バナー著作権を表示",
     [Key.adminSiteSettingsSiteKeywords]: "サイトキーワード",
+    [Key.adminSiteSettingsSiteKeywordsHint]:
+        "複数キーワードはカンマ区切りで入力し、SEO メタ情報に使用します。",
     [Key.adminSiteSettingsSiteLanguage]: "サイト言語",
+    [Key.adminSiteSettingsSiteLanguageHint]:
+        "既定のインターフェース言語を設定します。",
+    [Key.adminSiteSettingsSiteStartDateHint]:
+        "サイト稼働日数などの表示計算に使用します。",
     [Key.adminSiteSettingsSiteTimeZone]: "サイトタイムゾーン",
+    [Key.adminSiteSettingsSiteSubtitleHint]:
+        "ホームやナビなどに表示する補足コピーです。",
+    [Key.adminSiteSettingsSiteTitleHint]:
+        "ブラウザタイトルとサイト見出しに表示されます。",
     [Key.adminSiteSettingsTimeZoneFollowEnvironment]: "環境設定に従う",
     [Key.adminSiteSettingsTimeZoneHint]:
         "記事、日記、コメントなどのシステム時刻表示に使用します。",
@@ -200,6 +212,22 @@ export const jaAdmin: Record<string, string> = {
     [Key.adminSiteSettingsTocDepth]: "目次の深さ",
     [Key.adminSiteSettingsTocMode]: "目次モード",
     [Key.adminSiteSettingsTypeSpeedMs]: "入力速度（ms）",
+    [Key.adminSiteSettingsTypeSpeedMsHint]:
+        "値が小さいほどタイピング速度が速くなります。",
+    [Key.adminSiteSettingsDeleteSpeedMsHint]:
+        "値が小さいほど削除速度が速くなります。",
+    [Key.adminSiteSettingsHomeTitleHint]:
+        "ホームバナーに表示するメイン見出しです。",
+    [Key.adminSiteSettingsHomeSubtitleLinesHint]:
+        "1 行に 1 つ入力し、タイプライター表示で順番に使用します。",
+    [Key.adminSiteSettingsWallpaperModeHint]:
+        "ホームページで使用する既定の壁紙モードを指定します。",
+    [Key.adminSiteSettingsBannerAlignmentHint]:
+        "バナー画像のコンテナ内での配置を制御します。",
+    [Key.adminSiteSettingsCarouselIntervalSecondsHint]:
+        "デスクトップ壁紙カルーセルの間隔（秒）です。",
+    [Key.adminSiteSettingsBannerApiUrlHint]:
+        "バナー API 有効時、この URL から画像を取得します。",
     [Key.adminSiteSettingsUploadFailedCanceled]:
         "アップロードに失敗したか、キャンセルされました",
     [Key.adminSiteSettingsUrlOrFileId]: "URL またはファイル ID を入力",

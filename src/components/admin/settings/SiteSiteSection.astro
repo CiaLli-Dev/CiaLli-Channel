@@ -6,6 +6,7 @@ import {
   resolveEnvironmentTimeZone,
   SITE_TIME_ZONE_AUTO_VALUE,
 } from "@/utils/date-utils";
+import SettingsField from "@/components/admin/settings/SettingsField.astro";
 
 const environmentTimeZone = resolveEnvironmentTimeZone();
 const supportedTimeZones = getSupportedSiteTimeZones();
@@ -19,30 +20,30 @@ const supportedTimeZones = getSupportedSiteTimeZones();
     {i18n(I18nKey.adminSiteSettingsSectionSite)}
   </h2>
   <form id="ss-site-form" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-    <label class="space-y-1.5">
-      <span class="text-sm text-60">
-        {i18n(I18nKey.adminSiteSettingsSiteTitle)}
-      </span>
+    <SettingsField
+      label={i18n(I18nKey.adminSiteSettingsSiteTitle)}
+      hint={i18n(I18nKey.adminSiteSettingsSiteTitleHint)}
+    >
       <input
         id="ss-title"
         class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
         placeholder="My Blog"
       />
-    </label>
-    <label class="space-y-1.5">
-      <span class="text-sm text-60">
-        {i18n(I18nKey.adminSiteSettingsSiteSubtitle)}
-      </span>
+    </SettingsField>
+    <SettingsField
+      label={i18n(I18nKey.adminSiteSettingsSiteSubtitle)}
+      hint={i18n(I18nKey.adminSiteSettingsSiteSubtitleHint)}
+    >
       <input
         id="ss-subtitle"
         class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
         placeholder="A place for stories"
       />
-    </label>
-    <label class="space-y-1.5">
-      <span class="text-sm text-60">
-        {i18n(I18nKey.adminSiteSettingsSiteLanguage)}
-      </span>
+    </SettingsField>
+    <SettingsField
+      label={i18n(I18nKey.adminSiteSettingsSiteLanguage)}
+      hint={i18n(I18nKey.adminSiteSettingsSiteLanguageHint)}
+    >
       <select
         id="ss-language"
         class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
@@ -56,11 +57,11 @@ const supportedTimeZones = getSupportedSiteTimeZones();
         <option value="en">{i18n(I18nKey.adminSiteSettingsLanguageEn)}</option>
         <option value="ja">{i18n(I18nKey.adminSiteSettingsLanguageJa)}</option>
       </select>
-    </label>
-    <label class="space-y-1.5">
-      <span class="text-sm text-60">
-        {i18n(I18nKey.adminSiteSettingsSiteTimeZone)}
-      </span>
+    </SettingsField>
+    <SettingsField
+      label={i18n(I18nKey.adminSiteSettingsSiteTimeZone)}
+      hint={i18n(I18nKey.adminSiteSettingsTimeZoneHint)}
+    >
       <select
         id="ss-timezone"
         class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
@@ -76,24 +77,21 @@ const supportedTimeZones = getSupportedSiteTimeZones();
             .map((timeZone) => <option value={timeZone}>{timeZone}</option>)
         }
       </select>
-    </label>
-    <label class="space-y-1.5">
-      <span class="text-sm text-60">
-        {i18n(I18nKey.adminSiteSettingsSiteKeywords)}
-      </span>
+    </SettingsField>
+    <SettingsField
+      label={i18n(I18nKey.adminSiteSettingsSiteKeywords)}
+      hint={i18n(I18nKey.adminSiteSettingsSiteKeywordsHint)}
+    >
       <input
         id="ss-keywords"
         class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
         placeholder="blog, tech, life"
       />
-    </label>
-    <p class="lg:col-span-2 text-xs text-50">
-      {i18n(I18nKey.adminSiteSettingsTimeZoneHint)}
-    </p>
-    <label class="space-y-1.5">
-      <span class="text-sm text-60">
-        {i18n(I18nKey.adminSiteSettingsSiteStartDate)}
-      </span>
+    </SettingsField>
+    <SettingsField
+      label={i18n(I18nKey.adminSiteSettingsSiteStartDate)}
+      hint={i18n(I18nKey.adminSiteSettingsSiteStartDateHint)}
+    >
       <input
         id="ss-start-date"
         type="date"
@@ -101,7 +99,7 @@ const supportedTimeZones = getSupportedSiteTimeZones();
         inputmode="none"
         class="date-picker-input w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
       />
-    </label>
+    </SettingsField>
     <hr class="border-(--line-divider) lg:col-span-2" />
     <h3 class="text-lg font-medium text-75 lg:col-span-2">
       {i18n(I18nKey.adminSiteSettingsFaviconTitle)}

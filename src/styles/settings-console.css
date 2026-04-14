@@ -147,6 +147,12 @@
     min-height: var(--settings-console-input-height);
   }
 
+  [data-ui-density="settings-console"] .settings-field-hint {
+    min-height: 1.25rem;
+    margin: 0;
+    text-align: right;
+  }
+
   [data-ui-density="settings-console"] .settings-console-table-shell table {
     font-size: 0.875rem;
   }

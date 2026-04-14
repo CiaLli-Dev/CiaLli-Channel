@@ -151,6 +151,7 @@ export const zhCNAdmin: Record<string, string> = {
     [Key.adminSiteSettingsOptimizeWavePerformance]: "优化波浪性能",
     [Key.adminSiteSettingsPageIntro]: "在这里配置站点展示信息与功能开关。",
     [Key.adminSiteSettingsPauseTimeMs]: "停顿时间（毫秒）",
+    [Key.adminSiteSettingsPauseTimeMsHint]: "每轮打字完成后的停顿时长。",
     [Key.adminSiteSettingsPlaylistId]: "歌单 ID",
     [Key.adminSiteSettingsPresetLink]: "预设链接 {index}",
     [Key.adminSiteSettingsProfileAvatarLabel]: "资料头像",
@@ -170,8 +171,15 @@ export const zhCNAdmin: Record<string, string> = {
     [Key.adminSiteSettingsSelectImageFile]: "请选择图片文件",
     [Key.adminSiteSettingsShowBannerCopy]: "显示横幅版权",
     [Key.adminSiteSettingsSiteKeywords]: "站点关键词",
+    [Key.adminSiteSettingsSiteKeywordsHint]:
+        "多个关键词请用英文逗号分隔，用于 SEO 元信息。",
     [Key.adminSiteSettingsSiteLanguage]: "站点语言",
+    [Key.adminSiteSettingsSiteLanguageHint]: "设置默认界面语言。",
+    [Key.adminSiteSettingsSiteStartDateHint]:
+        "用于计算站点运行天数等展示信息。",
     [Key.adminSiteSettingsSiteTimeZone]: "站点时区",
+    [Key.adminSiteSettingsSiteSubtitleHint]: "用于首页或导航等位置的补充描述。",
+    [Key.adminSiteSettingsSiteTitleHint]: "用于浏览器标签页与站点主标题展示。",
     [Key.adminSiteSettingsTimeZoneFollowEnvironment]: "跟随环境",
     [Key.adminSiteSettingsTimeZoneHint]:
         "用于控制文章、日记、评论等系统时间的展示时区。",
@@ -185,6 +193,19 @@ export const zhCNAdmin: Record<string, string> = {
     [Key.adminSiteSettingsTocDepth]: "目录深度",
     [Key.adminSiteSettingsTocMode]: "目录模式",
     [Key.adminSiteSettingsTypeSpeedMs]: "打字速度（毫秒）",
+    [Key.adminSiteSettingsTypeSpeedMsHint]: "数值越小打字越快。",
+    [Key.adminSiteSettingsDeleteSpeedMsHint]: "数值越小删除越快。",
+    [Key.adminSiteSettingsHomeTitleHint]: "显示在首页横幅的主标题文本。",
+    [Key.adminSiteSettingsHomeSubtitleLinesHint]:
+        "每行一条副标题，可配合打字机效果轮播。",
+    [Key.adminSiteSettingsWallpaperModeHint]:
+        "控制首页默认使用的壁纸来源模式。",
+    [Key.adminSiteSettingsBannerAlignmentHint]:
+        "控制横幅主视觉在容器内的对齐方式。",
+    [Key.adminSiteSettingsCarouselIntervalSecondsHint]:
+        "设置桌面壁纸轮播间隔，单位为秒。",
+    [Key.adminSiteSettingsBannerApiUrlHint]:
+        "启用横幅 API 后，从该地址拉取图片。",
     [Key.adminSiteSettingsUploadFailedCanceled]: "上传失败或已取消",
     [Key.adminSiteSettingsUrlOrFileId]: "请输入 URL 或文件 ID",
     [Key.adminSiteSettingsUseJapaneseTocBadge]: "使用日文目录徽章",
