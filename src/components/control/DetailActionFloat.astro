@@ -473,7 +473,7 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
   }
 
   // 同一组件同时承载桌面浮条与移动端底部浮条，需要在绑定时分流布局行为。
-  // eslint-disable-next-line complexity -- 该组件需在单一绑定点整合多种交互状态
+  // eslint-disable-next-line complexity, max-lines-per-function -- 该组件需在单一绑定点整合多种交互状态
   function bindDetailRoot(rootEl: HTMLElement): void {
     rootEl.dataset.bound = "1";
     const dockToBackTop = rootEl.dataset.dockToBackTop === "1";
@@ -588,7 +588,6 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
       }
     }
 
-    // eslint-disable-next-line complexity -- 需同步 owner/admin 双模式按钮显隐与文案
     function applyActionVisibility(state: AuthState): void {
       currentAuthState = state;
       const isOwner =

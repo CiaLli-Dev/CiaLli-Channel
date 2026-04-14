@@ -93,7 +93,7 @@ describe("auth/refresh-coordinator", () => {
 
         await expect(
             getDistributedRefreshResult("refresh-token"),
-        ).rejects.toThrowError(
+        ).rejects.toThrow(
             "生产环境已启用 Upstash Redis，但 REDIS_NAMESPACE 未配置；请为当前环境设置独立的 Redis 命名空间",
         );
     });

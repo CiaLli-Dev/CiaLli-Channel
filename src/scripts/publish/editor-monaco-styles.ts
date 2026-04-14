@@ -7,8 +7,6 @@
  * 这里在创建编辑器前按“当前文档”补齐一份稳定样式入口，避免编辑器只剩外层边框。
  */
 
-/// <reference path="../../types/monaco-paths.d.ts" />
-
 import monacoEditorStylesheetHref from "@/styles/monaco-editor.css?url";
 
 const FALLBACK_STYLESHEET_ATTR = "data-publish-monaco-stylesheet";

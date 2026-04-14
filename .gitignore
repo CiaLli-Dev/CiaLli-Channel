@@ -17,7 +17,7 @@ pnpm-debug.log*
 
 # 环境变量文件
 .env
-.env.production
+.env.prod
 
 # 内容备份文件
 *.backup

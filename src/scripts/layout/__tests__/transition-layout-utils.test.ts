@@ -218,6 +218,7 @@ describe("transition layout timing helpers", () => {
     });
 });
 
+// eslint-disable-next-line max-lines-per-function -- 单测集中覆盖 transition DOM helper 的完整 swap 生命周期
 describe("transition layout DOM helpers", () => {
     it("primeBannerLayoutStateForIncomingDocument 会把 incoming body 伪装成首页起始布局态，并恢复 banner 可见性", () => {
         class MockHtmlElement {}
