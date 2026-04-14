@@ -53,7 +53,6 @@ export const enCore: Record<string, string> = {
     [Key.coreSiteStatsPostCount]: "Posts",
     [Key.coreSiteStatsCategoryCount]: "Categories",
     [Key.coreSiteStatsTagCount]: "Tags",
-    [Key.coreSiteStatsTotalWords]: "Total Words",
     [Key.coreSiteStatsRunningDays]: "Running Days",
     [Key.coreSiteStatsLastUpdate]: "Last Activity",
     [Key.coreSiteStatsDaysAgo]: "{days} days ago",

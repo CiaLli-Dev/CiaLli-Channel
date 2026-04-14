@@ -54,7 +54,6 @@ export const jaCore: Record<string, string> = {
     [Key.coreSiteStatsPostCount]: "投稿",
     [Key.coreSiteStatsCategoryCount]: "カテゴリー",
     [Key.coreSiteStatsTagCount]: "タグ",
-    [Key.coreSiteStatsTotalWords]: "文字数の合計",
     [Key.coreSiteStatsRunningDays]: "稼働日数",
     [Key.coreSiteStatsLastUpdate]: "最終更新",
     [Key.coreSiteStatsDaysAgo]: "{days}日前",

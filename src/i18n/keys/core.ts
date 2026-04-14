@@ -51,7 +51,6 @@ export enum CoreKey {
     coreSiteStatsPostCount = "coreSiteStatsPostCount",
     coreSiteStatsCategoryCount = "coreSiteStatsCategoryCount",
     coreSiteStatsTagCount = "coreSiteStatsTagCount",
-    coreSiteStatsTotalWords = "coreSiteStatsTotalWords",
     coreSiteStatsRunningDays = "coreSiteStatsRunningDays",
     coreSiteStatsLastUpdate = "coreSiteStatsLastUpdate",
     coreSiteStatsDaysAgo = "coreSiteStatsDaysAgo",

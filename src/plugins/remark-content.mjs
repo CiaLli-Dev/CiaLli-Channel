@@ -73,15 +73,12 @@ export function remarkContent() {
         const nonCjkText = fullText.replace(cjkPattern, " ");
         const nonCjkStats = getReadingTime(nonCjkText);
 
-        const totalWords = nonCjkStats.words + cjkCount;
-
         // 估算时间：英文 200词/分，中文 400字/分
         const minutes = nonCjkStats.words / 200 + cjkCount / 400;
 
         // --- 注入数据到 Frontmatter ---
         data.astro.frontmatter.excerpt = excerpt;
         data.astro.frontmatter.minutes = Math.max(1, Math.round(minutes));
-        data.astro.frontmatter.words = totalWords;
     };
 }
 

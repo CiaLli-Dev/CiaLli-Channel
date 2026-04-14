@@ -30,41 +30,6 @@ const posts = await getSortedPosts();
 const categories = await getCategoryList();
 const tags = await getTagList();
 
-// 计算总字数
-let totalWords = 0;
-for (const post of posts) {
-  if (post.body) {
-    let text = post.body;
-
-    // 移除代码块
-    text = text.replace(/```[\s\S]*?```/g, "");
-    // 移除 ` 包裹的行内代码
-    text = text.replace(/`[^`]+`/g, "");
-
-    // 使用与 remark-content.mjs 完全一致的 CJK 正则
-    const cjkPattern =
-      /[\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af\u3000-\u303f\uff00-\uffef]/g;
-
-    const cjkMatches = text.match(cjkPattern);
-    const cjkCount = cjkMatches ? cjkMatches.length : 0;
-
-    // 计算非 CJK 单词数
-    const nonCjkText = text.replace(cjkPattern, " ");
-
-    // 按空白字符分割，计算单词数量
-    const nonCjkWords = nonCjkText
-      .split(/\s+/)
-      .filter((word: string) => word.trim().length > 0);
-
-    totalWords += cjkCount + nonCjkWords.length;
-  }
-}
-
-// 格式化数字（添加千位分隔符）
-function formatNumber(num: number): string {
-  return num.toLocaleString();
-}
-
 const stats = [
   {
     icon: "material-symbols:article-outline",
@@ -80,12 +45,6 @@ const stats = [
     icon: "material-symbols:label-outline",
     label: i18n(I18nKey.coreSiteStatsTagCount),
     value: tags.length,
-  },
-  {
-    icon: "material-symbols:text-ad-outline-rounded",
-    label: i18n(I18nKey.coreSiteStatsTotalWords),
-    value: totalWords,
-    formatted: true,
   },
   {
     icon: "material-symbols:calendar-clock-outline",
@@ -121,7 +80,7 @@ const stats = [
               class="text-base font-bold text-neutral-900 dark:text-neutral-100"
               data-stat-id={stat.id}
             >
-              {stat.formatted ? formatNumber(stat.value) : stat.value}
+              {stat.value}
             </span>
             {stat.suffix && (
               <span class="text-sm text-neutral-500 dark:text-neutral-400 ml-1">

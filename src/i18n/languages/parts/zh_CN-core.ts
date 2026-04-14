@@ -52,7 +52,6 @@ export const zhCNCore: Record<string, string> = {
     [Key.coreSiteStatsPostCount]: "文章",
     [Key.coreSiteStatsCategoryCount]: "分类",
     [Key.coreSiteStatsTagCount]: "标签",
-    [Key.coreSiteStatsTotalWords]: "总字数",
     [Key.coreSiteStatsRunningDays]: "运行天数",
     [Key.coreSiteStatsLastUpdate]: "最近更新",
     [Key.coreSiteStatsDaysAgo]: "{days} 天前",

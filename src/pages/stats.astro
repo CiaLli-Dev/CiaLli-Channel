@@ -25,31 +25,6 @@ const posts = await getSortedPosts();
 const categories = await getCategoryList();
 const tags = await getTagList();
 
-let totalWords = 0;
-for (const post of posts) {
-  if (post.body) {
-    let text = post.body;
-    text = text.replace(/```[\s\S]*?```/g, "");
-    text = text.replace(/`[^`]+`/g, "");
-
-    const cjkPattern =
-      /[\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af\u3000-\u303f\uff00-\uffef]/g;
-    const cjkMatches = text.match(cjkPattern);
-    const cjkCount = cjkMatches ? cjkMatches.length : 0;
-
-    const nonCjkText = text.replace(cjkPattern, " ");
-    const nonCjkWords = nonCjkText
-      .split(/\s+/)
-      .filter((word: string) => word.trim().length > 0);
-
-    totalWords += cjkCount + nonCjkWords.length;
-  }
-}
-
-function formatNumber(num: number): string {
-  return num.toLocaleString();
-}
-
 const stats = [
   {
     icon: "material-symbols:article-outline",
@@ -65,12 +40,6 @@ const stats = [
     icon: "material-symbols:label-outline",
     label: i18n(I18nKey.coreSiteStatsTagCount),
     value: tags.length,
-  },
-  {
-    icon: "material-symbols:text-ad-outline-rounded",
-    label: i18n(I18nKey.coreSiteStatsTotalWords),
-    value: totalWords,
-    formatted: true,
   },
 ];
 ---
@@ -135,9 +104,7 @@ const stats = [
                     <div class="stat-icon-dot">
                       <Icon name={stat.icon} />
                     </div>
-                    <span class="stat-value">
-                      {stat.formatted ? formatNumber(stat.value) : stat.value}
-                    </span>
+                    <span class="stat-value">{stat.value}</span>
                     <span class="stat-label">{stat.label}</span>
                   </div>
                 </div>

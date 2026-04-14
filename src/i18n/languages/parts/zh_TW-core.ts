@@ -52,7 +52,6 @@ export const zhTWCore: Record<string, string> = {
     [Key.coreSiteStatsPostCount]: "文章",
     [Key.coreSiteStatsCategoryCount]: "分類",
     [Key.coreSiteStatsTagCount]: "標籤",
-    [Key.coreSiteStatsTotalWords]: "總字數",
     [Key.coreSiteStatsRunningDays]: "運行天數",
     [Key.coreSiteStatsLastUpdate]: "最後活動",
     [Key.coreSiteStatsDaysAgo]: "{days} 天前",
