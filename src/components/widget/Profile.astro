@@ -4,11 +4,9 @@ import { getResolvedSiteSettings } from "@/server/site-settings/service";
 import { resolveDisplayAvatarUrl } from "@/utils/profile-avatar";
 import { url } from "@utils/url-utils";
 import ImageWrapper from "../misc/ImageWrapper.astro";
-import TypewriterText from "../TypewriterText.astro";
 import { SOCIAL_PLATFORM_META } from "@constants/social-platforms";
 import { loadOfficialSidebarProfile } from "@/server/api/v1/public-data";
 import { runWithDirectusServiceAccess } from "@/server/directus/client";
-
 import type { SidebarProfileData, SocialLink } from "@/types/app";
 
 const resolvedSiteSettings =
@@ -27,11 +25,6 @@ if (Astro.locals.sidebarProfile) {
 
 const displayName = sidebarData.display_name || "user";
 const bio = sidebarData.bio || "";
-const bioTypewriterEnable = sidebarData.bio_typewriter_enable ?? true;
-const bioTypewriterSpeed = Math.max(
-  10,
-  Math.min(500, Math.floor(Number(sidebarData.bio_typewriter_speed) || 80)),
-);
 const avatarUrl = resolveDisplayAvatarUrl(
   sidebarData.avatar_url,
   profileConfig.avatar,
@@ -106,17 +99,7 @@ const socialLinkPayload = enabledLinks.map((link: SocialLink) => ({
       data-sidebar-profile-bio
       class="text-center text-neutral-500 dark:text-neutral-400 mb-2.5 transition"
     >
-      {
-        bioTypewriterEnable ? (
-          <TypewriterText
-            text={bio}
-            speed={bioTypewriterSpeed}
-            class="inline-block"
-          />
-        ) : (
-          bio
-        )
-      }
+      {bio}
     </div>
 
     <div

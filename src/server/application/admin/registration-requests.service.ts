@@ -93,8 +93,6 @@ async function ensureManagedProfile(params: {
         user_id: params.userId,
         username: params.requestedUsername,
         display_name: params.displayName,
-        bio_typewriter_enable: true,
-        bio_typewriter_speed: 80,
         header_file: null,
         profile_public: true,
         show_articles_on_profile: true,

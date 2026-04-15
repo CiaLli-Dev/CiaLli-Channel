@@ -19,8 +19,6 @@ export function mockProfile(overrides: Partial<AppProfile> = {}): AppProfile {
         user_id: "user-1",
         username: "testuser",
         display_name: "Test User",
-        bio_typewriter_enable: false,
-        bio_typewriter_speed: 50,
         header_file: null,
         profile_public: true,
         show_articles_on_profile: true,

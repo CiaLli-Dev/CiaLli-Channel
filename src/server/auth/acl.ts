@@ -45,13 +45,6 @@ function normalizeHomeSectionOrder(input: unknown): string[] | null {
         .map((item) => (item === "anime" ? "bangumi" : item));
 }
 
-function clampTypingSpeed(raw: Partial<AppProfile>): number {
-    return Math.max(
-        10,
-        Math.min(500, Math.floor(Number(raw.bio_typewriter_speed) || 80)),
-    );
-}
-
 function normalizeProfileIdentity(
     raw: Partial<AppProfile>,
 ): Pick<AppProfile, "id" | "user_id" | "username" | "display_name" | "status"> {
@@ -112,8 +105,6 @@ function normalizeProfileBangumi(
 function normalizeProfile(raw: Partial<AppProfile>): AppProfile {
     return {
         ...normalizeProfileIdentity(raw),
-        bio_typewriter_enable: raw.bio_typewriter_enable ?? true,
-        bio_typewriter_speed: clampTypingSpeed(raw),
         ...normalizeProfileMedia(raw),
         ...normalizeProfileVisibility(raw),
         ...normalizeProfileBangumi(raw),
@@ -171,8 +162,6 @@ async function ensureProfile(user: SessionUser): Promise<AppProfile> {
         user_id: user.id,
         username,
         display_name: username,
-        bio_typewriter_enable: true,
-        bio_typewriter_speed: 80,
         header_file: null,
         profile_public: true,
         show_articles_on_profile: true,

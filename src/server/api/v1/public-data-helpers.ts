@@ -120,14 +120,6 @@ export function profileToSidebarData(
     return {
         display_name: profile.display_name || profile.username || "user",
         bio: profile.bio,
-        bio_typewriter_enable: profile.bio_typewriter_enable ?? true,
-        bio_typewriter_speed: Math.max(
-            10,
-            Math.min(
-                500,
-                Math.floor(Number(profile.bio_typewriter_speed) || 80),
-            ),
-        ),
         avatar_url: avatarUrl,
         username: profile.username || null,
         social_links: profile.social_links ?? null,
@@ -272,8 +264,6 @@ export async function loadOfficialSidebarProfile(): Promise<SidebarProfileData> 
         return {
             display_name: "CiaLli",
             bio: null,
-            bio_typewriter_enable: true,
-            bio_typewriter_speed: 80,
             avatar_url: null,
             username: null,
             social_links: null,

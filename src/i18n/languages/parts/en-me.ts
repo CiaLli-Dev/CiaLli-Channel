@@ -70,11 +70,6 @@ export const enMe: Record<string, string> = {
     [Key.meSettingsBioClickEdit]: "Click to edit bio",
     [Key.meSettingsBioLabel]: "Bio",
     [Key.meSettingsBioTooLong]: "Bio is too long",
-    [Key.meSettingsBioTypewriter]: "Bio typewriter effect",
-    [Key.meSettingsBioTypewriterEnable]: "Enable typewriter effect",
-    [Key.meSettingsBioTypewriterSpeed]: "Typing speed",
-    [Key.meSettingsBioTypewriterSpeedRule]:
-        "Please enter a speed value between 10 and 500",
     [Key.meSettingsCropAvatarAlt]: "Avatar crop preview",
     [Key.meSettingsCropAvatarHint]: "Drag or zoom, then save the crop",
     [Key.meSettingsCropAvatarTitle]: "Crop avatar",

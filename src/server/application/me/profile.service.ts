@@ -55,12 +55,6 @@ function applyBasicFields(
     input: ProfileInput,
     payload: JsonObject,
 ): void {
-    if (input.bio_typewriter_enable !== undefined) {
-        payload.bio_typewriter_enable = input.bio_typewriter_enable;
-    }
-    if (input.bio_typewriter_speed !== undefined) {
-        payload.bio_typewriter_speed = input.bio_typewriter_speed;
-    }
     if (hasOwn(body, "header_file")) {
         payload.header_file = input.header_file ?? null;
     }
@@ -277,8 +271,6 @@ async function patchMyProfile(
         user_id: access.profile.user_id,
         username: access.profile.username,
         display_name: access.profile.display_name,
-        bio_typewriter_enable: access.profile.bio_typewriter_enable,
-        bio_typewriter_speed: access.profile.bio_typewriter_speed,
         header_file: access.profile.header_file,
         profile_public: access.profile.profile_public,
         show_articles_on_profile: access.profile.show_articles_on_profile,

@@ -8,8 +8,6 @@ const PROFILE_BASE_FIELDS = [
     "user_id",
     "username",
     "display_name",
-    "bio_typewriter_enable",
-    "bio_typewriter_speed",
     "header_file",
     "profile_public",
     "show_articles_on_profile",

@@ -23,8 +23,6 @@ export type AppProfile = {
     user_id: string;
     username: string;
     display_name: string;
-    bio_typewriter_enable: boolean;
-    bio_typewriter_speed: number;
     header_file: string | null;
     profile_public: boolean;
     show_articles_on_profile: boolean;
@@ -49,8 +47,6 @@ export type AppProfileView = AppProfile & {
 export type SidebarProfileData = {
     display_name: string;
     bio: string | null;
-    bio_typewriter_enable: boolean;
-    bio_typewriter_speed: number;
     avatar_url: string | null;
     username: string | null;
     social_links: SocialLink[] | null;

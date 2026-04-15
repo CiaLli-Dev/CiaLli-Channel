@@ -17,8 +17,6 @@ import {
 } from "@/scripts/shared/http-client";
 import type { ApiResult } from "@/scripts/shared/http-client";
 import {
-    PROFILE_BIO_TYPEWRITER_SPEED_MIN,
-    PROFILE_BIO_TYPEWRITER_SPEED_MAX,
     AUTH_ME_RETRY_DELAY_MS,
     DATA_BOUND,
     PRIVACY_CHECKBOX_IDS,
@@ -51,7 +49,6 @@ import {
     validateUsernameInput,
     validateDisplaynameInput,
     validateBioInput,
-    validateBioTypewriterInput,
 } from "@/scripts/me/page-profile-dom";
 import { uploadPendingAvatarIfNeeded } from "@/scripts/me/page-avatar";
 import { fillSocialLinks } from "@/scripts/me/page-social";
@@ -95,7 +92,6 @@ export {
     validateUsernameInput,
     validateDisplaynameInput,
     validateBioInput,
-    validateBioTypewriterInput,
     checkProfileDirty,
     checkPrivacyDirty,
 } from "@/scripts/me/page-profile-dom";
@@ -149,21 +145,6 @@ function fillBioInfo(
         updateBioCounter(dom);
         updateBioDisplay(dom);
         setBioEditing(dom, false);
-    }
-    if (dom.bioTypewriterEnableInput) {
-        dom.bioTypewriterEnableInput.checked = Boolean(
-            profile?.bio_typewriter_enable ?? true,
-        );
-    }
-    if (dom.bioTypewriterSpeedInput) {
-        const speed = Math.max(
-            PROFILE_BIO_TYPEWRITER_SPEED_MIN,
-            Math.min(
-                PROFILE_BIO_TYPEWRITER_SPEED_MAX,
-                Math.floor(Number(profile?.bio_typewriter_speed) || 80),
-            ),
-        );
-        dom.bioTypewriterSpeedInput.value = String(speed);
     }
 }
 
@@ -295,19 +276,10 @@ function buildProfilePayload(
     dom: MePageDom,
     state: MePageState,
 ): Record<string, unknown> {
-    const bioTypewriterSpeed = Math.max(
-        PROFILE_BIO_TYPEWRITER_SPEED_MIN,
-        Math.min(
-            PROFILE_BIO_TYPEWRITER_SPEED_MAX,
-            Math.floor(Number(dom.bioTypewriterSpeedInput?.value || 80) || 80),
-        ),
-    );
     return {
         username: dom.usernameInput ? dom.usernameInput.value : "",
         display_name: dom.displaynameInput ? dom.displaynameInput.value : "",
         bio: dom.bioInput ? dom.bioInput.value : "",
-        bio_typewriter_enable: dom.bioTypewriterEnableInput?.checked ?? true,
-        bio_typewriter_speed: bioTypewriterSpeed,
         avatar_file: state.currentAvatarFileId || null,
     };
 }
@@ -388,11 +360,6 @@ async function handleProfileFormSubmit(
     const bioError = validateBioInput(dom);
     if (bioError) {
         setProfileMessage(dom, bioError);
-        return;
-    }
-    const bioTypewriterError = validateBioTypewriterInput(dom);
-    if (bioTypewriterError) {
-        setProfileMessage(dom, bioTypewriterError);
         return;
     }
     await runWithTask(

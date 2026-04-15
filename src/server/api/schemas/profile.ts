@@ -12,8 +12,6 @@ export type UpdateProfileInput = {
     username?: string;
     display_name?: string;
     bio?: string | null;
-    bio_typewriter_enable?: boolean;
-    bio_typewriter_speed?: number;
     avatar_file?: OptionalString;
     header_file?: OptionalString;
     social_links?: SocialLinks;
@@ -47,8 +45,6 @@ export const UpdateProfileSchema: z.ZodType<UpdateProfileInput> = z
         username: z.string().min(1),
         display_name: z.string().min(1),
         bio: z.string().nullable(),
-        bio_typewriter_enable: z.boolean(),
-        bio_typewriter_speed: z.number().int().min(10).max(500),
         avatar_file: OptionalStringSchema,
         header_file: OptionalStringSchema,
         social_links: SocialLinksSchema,

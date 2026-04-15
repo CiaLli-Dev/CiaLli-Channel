@@ -155,8 +155,6 @@ async function ensureUserProfile(
             user_id: userId,
             username: normalizedUsername,
             display_name: normalizedUsername,
-            bio_typewriter_enable: true,
-            bio_typewriter_speed: 80,
             header_file: null,
             profile_public: true,
             show_articles_on_profile: true,
@@ -226,12 +224,6 @@ function buildProfilePayload(
     }
     if (input.social_links !== undefined) {
         payload.social_links = input.social_links;
-    }
-    if (input.bio_typewriter_enable !== undefined) {
-        payload.bio_typewriter_enable = input.bio_typewriter_enable;
-    }
-    if (input.bio_typewriter_speed !== undefined) {
-        payload.bio_typewriter_speed = input.bio_typewriter_speed;
     }
     return { ...payload, ...buildProfileVisibilityPayload(input) };
 }

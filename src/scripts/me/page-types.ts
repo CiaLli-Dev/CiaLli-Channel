@@ -3,8 +3,6 @@
  */
 
 export const AUTH_ME_RETRY_DELAY_MS = 220;
-export const PROFILE_BIO_TYPEWRITER_SPEED_MIN = 10;
-export const PROFILE_BIO_TYPEWRITER_SPEED_MAX = 500;
 export const AVATAR_CROP_OUTPUT_SIZE = 512;
 export const AVATAR_CROP_ZOOM_MIN = 100;
 export const AVATAR_CROP_ZOOM_MAX = 300;
@@ -55,8 +53,6 @@ export interface ProfileSnapshot {
     username: string;
     display_name: string;
     bio: string;
-    bio_typewriter_enable: boolean;
-    bio_typewriter_speed: number;
     avatar_file_id: string;
     avatar_pending_upload: boolean;
 }
@@ -117,8 +113,6 @@ export interface MePageDom {
     bioEditor: HTMLElement | null;
     bioInput: HTMLTextAreaElement | null;
     bioCounter: HTMLElement | null;
-    bioTypewriterEnableInput: HTMLInputElement | null;
-    bioTypewriterSpeedInput: HTMLInputElement | null;
     displaynameDisplayBtn: HTMLButtonElement | null;
     displaynameDisplayText: HTMLElement | null;
     displaynameEditor: HTMLElement | null;

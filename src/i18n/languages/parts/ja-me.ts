@@ -71,11 +71,6 @@ export const jaMe: Record<string, string> = {
     [Key.meSettingsBioClickEdit]: "クリックして自己紹介を編集",
     [Key.meSettingsBioLabel]: "自己紹介",
     [Key.meSettingsBioTooLong]: "自己紹介が長すぎます",
-    [Key.meSettingsBioTypewriter]: "自己紹介のタイプライター効果",
-    [Key.meSettingsBioTypewriterEnable]: "タイプライター効果を有効化",
-    [Key.meSettingsBioTypewriterSpeed]: "入力速度",
-    [Key.meSettingsBioTypewriterSpeedRule]:
-        "10〜500 の範囲で速度を入力してください",
     [Key.meSettingsCropAvatarAlt]: "アバター切り抜きプレビュー",
     [Key.meSettingsCropAvatarHint]:
         "ドラッグまたは拡大縮小して保存してください",

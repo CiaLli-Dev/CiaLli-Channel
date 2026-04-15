@@ -21,8 +21,6 @@ export type AdminUpdateUserInput = {
     username?: string;
     display_name?: string;
     bio?: string | null;
-    bio_typewriter_enable?: boolean;
-    bio_typewriter_speed?: number;
     avatar_file?: OptionalString;
     social_links?: SocialLinks;
     profile_public?: boolean;
@@ -81,8 +79,6 @@ export const AdminUpdateUserSchema: z.ZodType<AdminUpdateUserInput> = z
         username: z.string().min(1),
         display_name: z.string().min(1),
         bio: z.string().nullable(),
-        bio_typewriter_enable: z.boolean(),
-        bio_typewriter_speed: z.number().int().min(10).max(500),
         avatar_file: OptionalStringSchema,
         social_links: SocialLinksSchema,
         profile_public: z.boolean(),

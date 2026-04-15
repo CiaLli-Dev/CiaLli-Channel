@@ -92,26 +92,6 @@ export function bindAllInputControls(dom: MePageDom, state: MePageState): void {
     }
 
     if (
-        dom.bioTypewriterEnableInput &&
-        !dom.bioTypewriterEnableInput.hasAttribute(DATA_BOUND)
-    ) {
-        dom.bioTypewriterEnableInput.setAttribute(DATA_BOUND, "");
-        dom.bioTypewriterEnableInput.addEventListener("change", () =>
-            checkProfileDirty(dom, state),
-        );
-    }
-
-    if (
-        dom.bioTypewriterSpeedInput &&
-        !dom.bioTypewriterSpeedInput.hasAttribute(DATA_BOUND)
-    ) {
-        dom.bioTypewriterSpeedInput.setAttribute(DATA_BOUND, "");
-        dom.bioTypewriterSpeedInput.addEventListener("input", () =>
-            checkProfileDirty(dom, state),
-        );
-    }
-
-    if (
         dom.displaynameInput &&
         !dom.displaynameInput.hasAttribute(DATA_BOUND)
     ) {

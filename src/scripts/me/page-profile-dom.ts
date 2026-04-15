@@ -14,8 +14,6 @@ import { buildAssetUrl } from "@/scripts/shared/dom-helpers";
 import {
     EMPTY_AVATAR_SRC,
     PRIVACY_CHECKBOX_IDS,
-    PROFILE_BIO_TYPEWRITER_SPEED_MIN,
-    PROFILE_BIO_TYPEWRITER_SPEED_MAX,
 } from "@/scripts/me/page-types";
 import type {
     MePageDom,
@@ -65,12 +63,6 @@ export function queryDom(): MePageDom | null {
             "me-bio",
         ) as HTMLTextAreaElement | null,
         bioCounter: document.getElementById("me-bio-counter"),
-        bioTypewriterEnableInput: document.getElementById(
-            "me-bio-typewriter-enable",
-        ) as HTMLInputElement | null,
-        bioTypewriterSpeedInput: document.getElementById(
-            "me-bio-typewriter-speed",
-        ) as HTMLInputElement | null,
         displaynameDisplayBtn: document.getElementById(
             "me-displayname-display-btn",
         ) as HTMLButtonElement | null,
@@ -133,16 +125,6 @@ export function captureProfileSnapshot(
             ? String(dom.displaynameInput.value || "").trim()
             : "",
         bio: dom.bioInput ? String(dom.bioInput.value || "") : "",
-        bio_typewriter_enable: dom.bioTypewriterEnableInput?.checked ?? true,
-        bio_typewriter_speed: Math.max(
-            PROFILE_BIO_TYPEWRITER_SPEED_MIN,
-            Math.min(
-                PROFILE_BIO_TYPEWRITER_SPEED_MAX,
-                Math.floor(
-                    Number(dom.bioTypewriterSpeedInput?.value || 80) || 80,
-                ),
-            ),
-        ),
         avatar_file_id: state.currentAvatarFileId,
         avatar_pending_upload: Boolean(state.pendingAvatarUpload),
     };
@@ -176,12 +158,6 @@ export function checkProfileDirty(dom: MePageDom, state: MePageState): void {
     }
     if (current.bio !== snap.bio) {
         changed.push(t(I18nKey.meSettingsBioLabel));
-    }
-    if (
-        current.bio_typewriter_enable !== snap.bio_typewriter_enable ||
-        current.bio_typewriter_speed !== snap.bio_typewriter_speed
-    ) {
-        changed.push(t(I18nKey.meSettingsBioTypewriter));
     }
     if (
         current.avatar_file_id !== snap.avatar_file_id ||
@@ -435,20 +411,6 @@ export function validateBioInput(dom: MePageDom): string | null {
         PROFILE_BIO_MAX_LENGTH
     ) {
         return t(I18nKey.meSettingsBioTooLong);
-    }
-    return null;
-}
-
-export function validateBioTypewriterInput(dom: MePageDom): string | null {
-    if (!dom.bioTypewriterSpeedInput) {
-        return null;
-    }
-    const speed = Math.floor(Number(dom.bioTypewriterSpeedInput.value) || 80);
-    if (
-        speed < PROFILE_BIO_TYPEWRITER_SPEED_MIN ||
-        speed > PROFILE_BIO_TYPEWRITER_SPEED_MAX
-    ) {
-        return t(I18nKey.meSettingsBioTypewriterSpeedRule);
     }
     return null;
 }
