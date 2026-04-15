@@ -11,75 +11,82 @@ const siteTitle = resolvedSiteSettings.settings.site.title;
 ---
 
 <div
-  class="transition border-t border-black/10 dark:border-white/15 my-10 border-dashed mx-4 sm:mx-10 lg:mx-32"
->
-</div>
-<div
-  class="transition border-dashed border-[oklch(85%_0.01_var(--hue))] dark:border-white/15 rounded-2xl mb-12 flex flex-col items-center justify-center px-6"
+  class="footer-content-shell mx-auto w-full max-w-[calc(var(--page-width)-37rem)] px-4 sm:px-8"
 >
   <div
-    class="transition text-50 text-center text-xs leading-relaxed sm:text-sm sm:leading-6"
+    class="transition border-t border-black/10 dark:border-white/15 my-10 border-dashed"
+  >
+  </div>
+  <div
+    class="transition border-dashed border-[oklch(85%_0.01_var(--hue))] dark:border-white/15 rounded-2xl mb-12 flex flex-col items-center justify-center px-6"
   >
     <div
-      class="mb-2 flex flex-col items-center gap-1 sm:flex-row sm:flex-nowrap sm:items-center sm:justify-center sm:gap-x-2"
+      class="transition text-50 text-center text-xs leading-relaxed sm:text-sm sm:leading-6"
     >
-      <p class="px-2">
-        &copy; <span id="copyright-year">{currentYear}</span>
-        {siteTitle}. All Rights Reserved.
-      </p>
-      <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-        <a
-          class="transition link text-(--primary) font-medium"
-          href={url("rss")}
-          data-footer-nav
-          data-footer-target={url("rss")}>RSS</a
-        >
-        <span class="text-40">/</span>
-        <a
-          class="transition link text-(--primary) font-medium"
-          href={url("atom")}
-          data-footer-nav
-          data-footer-target={url("atom")}>Atom</a
-        >
-        <span class="text-40">/</span>
-        <a
-          class="transition link text-(--primary) font-medium"
-          target="_blank"
-          href={url("sitemap-index.xml")}>Sitemap</a
-        >
+      <div
+        class="mb-2 flex flex-col items-center gap-1 sm:flex-row sm:flex-nowrap sm:items-center sm:justify-center sm:gap-x-2"
+      >
+        <p class="px-2">
+          &copy; <span id="copyright-year">{currentYear}</span>
+          {siteTitle}. All Rights Reserved.
+        </p>
+        <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+          <a
+            class="transition link text-(--primary) font-medium"
+            href={url("rss")}
+            data-footer-nav
+            data-footer-target={url("rss")}>RSS</a
+          >
+          <span class="text-40">/</span>
+          <a
+            class="transition link text-(--primary) font-medium"
+            href={url("atom")}
+            data-footer-nav
+            data-footer-target={url("atom")}>Atom</a
+          >
+          <span class="text-40">/</span>
+          <a
+            class="transition link text-(--primary) font-medium"
+            target="_blank"
+            href={url("sitemap-index.xml")}>Sitemap</a
+          >
+        </div>
       </div>
-    </div>
 
-    <div
-      class="flex flex-col items-center gap-1 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-x-1.5 sm:gap-y-1"
-    >
-      <div class="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
-        <span>Powered by</span>
-        <a
-          class="transition link text-(--primary) font-medium"
-          target="_blank"
-          href="https://github.com/matsuzaka-yuki/Mizuki">Mizuki</a
+      <div
+        class="flex flex-col items-center gap-1 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-x-1.5 sm:gap-y-1"
+      >
+        <div
+          class="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1"
         >
-        <span>&</span>
-        <a
-          class="transition link text-(--primary) font-medium"
-          target="_blank"
-          href="https://github.com/directus/directus">Directus</a
-        >
-        <span>&</span>
-        <a
-          class="transition link text-(--primary) font-medium"
-          target="_blank"
-          href="https://github.com/CiaLliChannel-Dev">CiaLliChannel-Dev</a
-        >
-      </div>
-      <div class="flex items-center justify-center gap-x-1">
-        <span>Version</span>
-        <a
-          class="transition link text-(--primary) font-medium"
-          target="_blank"
-          href="https://github.com/CiaLliChannel-Dev/CiaLli">{packageVersion}</a
-        >
+          <span>Powered by</span>
+          <a
+            class="transition link text-(--primary) font-medium"
+            target="_blank"
+            href="https://github.com/matsuzaka-yuki/Mizuki">Mizuki</a
+          >
+          <span>&</span>
+          <a
+            class="transition link text-(--primary) font-medium"
+            target="_blank"
+            href="https://github.com/directus/directus">Directus</a
+          >
+          <span>&</span>
+          <a
+            class="transition link text-(--primary) font-medium"
+            target="_blank"
+            href="https://github.com/CiaLliChannel-Dev">CiaLliChannel-Dev</a
+          >
+        </div>
+        <div class="flex items-center justify-center gap-x-1">
+          <span>Version</span>
+          <a
+            class="transition link text-(--primary) font-medium"
+            target="_blank"
+            href="https://github.com/CiaLliChannel-Dev/CiaLli"
+            >{packageVersion}</a
+          >
+        </div>
       </div>
     </div>
   </div>

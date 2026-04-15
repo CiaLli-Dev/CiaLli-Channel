@@ -579,13 +579,6 @@ const shouldRelocateRightSidebarContent =
                   </section>
                 )
               }
-              {
-                !isPostEditorPage && (
-                  <div class="footer col-span-full onload-animation block">
-                    <Footer />
-                  </div>
-                )
-              }
             </div>
             <div
               data-enter-skeleton-placeholder
@@ -643,6 +636,17 @@ const shouldRelocateRightSidebarContent =
               </div>
             </div>
           </main>
+
+          {
+            !isPostEditorPage && (
+              <div
+                class="footer col-span-full onload-animation block order-4 lg:order-none"
+                data-page-footer
+              >
+                <Footer />
+              </div>
+            )
+          }
         </div>
       </div>
       <!--

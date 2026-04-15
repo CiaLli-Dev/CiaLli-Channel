@@ -214,7 +214,7 @@ html.enter-skeleton-active[data-enter-skeleton-mode="atom-page"] [data-enter-ske
   filter: blur(0);
 }
 
-html.enter-skeleton-active[data-enter-skeleton-mode="user-diary"] #content-wrapper > .footer {
+html.enter-skeleton-active[data-enter-skeleton-mode="user-diary"] .footer[data-page-footer] {
   opacity: 0;
   transform: translate3d(0, calc(var(--enter-skeleton-shift-distance) * -1), 0) scale(0.992);
   filter: blur(var(--enter-skeleton-blur-radius));

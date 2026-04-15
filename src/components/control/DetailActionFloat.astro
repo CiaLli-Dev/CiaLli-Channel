@@ -673,7 +673,7 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
           return;
         }
 
-        const footer = document.querySelector("#content-wrapper > .footer");
+        const footer = document.querySelector(".footer[data-page-footer]");
         if (!(footer instanceof HTMLElement)) {
           setMobileBarHiddenNearFooter(false);
           return;
