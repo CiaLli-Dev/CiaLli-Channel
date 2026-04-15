@@ -5,7 +5,6 @@ import type {
     Favicon,
     MusicPlayerConfig,
     NavBarConfig,
-    SakuraConfig,
     SiteConfig,
 } from "./config";
 
@@ -34,7 +33,6 @@ export type EditableSiteSettings = {
     profile: ProfileRuntimeSettings;
     announcement: AnnouncementConfig;
     musicPlayer: MusicPlayerConfig;
-    sakura: SakuraConfig;
 };
 
 export type SiteSettingsPayload = EditableSiteSettings;

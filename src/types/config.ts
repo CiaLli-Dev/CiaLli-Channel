@@ -170,7 +170,3 @@ export type SidebarLayoutConfig = {
         increment: number; // 每个组件递增的延迟时间（毫秒）
     };
 };
-
-export type SakuraConfig = {
-    enable: boolean; // 是否启用樱花特效
-};

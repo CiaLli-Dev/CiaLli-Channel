@@ -336,6 +336,9 @@ describe("handleAdminSettings /site", () => {
             announcement: {
                 title: "前端误传公告",
             },
+            sakura: {
+                enable: true,
+            },
         });
         const response = await handleAdminSettings(
             ctx as unknown as APIContext,
@@ -343,11 +346,14 @@ describe("handleAdminSettings /site", () => {
         );
         expect(response.status).toBe(200);
         expect(mockedResolveSiteSettingsPayload).toHaveBeenCalledWith(
-            {
+            expect.objectContaining({
                 site: {
                     timeZone: "UTC",
                 },
-            },
+                sakura: {
+                    enable: true,
+                },
+            }),
             expect.anything(),
         );
         expect(mockedUpdateOne).toHaveBeenCalledWith(
@@ -358,6 +364,7 @@ describe("handleAdminSettings /site", () => {
                 status: "published",
                 settings: expect.not.objectContaining({
                     announcement: expect.anything(),
+                    sakura: expect.anything(),
                 }),
             },
         );

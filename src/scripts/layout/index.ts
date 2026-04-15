@@ -14,7 +14,6 @@ import {
 import { initKatexScrollbars } from "@/utils/katex-scrollbar";
 import { setupPanelOutsideHandler } from "@/utils/panel-outside-handler";
 import { panelManager } from "@/utils/panel-manager.js";
-import { initSakura } from "@/utils/sakura-manager";
 import { pathsEqual, url } from "@/utils/url-utils";
 import {
     resetBannerCarousel,
@@ -38,7 +37,6 @@ const TRANSITION_PROXY_VISIBLE_CLASS = "layout-banner-to-spec-proxy-visible";
 
 type LayoutRuntimeWindow = Window &
     typeof globalThis & {
-        sakuraInitialized?: boolean;
         __layoutDeferredPageInitPending?: boolean;
         __layoutRuntimeInitialized?: boolean;
         __layoutTransitionHooksAttached?: boolean;
@@ -81,26 +79,6 @@ export function initLayoutRuntime(): void {
         ALBUM_GALLERY_READY_EVENT,
         handleAlbumGalleryReady,
     );
-
-    const setupSakura = () => {
-        const sakuraConfig = runtimeSettings?.settings.sakura;
-        if (!sakuraConfig || !sakuraConfig.enable) {
-            return;
-        }
-        if (runtimeWindow.sakuraInitialized) {
-            return;
-        }
-        initSakura(sakuraConfig);
-        runtimeWindow.sakuraInitialized = true;
-    };
-
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", setupSakura, {
-            once: true,
-        });
-    } else {
-        setupSakura();
-    }
 
     const layoutController = initLayoutController({
         bannerEnabled,

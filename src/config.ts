@@ -164,9 +164,6 @@ export const defaultSiteSettings: SiteSettingsPayload = {
         type: "playlist",
         marqueeSpeed: 10,
     },
-    sakura: {
-        enable: false,
-    },
 };
 
 export function buildLegacySiteConfig(

@@ -179,7 +179,6 @@ function bindHomeSection(s: SettingsObj): void {
 
 function bindOtherSection(s: SettingsObj): void {
     const musicPlayer = (s.musicPlayer ?? {}) as SettingsObj;
-    const sakura = (s.sakura ?? {}) as SettingsObj;
 
     setChecked("ss-music-enable", Boolean(musicPlayer.enable));
     setVal("ss-music-api", String(musicPlayer.meting_api ?? ""));
@@ -187,7 +186,6 @@ function bindOtherSection(s: SettingsObj): void {
     setVal("ss-music-server", String(musicPlayer.server ?? ""));
     setVal("ss-music-type", String(musicPlayer.type ?? ""));
     setVal("ss-music-marquee", String(musicPlayer.marqueeSpeed ?? ""));
-    setChecked("ss-sakura-enable", Boolean(sakura.enable));
 }
 
 function bindFeatureSection(s: SettingsObj): void {
@@ -352,9 +350,6 @@ export function collectOtherPayload(current: SettingsObj): SettingsObj {
             server: inputVal("ss-music-server"),
             type: inputVal("ss-music-type"),
             marqueeSpeed: numberOrFallback(inputVal("ss-music-marquee"), 10),
-        },
-        sakura: {
-            enable: checked("ss-sakura-enable"),
         },
     };
 }

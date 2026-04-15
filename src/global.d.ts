@@ -22,7 +22,6 @@ declare global {
             setPaused: (paused: boolean) => void;
         };
         __updateBannerCarouselState?: () => void;
-        sakuraInitialized?: boolean;
         _calendarFilterListenerAttached?: boolean;
 
         panelManager?: typeof import("./utils/panel-manager").panelManager;

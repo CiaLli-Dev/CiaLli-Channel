@@ -193,8 +193,11 @@ function normalizeSettings(
     normalizeProfile(merged, base);
     normalizeAnnouncement(merged);
     normalizeMusicPlayer(merged);
-    merged.sakura.enable = Boolean(merged.sakura.enable);
     const mergedRecord = merged as Record<string, unknown>;
+    if (Object.prototype.hasOwnProperty.call(mergedRecord, "sakura")) {
+        // 樱花特效已废弃：读取与保存时都主动收敛，避免历史配置继续透传。
+        delete mergedRecord.sakura;
+    }
     if (Object.prototype.hasOwnProperty.call(mergedRecord, "analytics")) {
         // 历史统计设置字段已废弃：读取与保存时都主动收敛，防止脏数据继续透传。
         delete mergedRecord.analytics;

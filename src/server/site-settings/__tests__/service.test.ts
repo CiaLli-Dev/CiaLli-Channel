@@ -91,6 +91,21 @@ describe("resolveSiteSettingsPayload", () => {
             ),
         ).toBe(false);
     });
+
+    it("会在归一化阶段剔除历史 sakura 字段", () => {
+        const result = resolveSiteSettingsPayload({
+            sakura: {
+                enable: true,
+            },
+        });
+
+        expect(
+            Object.prototype.hasOwnProperty.call(
+                result as Record<string, unknown>,
+                "sakura",
+            ),
+        ).toBe(false);
+    });
 });
 
 describe("site-settings/service", () => {
