@@ -187,12 +187,12 @@ describe("buildMixedFeedPage", () => {
         expect(result.total).toBe(12);
     });
 
-    it("混合流中的日记与文章都返回默认 viewer state", async () => {
-        buildMixedFeedMock.mockResolvedValue(
+    it("登录用户附带点赞与删除权限 viewerState", async () => {
+        buildHomeFeedMock.mockResolvedValue(
             createBuildResult([
                 createArticleItem({
-                    id: "article-visible",
-                    authorId: "author-visible",
+                    id: "article-own",
+                    authorId: "viewer-1",
                 }),
                 createDiaryItem({
                     id: "diary-visible",
@@ -200,6 +200,17 @@ describe("buildMixedFeedPage", () => {
                 }),
             ]),
         );
+        readManyMock
+            .mockResolvedValueOnce([
+                {
+                    article_id: "article-own",
+                },
+            ])
+            .mockResolvedValueOnce([
+                {
+                    diary_id: "diary-visible",
+                },
+            ]);
 
         const result = await buildMixedFeedPage({
             offset: 0,
@@ -207,6 +218,7 @@ describe("buildMixedFeedPage", () => {
             totalLimit: 20,
         });
 
+        expect(readManyMock).toHaveBeenCalledTimes(2);
         expect(result.total).toBe(2);
         expect(result.items.map((item) => item.id)).toEqual([
             "article-visible",
@@ -220,7 +232,7 @@ describe("buildMixedFeedPage", () => {
         expect(result.items[1]?.viewerState).toEqual({
             hasLiked: false,
             canDeleteOwn: false,
-            canDeleteAdmin: false,
+            canDeleteAdmin: true,
         });
     });
 
