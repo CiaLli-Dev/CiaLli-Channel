@@ -11,7 +11,6 @@ import I18nKey from "@/i18n/i18nKey";
 import { t } from "@/scripts/shared/i18n-runtime";
 import {
     fetchAllLikedIds,
-    handleBlockUserAction,
     handleDeleteArticleAction,
     handleDeleteDiaryAction,
     handleToggleLikeAction,
@@ -125,31 +124,6 @@ function updateCurrentAuthState(state: AuthState): void {
     currentAuthState = state;
 }
 
-async function applyBlockedUsersFilter(): Promise<void> {
-    if (!currentAuthState.isLoggedIn) {
-        return;
-    }
-    try {
-        const response = await fetch("/api/v1/me/blocks?limit=200", {
-            credentials: "include",
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data?.ok || !Array.isArray(data.items)) {
-            return;
-        }
-        for (const item of data.items) {
-            const blockedUserId = item?.blocked_user_id
-                ? String(item.blocked_user_id)
-                : "";
-            if (blockedUserId) {
-                removeCardsByAuthorId(blockedUserId);
-            }
-        }
-    } catch (error) {
-        console.error("[PostPage] failed to apply blocked user filter:", error);
-    }
-}
-
 function applyCardActionVisibility(
     card: HTMLElement,
     state: AuthState,
@@ -163,9 +137,6 @@ function applyCardActionVisibility(
     const deleteAdminBtn = card.querySelector<HTMLButtonElement>(
         `button[data-action="${deleteAdminAction}"]`,
     );
-    const blockBtn = card.querySelector<HTMLButtonElement>(
-        'button[data-action="block-user"]',
-    );
     const likeBtn = card.querySelector<HTMLButtonElement>(
         'button[data-action="toggle-like"]',
     );
@@ -176,12 +147,6 @@ function applyCardActionVisibility(
 
     deleteOwnBtn?.classList.toggle("hidden", !isOwner);
     deleteAdminBtn?.classList.toggle("hidden", !isAdminOnly);
-
-    if (blockBtn) {
-        const canBlock =
-            state.isLoggedIn && Boolean(authorId) && state.userId !== authorId;
-        blockBtn.classList.toggle("hidden", !canBlock);
-    }
 
     if (likeBtn) {
         likeBtn.classList.toggle(
@@ -341,20 +306,6 @@ function removeCardByDiaryId(diaryId: string): void {
     row.remove();
 }
 
-function removeCardsByAuthorId(authorId: string): void {
-    const escaped = CSS.escape(authorId);
-    const cards = document.querySelectorAll<HTMLElement>(
-        `[data-post-card][data-author-id="${escaped}"], [data-diary-card][data-author-id="${escaped}"]`,
-    );
-    cards.forEach((card) => {
-        const row =
-            card.closest<HTMLElement>(".post-list-item") ||
-            card.closest<HTMLElement>(".diary-list-item") ||
-            card;
-        row.remove();
-    });
-}
-
 function buildLikeButtonHelpers(): LikeButtonHelpers {
     return {
         isLikeButtonPending,
@@ -404,15 +355,6 @@ async function handleCardAction(
             cardType,
             itemId,
             buildLikeButtonHelpers(),
-        );
-        return;
-    }
-
-    if (action === "block-user") {
-        await handleBlockUserAction(
-            authorId,
-            currentAuthState.userId,
-            removeCardsByAuthorId,
         );
         return;
     }
@@ -503,7 +445,6 @@ function setupPostCardActions(): void {
     subscribeAuthState((state) => {
         updateCurrentAuthState(state);
         updateCardActionVisibility(currentAuthState);
-        void applyBlockedUsersFilter();
         void syncLikeButtons();
     });
 
@@ -520,7 +461,6 @@ export async function refreshPostInteractions(): Promise<void> {
     updateCardActionVisibility(currentAuthState);
 
     // 新插入的卡片也必须重新同步交互态，避免首页首屏与后续批次出现行为分叉。
-    await applyBlockedUsersFilter();
     await syncLikeButtons();
 }
 

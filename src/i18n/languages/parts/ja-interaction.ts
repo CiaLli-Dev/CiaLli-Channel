@@ -116,13 +116,6 @@ export const jaInteraction: Record<string, string> = {
         "この日記を削除しますか？削除後は元に戻せません。",
     [Key.interactionPostDeleteFailed]:
         "削除に失敗しました。後ほど再試行してください。",
-    [Key.interactionPostCannotBlockUser]: "このユーザーをブロックできません。",
-    [Key.interactionPostBlockUserTitle]: "ユーザーをブロック",
-    [Key.interactionPostBlockUserMessage]:
-        "必要であれば理由を入力してください。確認後、このユーザーの内容は非表示になります。",
-    [Key.interactionPostBlockReasonLabel]: "ブロック理由（任意）",
-    [Key.interactionPostBlockReasonPlaceholder]: "例: スパム投稿、嫌がらせなど",
-    [Key.interactionPostBlockSuccess]: "ユーザーをブロックしました。",
     [Key.interactionPostActionFailed]:
         "操作に失敗しました。後ほどもう一度お試しください。",
 };

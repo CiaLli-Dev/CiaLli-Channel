@@ -124,13 +124,17 @@ function ensureBuildOutputExists() {
         RENDER_FUNCTION_CONFIG_PATH,
     ];
 
-    const missingPaths = requiredPaths.filter((filePath) => !existsSync(filePath));
+    const missingPaths = requiredPaths.filter(
+        (filePath) => !existsSync(filePath),
+    );
     if (missingPaths.length > 0) {
         console.error(
             "[preview] 未找到可预览的构建产物，请先执行 `pnpm build`。",
         );
         for (const filePath of missingPaths) {
-            console.error(`[preview] 缺失：${path.relative(WORKSPACE_ROOT, filePath)}`);
+            console.error(
+                `[preview] 缺失：${path.relative(WORKSPACE_ROOT, filePath)}`,
+            );
         }
         process.exit(1);
     }
@@ -151,7 +155,9 @@ async function loadRenderEntrypointPath() {
 
     const handler = functionConfig?.handler;
     if (typeof handler !== "string" || handler.length === 0) {
-        console.error("[preview] _render 函数缺少 handler 配置，无法启动预览。");
+        console.error(
+            "[preview] _render 函数缺少 handler 配置，无法启动预览。",
+        );
         process.exit(1);
     }
 
@@ -177,7 +183,9 @@ async function loadRenderHandler(entrypointPath) {
     }
 
     if (typeof renderModule.default?.fetch !== "function") {
-        console.error("[preview] 构建产物中的 SSR 入口不符合预期，缺少 fetch()。");
+        console.error(
+            "[preview] 构建产物中的 SSR 入口不符合预期，缺少 fetch()。",
+        );
         process.exit(1);
     }
 
@@ -361,7 +369,13 @@ function sendPlainText(res, statusCode, message) {
     res.end(message);
 }
 
-function writeBinaryResponse(res, statusCode, contentType, body, extraHeaders = {}) {
+function writeBinaryResponse(
+    res,
+    statusCode,
+    contentType,
+    body,
+    extraHeaders = {},
+) {
     res.statusCode = statusCode;
     res.setHeader("content-type", contentType);
     res.setHeader("content-length", String(body.byteLength));
@@ -490,10 +504,7 @@ function parseImageQualityParam(rawValue) {
         return { value: undefined };
     }
 
-    if (
-        /^(low|mid|high|max)$/u.test(value) ||
-        /^\d+$/u.test(value)
-    ) {
+    if (/^(low|mid|high|max)$/u.test(value) || /^\d+$/u.test(value)) {
         return { value };
     }
 
@@ -651,14 +662,18 @@ async function servePreviewImage(req, res, requestUrl, previewImageOptions) {
 
     const imageRequest = parsePreviewImageRequest(requestUrl);
     if (typeof imageRequest.errorStatus === "number") {
-        const message = imageRequest.errorStatus === 403 ? "Forbidden" : "Bad Request";
+        const message =
+            imageRequest.errorStatus === 403 ? "Forbidden" : "Bad Request";
         sendPlainText(res, imageRequest.errorStatus, message);
         return;
     }
 
-    const sourceFile = await resolveStaticAssetFile(imageRequest.sourcePathname);
+    const sourceFile = await resolveStaticAssetFile(
+        imageRequest.sourcePathname,
+    );
     if (typeof sourceFile.errorStatus === "number") {
-        const message = sourceFile.errorStatus === 403 ? "Forbidden" : "Not Found";
+        const message =
+            sourceFile.errorStatus === 403 ? "Forbidden" : "Not Found";
         sendPlainText(res, sourceFile.errorStatus, message);
         return;
     }
@@ -685,15 +700,9 @@ async function servePreviewImage(req, res, requestUrl, previewImageOptions) {
         getContentTypeFromImageFormat(transformedImage.format) ??
         getContentType(sourceFile.filePath);
 
-    writeBinaryResponse(
-        res,
-        200,
-        contentType,
-        transformedImage.data,
-        {
-            "cache-control": "public, max-age=31536000",
-        },
-    );
+    writeBinaryResponse(res, 200, contentType, transformedImage.data, {
+        "cache-control": "public, max-age=31536000",
+    });
 
     if (req.method === "HEAD") {
         res.end();
@@ -725,7 +734,10 @@ async function main() {
 
     const server = http.createServer(async (req, res) => {
         try {
-            const requestUrl = createRequestUrl(req, `${options.host}:${options.port}`);
+            const requestUrl = createRequestUrl(
+                req,
+                `${options.host}:${options.port}`,
+            );
             const redirectLocation = createRedirectLocation(requestUrl);
             if (redirectLocation) {
                 res.statusCode = 308;

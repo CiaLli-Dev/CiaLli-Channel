@@ -24,7 +24,6 @@ const viewerState: HomeFeedViewerState = Astro.props.viewerState ?? {
   hasLiked: false,
   canDeleteOwn: false,
   canDeleteAdmin: false,
-  canBlock: false,
 };
 
 const {
@@ -261,18 +260,6 @@ const adminDeleteLabel = i18n(I18nKey.interactionCommonDeleteAdmin);
               data-action="delete-admin-article"
             >
               {adminDeleteLabel}
-            </button>
-            <button
-              type="button"
-              class:list={[
-                "post-card-panel-text w-full text-left px-3 py-2 text-sm rounded-lg hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors",
-                {
-                  hidden: !viewerState.canBlock,
-                },
-              ]}
-              data-action="block-user"
-            >
-              屏蔽用户
             </button>
           </div>
         </details>

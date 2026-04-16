@@ -101,12 +101,5 @@ export const zhTWInteraction: Record<string, string> = {
     [Key.interactionPostDeleteConfirmOwnDiary]:
         "確認刪除這篇日記？刪除後無法復原。",
     [Key.interactionPostDeleteFailed]: "刪除失敗，請稍後重試。",
-    [Key.interactionPostCannotBlockUser]: "無法封鎖此使用者。",
-    [Key.interactionPostBlockUserTitle]: "封鎖使用者",
-    [Key.interactionPostBlockUserMessage]:
-        "可選填封鎖原因，確認後將隱藏該使用者內容。",
-    [Key.interactionPostBlockReasonLabel]: "封鎖原因（可選）",
-    [Key.interactionPostBlockReasonPlaceholder]: "例如：洗版、騷擾等",
-    [Key.interactionPostBlockSuccess]: "已封鎖該使用者。",
     [Key.interactionPostActionFailed]: "操作失敗，請稍後重試。",
 };

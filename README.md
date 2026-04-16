@@ -77,8 +77,6 @@ CiaLli 是一个现代化的轻量内容社区，基于 [Mizuki](https://github.
 
 见 [CONTRIBUTING.md](CONTRIBUTING.md)
 
-> **CiaLli Wiki** 与 **贡献指南** 的更新速度跟不上开发进度，推荐阅读 **Deep Wiki**，或者加入我们的群聊以获取更多信息。
-
 ## 开源许可证
 
 本项目基于 Apache 许可证 2.0 - 查看 [LICENSE](LICENSE) 文件了解详情。

@@ -33,7 +33,6 @@ export type HomeFeedViewerState = {
     hasLiked: boolean;
     canDeleteOwn: boolean;
     canDeleteAdmin: boolean;
-    canBlock: boolean;
 };
 
 export type HomeFeedPageItem = HomeFeedItem & {

@@ -92,11 +92,5 @@ export enum InteractionKey {
     interactionPostDeleteConfirmAdminDiary = "interactionPostDeleteConfirmAdminDiary",
     interactionPostDeleteConfirmOwnDiary = "interactionPostDeleteConfirmOwnDiary",
     interactionPostDeleteFailed = "interactionPostDeleteFailed",
-    interactionPostCannotBlockUser = "interactionPostCannotBlockUser",
-    interactionPostBlockUserTitle = "interactionPostBlockUserTitle",
-    interactionPostBlockUserMessage = "interactionPostBlockUserMessage",
-    interactionPostBlockReasonLabel = "interactionPostBlockReasonLabel",
-    interactionPostBlockReasonPlaceholder = "interactionPostBlockReasonPlaceholder",
-    interactionPostBlockSuccess = "interactionPostBlockSuccess",
     interactionPostActionFailed = "interactionPostActionFailed",
 }

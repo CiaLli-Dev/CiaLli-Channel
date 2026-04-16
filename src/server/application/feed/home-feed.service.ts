@@ -12,9 +12,6 @@ import type {
     HomeFeedViewerState,
 } from "@/server/recommendation/home-feed.types";
 
-/**
- * 首页首屏固定收敛到 10 条；公共 API 默认分页继续保持 20，避免影响既有调用方。
- */
 export const HOME_FEED_HOME_PAGE_LIMIT = 10;
 export const DEFAULT_HOME_FEED_PAGE_LIMIT = 20;
 export const MAX_HOME_FEED_PAGE_LIMIT = 20;
@@ -32,7 +29,6 @@ export type HomeFeedPageInput = {
 type ViewerFeedRelations = {
     articleLikedIds: Set<string>;
     diaryLikedIds: Set<string>;
-    blockedAuthorIds: Set<string>;
 };
 
 function normalizeIdentity(value: string | null | undefined): string {
@@ -44,7 +40,6 @@ function buildDefaultViewerState(): HomeFeedViewerState {
         hasLiked: false,
         canDeleteOwn: false,
         canDeleteAdmin: false,
-        canBlock: false,
     };
 }
 
@@ -66,63 +61,44 @@ function resolveViewerAdminState(input: HomeFeedPageInput): boolean {
 
 async function loadViewerFeedRelations(params: {
     viewerId: string;
-    authorIds: string[];
     articleIds: string[];
     diaryIds: string[];
 }): Promise<ViewerFeedRelations> {
-    const [articleLikeRows, diaryLikeRows, blockedRows] =
-        await runWithDirectusServiceAccess(
-            async () =>
-                await Promise.all([
-                    params.articleIds.length > 0
-                        ? readMany("app_article_likes", {
-                              filter: {
-                                  _and: [
-                                      { user_id: { _eq: params.viewerId } },
-                                      {
-                                          article_id: {
-                                              _in: params.articleIds,
-                                          },
+    const [articleLikeRows, diaryLikeRows] = await runWithDirectusServiceAccess(
+        async () =>
+            await Promise.all([
+                params.articleIds.length > 0
+                    ? readMany("app_article_likes", {
+                          filter: {
+                              _and: [
+                                  { user_id: { _eq: params.viewerId } },
+                                  {
+                                      article_id: {
+                                          _in: params.articleIds,
                                       },
-                                      { status: { _eq: "published" } },
-                                  ],
-                              } as JsonObject,
-                              fields: ["article_id"],
-                              limit: params.articleIds.length,
-                          })
-                        : Promise.resolve([]),
-                    params.diaryIds.length > 0
-                        ? readMany("app_diary_likes", {
-                              filter: {
-                                  _and: [
-                                      { user_id: { _eq: params.viewerId } },
-                                      { diary_id: { _in: params.diaryIds } },
-                                      { status: { _eq: "published" } },
-                                  ],
-                              } as JsonObject,
-                              fields: ["diary_id"],
-                              limit: params.diaryIds.length,
-                          })
-                        : Promise.resolve([]),
-                    params.authorIds.length > 0
-                        ? readMany("app_user_blocks", {
-                              filter: {
-                                  _and: [
-                                      { blocker_id: { _eq: params.viewerId } },
-                                      {
-                                          blocked_user_id: {
-                                              _in: params.authorIds,
-                                          },
-                                      },
-                                      { status: { _eq: "published" } },
-                                  ],
-                              } as JsonObject,
-                              fields: ["blocked_user_id"],
-                              limit: params.authorIds.length,
-                          })
-                        : Promise.resolve([]),
-                ]),
-        );
+                                  },
+                                  { status: { _eq: "published" } },
+                              ],
+                          } as JsonObject,
+                          fields: ["article_id"],
+                          limit: params.articleIds.length,
+                      })
+                    : Promise.resolve([]),
+                params.diaryIds.length > 0
+                    ? readMany("app_diary_likes", {
+                          filter: {
+                              _and: [
+                                  { user_id: { _eq: params.viewerId } },
+                                  { diary_id: { _in: params.diaryIds } },
+                                  { status: { _eq: "published" } },
+                              ],
+                          } as JsonObject,
+                          fields: ["diary_id"],
+                          limit: params.diaryIds.length,
+                      })
+                    : Promise.resolve([]),
+            ]),
+    );
 
     return {
         articleLikedIds: new Set(
@@ -133,11 +109,6 @@ async function loadViewerFeedRelations(params: {
         diaryLikedIds: new Set(
             diaryLikeRows
                 .map((row) => normalizeIdentity(row.diary_id))
-                .filter(Boolean),
-        ),
-        blockedAuthorIds: new Set(
-            blockedRows
-                .map((row) => normalizeIdentity(row.blocked_user_id))
                 .filter(Boolean),
         ),
     };
@@ -169,11 +140,6 @@ function attachViewerStateToItem(params: {
             hasLiked,
             canDeleteOwn: isOwner,
             canDeleteAdmin: params.isViewerAdmin && !isOwner,
-            canBlock:
-                !isOwner &&
-                !params.relations.blockedAuthorIds.has(
-                    normalizeIdentity(params.item.authorId),
-                ),
         },
     };
 }
@@ -189,34 +155,7 @@ export async function buildHomeFeedPage(
     });
     const normalizedViewerId = normalizeIdentity(input.viewerId);
     const isViewerAdmin = resolveViewerAdminState(input);
-    const authorIds = Array.from(
-        new Set(
-            feed.items
-                .map((item) => normalizeIdentity(item.authorId))
-                .filter(Boolean),
-        ),
-    );
-    const blockRelations = normalizedViewerId
-        ? await loadViewerFeedRelations({
-              viewerId: normalizedViewerId,
-              authorIds,
-              articleIds: [],
-              diaryIds: [],
-          })
-        : {
-              articleLikedIds: new Set<string>(),
-              diaryLikedIds: new Set<string>(),
-              blockedAuthorIds: new Set<string>(),
-          };
-    const visibleItems = blockRelations.blockedAuthorIds.size
-        ? feed.items.filter(
-              (item) =>
-                  !blockRelations.blockedAuthorIds.has(
-                      normalizeIdentity(item.authorId),
-                  ),
-          )
-        : feed.items;
-    const slicedItems = visibleItems.slice(
+    const slicedItems = feed.items.slice(
         input.offset,
         input.offset + input.pageLimit,
     );
@@ -239,20 +178,19 @@ export async function buildHomeFeedPage(
     const viewerRelations = normalizedViewerId
         ? await loadViewerFeedRelations({
               viewerId: normalizedViewerId,
-              authorIds: [],
               articleIds: relationIds.articleIds,
               diaryIds: relationIds.diaryIds,
           })
-        : blockRelations;
+        : {
+              articleLikedIds: new Set<string>(),
+              diaryLikedIds: new Set<string>(),
+          };
     const items = slicedItems.map((item) =>
         attachViewerStateToItem({
             item,
             viewerId: normalizedViewerId || null,
             isViewerAdmin,
-            relations: {
-                ...viewerRelations,
-                blockedAuthorIds: blockRelations.blockedAuthorIds,
-            },
+            relations: viewerRelations,
         }),
     );
     const nextOffset = input.offset + items.length;
@@ -262,8 +200,8 @@ export async function buildHomeFeedPage(
         offset: input.offset,
         limit: input.pageLimit,
         next_offset: nextOffset,
-        has_more: nextOffset < visibleItems.length,
+        has_more: nextOffset < feed.items.length,
         generated_at: feed.generatedAt,
-        total: visibleItems.length,
+        total: feed.items.length,
     };
 }

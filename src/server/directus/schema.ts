@@ -14,7 +14,6 @@ import type {
     AppFriend,
     AppProfile,
     AppUserRegistrationRequest,
-    AppUserBlock,
     AppUser,
 } from "@/types/app";
 import type {
@@ -36,7 +35,6 @@ export type DirectusSchema = {
     app_albums: AppAlbum[];
     app_album_photos: AppAlbumPhoto[];
     app_friends: AppFriend[];
-    app_user_blocks: AppUserBlock[];
     app_user_registration_requests: AppUserRegistrationRequest[];
     app_site_settings: AppSiteSettings[];
     app_site_announcements: AppSiteAnnouncement[];

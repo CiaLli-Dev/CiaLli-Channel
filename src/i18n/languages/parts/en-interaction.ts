@@ -112,14 +112,6 @@ export const enInteraction: Record<string, string> = {
     [Key.interactionPostDeleteConfirmOwnDiary]:
         "Delete this diary? This action cannot be undone.",
     [Key.interactionPostDeleteFailed]: "Delete failed. Please try again later.",
-    [Key.interactionPostCannotBlockUser]: "Cannot block this user.",
-    [Key.interactionPostBlockUserTitle]: "Block User",
-    [Key.interactionPostBlockUserMessage]:
-        "Optionally add a reason. After confirmation, this user's content will be hidden.",
-    [Key.interactionPostBlockReasonLabel]: "Block reason (optional)",
-    [Key.interactionPostBlockReasonPlaceholder]:
-        "For example: spam, harassment, abuse, etc.",
-    [Key.interactionPostBlockSuccess]: "User has been blocked.",
     [Key.interactionPostActionFailed]:
         "Operation failed. Please try again later.",
 };

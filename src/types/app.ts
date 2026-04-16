@@ -222,17 +222,6 @@ export type AppDiaryComment = {
     date_updated: string | null;
 };
 
-export type AppUserBlock = {
-    id: string;
-    blocker_id: string;
-    blocked_user_id: string;
-    reason: string | null;
-    note: string | null;
-    status: AppStatus;
-    date_created: string | null;
-    date_updated: string | null;
-};
-
 export type RegistrationRequestStatus =
     | "pending"
     | "approved"

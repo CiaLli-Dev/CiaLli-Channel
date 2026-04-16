@@ -100,12 +100,5 @@ export const zhCNInteraction: Record<string, string> = {
     [Key.interactionPostDeleteConfirmOwnDiary]:
         "确认删除这篇日记？删除后不可恢复。",
     [Key.interactionPostDeleteFailed]: "删除失败，请稍后重试。",
-    [Key.interactionPostCannotBlockUser]: "无法屏蔽该用户。",
-    [Key.interactionPostBlockUserTitle]: "屏蔽用户",
-    [Key.interactionPostBlockUserMessage]:
-        "可选填写屏蔽原因，确认后将隐藏该用户的内容。",
-    [Key.interactionPostBlockReasonLabel]: "屏蔽原因（可选）",
-    [Key.interactionPostBlockReasonPlaceholder]: "例如：恶意刷屏、骚扰等",
-    [Key.interactionPostBlockSuccess]: "已屏蔽该用户。",
     [Key.interactionPostActionFailed]: "操作失败，请稍后重试。",
 };

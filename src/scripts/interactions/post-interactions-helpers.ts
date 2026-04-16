@@ -1,8 +1,4 @@
-import {
-    showConfirmDialog,
-    showFormDialog,
-    showNoticeDialog,
-} from "@/scripts/shared/dialogs";
+import { showConfirmDialog, showNoticeDialog } from "@/scripts/shared/dialogs";
 import I18nKey from "@/i18n/i18nKey";
 import { t } from "@/scripts/shared/i18n-runtime";
 import { getCsrfToken } from "@/utils/csrf";
@@ -126,30 +122,6 @@ export async function requestDeleteDiary(
     if (!response.ok || !data?.ok) {
         throw new Error(
             getErrorMessage(data, t(I18nKey.interactionPostDeleteFailed)),
-        );
-    }
-}
-
-export async function requestBlockUser(
-    blockedUserId: string,
-    reason?: string,
-): Promise<void> {
-    const response = await fetch("/api/v1/me/blocks", {
-        method: "POST",
-        credentials: "include",
-        headers: {
-            "content-type": "application/json",
-            "x-csrf-token": getCsrfToken(),
-        },
-        body: JSON.stringify({
-            blocked_user_id: blockedUserId,
-            reason: reason || undefined,
-        }),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data?.ok) {
-        throw new Error(
-            getErrorMessage(data, t(I18nKey.interactionPostActionFailed)),
         );
     }
 }
@@ -327,46 +299,6 @@ export async function handleDeleteDiaryAction(
             message,
         });
     }
-}
-
-export async function handleBlockUserAction(
-    authorId: string,
-    currentUserId: string,
-    onSuccess: (id: string) => void,
-): Promise<void> {
-    if (!authorId || currentUserId === authorId) {
-        await showNoticeDialog({
-            ariaLabel: t(I18nKey.interactionDialogNoticeTitle),
-            message: t(I18nKey.interactionPostCannotBlockUser),
-        });
-        return;
-    }
-    const formValues = await showFormDialog({
-        ariaLabel: t(I18nKey.interactionPostBlockUserTitle),
-        message: t(I18nKey.interactionPostBlockUserMessage),
-        confirmText: t(I18nKey.interactionCommonConfirm),
-        cancelText: t(I18nKey.interactionCommonCancel),
-        confirmVariant: "danger",
-        fields: [
-            {
-                name: "reason",
-                label: t(I18nKey.interactionPostBlockReasonLabel),
-                type: "textarea",
-                placeholder: t(I18nKey.interactionPostBlockReasonPlaceholder),
-                rows: 3,
-            },
-        ],
-    });
-    if (!formValues) {
-        return;
-    }
-    const reason = String(formValues.reason || "").trim();
-    await requestBlockUser(authorId, reason);
-    onSuccess(authorId);
-    await showNoticeDialog({
-        ariaLabel: t(I18nKey.interactionDialogNoticeTitle),
-        message: t(I18nKey.interactionPostBlockSuccess),
-    });
 }
 
 export type LikeButtonHelpers = {

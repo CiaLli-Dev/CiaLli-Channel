@@ -33,7 +33,6 @@ const viewerState: HomeFeedViewerState = Astro.props.viewerState ?? {
   hasLiked: false,
   canDeleteOwn: false,
   canDeleteAdmin: false,
-  canBlock: false,
 };
 const resolvedSiteSettings =
   Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
@@ -241,18 +240,6 @@ function resolveDiaryImageSrc(image: AppDiaryImage): string {
               data-action="delete-admin-diary"
             >
               删除此日记(管理员)
-            </button>
-            <button
-              type="button"
-              class:list={[
-                "diary-card-panel-text w-full text-left px-3 py-2 text-sm rounded-lg hover:text-(--primary) hover:bg-(--btn-plain-bg-hover) post-card-action-btn transition-colors",
-                {
-                  hidden: !viewerState.canBlock,
-                },
-              ]}
-              data-action="block-user"
-            >
-              屏蔽用户
             </button>
           </div>
         </details>

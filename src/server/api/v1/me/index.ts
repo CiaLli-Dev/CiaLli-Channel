@@ -7,7 +7,6 @@ import { requireAccess } from "../shared";
 import type { AppAccess } from "../shared";
 import { handleMeProfile } from "./profile";
 import { handleMePrivacy, handleMePermissions } from "./privacy";
-import { handleMeBlocks } from "./blocks";
 import {
     handleMeArticleCommentLikes,
     handleMeArticleLikes,
@@ -36,7 +35,6 @@ const SIMPLE_ROUTES: Record<string, SimpleHandler> = {
 };
 
 const SEGMENTS_ROUTES: Record<string, SegmentsHandler> = {
-    blocks: handleMeBlocks,
     "article-likes": handleMeArticleLikes,
     "diary-likes": handleMeDiaryLikes,
     "article-comment-likes": handleMeArticleCommentLikes,
