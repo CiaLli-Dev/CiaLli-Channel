@@ -1,5 +1,6 @@
 import type { ArticleInteractionSnapshot } from "@/server/repositories/article/interaction.repository";
 import type { AuthorBundleItem } from "@/server/api/v1/shared/author-cache";
+import type { DetailPageCacheScope } from "@/server/application/public/detail-page-access.service";
 import type { DetailPageMode } from "@/server/application/public/detail-page-access.service";
 import {
     DETAIL_PAGE_PRIVATE_CACHE_CONTROL,
@@ -23,11 +24,13 @@ export type ArticleDetailMode = DetailPageMode;
 export type ArticleDetailRouteResolution =
     | {
           mode: ArticleDetailMode;
+          cacheScope: DetailPageCacheScope;
           article: AppArticle;
           sessionUserId: string | null;
       }
     | {
           mode: "not_found";
+          cacheScope: DetailPageCacheScope;
           sessionUserId: string | null;
       };
 
@@ -60,6 +63,7 @@ export async function resolveArticleDetailRoute(
 
     return {
         mode: result.mode,
+        cacheScope: result.cacheScope,
         article: result.detail,
         sessionUserId: result.sessionUserId,
     };
@@ -67,7 +71,7 @@ export async function resolveArticleDetailRoute(
 
 export function resolveArticleDetailCacheControl(input: {
     responseStatus: number;
-    mode: ArticleDetailMode | "not_found" | "error";
+    cacheScope: DetailPageCacheScope;
 }): string | null {
     return resolveDetailPageCacheControl(input);
 }

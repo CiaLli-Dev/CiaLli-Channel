@@ -91,7 +91,7 @@ let viewerIsOwner = false;
 let ownerPasswordStorageKeys: string[] = [];
 let sessionUserId: string | null = null;
 let articleSupportsPublicInteraction = false;
-let articleDetailMode: "public" | "owner" | "not_found" | "error";
+let articleCacheScope: "public" | "private" = "public";
 const resolvedSiteSettings =
   Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
 const siteDateContext = buildSiteDateFormatContext(resolvedSiteSettings);
@@ -137,7 +137,7 @@ if (rawId) {
         ),
     });
 
-    articleDetailMode = resolvedArticle.mode;
+    articleCacheScope = resolvedArticle.cacheScope;
     sessionUserId = resolvedArticle.sessionUserId;
 
     if (resolvedArticle.mode === "public" || resolvedArticle.mode === "owner") {
@@ -201,18 +201,16 @@ if (rawId) {
     }
   } catch (error) {
     console.error("[posts] failed to load article:", error);
-    articleDetailMode = "error";
     Astro.response.status = 500;
   }
 } else {
-  articleDetailMode = "not_found";
   Astro.response.status = 404;
 }
 
 const responseStatus = Astro.response.status ?? 200;
 const cacheControl = resolveArticleDetailCacheControl({
   responseStatus,
-  mode: articleDetailMode,
+  cacheScope: articleCacheScope,
 });
 if (cacheControl) {
   Astro.response.headers.set("Cache-Control", cacheControl);

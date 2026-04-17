@@ -1,6 +1,7 @@
 import type { AuthorBundleItem } from "@/server/api/v1/shared/author-cache";
 import type {
     DetailPageAccessResolution,
+    DetailPageCacheScope,
     DetailPageMode,
 } from "@/server/application/public/detail-page-access.service";
 import {
@@ -54,7 +55,7 @@ export async function resolveDiaryDetailRoute(
 
 export function resolveDiaryDetailCacheControl(input: {
     responseStatus: number;
-    mode: DiaryDetailMode | "not_found" | "error";
+    cacheScope: DetailPageCacheScope;
 }): string | null {
     return resolveDetailPageCacheControl(input);
 }

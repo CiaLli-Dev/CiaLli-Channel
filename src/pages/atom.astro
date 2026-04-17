@@ -1,6 +1,6 @@
 ---
 import MainGridLayout from "@layouts/MainGridLayout.astro";
-import { getSortedPosts } from "@utils/content-utils";
+import { listSiteFeedPreviewEntries } from "@/server/application/feed/site-feed.service";
 import { formatDateToYYYYMMDD } from "@utils/date-utils";
 import { Icon } from "astro-icon/components";
 import I18nKey from "@i18n/i18nKey";
@@ -8,8 +8,7 @@ import { i18n } from "@i18n/translation";
 
 export const prerender = false;
 
-const posts = (await getSortedPosts()).filter((post) => !post.data.encrypted);
-const recentPosts = posts.slice(0, 6);
+const recentPosts = await listSiteFeedPreviewEntries(6);
 ---
 
 <MainGridLayout
@@ -93,24 +92,19 @@ const recentPosts = posts.slice(0, 6);
               recentPosts.map((post) => (
                 <article class="bg-(--card-bg) rounded-xl p-4 border border-(--line-divider) hover:border-(--primary) transition-all duration-300">
                   <h3 class="text-lg font-semibold text-90 mb-2 hover:text-(--primary) transition-colors">
-                    <a
-                      href={post.url || `/posts/${post.id}`}
-                      class="hover:underline"
-                    >
-                      {post.data.title}
+                    <a href={post.url} class="hover:underline">
+                      {post.title}
                     </a>
                   </h3>
-                  {post.data.description && (
-                    <p class="text-75 mb-3 line-clamp-2">
-                      {post.data.description}
-                    </p>
+                  {post.summary && (
+                    <p class="text-75 mb-3 line-clamp-2">{post.summary}</p>
                   )}
                   <div class="flex items-center gap-4 text-sm text-60">
                     <time
-                      datetime={post.data.published.toISOString()}
+                      datetime={post.published.toISOString()}
                       class="text-75"
                     >
-                      {formatDateToYYYYMMDD(post.data.published)}
+                      {formatDateToYYYYMMDD(post.published)}
                     </time>
                   </div>
                 </article>

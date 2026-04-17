@@ -49,7 +49,9 @@ vi.mock("@/server/api/v1/public/_helpers", () => ({
 }));
 
 import {
+    getPublicArticleCalendarEntries,
     getPublicArticleListData,
+    getPublicArticleStatsData,
     getPublicArticleTaxonomyData,
     parsePublicArticleListInput,
     UNCATEGORIZED_ARTICLE_CATEGORY,
@@ -214,5 +216,74 @@ describe("public/articles.service", () => {
             total: 0,
         });
         expect(readManyMock).not.toHaveBeenCalled();
+    });
+
+    it("getPublicArticleStatsData 复用 taxonomy 并单独统计公开文章总数", async () => {
+        cacheGetMock.mockResolvedValueOnce(null);
+        readManyMock.mockResolvedValue([
+            {
+                tags: ["astro", "directus"],
+                category: "tech",
+            },
+            {
+                tags: ["astro"],
+                category: null,
+            },
+        ]);
+        countItemsMock.mockResolvedValue(7);
+
+        const result = await getPublicArticleStatsData();
+
+        expect(result).toEqual({
+            total: 7,
+            tags: [
+                { name: "astro", count: 2 },
+                { name: "directus", count: 1 },
+            ],
+            categories: [
+                {
+                    name: "tech",
+                    count: 1,
+                    url: "/posts?category=tech",
+                },
+                {
+                    name: "uncategorized",
+                    count: 1,
+                    url: "/posts?uncategorized=1",
+                },
+            ],
+        });
+        expect(countItemsMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("getPublicArticleCalendarEntries 只读取日历所需轻字段", async () => {
+        readManyMock.mockResolvedValue([
+            {
+                id: "article-1",
+                short_id: "a1",
+                title: "日历文章",
+                date_created: "2026-04-03T08:00:00.000Z",
+                date_updated: "2026-04-04T08:00:00.000Z",
+            },
+        ]);
+
+        const result = await getPublicArticleCalendarEntries();
+
+        expect(result).toEqual([
+            {
+                id: "article-1",
+                title: "日历文章",
+                url: "/posts/a1",
+                date: "2026-04-03",
+            },
+        ]);
+        expect(readManyMock).toHaveBeenCalledWith(
+            "app_articles",
+            expect.objectContaining({
+                fields: ["id", "short_id", "title", "date_created"],
+            }),
+        );
+        expect(countItemsGroupedByFieldMock).not.toHaveBeenCalled();
+        expect(getAuthorBundleMock).not.toHaveBeenCalled();
     });
 });

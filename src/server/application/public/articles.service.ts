@@ -25,6 +25,7 @@ import {
     buildArticleFeedEntry,
     normalizeIdentity,
 } from "@/server/recommendation/home-feed-helpers";
+import { buildPostUrl } from "@/utils/content-post-helpers";
 import type { DirectusPostEntry } from "@/utils/content-utils";
 
 import {
@@ -70,6 +71,17 @@ export type PublicArticleTaxonomyResult = {
     categories: PublicArticleCategory[];
 };
 
+export type PublicArticleStatsResult = PublicArticleTaxonomyResult & {
+    total: number;
+};
+
+export type PublicArticleCalendarEntry = {
+    id: string;
+    title: string;
+    url: string;
+    date: string;
+};
+
 function normalizeListQueryValue(
     value: string | null | undefined,
     maxLength: number,
@@ -103,6 +115,10 @@ function normalizeTagQueryValues(searchParams: URLSearchParams): string[] {
     );
 }
 
+function buildPublicArticleBaseFilters(): JsonObject[] {
+    return [filterPublicStatus(), excludeSpecialArticleSlugFilter()];
+}
+
 async function buildArticleListFilters(input: {
     page: number;
     limit: number;
@@ -111,10 +127,7 @@ async function buildArticleListFilters(input: {
     q: string | null;
     authorHandle: string | null;
 }): Promise<{ filters: JsonObject[]; earlyReturn?: PublicArticleListResult }> {
-    const andFilters: JsonObject[] = [
-        filterPublicStatus(),
-        excludeSpecialArticleSlugFilter(),
-    ];
+    const andFilters: JsonObject[] = buildPublicArticleBaseFilters();
 
     if (input.authorHandle) {
         const profile = await loadProfileByUsername(input.authorHandle);
@@ -241,7 +254,7 @@ export async function getPublicArticleTaxonomyData(): Promise<PublicArticleTaxon
         // taxonomy 只读取标签/分类轻字段，避免列表页为侧栏聚合拉整篇文章数据。
         const rows = await readMany("app_articles", {
             filter: {
-                _and: [filterPublicStatus(), excludeSpecialArticleSlugFilter()],
+                _and: buildPublicArticleBaseFilters(),
             } as JsonObject,
             fields: ["tags", "category"],
             limit: -1,
@@ -257,6 +270,69 @@ export async function getPublicArticleTaxonomyData(): Promise<PublicArticleTaxon
             result,
         );
         return result;
+    });
+}
+
+export async function getPublicArticleStatsData(): Promise<PublicArticleStatsResult> {
+    return await runWithDirectusServiceAccess(async () => {
+        const filter = {
+            _and: buildPublicArticleBaseFilters(),
+        } as JsonObject;
+        const [taxonomy, total] = await Promise.all([
+            getPublicArticleTaxonomyData(),
+            countItems("app_articles", filter),
+        ]);
+        return {
+            total,
+            tags: taxonomy.tags,
+            categories: taxonomy.categories,
+        };
+    });
+}
+
+export async function getPublicArticleCalendarEntries(): Promise<
+    PublicArticleCalendarEntry[]
+> {
+    return await runWithDirectusServiceAccess(async () => {
+        // 日历接口只消费标题、路由和日期，避免再走文章卡片聚合链路。
+        const rows = await readMany("app_articles", {
+            filter: {
+                _and: buildPublicArticleBaseFilters(),
+            } as JsonObject,
+            fields: ["id", "short_id", "title", "date_created"],
+            sort: ["-date_created"],
+            limit: -1,
+        });
+
+        return rows
+            .map((row) => {
+                const articleId = normalizeIdentity(row.id);
+                const shortId = normalizeIdentity(row.short_id) || null;
+                const routeId = shortId || articleId;
+                const title =
+                    String(row.title || "").trim() || routeId || articleId;
+                const createdAt = new Date(String(row.date_created || ""));
+                if (
+                    !articleId ||
+                    !routeId ||
+                    Number.isNaN(createdAt.getTime()) ||
+                    !title
+                ) {
+                    return null;
+                }
+                const year = createdAt.getFullYear();
+                const month = String(createdAt.getMonth() + 1).padStart(2, "0");
+                const day = String(createdAt.getDate()).padStart(2, "0");
+                return {
+                    id: articleId,
+                    title,
+                    url: buildPostUrl(shortId, articleId),
+                    date: `${year}-${month}-${day}`,
+                } satisfies PublicArticleCalendarEntry;
+            })
+            .filter(
+                (entry): entry is PublicArticleCalendarEntry => entry !== null,
+            );
     });
 }
 

@@ -51,7 +51,7 @@ let diaryLikedByViewer = false;
 let viewerOwnsDiary = false;
 let diarySupportsPublicInteraction = false;
 let diaryData = null as DiaryDetail | null;
-let diaryDetailMode: "public" | "owner" | "not_found" | "error" = "not_found";
+let diaryCacheScope: "public" | "private" = "public";
 const resolvedSiteSettings =
   Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
 const siteDateContext = buildSiteDateFormatContext(resolvedSiteSettings);
@@ -134,7 +134,7 @@ if (!username || !id) {
       },
     });
 
-    diaryDetailMode = resolvedDiary.mode;
+    diaryCacheScope = resolvedDiary.cacheScope;
 
     if (resolvedDiary.mode === "public" || resolvedDiary.mode === "owner") {
       const rawDiary = resolvedDiary.detail;
@@ -183,14 +183,13 @@ if (!username || !id) {
     }
   } catch (error) {
     console.error("[diary] failed to load detail:", error);
-    diaryDetailMode = "error";
     Astro.response.status = 500;
   }
 }
 
 const diaryCacheControl = resolveDiaryDetailCacheControl({
   responseStatus: Astro.response.status ?? 200,
-  mode: diaryDetailMode,
+  cacheScope: diaryCacheScope,
 });
 if (diaryCacheControl) {
   Astro.response.headers.set("Cache-Control", diaryCacheControl);

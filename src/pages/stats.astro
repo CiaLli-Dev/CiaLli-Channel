@@ -1,14 +1,10 @@
 ---
 import { Icon } from "astro-icon/components";
+import { getPublicArticleStatsData } from "@/server/application/public/articles.service";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import MainGridLayout from "../layouts/MainGridLayout.astro";
-import {
-  getCategoryList,
-  getSortedPosts,
-  getTagList,
-} from "@utils/content-utils";
 import { getRunningDays } from "@utils/running-days";
 
 export const prerender = false;
@@ -21,25 +17,23 @@ const siteStartDate =
   resolvedSiteSettings.settings.site.siteStartDate || "2025-01-01";
 const runningDays = getRunningDays(siteStartDate);
 
-const posts = await getSortedPosts();
-const categories = await getCategoryList();
-const tags = await getTagList();
+const articleStats = await getPublicArticleStatsData();
 
 const stats = [
   {
     icon: "material-symbols:article-outline",
     label: i18n(I18nKey.coreSiteStatsPostCount),
-    value: posts.length,
+    value: articleStats.total,
   },
   {
     icon: "material-symbols:folder-outline",
     label: i18n(I18nKey.coreSiteStatsCategoryCount),
-    value: categories.length,
+    value: articleStats.categories.length,
   },
   {
     icon: "material-symbols:label-outline",
     label: i18n(I18nKey.coreSiteStatsTagCount),
-    value: tags.length,
+    value: articleStats.tags.length,
   },
 ];
 ---

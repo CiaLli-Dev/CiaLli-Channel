@@ -36,6 +36,7 @@ describe("detail-page-access.service", () => {
 
         expect(result).toMatchObject({
             mode: "public",
+            cacheScope: "public",
             sessionUserId: null,
         });
         expect(loadSessionUser).not.toHaveBeenCalled();
@@ -60,6 +61,59 @@ describe("detail-page-access.service", () => {
 
         expect(result).toMatchObject({
             mode: "owner",
+            cacheScope: "private",
+            sessionUserId: "author-1",
+        });
+    });
+
+    it("公开未命中且未登录时返回 public 404", async () => {
+        const result = await resolveDetailPageAccess({
+            routeId: "draft-1",
+            loadPublicDetail: vi.fn().mockResolvedValue(null),
+            loadSessionUser: vi.fn().mockResolvedValue(null),
+            getSessionAccessToken: vi.fn(),
+            loadOwnerDetail: vi.fn(),
+        });
+
+        expect(result).toEqual({
+            mode: "not_found",
+            cacheScope: "public",
+            sessionUserId: null,
+        });
+    });
+
+    it("读取到 session 但没有 access token 时返回 private 404", async () => {
+        const result = await resolveDetailPageAccess({
+            routeId: "draft-1",
+            loadPublicDetail: vi.fn().mockResolvedValue(null),
+            loadSessionUser: vi.fn().mockResolvedValue({
+                id: "author-1",
+            }),
+            getSessionAccessToken: vi.fn().mockReturnValue(""),
+            loadOwnerDetail: vi.fn(),
+        });
+
+        expect(result).toEqual({
+            mode: "not_found",
+            cacheScope: "private",
+            sessionUserId: "author-1",
+        });
+    });
+
+    it("owner fallback 未命中时返回 private 404", async () => {
+        const result = await resolveDetailPageAccess({
+            routeId: "draft-1",
+            loadPublicDetail: vi.fn().mockResolvedValue(null),
+            loadSessionUser: vi.fn().mockResolvedValue({
+                id: "author-1",
+            }),
+            getSessionAccessToken: vi.fn().mockReturnValue("token"),
+            loadOwnerDetail: vi.fn().mockResolvedValue(null),
+        });
+
+        expect(result).toEqual({
+            mode: "not_found",
+            cacheScope: "private",
             sessionUserId: "author-1",
         });
     });
@@ -81,33 +135,40 @@ describe("detail-page-access.service", () => {
 
         expect(result).toEqual({
             mode: "not_found",
+            cacheScope: "private",
             sessionUserId: "viewer-1",
         });
     });
 
-    it("缓存头对 owner/public/404/500 分支与详情模式一致", () => {
+    it("缓存头按 cache scope 区分 public/private 404，并忽略 500", () => {
         expect(
             resolveDetailPageCacheControl({
                 responseStatus: 200,
-                mode: "owner",
+                cacheScope: "private",
             }),
         ).toBe(DETAIL_PAGE_PRIVATE_CACHE_CONTROL);
         expect(
             resolveDetailPageCacheControl({
                 responseStatus: 200,
-                mode: "public",
+                cacheScope: "public",
             }),
         ).toBe(DETAIL_PAGE_PUBLIC_CACHE_CONTROL);
         expect(
             resolveDetailPageCacheControl({
                 responseStatus: 404,
-                mode: "not_found",
+                cacheScope: "public",
             }),
         ).toBe(DETAIL_PAGE_PUBLIC_CACHE_CONTROL);
         expect(
             resolveDetailPageCacheControl({
+                responseStatus: 404,
+                cacheScope: "private",
+            }),
+        ).toBe(DETAIL_PAGE_PRIVATE_CACHE_CONTROL);
+        expect(
+            resolveDetailPageCacheControl({
                 responseStatus: 500,
-                mode: "error",
+                cacheScope: "public",
             }),
         ).toBeNull();
     });

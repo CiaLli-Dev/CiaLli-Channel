@@ -1,26 +1,14 @@
-import { getSortedPosts } from "@utils/content-utils";
+import { getPublicArticleCalendarEntries } from "@/server/application/public/articles.service";
 
 export const prerender = false;
 
 export async function GET(): Promise<Response> {
-    const posts = await getSortedPosts();
-    const allPostsData = posts.map((post) => {
-        const date = new Date(post.data.published);
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-
-        return {
-            id: post.id,
-            title: post.data.title,
-            url: post.url || `/posts/${post.id}`,
-            date: `${year}-${month}-${day}`,
-        };
-    });
-
-    return new Response(JSON.stringify(allPostsData), {
-        headers: {
-            "Content-Type": "application/json",
+    return new Response(
+        JSON.stringify(await getPublicArticleCalendarEntries()),
+        {
+            headers: {
+                "Content-Type": "application/json",
+            },
         },
-    });
+    );
 }

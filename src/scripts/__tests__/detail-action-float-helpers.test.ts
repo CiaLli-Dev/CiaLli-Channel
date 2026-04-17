@@ -93,6 +93,78 @@ describe("detail-action-float viewer like sync", () => {
         expect(fetchImpl).toHaveBeenCalledTimes(1);
     });
 
+    it("首个请求完成后再次进入详情页会重新同步最新 liked 状态", async () => {
+        const fetchImpl = vi
+            .fn()
+            .mockResolvedValueOnce(
+                new Response(
+                    JSON.stringify({
+                        ok: true,
+                        article_id: "article-1",
+                        liked: false,
+                    }),
+                ),
+            )
+            .mockResolvedValueOnce(
+                new Response(
+                    JSON.stringify({
+                        ok: true,
+                        article_id: "article-1",
+                        liked: true,
+                    }),
+                ),
+            );
+
+        const first = await loadViewerLikeState({
+            contentType: "article",
+            contentId: "article-1",
+            authState: createLoggedInState(),
+            fetchImpl,
+        });
+        const second = await loadViewerLikeState({
+            contentType: "article",
+            contentId: "article-1",
+            authState: createLoggedInState(),
+            fetchImpl,
+        });
+
+        expect(first).toBe(false);
+        expect(second).toBe(true);
+        expect(fetchImpl).toHaveBeenCalledTimes(2);
+    });
+
+    it("失败请求结束后会清理单飞缓存，后续调用可以重试", async () => {
+        const fetchImpl = vi
+            .fn()
+            .mockRejectedValueOnce(new Error("network"))
+            .mockResolvedValueOnce(
+                new Response(
+                    JSON.stringify({
+                        ok: true,
+                        article_id: "article-1",
+                        liked: true,
+                    }),
+                ),
+            );
+
+        const first = await loadViewerLikeState({
+            contentType: "article",
+            contentId: "article-1",
+            authState: createLoggedInState(),
+            fetchImpl,
+        });
+        const second = await loadViewerLikeState({
+            contentType: "article",
+            contentId: "article-1",
+            authState: createLoggedInState(),
+            fetchImpl,
+        });
+
+        expect(first).toBe(false);
+        expect(second).toBe(true);
+        expect(fetchImpl).toHaveBeenCalledTimes(2);
+    });
+
     it("未登录时不会发起 viewer like 请求", async () => {
         const fetchImpl = vi.fn();
 

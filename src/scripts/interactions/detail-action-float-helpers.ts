@@ -317,7 +317,12 @@ export async function loadViewerLikeState(input: {
     })();
 
     articleViewerLikeStateRequests.set(requestKey, request);
-    return await request;
+    try {
+        return await request;
+    } finally {
+        // 只复用同一时刻的并发请求，完成后立即清理，避免把旧 liked 状态长时间留在内存里。
+        articleViewerLikeStateRequests.delete(requestKey);
+    }
 }
 
 export async function loadArticleViewerLikeState(input: {
