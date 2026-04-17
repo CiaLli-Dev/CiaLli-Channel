@@ -1,10 +1,6 @@
 import type { APIContext } from "astro";
 
 import { fail } from "@/server/api/response";
-import {
-    DIRECTUS_ACCESS_COOKIE_NAME,
-    DIRECTUS_REFRESH_COOKIE_NAME,
-} from "@/server/directus-auth";
 
 import { handlePublicSiteSettings } from "./site-settings";
 import { handlePublicAsset } from "./assets";
@@ -21,14 +17,7 @@ import {
 import { handleUserHome } from "./user-home";
 
 const PUBLIC_EDGE_CACHE_CONTROL =
-    "public, s-maxage=60, stale-while-revalidate=300";
-
-function hasAuthCookies(context: APIContext): boolean {
-    return Boolean(
-        context.cookies.get(DIRECTUS_ACCESS_COOKIE_NAME)?.value ||
-        context.cookies.get(DIRECTUS_REFRESH_COOKIE_NAME)?.value,
-    );
-}
+    "public, s-maxage=300, stale-while-revalidate=900";
 
 function canApplyPublicEdgeCache(segments: string[]): boolean {
     const moduleName = segments[1] ?? "";
@@ -51,10 +40,6 @@ function withPublicEdgeCache(
         return response;
     }
     if (!canApplyPublicEdgeCache(segments)) {
-        return response;
-    }
-    if (hasAuthCookies(context)) {
-        response.headers.set("Cache-Control", "private, no-store");
         return response;
     }
     if (!response.headers.has("Cache-Control")) {

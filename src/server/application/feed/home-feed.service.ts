@@ -21,6 +21,7 @@ export type HomeFeedPageInput = {
     viewerId?: string | null;
     viewerRoleName?: string | null;
     isViewerSystemAdmin?: boolean;
+    includeViewerState?: boolean;
     offset: number;
     pageLimit: number;
     totalLimit: number;
@@ -154,11 +155,15 @@ export async function buildHomeFeedPage(
         limit: input.totalLimit,
     });
     const normalizedViewerId = normalizeIdentity(input.viewerId);
-    const isViewerAdmin = resolveViewerAdminState(input);
     const slicedItems = feed.items.slice(
         input.offset,
         input.offset + input.pageLimit,
     );
+    const shouldLoadViewerState =
+        input.includeViewerState === true && Boolean(normalizedViewerId);
+    const isViewerAdmin = shouldLoadViewerState
+        ? resolveViewerAdminState(input)
+        : false;
     const relationIds = {
         articleIds: slicedItems
             .filter(
@@ -175,7 +180,7 @@ export async function buildHomeFeedPage(
             .map((item) => resolveItemRelationId(item))
             .filter(Boolean),
     };
-    const viewerRelations = normalizedViewerId
+    const viewerRelations = shouldLoadViewerState
         ? await loadViewerFeedRelations({
               viewerId: normalizedViewerId,
               articleIds: relationIds.articleIds,
@@ -188,7 +193,7 @@ export async function buildHomeFeedPage(
     const items = slicedItems.map((item) =>
         attachViewerStateToItem({
             item,
-            viewerId: normalizedViewerId || null,
+            viewerId: shouldLoadViewerState ? normalizedViewerId : null,
             isViewerAdmin,
             relations: viewerRelations,
         }),

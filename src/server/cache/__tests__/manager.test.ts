@@ -86,7 +86,7 @@ describe("cache/manager", () => {
         expect(redis.set).toHaveBeenCalledWith(
             "cialli:test-cache:cache:v1:article-list:v0:list-key",
             JSON.stringify({ items: [1, 2, 3] }),
-            { ex: 120 },
+            { ex: 900 },
         );
     });
 
@@ -118,7 +118,26 @@ describe("cache/manager", () => {
         expect(redis.set).toHaveBeenCalledWith(
             "cialli:test-cache:cache:v1:article-list:v1:list-key",
             JSON.stringify({ ok: true }),
-            { ex: 120 },
+            { ex: 900 },
+        );
+    });
+
+    it("banner-images 域按小时级 TTL 写入 Redis", async () => {
+        const redis = createRedisClientMock();
+        redis.get.mockResolvedValue("0");
+        redis.set.mockResolvedValue("OK");
+        getUpstashRedisClientMock.mockReturnValue(redis);
+
+        const { cacheManager } = await import("@/server/cache/manager");
+
+        await cacheManager.set("banner-images", "default", [
+            "https://example.com/a.jpg",
+        ]);
+
+        expect(redis.set).toHaveBeenCalledWith(
+            "cialli:test-cache:cache:v1:banner-images:v0:default",
+            JSON.stringify(["https://example.com/a.jpg"]),
+            { ex: 3600 },
         );
     });
 });

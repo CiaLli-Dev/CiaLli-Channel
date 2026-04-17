@@ -462,5 +462,8 @@ export async function getPublicSiteSettings(): Promise<{
 }
 
 export function invalidateSiteSettingsCache(): void {
-    void cacheManager.invalidate("site-settings", "default");
+    void Promise.all([
+        cacheManager.invalidate("site-settings", "default"),
+        cacheManager.invalidateByDomain("banner-images"),
+    ]);
 }

@@ -7,12 +7,7 @@ import {
     DEFAULT_HOME_FEED_TOTAL_LIMIT,
     MAX_HOME_FEED_PAGE_LIMIT,
 } from "@/server/application/feed/home-feed.service";
-import { getSessionUser } from "@/server/auth/session";
 import type { HomeFeedPageResponse } from "@/server/recommendation/home-feed.types";
-import {
-    DIRECTUS_ACCESS_COOKIE_NAME,
-    DIRECTUS_REFRESH_COOKIE_NAME,
-} from "@/server/directus-auth";
 
 function parseNonNegativeInt(value: string | null, fallback: number): number {
     if (!value) {
@@ -23,13 +18,6 @@ function parseNonNegativeInt(value: string | null, fallback: number): number {
         return fallback;
     }
     return Math.floor(parsed);
-}
-
-function hasAuthCookies(context: APIContext): boolean {
-    return Boolean(
-        context.cookies.get(DIRECTUS_ACCESS_COOKIE_NAME)?.value ||
-        context.cookies.get(DIRECTUS_REFRESH_COOKIE_NAME)?.value,
-    );
 }
 
 export async function handlePublicHomeFeed(
@@ -53,13 +41,7 @@ export async function handlePublicHomeFeed(
     );
     const limit = Math.min(MAX_HOME_FEED_PAGE_LIMIT, Math.max(1, parsedLimit));
 
-    const sessionUser = hasAuthCookies(context)
-        ? await getSessionUser(context)
-        : null;
     const result: HomeFeedPageResponse = await buildHomeFeedPage({
-        viewerId: sessionUser?.id ?? null,
-        viewerRoleName: sessionUser?.roleName ?? null,
-        isViewerSystemAdmin: sessionUser?.isSystemAdmin ?? false,
         offset,
         pageLimit: limit,
         totalLimit: DEFAULT_HOME_FEED_TOTAL_LIMIT,

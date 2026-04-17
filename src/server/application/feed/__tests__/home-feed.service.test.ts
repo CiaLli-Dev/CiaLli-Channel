@@ -235,6 +235,7 @@ describe("buildHomeFeedPage", () => {
             viewerId: "viewer-1",
             viewerRoleName: "Site Admin",
             isViewerSystemAdmin: false,
+            includeViewerState: true,
             offset: 0,
             pageLimit: 20,
             totalLimit: 20,
@@ -255,6 +256,33 @@ describe("buildHomeFeedPage", () => {
             hasLiked: true,
             canDeleteOwn: false,
             canDeleteAdmin: true,
+        });
+    });
+
+    it("默认公共模式即使存在 viewerId 也不会补 viewerState", async () => {
+        buildHomeFeedMock.mockResolvedValue(
+            createBuildResult([
+                createArticleItem({
+                    id: "article-public",
+                    authorId: "viewer-1",
+                }),
+            ]),
+        );
+
+        const result = await buildHomeFeedPage({
+            viewerId: "viewer-1",
+            viewerRoleName: "Site Admin",
+            isViewerSystemAdmin: true,
+            offset: 0,
+            pageLimit: 20,
+            totalLimit: 20,
+        });
+
+        expect(readManyMock).not.toHaveBeenCalled();
+        expect(result.items[0]?.viewerState).toEqual({
+            hasLiked: false,
+            canDeleteOwn: false,
+            canDeleteAdmin: false,
         });
     });
 

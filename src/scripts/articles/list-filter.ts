@@ -1,525 +1,176 @@
 /**
- * 文章列表页筛选与分页逻辑。
+ * 文章列表页只负责维护 URL 查询，不再在前端持有整份文章集合做本地筛选。
  *
- * 从文章列表页内联脚本抽离为模块，供全局 layout 运行时在
- * 页面导航后动态导入并再次执行。由于 ES module 在同一文档同一 URL
- * 只会执行一次，不能依赖自动反复触发页面脚本。
- *
- * 初始化由 `layout/index.ts` 的 `runDynamicPageInit()` 统一触发。
+ * 这样 SSR 可以直接按查询参数返回当前页结果，避免首屏先拉全量文章再二次裁剪。
  */
 
-import {
-    cleanAuthorHandle,
-    normalizeAuthorHandle,
-    normalizeTagList,
-} from "@/scripts/shared/filter-shared";
+import { navigateToPage } from "@/utils/navigation-utils";
+import { normalizeTagList } from "@/scripts/shared/filter-shared";
 
-import {
-    buildPageNumbers,
-    POSTS_PER_PAGE,
-} from "@/scripts/articles/list-filter-helpers";
+import type { ArticleListRuntimeWindow } from "@/scripts/articles/list-filter-helpers";
 
-// ---- 类型定义 ----
-
-type CalendarFilterState = {
-    type: "day" | "month" | "year";
-    key: string;
-    label: string;
-};
-
-type FilterState = {
-    tags: string[];
-    category: string | null;
-    author: string | null;
-    calendar: CalendarFilterState | null;
-};
-
-type ArticleListRuntimeWindow = Window &
-    typeof globalThis & {
-        __articleListFilterCleanup?: () => void;
-    };
-
-export type { ArticleListRuntimeWindow, CalendarFilterState, FilterState };
-
-// ---- 顶层纯辅助函数 ----
-
-function parseItemTags(item: HTMLElement): string[] {
-    try {
-        const parsed = JSON.parse(item.dataset.tags || "[]") as unknown;
-        return Array.isArray(parsed) ? parsed.map((t) => String(t)) : [];
-    } catch {
-        return [];
-    }
+function buildNextUrl(mutator: (params: URLSearchParams) => void): string {
+    const nextUrl = new URL(window.location.href);
+    mutator(nextUrl.searchParams);
+    const normalizedSearch = nextUrl.searchParams.toString();
+    return `${nextUrl.pathname}${normalizedSearch ? `?${normalizedSearch}` : ""}`;
 }
 
-function toggleBtnDisabled(id: string, disabled: boolean): void {
-    const btn = document.getElementById(id);
-    if (!btn) {
-        return;
-    }
-    btn.classList.toggle("disabled", disabled);
-    if (disabled) {
-        btn.setAttribute("aria-disabled", "true");
-    } else {
-        btn.removeAttribute("aria-disabled");
-    }
-}
-
-function updatePaginationUI(page: number, totalPages: number): void {
-    const container = document.getElementById("article-list-pagination");
-    if (!container) {
-        return;
-    }
-    container.classList.toggle("hidden", totalPages <= 1);
-    if (totalPages <= 1) {
-        return;
-    }
-    const pages = buildPageNumbers(page, totalPages);
-    const numbersEl = document.getElementById("page-numbers");
-    if (numbersEl) {
-        numbersEl.innerHTML = pages
-            .map((p) =>
-                p === -1
-                    ? '<span class="px-1 text-50">...</span>'
-                    : p === page
-                      ? `<span class="page-num active">${p}</span>`
-                      : `<button class="page-num" data-page="${p}">${p}</button>`,
-            )
-            .join("");
-    }
-    toggleBtnDisabled("page-prev", page <= 1);
-    toggleBtnDisabled("page-next", page >= totalPages);
-}
-
-function hasActiveFilters(filter: FilterState): boolean {
-    return (
-        normalizeTagList(filter.tags).length > 0 ||
-        filter.category !== null ||
-        filter.author !== null ||
-        filter.calendar !== null
+function navigateWithUpdatedParams(
+    mutator: (params: URLSearchParams) => void,
+): void {
+    navigateToPage(
+        buildNextUrl((params) => {
+            mutator(params);
+        }),
     );
 }
 
-// ---- ArticleListFilterCore：封装状态与业务逻辑 ----
-
-class ArticleListFilterCore {
-    private currentPage = 1;
-    private currentFilter: FilterState = {
-        tags: [],
-        category: null,
-        author: null,
-        calendar: null,
-    };
-    private readonly uncategorizedLabel: string;
-    private readonly originalOrder = new Map<HTMLElement, number>();
-
-    constructor(uncategorizedLabel: string) {
-        this.uncategorizedLabel = uncategorizedLabel;
-    }
-
-    getFilter(): FilterState {
-        return this.currentFilter;
-    }
-    getPage(): number {
-        return this.currentPage;
-    }
-    setFilter(f: FilterState): void {
-        this.currentFilter = f;
-    }
-    setPage(p: number): void {
-        this.currentPage = p;
-    }
-
-    isUncategorizedValue(value: string): boolean {
-        return (
-            value === "uncategorized" ||
-            (this.uncategorizedLabel !== "" &&
-                value.toLowerCase() === this.uncategorizedLabel.toLowerCase())
-        );
-    }
-
-    getAllPostItems(): HTMLElement[] {
-        const postList = document.getElementById("post-list-container");
-        if (!postList) {
-            return [];
-        }
-        const allItems = Array.from(
-            postList.querySelectorAll<HTMLElement>(".post-list-item"),
-        );
-        if (this.originalOrder.size === 0) {
-            allItems.forEach((item, index) =>
-                this.originalOrder.set(item, index),
-            );
-        }
-        return allItems;
-    }
-
-    readItemAuthorHandleRaw(item: HTMLElement): string {
-        const selfHandle = cleanAuthorHandle(item.dataset.authorHandle || "");
-        if (selfHandle) {
-            return selfHandle;
-        }
-        const postCard = item.querySelector<HTMLElement>("[data-post-card]");
-        return cleanAuthorHandle(postCard?.dataset.authorHandle || "");
-    }
-
-    readItemAuthorHandle(item: HTMLElement): string {
-        return normalizeAuthorHandle(this.readItemAuthorHandleRaw(item));
-    }
-
-    getMatchingItems(filter: FilterState): HTMLElement[] {
-        const allItems = this.getAllPostItems();
-        const selectedTags = normalizeTagList(filter.tags);
-        const hasTagFilter = selectedTags.length > 0;
-        const hasCategoryFilter = filter.category !== null;
-        const hasAuthorFilter = filter.author !== null;
-        const normalizedAuthor = hasAuthorFilter
-            ? normalizeAuthorHandle(filter.author || "")
-            : "";
-        const hasCalendarFilter = filter.calendar !== null;
-
-        if (
-            !hasTagFilter &&
-            !hasCategoryFilter &&
-            !hasAuthorFilter &&
-            !hasCalendarFilter
-        ) {
-            return allItems;
-        }
-
-        const withScores = allItems
-            .map((item) => {
-                const itemTags = parseItemTags(item);
-                const tagScore = hasTagFilter
-                    ? selectedTags.reduce(
-                          (c, tag) => (itemTags.includes(tag) ? c + 1 : c),
-                          0,
-                      )
-                    : 0;
-                const tagMatched =
-                    !hasTagFilter || tagScore === selectedTags.length;
-                const categoryMatched = hasCategoryFilter
-                    ? this.isUncategorizedValue(filter.category!)
-                        ? !item.dataset.category
-                        : item.dataset.category === filter.category
-                    : true;
-                const authorMatched = hasAuthorFilter
-                    ? this.readItemAuthorHandle(item) === normalizedAuthor
-                    : true;
-                let calendarMatched = true;
-                if (hasCalendarFilter && filter.calendar) {
-                    const { type, key } = filter.calendar;
-                    calendarMatched =
-                        type === "year"
-                            ? item.dataset.year === key
-                            : type === "month"
-                              ? item.dataset.month === key
-                              : item.dataset.day === key;
-                }
-                return {
-                    item,
-                    score: tagScore,
-                    matched:
-                        tagMatched &&
-                        categoryMatched &&
-                        authorMatched &&
-                        calendarMatched,
-                };
-            })
-            .filter(({ matched }) => matched);
-
-        if (!hasTagFilter) {
-            return withScores.map(({ item }) => item);
-        }
-        return withScores
-            .sort((a, b) =>
-                b.score !== a.score
-                    ? b.score - a.score
-                    : (this.originalOrder.get(a.item) ?? 0) -
-                      (this.originalOrder.get(b.item) ?? 0),
-            )
-            .map(({ item }) => item);
-    }
-
-    renderPosts(): void {
-        const postList = document.getElementById("post-list-container");
-        const noResults = document.getElementById("article-list-no-results");
-        if (!postList) {
-            return;
-        }
-        const allItems = this.getAllPostItems();
-        const matching = this.getMatchingItems(this.currentFilter);
-        const totalPages = Math.max(
-            1,
-            Math.ceil(matching.length / POSTS_PER_PAGE),
-        );
-        if (this.currentPage > totalPages) {
-            this.currentPage = totalPages;
-        }
-        const start = (this.currentPage - 1) * POSTS_PER_PAGE;
-        const pageItems = new Set(
-            matching.slice(start, start + POSTS_PER_PAGE),
-        );
-        const matchingSet = new Set(matching);
-        const selectedTags = normalizeTagList(this.currentFilter.tags);
-        const orderedItems =
-            selectedTags.length > 0
-                ? [
-                      ...matching,
-                      ...allItems.filter((item) => !matchingSet.has(item)),
-                  ]
-                : allItems;
-        const fragment = document.createDocumentFragment();
-        orderedItems.forEach((item) => fragment.appendChild(item));
-        postList.appendChild(fragment);
-        allItems.forEach((item) =>
-            item.classList.toggle("hidden", !pageItems.has(item)),
-        );
-        updatePaginationUI(this.currentPage, totalPages);
-        noResults?.classList.toggle(
-            "hidden",
-            !hasActiveFilters(this.currentFilter) || matching.length > 0,
-        );
-    }
-
-    updateFilterStatus(filter: FilterState): void {
-        const filterStatus = document.getElementById("filter-status");
-        const filterLabel = document.getElementById("filter-status-label");
-        if (!filterStatus || !filterLabel) {
-            return;
-        }
-        if (!hasActiveFilters(filter)) {
-            filterStatus.classList.add("is-collapsed");
-            return;
-        }
-        filterStatus.classList.remove("is-collapsed");
-        const segments: string[] = [];
-        const selectedTags = normalizeTagList(filter.tags);
-        if (selectedTags.length > 0) {
-            segments.push(`标签：${selectedTags.join("、")}`);
-        }
-        if (filter.category) {
-            segments.push(
-                this.isUncategorizedValue(filter.category)
-                    ? `分类：${this.uncategorizedLabel || "未分类"}`
-                    : `分类：${filter.category}`,
-            );
-        }
-        if (filter.author) {
-            const normalized = normalizeAuthorHandle(filter.author);
-            const matched = this.getAllPostItems().find(
-                (item) => this.readItemAuthorHandle(item) === normalized,
-            );
-            const display = matched
-                ? this.readItemAuthorHandleRaw(matched)
-                : filter.author;
-            segments.push(`作者：@${display}`);
-        }
-        if (filter.calendar) {
-            segments.push(`日期：${filter.calendar.label}`);
-        }
-        filterLabel.textContent = segments.join(" ｜ ");
-    }
-
-    updateButtonStates(filter: FilterState): void {
-        document
-            .querySelectorAll<HTMLElement>(".article-list-filter-btn")
-            .forEach((btn) => btn.classList.remove("active"));
-        const selectedTags = normalizeTagList(filter.tags);
-        selectedTags.forEach((tag) => {
-            document
-                .querySelector<HTMLElement>(
-                    `.article-list-filter-btn[data-filter="tag"][data-value="${CSS.escape(tag)}"]`,
-                )
-                ?.classList.add("active");
-        });
-        if (filter.category) {
-            document
-                .querySelector<HTMLElement>(
-                    `.article-list-filter-btn[data-filter="category"][data-value="${CSS.escape(filter.category)}"]`,
-                )
-                ?.classList.add("active");
-        }
-    }
-
-    applyFilter(filter: FilterState): void {
-        this.currentFilter = filter;
-        this.currentPage = 1;
-        this.renderPosts();
-        this.updateFilterStatus(filter);
-        this.updateButtonStates(filter);
-    }
-
-    clearAllFilters(): void {
-        window.dispatchEvent(new CustomEvent("calendarFilterClear"));
-        this.currentFilter = {
-            tags: [],
-            category: null,
-            author: null,
-            calendar: null,
-        };
-        this.currentPage = 1;
-        this.renderPosts();
-        this.updateFilterStatus(this.currentFilter);
-        this.updateButtonStates(this.currentFilter);
-    }
-}
-
-// ---- 事件绑定（顶层）----
-
-function bindFilterButtonClick(
-    core: ArticleListFilterCore,
-    signal: AbortSignal,
-): void {
+function bindFilterButtonClick(signal: AbortSignal): void {
     document.addEventListener(
         "click",
-        (e) => {
-            const btn = (e.target as HTMLElement)?.closest<HTMLElement>(
+        (event) => {
+            const button = (event.target as HTMLElement)?.closest<HTMLElement>(
                 ".article-list-filter-btn",
             );
-            if (!btn) {
+            if (!button) {
                 return;
             }
-            const filterType = btn.dataset.filter as "tag" | "category";
-            const filterValue = btn.dataset.value || "";
+
+            const filterType = button.dataset.filter;
+            const filterValue = String(button.dataset.value || "").trim();
             if (!filterType || !filterValue) {
                 return;
             }
-            window.dispatchEvent(new CustomEvent("calendarFilterClear"));
-            const cur = core.getFilter();
-            if (filterType === "tag") {
-                const selectedTags = normalizeTagList(cur.tags);
-                const nextTags = selectedTags.includes(filterValue)
-                    ? selectedTags.filter((t) => t !== filterValue)
-                    : normalizeTagList([...selectedTags, filterValue]);
-                core.applyFilter({ ...cur, tags: nextTags, calendar: null });
-                return;
-            }
-            core.applyFilter({
-                ...cur,
-                category: cur.category === filterValue ? null : filterValue,
-                calendar: null,
+
+            navigateWithUpdatedParams((params) => {
+                params.delete("page");
+                if (filterType === "tag") {
+                    const currentTags = normalizeTagList(
+                        params
+                            .getAll("tag")
+                            .flatMap((value) => value.split(",")),
+                    );
+                    const nextTags = currentTags.includes(filterValue)
+                        ? currentTags.filter((tag) => tag !== filterValue)
+                        : normalizeTagList([...currentTags, filterValue]);
+                    params.delete("tag");
+                    for (const tag of nextTags) {
+                        params.append("tag", tag);
+                    }
+                    return;
+                }
+
+                const currentCategory = params.get("category");
+                const isUncategorized =
+                    params.has("uncategorized") &&
+                    filterValue === "uncategorized";
+                const nextCategory =
+                    currentCategory === filterValue || isUncategorized
+                        ? null
+                        : filterValue;
+
+                params.delete("category");
+                params.delete("uncategorized");
+                if (nextCategory === null) {
+                    return;
+                }
+                if (nextCategory === "uncategorized") {
+                    params.set("uncategorized", "1");
+                    return;
+                }
+                params.set("category", nextCategory);
             });
         },
         { signal },
     );
 }
 
-function bindCalendarEvents(
-    core: ArticleListFilterCore,
-    signal: AbortSignal,
-): void {
-    window.addEventListener(
-        "calendarFilterChange",
-        (event) => {
-            if (document.body?.dataset.pageKind !== "article-list") {
-                return;
-            }
-            const detail = (
-                event as CustomEvent<{
-                    type: "day" | "month" | "year";
-                    key: string;
-                    label?: string;
-                }>
-            ).detail;
-            if (!detail) {
-                return;
-            }
-            const next: FilterState = {
-                ...core.getFilter(),
-                calendar: {
-                    type: detail.type,
-                    key: detail.key,
-                    label: detail.label || detail.key,
-                },
-            };
-            core.setFilter(next);
-            requestAnimationFrame(() => {
-                core.setPage(1);
-                core.renderPosts();
-                core.updateFilterStatus(next);
-                core.updateButtonStates(next);
-            });
-        },
-        { signal },
-    );
+function bindPaginationClick(signal: AbortSignal): void {
+    const readPaginationState = (): {
+        currentPage: number;
+        totalPages: number;
+    } => {
+        const root = document.querySelector<HTMLElement>(".article-list-page");
+        return {
+            currentPage: Number(root?.dataset.currentPage || "1") || 1,
+            totalPages: Number(root?.dataset.totalPages || "1") || 1,
+        };
+    };
 
-    window.addEventListener(
-        "calendarFilterClear",
-        () => {
-            if (core.getFilter().calendar !== null) {
-                const next: FilterState = {
-                    ...core.getFilter(),
-                    calendar: null,
-                };
-                core.setFilter(next);
-                core.setPage(1);
-                requestAnimationFrame(() => {
-                    core.renderPosts();
-                    core.updateFilterStatus(next);
-                    core.updateButtonStates(next);
-                });
-            }
-        },
-        { signal },
-    );
-}
+    const resolveRelativePageFromTarget = (
+        target: HTMLElement,
+        currentPage: number,
+        totalPages: number,
+    ): number | null => {
+        if (target.id === "page-prev" || target.closest("#page-prev")) {
+            return currentPage > 1 ? currentPage - 1 : null;
+        }
+        if (target.id === "page-next" || target.closest("#page-next")) {
+            return currentPage < totalPages ? currentPage + 1 : null;
+        }
+        return null;
+    };
 
-function scrollPostListIntoView(): void {
-    document.getElementById("post-list-container")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-    });
-}
+    const resolveExplicitPageFromTarget = (
+        target: HTMLElement,
+    ): number | null => {
+        const pageButton = target.closest<HTMLElement>("[data-page]");
+        if (!pageButton) {
+            return null;
+        }
+        const nextPage = Number(pageButton.dataset.page || "");
+        if (!Number.isFinite(nextPage) || nextPage <= 0) {
+            return null;
+        }
+        return nextPage;
+    };
 
-function bindPaginationClick(
-    core: ArticleListFilterCore,
-    signal: AbortSignal,
-): void {
+    const resolvePageFromTarget = (target: HTMLElement): number | null => {
+        const { currentPage, totalPages } = readPaginationState();
+        return (
+            resolveRelativePageFromTarget(target, currentPage, totalPages) ??
+            resolveExplicitPageFromTarget(target)
+        );
+    };
+
     document.addEventListener(
         "click",
-        (e) => {
-            const target = e.target as HTMLElement;
-            if (target.id === "page-prev" || target.closest("#page-prev")) {
-                if (core.getPage() > 1) {
-                    core.setPage(core.getPage() - 1);
-                    core.renderPosts();
-                    scrollPostListIntoView();
-                }
+        (event) => {
+            const target = event.target as HTMLElement;
+            const nextPage = resolvePageFromTarget(target);
+            if (nextPage === null) {
                 return;
             }
-            if (target.id === "page-next" || target.closest("#page-next")) {
-                const matching = core.getMatchingItems(core.getFilter());
-                const totalPages = Math.max(
-                    1,
-                    Math.ceil(matching.length / POSTS_PER_PAGE),
-                );
-                if (core.getPage() < totalPages) {
-                    core.setPage(core.getPage() + 1);
-                    core.renderPosts();
-                    scrollPostListIntoView();
-                }
-                return;
-            }
-            const pageBtn = target.closest<HTMLElement>("[data-page]");
-            if (pageBtn) {
-                const page = Number(pageBtn.dataset.page);
-                if (page && page !== core.getPage()) {
-                    core.setPage(page);
-                    core.renderPosts();
-                    scrollPostListIntoView();
-                }
-            }
+            navigateWithUpdatedParams((params) => {
+                params.set("page", String(nextPage));
+            });
         },
         { signal },
     );
 }
 
-// ---- 主入口 ----
+function bindClearFilter(signal: AbortSignal): void {
+    document.getElementById("filter-clear-btn")?.addEventListener(
+        "click",
+        () => {
+            navigateWithUpdatedParams((params) => {
+                params.delete("page");
+                params.delete("tag");
+                params.delete("category");
+                params.delete("uncategorized");
+                params.delete("author");
+                params.delete("author_handle");
+                params.delete("q");
+            });
+        },
+        { signal },
+    );
+}
 
 export function initArticleListFilter(): void {
-    const rw = window as ArticleListRuntimeWindow;
-    rw.__articleListFilterCleanup?.();
+    const runtimeWindow = window as ArticleListRuntimeWindow;
+    runtimeWindow.__articleListFilterCleanup?.();
 
     const articleListRoot =
         document.querySelector<HTMLElement>(".article-list-page");
@@ -527,59 +178,15 @@ export function initArticleListFilter(): void {
         return;
     }
 
-    const core = new ArticleListFilterCore(
-        articleListRoot.dataset.uncategorizedLabel || "",
-    );
-    const ac = new AbortController();
-    const { signal } = ac;
+    const abortController = new AbortController();
+    const { signal } = abortController;
 
-    bindFilterButtonClick(core, signal);
-    bindCalendarEvents(core, signal);
-    bindPaginationClick(core, signal);
-    document
-        .getElementById("filter-clear-btn")
-        ?.addEventListener("click", () => core.clearAllFilters(), { signal });
+    bindFilterButtonClick(signal);
+    bindPaginationClick(signal);
+    bindClearFilter(signal);
 
-    rw.__articleListFilterCleanup = () => {
-        ac.abort();
-        rw.__articleListFilterCleanup = undefined;
+    runtimeWindow.__articleListFilterCleanup = () => {
+        abortController.abort();
+        runtimeWindow.__articleListFilterCleanup = undefined;
     };
-
-    const params = new URLSearchParams(window.location.search);
-    const tag = params.get("tag");
-    const category = params.get("category");
-    const author = params.get("author") || params.get("author_handle");
-    const uncategorized = params.get("uncategorized");
-    const tagParams = params
-        .getAll("tag")
-        .flatMap((v) => v.split(","))
-        .map((v) => v.trim())
-        .filter(Boolean);
-
-    const initFilter: FilterState = {
-        tags: [],
-        category: null,
-        author: null,
-        calendar: null,
-    };
-    if (tagParams.length > 0) {
-        initFilter.tags = normalizeTagList(tagParams);
-    } else if (tag) {
-        initFilter.tags = normalizeTagList([tag]);
-    }
-    if (category) {
-        initFilter.category = category;
-    } else if (uncategorized) {
-        initFilter.category = "uncategorized";
-    }
-    if (author) {
-        const cleaned = cleanAuthorHandle(author);
-        initFilter.author = cleaned || null;
-    }
-
-    if (hasActiveFilters(initFilter)) {
-        core.applyFilter(initFilter);
-    } else {
-        core.renderPosts();
-    }
 }

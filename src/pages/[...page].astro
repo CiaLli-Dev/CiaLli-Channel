@@ -8,11 +8,6 @@ import {
   DEFAULT_HOME_FEED_TOTAL_LIMIT,
   HOME_FEED_HOME_PAGE_LIMIT,
 } from "@/server/application/feed/home-feed.service";
-import { getSessionUser } from "@/server/auth/session";
-import {
-  DIRECTUS_ACCESS_COOKIE_NAME,
-  DIRECTUS_REFRESH_COOKIE_NAME,
-} from "@/server/directus-auth";
 import type { HomeFeedPageItem } from "@/server/recommendation/home-feed.types";
 
 export const prerender = false;
@@ -31,20 +26,10 @@ if (rawPagePath) {
 
 let homeFeedItems: HomeFeedPageItem[] = [];
 const invalidPath = Boolean(rawPagePath);
-let sessionUserId: string | null = null;
-const hasSessionCookie = Boolean(
-  Astro.cookies.get(DIRECTUS_ACCESS_COOKIE_NAME)?.value ||
-  Astro.cookies.get(DIRECTUS_REFRESH_COOKIE_NAME)?.value,
-);
 
 if (!invalidPath) {
   try {
-    const sessionUser = hasSessionCookie ? await getSessionUser(Astro) : null;
-    sessionUserId = sessionUser?.id ?? null;
     const homeFeed = await buildHomeFeedPage({
-      viewerId: sessionUser?.id ?? null,
-      viewerRoleName: sessionUser?.roleName ?? null,
-      isViewerSystemAdmin: sessionUser?.isSystemAdmin ?? false,
       offset: 0,
       pageLimit: HOME_FEED_HOME_PAGE_LIMIT,
       totalLimit: DEFAULT_HOME_FEED_TOTAL_LIMIT,
@@ -56,14 +41,10 @@ if (!invalidPath) {
 }
 
 if (!invalidPath) {
-  if (hasSessionCookie || sessionUserId) {
-    Astro.response.headers.set("Cache-Control", "private, no-store");
-  } else {
-    Astro.response.headers.set(
-      "Cache-Control",
-      "public, s-maxage=60, stale-while-revalidate=300",
-    );
-  }
+  Astro.response.headers.set(
+    "Cache-Control",
+    "public, s-maxage=300, stale-while-revalidate=900",
+  );
 }
 ---
 

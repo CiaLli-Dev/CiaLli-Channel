@@ -153,6 +153,7 @@ async function invalidatePatchCache(
     if (module === "articles") {
         tasks.push(
             cacheManager.invalidateByDomain("article-list"),
+            cacheManager.invalidateByDomain("article-taxonomy"),
             cacheManager.invalidateByDomain("article-public"),
             cacheManager.invalidate("article-detail", id),
             cacheManager.invalidateByDomain("home-feed"),
@@ -357,6 +358,7 @@ async function invalidateDeleteCache(
     if (module === "articles") {
         tasks.push(
             cacheManager.invalidateByDomain("article-list"),
+            cacheManager.invalidateByDomain("article-taxonomy"),
             cacheManager.invalidateByDomain("article-public"),
             cacheManager.invalidate("article-detail", id),
             cacheManager.invalidateByDomain("home-feed"),

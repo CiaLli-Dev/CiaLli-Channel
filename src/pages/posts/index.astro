@@ -1,36 +1,37 @@
 ---
+import { Icon } from "astro-icon/components";
+
+import Calendar from "@components/widget/Calendar.astro";
+import PostPage from "@components/PostPage.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
-import PostPage from "@components/PostPage.astro";
-import Calendar from "@components/widget/Calendar.astro";
-import { Icon } from "astro-icon/components";
-import { getSessionUser } from "@/server/auth/session";
 import {
-  DIRECTUS_ACCESS_COOKIE_NAME,
-  DIRECTUS_REFRESH_COOKIE_NAME,
-} from "@/server/directus-auth";
+  getPublicArticleListData,
+  getPublicArticleTaxonomyData,
+  parsePublicArticleListInput,
+  UNCATEGORIZED_ARTICLE_CATEGORY,
+} from "@/server/application/public/articles.service";
 import type { HomeFeedPageItem } from "@/server/recommendation/home-feed.types";
 import {
-  getSortedPosts,
-  getTagList,
-  getCategoryList,
-} from "@utils/content-utils";
+  buildPageNumbers,
+  POSTS_PER_PAGE,
+} from "@/scripts/articles/list-filter-helpers";
 
 export const prerender = false;
 
-const sessionUser = await getSessionUser(Astro);
-const viewerId = sessionUser?.id ?? null;
-const hasSessionCookie = Boolean(
-  Astro.cookies.get(DIRECTUS_ACCESS_COOKIE_NAME)?.value ||
-  Astro.cookies.get(DIRECTUS_REFRESH_COOKIE_NAME)?.value,
-);
-
-const allPosts = await getSortedPosts(viewerId);
-const tags = await getTagList(viewerId);
-const categories = await getCategoryList(viewerId);
+const articleListInput = parsePublicArticleListInput(Astro.url, {
+  defaultLimit: POSTS_PER_PAGE,
+  maxLimit: POSTS_PER_PAGE,
+});
 const uncategorizedLabel = i18n(I18nKey.contentUncategorized);
-const articleListFeedItems: HomeFeedPageItem[] = allPosts.map((entry) => ({
+
+const [{ items, page, limit, total }, taxonomy] = await Promise.all([
+  getPublicArticleListData(articleListInput),
+  getPublicArticleTaxonomyData(),
+]);
+
+const articleListFeedItems: HomeFeedPageItem[] = items.map((entry) => ({
   type: "article",
   id: entry.data.article_id,
   authorId: entry.data.author_id,
@@ -43,14 +44,38 @@ const articleListFeedItems: HomeFeedPageItem[] = allPosts.map((entry) => ({
   },
 }));
 
-if (hasSessionCookie || viewerId) {
-  Astro.response.headers.set("Cache-Control", "private, no-store");
-} else {
-  Astro.response.headers.set(
-    "Cache-Control",
-    "public, s-maxage=60, stale-while-revalidate=300",
+const totalPages = Math.max(1, Math.ceil(total / limit));
+const pageNumbers = totalPages > 1 ? buildPageNumbers(page, totalPages) : [];
+const activeTags = new Set(articleListInput.tags || []);
+const activeCategory = articleListInput.category || null;
+const hasActiveFilters =
+  activeTags.size > 0 ||
+  activeCategory !== null ||
+  Boolean(articleListInput.authorHandle) ||
+  Boolean(articleListInput.q);
+const filterSegments: string[] = [];
+
+if (activeTags.size > 0) {
+  filterSegments.push(`标签：${Array.from(activeTags).join("、")}`);
+}
+if (activeCategory) {
+  filterSegments.push(
+    activeCategory === UNCATEGORIZED_ARTICLE_CATEGORY
+      ? `分类：${uncategorizedLabel}`
+      : `分类：${activeCategory}`,
   );
 }
+if (articleListInput.authorHandle) {
+  filterSegments.push(`作者：@${articleListInput.authorHandle}`);
+}
+if (articleListInput.q) {
+  filterSegments.push(`搜索：${articleListInput.q}`);
+}
+
+Astro.response.headers.set(
+  "Cache-Control",
+  "public, s-maxage=300, stale-while-revalidate=900",
+);
 ---
 
 <MainGridLayout
@@ -59,138 +84,184 @@ if (hasSessionCookie || viewerId) {
   rightSidebarMobilePreset="drawer"
   pageKind="article-list"
 >
-  <!-- 默认 slot: 文章列表 -->
   <div
     class="article-list-page min-w-0 mb-4 lg:mb-0"
     data-page-kind="article-list"
     data-uncategorized-label={uncategorizedLabel}
+    data-current-page={String(page)}
+    data-total-pages={String(totalPages)}
   >
     {
-      allPosts.length === 0 ? (
+      articleListFeedItems.length === 0 ? (
         <div class="card-base p-8 rounded-(--radius-large) text-70">
-          暂无公开文章。
+          {hasActiveFilters ? "没有匹配的文章。" : "暂无公开文章。"}
         </div>
       ) : (
         <PostPage items={articleListFeedItems} maxAnimationIndex={15} />
       )
     }
 
-    <!-- 无筛选结果提示 -->
     <div
       id="article-list-no-results"
-      class="hidden card-base p-8 rounded-(--radius-large) text-70 mt-4"
+      class:list={[
+        "card-base p-8 rounded-(--radius-large) text-70 mt-4",
+        {
+          hidden: articleListFeedItems.length > 0 || !hasActiveFilters,
+        },
+      ]}
     >
       没有匹配的文章。
     </div>
 
-    <!-- 分页控件 -->
-    <div id="article-list-pagination" class="hidden mt-4">
-      <div
-        class="card-base p-3 rounded-(--radius-large) flex items-center justify-center gap-2"
-      >
-        <button
-          id="page-prev"
-          type="button"
-          class="pagination-btn px-3.5 py-2.5"
-          aria-label="上一页"
-        >
-          <Icon name="material-symbols:chevron-left-rounded" class="text-2xl" />
-        </button>
-        <div id="page-numbers" class="flex items-center gap-1"></div>
-        <button
-          id="page-next"
-          type="button"
-          class="pagination-btn px-3.5 py-2.5"
-          aria-label="下一页"
-        >
-          <Icon
-            name="material-symbols:chevron-right-rounded"
-            class="text-2xl"
-          />
-        </button>
-      </div>
-    </div>
+    {
+      totalPages > 1 && (
+        <div id="article-list-pagination" class="mt-4">
+          <div class="card-base p-3 rounded-(--radius-large) flex items-center justify-center gap-2">
+            <button
+              id="page-prev"
+              type="button"
+              class:list={[
+                "pagination-btn px-3.5 py-2.5",
+                {
+                  disabled: page <= 1,
+                },
+              ]}
+              aria-label="上一页"
+            >
+              <Icon
+                name="material-symbols:chevron-left-rounded"
+                class="text-2xl"
+              />
+            </button>
+            <div id="page-numbers" class="flex items-center gap-1">
+              {pageNumbers.map((pageNumber) =>
+                pageNumber === -1 ? (
+                  <span class="px-1 text-50">...</span>
+                ) : pageNumber === page ? (
+                  <span class="page-num active">{pageNumber}</span>
+                ) : (
+                  <button class="page-num" data-page={String(pageNumber)}>
+                    {pageNumber}
+                  </button>
+                ),
+              )}
+            </div>
+            <button
+              id="page-next"
+              type="button"
+              class:list={[
+                "pagination-btn px-3.5 py-2.5",
+                {
+                  disabled: page >= totalPages,
+                },
+              ]}
+              aria-label="下一页"
+            >
+              <Icon
+                name="material-symbols:chevron-right-rounded"
+                class="text-2xl"
+              />
+            </button>
+          </div>
+        </div>
+      )
+    }
   </div>
 
-  <!-- 右侧栏 slot: 筛选面板 -->
   <div
     slot="sidebar-right"
     class="article-list-filter-panel w-full max-h-none overflow-visible flex flex-col gap-4 self-start lg:max-h-[calc(100dvh-6.5rem)] lg:overflow-y-auto"
   >
-    <!-- 日历 -->
     <Calendar defaultExpanded={false} />
 
-    <!-- 分类 -->
     <div class="card-base rounded-(--radius-large) pb-4">
       <div
         class="font-bold transition text-lg text-neutral-900 dark:text-neutral-100 relative ml-8 mt-4 mb-2 flex items-center
-				before:w-1 before:h-4 before:rounded-md before:bg-(--primary)
-				before:absolute before:left-[-16px] before:top-[5.5px]"
+          before:w-1 before:h-4 before:rounded-md before:bg-(--primary)
+          before:absolute before:left-[-16px] before:top-[5.5px]"
       >
         {i18n(I18nKey.contentCategories)}
       </div>
       <div class="px-4 flex flex-col gap-0.5" id="article-list-categories">
         {
-          categories.map((c) => (
-            <button
-              data-filter="category"
-              data-value={c.name}
-              class="article-list-filter-btn w-full h-10 rounded-lg bg-none
-							hover:bg-(--btn-plain-bg-hover) active:bg-(--btn-plain-bg-active)
-							transition-all pl-2 hover:pl-3 text-left
-							text-neutral-700 hover:text-(--primary)
-							dark:text-neutral-300 dark:hover:text-(--primary)
-							cursor-pointer"
-            >
-              <div class="flex items-center justify-between mr-2">
-                <span class="overflow-hidden whitespace-nowrap text-ellipsis">
-                  {c.name.trim()}
-                </span>
-                <span
-                  class="transition px-2 h-7 ml-4 min-w-[2rem] rounded-lg text-sm font-bold
-								text-(--btn-content) dark:text-(--deep-text)
-								bg-[oklch(0.95_0.025_var(--hue))] dark:bg-(--primary)
-								flex items-center justify-center shrink-0"
-                >
-                  {c.count}
-                </span>
-              </div>
-            </button>
-          ))
+          taxonomy.categories.map((category) => {
+            const isActiveCategory = activeCategory === category.name;
+            const displayName =
+              category.name === UNCATEGORIZED_ARTICLE_CATEGORY
+                ? uncategorizedLabel
+                : category.name.trim();
+
+            return (
+              <button
+                data-filter="category"
+                data-value={category.name}
+                class:list={[
+                  "article-list-filter-btn w-full h-10 rounded-lg bg-none hover:bg-(--btn-plain-bg-hover) active:bg-(--btn-plain-bg-active) transition-all pl-2 hover:pl-3 text-left text-neutral-700 hover:text-(--primary) dark:text-neutral-300 dark:hover:text-(--primary) cursor-pointer",
+                  {
+                    active: isActiveCategory,
+                  },
+                ]}
+              >
+                <div class="flex items-center justify-between mr-2">
+                  <span class="overflow-hidden whitespace-nowrap text-ellipsis">
+                    {displayName}
+                  </span>
+                  <span
+                    class="transition px-2 h-7 ml-4 min-w-[2rem] rounded-lg text-sm font-bold
+                      text-(--btn-content) dark:text-(--deep-text)
+                      bg-[oklch(0.95_0.025_var(--hue))] dark:bg-(--primary)
+                      flex items-center justify-center shrink-0"
+                  >
+                    {category.count}
+                  </span>
+                </div>
+              </button>
+            );
+          })
         }
       </div>
     </div>
 
-    <!-- 标签 -->
     <div class="card-base rounded-(--radius-large) pb-4">
       <div
         class="font-bold transition text-lg text-neutral-900 dark:text-neutral-100 relative ml-8 mt-4 mb-2 flex items-center
-				before:w-1 before:h-4 before:rounded-md before:bg-(--primary)
-				before:absolute before:left-[-16px] before:top-[5.5px]"
+          before:w-1 before:h-4 before:rounded-md before:bg-(--primary)
+          before:absolute before:left-[-16px] before:top-[5.5px]"
       >
         {i18n(I18nKey.contentTags)}
       </div>
       <div class="px-4 flex gap-2 flex-wrap" id="article-list-tags">
         {
-          tags.map((t) => (
+          taxonomy.tags.map((tag) => (
             <button
               data-filter="tag"
-              data-value={t.name}
-              class="article-list-filter-btn btn-regular h-8 text-sm px-3 rounded-lg cursor-pointer"
+              data-value={tag.name}
+              class:list={[
+                "article-list-filter-btn btn-regular h-8 text-sm px-3 rounded-lg cursor-pointer",
+                {
+                  active: activeTags.has(tag.name),
+                },
+              ]}
             >
-              {t.name.trim()}
+              {tag.name.trim()}
             </button>
           ))
         }
       </div>
     </div>
 
-    <!-- 筛选状态栏 -->
     <div
       id="filter-status"
-      class="is-collapsed card-base rounded-(--radius-large) px-4 py-3"
+      class:list={[
+        "card-base rounded-(--radius-large) px-4 py-3",
+        {
+          "is-collapsed": !hasActiveFilters,
+        },
+      ]}
     >
-      <span id="filter-status-label" class="text-sm text-75 truncate"></span>
+      <span id="filter-status-label" class="text-sm text-75 truncate">
+        {filterSegments.join(" ｜ ")}
+      </span>
       <button
         id="filter-clear-btn"
         class="shrink-0 text-sm text-(--primary) hover:underline cursor-pointer"
@@ -204,7 +275,6 @@ if (hasSessionCookie || viewerId) {
 <style>
   @reference "../../styles/main.css";
 
-  /* 自定义滚动条 */
   .article-list-filter-panel::-webkit-scrollbar {
     width: 4px;
   }
@@ -216,9 +286,6 @@ if (hasSessionCookie || viewerId) {
     border-radius: 2px;
   }
 
-  /* 移动端/平板端：筛选面板回归自然高度 */
-
-  /* 激活状态的筛选按钮 */
   :global(.article-list-filter-btn.active) {
     background-color: var(--primary) !important;
     color: white !important;
@@ -239,25 +306,24 @@ if (hasSessionCookie || viewerId) {
     color: white !important;
   }
 
-  /* 分页样式 */
   :global(.pagination-btn) {
     @apply px-3 py-2 rounded-lg text-sm font-bold
-			text-neutral-600 dark:text-neutral-400
-			hover:bg-(--btn-plain-bg-hover)
-			hover:text-(--primary)
-			transition-colors cursor-pointer;
+      text-neutral-600 dark:text-neutral-400
+      hover:bg-(--btn-plain-bg-hover)
+      hover:text-(--primary)
+      transition-colors cursor-pointer;
   }
   :global(.pagination-btn.disabled) {
     @apply opacity-40 pointer-events-none;
   }
   :global(.page-num) {
     @apply w-9 h-9 rounded-lg text-sm font-bold
-			flex items-center justify-center cursor-pointer
-			transition-colors
-			text-neutral-700 dark:text-neutral-300
-			hover:bg-(--btn-plain-bg-hover);
+      flex items-center justify-center cursor-pointer
+      transition-colors
+      text-neutral-700 dark:text-neutral-300
+      hover:bg-(--btn-plain-bg-hover);
   }
   :global(.page-num.active) {
-    @apply bg-(--primary) text-white dark:text-black/70 cursor-default;
+    @apply bg-(--primary) text-white;
   }
 </style>

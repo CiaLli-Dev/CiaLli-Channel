@@ -7,9 +7,8 @@ import {
 } from "@/__tests__/helpers/mock-api-context";
 import type { HomeFeedPageResponse } from "@/server/recommendation/home-feed.types";
 
-const { buildHomeFeedPageMock, getSessionUserMock } = vi.hoisted(() => ({
+const { buildHomeFeedPageMock } = vi.hoisted(() => ({
     buildHomeFeedPageMock: vi.fn(),
-    getSessionUserMock: vi.fn(),
 }));
 
 vi.mock("@/server/application/feed/home-feed.service", () => ({
@@ -17,10 +16,6 @@ vi.mock("@/server/application/feed/home-feed.service", () => ({
     DEFAULT_HOME_FEED_TOTAL_LIMIT: 60,
     MAX_HOME_FEED_PAGE_LIMIT: 20,
     buildHomeFeedPage: buildHomeFeedPageMock,
-}));
-
-vi.mock("@/server/auth/session", () => ({
-    getSessionUser: getSessionUserMock,
 }));
 
 import {
@@ -69,11 +64,46 @@ describe("handlePublicHomeFeed", () => {
         expect(response.status).toBe(200);
         expect(payload.ok).toBe(true);
         expect(payload.limit).toBe(DEFAULT_HOME_FEED_PAGE_LIMIT);
-        expect(getSessionUserMock).not.toHaveBeenCalled();
         expect(mockedBuildHomeFeedPage).toHaveBeenCalledWith({
-            viewerId: null,
-            viewerRoleName: null,
-            isViewerSystemAdmin: false,
+            offset: 0,
+            pageLimit: DEFAULT_HOME_FEED_PAGE_LIMIT,
+            totalLimit: DEFAULT_HOME_FEED_TOTAL_LIMIT,
+        });
+    });
+
+    it("带登录 cookie 时仍返回公共快照参数", async () => {
+        mockedBuildHomeFeedPage.mockResolvedValue({
+            items: [],
+            offset: 0,
+            limit: DEFAULT_HOME_FEED_PAGE_LIMIT,
+            next_offset: 0,
+            has_more: false,
+            generated_at: "2026-03-27T00:00:00.000Z",
+            total: 0,
+        });
+
+        const context = createMockAPIContext({
+            method: "GET",
+            url: "http://localhost:4321/api/v1/public/home-feed",
+            params: { segments: "public/home-feed" },
+            cookies: {
+                directus_access_token: "token",
+            },
+        }) as unknown as APIContext;
+
+        const response = await handlePublicHomeFeed(context, [
+            "public",
+            "home-feed",
+        ]);
+        const payload = await parseResponseJson<
+            HomeFeedPageResponse & {
+                ok: boolean;
+            }
+        >(response);
+
+        expect(response.status).toBe(200);
+        expect(payload.ok).toBe(true);
+        expect(mockedBuildHomeFeedPage).toHaveBeenCalledWith({
             offset: 0,
             pageLimit: DEFAULT_HOME_FEED_PAGE_LIMIT,
             totalLimit: DEFAULT_HOME_FEED_TOTAL_LIMIT,

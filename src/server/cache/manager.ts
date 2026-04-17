@@ -20,8 +20,13 @@ import type { CacheDomain, CacheMetrics, CacheStrategy } from "./types";
 const STRATEGIES: Record<CacheDomain, CacheStrategy> = {
     author: { l1TtlMs: 5 * 60_000, l2TtlMs: 10 * 60_000, l1MaxEntries: 500 },
     "site-settings": {
-        l1TtlMs: 60_000,
-        l2TtlMs: 5 * 60_000,
+        l1TtlMs: 30 * 60_000,
+        l2TtlMs: 60 * 60_000,
+        l1MaxEntries: 5,
+    },
+    "banner-images": {
+        l1TtlMs: 30 * 60_000,
+        l2TtlMs: 60 * 60_000,
         l1MaxEntries: 5,
     },
     sidebar: {
@@ -35,9 +40,14 @@ const STRATEGIES: Record<CacheDomain, CacheStrategy> = {
         l1MaxEntries: 200,
     },
     "article-list": {
-        l1TtlMs: 30_000,
-        l2TtlMs: 2 * 60_000,
+        l1TtlMs: 5 * 60_000,
+        l2TtlMs: 15 * 60_000,
         l1MaxEntries: 100,
+    },
+    "article-taxonomy": {
+        l1TtlMs: 30 * 60_000,
+        l2TtlMs: 60 * 60_000,
+        l1MaxEntries: 20,
     },
     "article-detail": {
         l1TtlMs: 2 * 60_000,
@@ -65,8 +75,8 @@ const STRATEGIES: Record<CacheDomain, CacheStrategy> = {
         l1MaxEntries: 100,
     },
     "home-feed": {
-        l1TtlMs: 30_000,
-        l2TtlMs: 2 * 60_000,
+        l1TtlMs: 5 * 60_000,
+        l2TtlMs: 15 * 60_000,
         l1MaxEntries: 80,
     },
     "album-list": {

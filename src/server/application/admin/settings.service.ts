@@ -680,6 +680,7 @@ async function handleAdminAboutPatch(
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("article-list"),
+            cacheManager.invalidateByDomain("article-taxonomy"),
             cacheManager.invalidateByDomain("article-public"),
             cacheManager.invalidate("article-detail", ABOUT_ARTICLE_SLUG),
             cacheManager.invalidate("article-detail", about.id),

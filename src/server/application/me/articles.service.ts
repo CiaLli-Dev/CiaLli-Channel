@@ -277,6 +277,7 @@ async function handleArticlesCreate(
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("article-list"),
+            cacheManager.invalidateByDomain("article-taxonomy"),
             cacheManager.invalidateByDomain("article-public"),
             cacheManager.invalidateByDomain("home-feed"),
         ],
@@ -630,6 +631,7 @@ async function handleWorkingDraftPut(
         await awaitCacheInvalidations(
             [
                 cacheManager.invalidateByDomain("article-list"),
+                cacheManager.invalidateByDomain("article-taxonomy"),
                 cacheManager.invalidateByDomain("article-public"),
                 cacheManager.invalidateByDomain("home-feed"),
             ],
@@ -661,6 +663,7 @@ async function handleWorkingDraftPut(
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("article-list"),
+            cacheManager.invalidateByDomain("article-taxonomy"),
             cacheManager.invalidateByDomain("article-public"),
             cacheManager.invalidate("article-detail", target.id),
             cacheManager.invalidateByDomain("home-feed"),
@@ -724,6 +727,7 @@ async function handleArticlePatch(
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("article-list"),
+            cacheManager.invalidateByDomain("article-taxonomy"),
             cacheManager.invalidateByDomain("article-public"),
             cacheManager.invalidate("article-detail", id),
             cacheManager.invalidateByDomain("home-feed"),
@@ -760,6 +764,7 @@ async function handleArticleDelete(
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("article-list"),
+            cacheManager.invalidateByDomain("article-taxonomy"),
             cacheManager.invalidateByDomain("article-public"),
             cacheManager.invalidate("article-detail", id),
             cacheManager.invalidateByDomain("home-feed"),
