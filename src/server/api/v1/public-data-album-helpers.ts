@@ -29,7 +29,7 @@ export type AlbumDetail = AppAlbum & {
 
 export async function loadUserAlbumListHelper(
     username: string,
-    options: UserAlbumListOptions & ViewerOptions,
+    options: UserAlbumListOptions,
     readAuthorFn: (
         authorMap: Map<string, AuthorBundleItem>,
         userId: string,
@@ -43,12 +43,10 @@ export async function loadUserAlbumListHelper(
     if (!profile) {
         return { status: "not_found" };
     }
-    const isOwnerViewing =
-        Boolean(options.viewerId) && options.viewerId === profile.user_id;
-    if (!isOwnerViewing && !profile.profile_public) {
+    if (!profile.profile_public) {
         return { status: "permission_denied", reason: "profile_not_public" };
     }
-    if (!isOwnerViewing && !profile.show_albums_on_profile) {
+    if (!profile.show_albums_on_profile) {
         return { status: "permission_denied", reason: "albums_not_public" };
     }
     const userId = profile.user_id;
@@ -62,7 +60,7 @@ export async function loadUserAlbumListHelper(
     const [{ rows, total }, authorMap] = await Promise.all([
         listUserAlbumsFromRepository({
             userId,
-            filters: albumFilters(isOwnerViewing),
+            filters: albumFilters(false),
             limit,
             offset,
         }),

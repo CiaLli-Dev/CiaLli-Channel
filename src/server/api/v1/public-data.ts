@@ -101,6 +101,16 @@ export async function loadProfileForViewer(
     return null;
 }
 
+export async function loadPublicProfileByUsername(
+    username: string,
+): Promise<AppProfileView | null> {
+    const profile = await loadProfileByUsername(username);
+    if (!profile?.profile_public) {
+        return null;
+    }
+    return profile;
+}
+
 export type UserHomeData = {
     profile: PublicProfile;
     owner: {
@@ -133,16 +143,13 @@ function checkProfileAccess(
 
 export async function loadUserHomeData(
     username: string,
-    options?: ViewerOptions,
 ): Promise<ContentLoadResult<UserHomeData>> {
     const profile = await loadProfileByUsername(username);
     if (!profile) {
         return { status: "not_found" };
     }
-    const isOwnerViewing =
-        Boolean(options?.viewerId) && options?.viewerId === profile.user_id;
 
-    const accessError = checkProfileAccess(profile, isOwnerViewing);
+    const accessError = checkProfileAccess(profile, false);
     if (accessError) {
         return accessError;
     }
@@ -152,7 +159,6 @@ export async function loadUserHomeData(
         await loadHomeDataInParallel({
             targetUserId,
             profile,
-            isOwnerViewing,
         });
 
     const owner = readAuthor(authorMap, targetUserId);
@@ -192,7 +198,7 @@ export type UserBangumiListOptions = {
 
 export async function loadUserBangumiList(
     username: string,
-    options: UserBangumiListOptions & ViewerOptions = {},
+    options: UserBangumiListOptions = {},
 ): Promise<
     ContentLoadResult<
         PaginatedResult<BangumiCollectionItem & { author: AuthorBundleItem }>
@@ -202,12 +208,10 @@ export async function loadUserBangumiList(
     if (!profile) {
         return { status: "not_found" };
     }
-    const isOwnerViewing =
-        Boolean(options.viewerId) && options.viewerId === profile.user_id;
-    if (!isOwnerViewing && !profile.profile_public) {
+    if (!profile.profile_public) {
         return { status: "permission_denied", reason: "profile_not_public" };
     }
-    if (!isOwnerViewing && !profile.show_bangumi_on_profile) {
+    if (!profile.show_bangumi_on_profile) {
         return { status: "permission_denied", reason: "bangumi_not_public" };
     }
 
@@ -221,6 +225,7 @@ export async function loadUserBangumiList(
             page,
             limit,
             status: options.status,
+            includePrivate: false,
         }),
         getAuthorBundle([profile.user_id]),
     ]);
@@ -247,7 +252,7 @@ async function loadDiaryImages(
 
 export async function loadUserDiaryList(
     username: string,
-    options: UserDiaryListOptions & ViewerOptions = {},
+    options: UserDiaryListOptions = {},
 ): Promise<
     ContentLoadResult<
         PaginatedResult<
@@ -264,12 +269,10 @@ export async function loadUserDiaryList(
     if (!profile) {
         return { status: "not_found" };
     }
-    const isOwnerViewing =
-        Boolean(options.viewerId) && options.viewerId === profile.user_id;
-    if (!isOwnerViewing && !profile.profile_public) {
+    if (!profile.profile_public) {
         return { status: "permission_denied", reason: "profile_not_public" };
     }
-    if (!isOwnerViewing && !profile.show_diaries_on_profile) {
+    if (!profile.show_diaries_on_profile) {
         return { status: "permission_denied", reason: "diaries_not_public" };
     }
     const userId = profile.user_id;
@@ -282,7 +285,7 @@ export async function loadUserDiaryList(
 
     const { rows, total } = await listUserDiariesFromRepository({
         userId,
-        filters: diaryFilters(isOwnerViewing),
+        filters: diaryFilters(false),
         limit,
         offset,
     });
@@ -290,7 +293,7 @@ export async function loadUserDiaryList(
     const diaryIds = rows.map((row) => row.id);
     const [images, authorMap, commentCountMap, likeCountMap] =
         await Promise.all([
-            loadDiaryImages(diaryIds, isOwnerViewing),
+            loadDiaryImages(diaryIds, false),
             getAuthorBundle([userId]),
             fetchDiaryCommentCountMap(diaryIds),
             fetchDiaryLikeCountMap(diaryIds),
@@ -373,7 +376,7 @@ export type UserAlbumListOptions = {
 
 export async function loadUserAlbumList(
     username: string,
-    options: UserAlbumListOptions & ViewerOptions = {},
+    options: UserAlbumListOptions = {},
 ): Promise<
     ContentLoadResult<
         PaginatedResult<AppAlbum & { tags: string[]; author: AuthorBundleItem }>

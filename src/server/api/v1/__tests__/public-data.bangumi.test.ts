@@ -77,7 +77,7 @@ describe("public-data bangumi profile sanitization", () => {
     });
 
     it("does not leak encrypted bangumi token in public response", async () => {
-        const result = await loadUserHomeData("alice", { viewerId: null });
+        const result = await loadUserHomeData("alice");
 
         expect(result.status).toBe("ok");
         if (result.status !== "ok") {
@@ -91,6 +91,7 @@ describe("public-data bangumi profile sanitization", () => {
         expect(result.data.profile.bangumi_include_private).toBe(true);
         expect(mockedLoadBangumiCollections).toHaveBeenCalledWith(
             expect.objectContaining({
+                includePrivate: false,
                 limit: 20,
             }),
         );

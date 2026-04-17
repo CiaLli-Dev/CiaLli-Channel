@@ -52,11 +52,8 @@ function failFromLoadResult(result: ContentLoadResult<unknown>): Response {
     return fail("资源不存在", 404);
 }
 
-async function handleHomeModule(
-    username: string,
-    viewerId: string | null,
-): Promise<Response> {
-    const result = await loadUserHomeData(username, { viewerId });
+async function handleHomeModule(username: string): Promise<Response> {
+    const result = await loadUserHomeData(username);
     if (result.status !== "ok") {
         return failFromLoadResult(result);
     }
@@ -67,7 +64,6 @@ async function handleBangumiModule(
     context: APIContext,
     username: string,
     detailId: string,
-    viewerId: string | null,
 ): Promise<Response> {
     if (detailId) {
         return fail("未找到接口", 404);
@@ -80,7 +76,6 @@ async function handleBangumiModule(
         page,
         limit,
         status,
-        viewerId,
     });
     if (result.status !== "ok") {
         return failFromLoadResult(result);
@@ -103,10 +98,9 @@ async function handleDiaryDetail(
 async function handleDiaryList(
     context: APIContext,
     username: string,
-    viewerId: string | null,
 ): Promise<Response> {
     const { page, limit } = parsePagination(context.url);
-    const result = await loadUserDiaryList(username, { page, limit, viewerId });
+    const result = await loadUserDiaryList(username, { page, limit });
     if (result.status !== "ok") {
         return failFromLoadResult(result);
     }
@@ -122,7 +116,7 @@ async function handleDiaryModule(
     if (detailId) {
         return handleDiaryDetail(username, detailId, viewerId);
     }
-    return handleDiaryList(context, username, viewerId);
+    return handleDiaryList(context, username);
 }
 
 async function handleAlbumDetail(
@@ -140,10 +134,9 @@ async function handleAlbumDetail(
 async function handleAlbumList(
     context: APIContext,
     username: string,
-    viewerId: string | null,
 ): Promise<Response> {
     const { page, limit } = parsePagination(context.url);
-    const result = await loadUserAlbumList(username, { page, limit, viewerId });
+    const result = await loadUserAlbumList(username, { page, limit });
     if (result.status !== "ok") {
         return failFromLoadResult(result);
     }
@@ -159,7 +152,7 @@ async function handleAlbumsModule(
     if (detailId) {
         return handleAlbumDetail(username, detailId, viewerId);
     }
-    return handleAlbumList(context, username, viewerId);
+    return handleAlbumList(context, username);
 }
 
 async function dispatchModule(
@@ -170,22 +163,27 @@ async function dispatchModule(
     viewerId: string | null,
 ): Promise<Response> {
     if (moduleKey === "home") {
-        return handleHomeModule(username, viewerId);
+        return handleHomeModule(username);
     }
     if (moduleKey === "bangumi") {
-        return handleBangumiModule(context, username, detailId, viewerId);
+        return handleBangumiModule(context, username, detailId);
     }
     if (moduleKey === "diary") {
-        return handleDiaryModule(context, username, detailId, viewerId);
+        return detailId
+            ? handleDiaryModule(context, username, detailId, viewerId)
+            : handleDiaryList(context, username);
     }
-    return handleAlbumsModule(context, username, detailId, viewerId);
+    return detailId
+        ? handleAlbumsModule(context, username, detailId, viewerId)
+        : handleAlbumList(context, username);
 }
 
 function applyUserHomeCachePolicy(
+    isPublicSnapshot: boolean,
     viewerId: string | null,
     response: Response,
 ): Response {
-    if (viewerId) {
+    if (!isPublicSnapshot && viewerId) {
         response.headers.set("Cache-Control", "private, no-store");
         return response;
     }
@@ -198,6 +196,89 @@ function applyUserHomeCachePolicy(
     return response;
 }
 
+function parseUserHomeRequest(segments: string[]): {
+    username: string;
+    moduleKey: ModuleKey;
+    detailId: string;
+} | null {
+    if (segments.length < 3 || segments.length > 4) {
+        return null;
+    }
+
+    const username = parseRouteId(segments[1]);
+    if (!username) {
+        return null;
+    }
+
+    const moduleKey = segments[2];
+    if (!VALID_MODULE_KEYS.has(moduleKey)) {
+        return null;
+    }
+    if (moduleKey === "home" && segments.length !== 3) {
+        return null;
+    }
+
+    const rawDetailId = segments.length === 4 ? parseRouteId(segments[3]) : "";
+    if (segments.length === 4 && !rawDetailId) {
+        return {
+            username,
+            moduleKey: moduleKey as ModuleKey,
+            detailId: "__invalid__",
+        };
+    }
+
+    return {
+        username,
+        moduleKey: moduleKey as ModuleKey,
+        detailId: rawDetailId ?? "",
+    };
+}
+
+function isPublicSnapshotRequest(
+    moduleKey: ModuleKey,
+    detailId: string,
+): boolean {
+    return (
+        moduleKey === "home" ||
+        moduleKey === "bangumi" ||
+        (moduleKey === "diary" && !detailId) ||
+        (moduleKey === "albums" && !detailId)
+    );
+}
+
+async function dispatchUserHomeWithContext(params: {
+    context: APIContext;
+    username: string;
+    moduleKey: ModuleKey;
+    detailId: string;
+    viewerId: string | null;
+    isPublicSnapshot: boolean;
+}): Promise<Response> {
+    if (!params.isPublicSnapshot && params.viewerId) {
+        return withUserRepositoryContext(
+            getSessionAccessToken(params.context),
+            async () =>
+                await dispatchModule(
+                    params.context,
+                    params.moduleKey,
+                    params.username,
+                    params.detailId,
+                    params.viewerId,
+                ),
+        );
+    }
+
+    return withPublicRepositoryContext(async () =>
+        dispatchModule(
+            params.context,
+            params.moduleKey,
+            params.username,
+            params.detailId,
+            params.viewerId,
+        ),
+    );
+}
+
 export async function handleUserHome(
     context: APIContext,
     segments: string[],
@@ -205,53 +286,30 @@ export async function handleUserHome(
     if (context.request.method !== "GET") {
         return fail("方法不允许", 405);
     }
-    if (segments.length < 3 || segments.length > 4) {
+
+    const request = parseUserHomeRequest(segments);
+    if (!request) {
+        if (!parseRouteId(segments[1])) {
+            return fail("缺少用户名", 400);
+        }
         return fail("未找到接口", 404);
     }
-
-    const username = parseRouteId(segments[1]);
-    if (!username) {
-        return fail("缺少用户名", 400);
-    }
-
-    const moduleKey = segments[2];
-    if (!VALID_MODULE_KEYS.has(moduleKey)) {
-        return fail("未找到接口", 404);
-    }
-
-    if (moduleKey === "home" && segments.length !== 3) {
-        return fail("未找到接口", 404);
-    }
-
-    const rawDetailId = segments.length === 4 ? parseRouteId(segments[3]) : "";
-    if (segments.length === 4 && !rawDetailId) {
+    if (request.detailId === "__invalid__") {
         return fail("缺少内容 ID", 400);
     }
 
-    const sessionUser = await getSessionUser(context);
+    const { detailId, moduleKey, username } = request;
+    const isPublicSnapshot = isPublicSnapshotRequest(moduleKey, detailId);
+    const sessionUser = isPublicSnapshot ? null : await getSessionUser(context);
     const viewerId = sessionUser?.id ?? null;
-    const detailId = rawDetailId ?? "";
 
-    const response = viewerId
-        ? await withUserRepositoryContext(
-              getSessionAccessToken(context),
-              async () =>
-                  await dispatchModule(
-                      context,
-                      moduleKey as ModuleKey,
-                      username,
-                      detailId,
-                      viewerId,
-                  ),
-          )
-        : await withPublicRepositoryContext(async () =>
-              dispatchModule(
-                  context,
-                  moduleKey as ModuleKey,
-                  username,
-                  detailId,
-                  viewerId,
-              ),
-          );
-    return applyUserHomeCachePolicy(viewerId, response);
+    const response = await dispatchUserHomeWithContext({
+        context,
+        username,
+        moduleKey,
+        detailId,
+        viewerId,
+        isPublicSnapshot,
+    });
+    return applyUserHomeCachePolicy(isPublicSnapshot, viewerId, response);
 }

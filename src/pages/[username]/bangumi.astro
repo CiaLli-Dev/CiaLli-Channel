@@ -5,17 +5,15 @@ import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
 import {
-  loadProfileForViewer,
+  loadPublicProfileByUsername,
   loadUserBangumiList,
   profileToSidebarData,
 } from "@/server/api/v1/public-data";
-import {
-  runWithDirectusPublicAccess,
-  runWithDirectusUserAccess,
-} from "@/server/directus/client";
-import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
+import { runWithDirectusPublicAccess } from "@/server/directus/client";
 
 export const prerender = false;
+const USER_PUBLIC_PAGE_CACHE_CONTROL =
+  "public, s-maxage=60, stale-while-revalidate=300";
 
 const username = (Astro.params.username || "").trim();
 
@@ -29,40 +27,27 @@ try {
   if (!username) {
     Astro.response.status = 404;
   } else {
-    const sessionUser = await getSessionUser(Astro);
-    const viewerId = sessionUser?.id ?? null;
-    result = viewerId
-      ? await runWithDirectusUserAccess(
-          getSessionAccessToken(Astro),
-          async () =>
-            await loadUserBangumiList(username, {
-              limit: 200,
-              viewerId,
-            }),
-        )
-      : await runWithDirectusPublicAccess(
-          async () =>
-            await loadUserBangumiList(username, {
-              limit: 200,
-              viewerId,
-            }),
-        );
+    result = await runWithDirectusPublicAccess(
+      async () =>
+        await loadUserBangumiList(username, {
+          limit: 200,
+        }),
+    );
     if (result.status === "not_found") {
       Astro.response.status = 404;
     } else if (result.status === "permission_denied") {
       Astro.response.status = 404;
     } else {
-      const sidebarProfile = viewerId
-        ? await runWithDirectusUserAccess(
-            getSessionAccessToken(Astro),
-            async () => await loadProfileForViewer(username, viewerId),
-          )
-        : await runWithDirectusPublicAccess(
-            async () => await loadProfileForViewer(username, viewerId),
-          );
+      const sidebarProfile = await runWithDirectusPublicAccess(
+        async () => await loadPublicProfileByUsername(username),
+      );
       if (sidebarProfile) {
         Astro.locals.sidebarProfile = profileToSidebarData(sidebarProfile);
       }
+      Astro.response.headers.set(
+        "Cache-Control",
+        USER_PUBLIC_PAGE_CACHE_CONTROL,
+      );
     }
   }
 } catch (error) {

@@ -67,6 +67,7 @@ export async function loadBangumiListForProfile(
         limit?: number;
         page?: number;
         status?: BangumiCollectionStatus;
+        includePrivate?: boolean;
     },
 ): Promise<BangumiListResult> {
     const bangumiId = normalizeBangumiId(profile.bangumi_username);
@@ -84,7 +85,8 @@ export async function loadBangumiListForProfile(
         page: options?.page ?? 1,
         limit: options?.limit ?? 20,
         status: options?.status,
-        includePrivate: Boolean(profile.bangumi_include_private),
+        includePrivate:
+            options?.includePrivate ?? Boolean(profile.bangumi_include_private),
         accessToken: decryptBangumiAccessToken(
             profile.bangumi_access_token_encrypted,
         ),
@@ -135,7 +137,6 @@ export function profileToSidebarData(
 type HomeDataParallelOptions = {
     targetUserId: string;
     profile: AppProfile;
-    isOwnerViewing: boolean;
 };
 
 type HomeDataParallelResult = {
@@ -149,33 +150,37 @@ type HomeDataParallelResult = {
 export async function loadHomeDataInParallel(
     opts: HomeDataParallelOptions,
 ): Promise<HomeDataParallelResult> {
-    const { targetUserId, profile, isOwnerViewing } = opts;
+    const { targetUserId, profile } = opts;
 
     const [authorMap, articles, diaries, bangumi, albums] = await Promise.all([
         getAuthorBundle([targetUserId]),
-        isOwnerViewing || profile.show_articles_on_profile
+        profile.show_articles_on_profile
             ? listHomeArticlesFromRepository({
                   targetUserId,
-                  filters: articleFilters(isOwnerViewing),
+                  filters: articleFilters(false),
               })
             : Promise.resolve([] as AppArticle[]),
-        isOwnerViewing || profile.show_diaries_on_profile
+        profile.show_diaries_on_profile
             ? listHomeDiariesFromRepository({
                   targetUserId,
-                  filters: diaryFilters(isOwnerViewing),
+                  filters: diaryFilters(false),
               })
             : Promise.resolve([] as AppDiary[]),
-        isOwnerViewing || profile.show_bangumi_on_profile
-            ? loadBangumiListForProfile(profile, { limit: 20 }).then(
+        profile.show_bangumi_on_profile
+            ? loadBangumiListForProfile(profile, {
+                  limit: 20,
+                  includePrivate: false,
+              }).then(
+                  // 个人主页公共快照不允许回带 Bangumi 私有收藏。
                   (result) => result.items,
               )
             : Promise.resolve(
                   [] as import("@/server/bangumi/types").BangumiCollectionItem[],
               ),
-        isOwnerViewing || profile.show_albums_on_profile
+        profile.show_albums_on_profile
             ? listHomeAlbumsFromRepository({
                   targetUserId,
-                  filters: albumFilters(isOwnerViewing),
+                  filters: albumFilters(false),
               })
             : Promise.resolve([] as AppAlbum[]),
     ]);

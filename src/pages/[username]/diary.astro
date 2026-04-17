@@ -1,27 +1,26 @@
 ---
+import OwnerOnlyGate from "@components/auth/OwnerOnlyGate.astro";
 import ContentNotVisible from "@components/misc/ContentNotVisible.astro";
 import DiaryCard from "@components/DiaryCard.astro";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
 import {
-  loadProfileForViewer,
+  loadPublicProfileByUsername,
   loadUserDiaryList,
   profileToSidebarData,
 } from "@/server/api/v1/public-data";
-import {
-  runWithDirectusPublicAccess,
-  runWithDirectusUserAccess,
-} from "@/server/directus/client";
+import { runWithDirectusPublicAccess } from "@/server/directus/client";
 import type {
   ContentLoadResult,
   PaginatedResult,
 } from "@/server/api/v1/public-data";
 import type { AppDiary, AppDiaryImage } from "@/types/app";
 import type { AuthorBundleItem } from "@/server/api/v1/shared/author-cache";
-import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
 
 export const prerender = false;
+const USER_PUBLIC_PAGE_CACHE_CONTROL =
+  "public, s-maxage=60, stale-while-revalidate=300";
 
 const username = (Astro.params.username || "").trim();
 
@@ -35,49 +34,34 @@ type DiaryListItem = AppDiary & {
 let result: ContentLoadResult<PaginatedResult<DiaryListItem>> = {
   status: "not_found",
 };
-let isOwner = false;
+let ownerId = "";
 
 try {
   if (!username) {
     Astro.response.status = 404;
   } else {
-    const sessionUser = await getSessionUser(Astro);
-    const viewerId = sessionUser?.id ?? null;
-    result = (
-      viewerId
-        ? await runWithDirectusUserAccess(
-            getSessionAccessToken(Astro),
-            async () =>
-              await loadUserDiaryList(username, {
-                limit: 100,
-                viewerId,
-              }),
-          )
-        : await runWithDirectusPublicAccess(
-            async () =>
-              await loadUserDiaryList(username, {
-                limit: 100,
-                viewerId,
-              }),
-          )
-    ) as ContentLoadResult<PaginatedResult<DiaryListItem>>;
+    result = (await runWithDirectusPublicAccess(
+      async () =>
+        await loadUserDiaryList(username, {
+          limit: 100,
+        }),
+    )) as ContentLoadResult<PaginatedResult<DiaryListItem>>;
     if (result.status === "not_found") {
       Astro.response.status = 404;
     } else if (result.status === "permission_denied") {
       Astro.response.status = 404;
     } else {
-      const sidebarProfile = viewerId
-        ? await runWithDirectusUserAccess(
-            getSessionAccessToken(Astro),
-            async () => await loadProfileForViewer(username, viewerId),
-          )
-        : await runWithDirectusPublicAccess(
-            async () => await loadProfileForViewer(username, viewerId),
-          );
+      const sidebarProfile = await runWithDirectusPublicAccess(
+        async () => await loadPublicProfileByUsername(username),
+      );
       if (sidebarProfile) {
         Astro.locals.sidebarProfile = profileToSidebarData(sidebarProfile);
-        isOwner = Boolean(viewerId) && sidebarProfile.user_id === viewerId;
+        ownerId = sidebarProfile.user_id;
       }
+      Astro.response.headers.set(
+        "Cache-Control",
+        USER_PUBLIC_PAGE_CACHE_CONTROL,
+      );
     }
   }
 } catch (error) {
@@ -107,6 +91,7 @@ const items = result.status === "ok" ? result.data.items : [];
         data-enter-skeleton-page="user-diary"
         data-enter-skeleton-target="user-diary"
       >
+        <OwnerOnlyGate />
         <div data-enter-skeleton-inline-content>
           <section class="card-base px-9 py-6 rounded-(--radius-large) mb-4 text-90 flex items-center justify-between gap-4 flex-wrap">
             <div>
@@ -121,29 +106,31 @@ const items = result.status === "ok" ? result.data.items : [];
                 {i18n(I18nKey.contentDiaryPublicSubtitle)}
               </p>
             </div>
-            {isOwner && (
-              <a
-                href={`/${username}/diary/new`}
-                class="px-5 h-10 rounded-lg bg-(--primary) text-white font-medium
+            <a
+              href={`/${username}/diary/new`}
+              class="px-5 h-10 rounded-lg bg-(--primary) text-white font-medium
 							hover:opacity-90 active:opacity-80 transition
 							flex items-center gap-1.5 text-sm shrink-0"
+              data-owner-only
+              data-owner-id={ownerId}
+              hidden
+              aria-hidden="true"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="w-4 h-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                {i18n(I18nKey.contentDiaryWriteNew)}
-              </a>
-            )}
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              {i18n(I18nKey.contentDiaryWriteNew)}
+            </a>
           </section>
 
           {items.length === 0 ? (
