@@ -2,10 +2,8 @@ import type { RSSFeedItem } from "@astrojs/rss";
 import rss from "@astrojs/rss";
 import type { APIContext } from "astro";
 
-import { renderMarkdown } from "@/server/markdown/render";
-import { getResolvedSiteSettings } from "@/server/site-settings/service";
-import { getSortedPosts } from "@/utils/content-utils";
-import { getPostUrl } from "@/utils/url-utils";
+import { buildSiteFeed } from "@/server/application/feed/site-feed.service";
+import type { ResolvedSiteSettings } from "@/types/site-settings";
 
 export const prerender = false;
 
@@ -13,32 +11,25 @@ export async function GET(context: APIContext): Promise<Response> {
     if (!context.site) {
         throw new Error("site not set");
     }
-    const resolvedSiteSettings =
-        context.locals.siteSettings ?? (await getResolvedSiteSettings());
-    const settings = resolvedSiteSettings.settings;
-    const system = resolvedSiteSettings.system;
-
-    const posts = (await getSortedPosts()).filter(
-        (post) => !post.data.encrypted,
-    );
-    const feed: RSSFeedItem[] = await Promise.all(
-        posts.map(async (post) => ({
-            title: post.data.title,
-            description: post.data.description,
-            pubDate: post.data.published,
-            link: getPostUrl(post),
-            content: await renderMarkdown(String(post.body || ""), {
-                target: "feed",
-                site: context.site as URL,
-            }),
-        })),
-    );
+    const feed = await buildSiteFeed({
+        site: context.site,
+        resolvedSiteSettings: context.locals.siteSettings as
+            | ResolvedSiteSettings
+            | undefined,
+    });
+    const items: RSSFeedItem[] = feed.entries.map((entry) => ({
+        title: entry.title,
+        description: entry.summary,
+        pubDate: entry.published,
+        link: entry.link,
+        content: entry.content,
+    }));
 
     return rss({
-        title: settings.site.title,
-        description: settings.site.subtitle || "No description",
+        title: feed.title,
+        description: feed.description,
         site: context.site,
-        items: feed,
-        customData: `<language>${system.lang}</language>`,
+        items,
+        customData: `<language>${feed.language}</language>`,
     });
 }
