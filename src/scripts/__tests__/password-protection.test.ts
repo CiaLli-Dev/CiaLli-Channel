@@ -147,8 +147,8 @@ type PasswordProtectionTestWindow = FakeWindow &
             input: unknown,
             password: string,
         ) => Promise<string>;
-        __ppSanitizeDecryptedHtml?: (rawHtml: string) => string;
-        __ppResolveProtectedHtml?: (rawHtml: string) => string;
+        __ppSanitizeDecryptedHtml?: (rawHtml: unknown) => string;
+        __ppResolveProtectedHtml?: (rawContent: unknown) => string;
         __ppDispatchPostDecryptTasks?: (
             contentBodyDiv: HTMLElement,
         ) => Promise<void>;
@@ -288,8 +288,12 @@ describe("password-protection", () => {
         fakeWindow.__ppDecryptPayloadV2 = vi
             .fn()
             .mockResolvedValue("<p>decrypted</p>");
-        fakeWindow.__ppSanitizeDecryptedHtml = vi.fn((html: string) => html);
-        fakeWindow.__ppResolveProtectedHtml = vi.fn((html: string) => html);
+        fakeWindow.__ppSanitizeDecryptedHtml = vi.fn((rawHtml: unknown) =>
+            String(rawHtml),
+        );
+        fakeWindow.__ppResolveProtectedHtml = vi.fn((rawContent: unknown) =>
+            String(rawContent),
+        );
         fakeWindow.__ppDispatchPostDecryptTasks = vi
             .fn()
             .mockResolvedValue(undefined);
