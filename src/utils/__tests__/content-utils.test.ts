@@ -83,7 +83,7 @@ describe("content-utils visible posts filter", () => {
     });
 });
 
-describe("content-utils derived blog data", () => {
+describe("content-utils derived article list data", () => {
     beforeEach(() => {
         vi.resetModules();
         readManyMock.mockReset();

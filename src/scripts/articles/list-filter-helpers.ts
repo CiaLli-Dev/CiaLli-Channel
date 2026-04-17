@@ -1,7 +1,7 @@
 /**
- * archive-filter 共享类型与纯辅助函数。
+ * 文章列表筛选共享类型与纯辅助函数。
  *
- * 从 archive-filter.ts 分离，以使主文件保持在行数限制以内。
+ * 从 `list-filter.ts` 分离，以使主文件保持在行数限制以内。
  */
 
 export type CalendarFilterState = {
@@ -17,9 +17,9 @@ export type FilterState = {
     calendar: CalendarFilterState | null;
 };
 
-export type ArchiveRuntimeWindow = Window &
+export type ArticleListRuntimeWindow = Window &
     typeof globalThis & {
-        __archiveFilterCleanup?: () => void;
+        __articleListFilterCleanup?: () => void;
     };
 
 export const POSTS_PER_PAGE = 5;

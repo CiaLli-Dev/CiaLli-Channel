@@ -1,11 +1,17 @@
 import type { AppStatus } from "./app";
 import type {
     AnnouncementConfig,
+    BannerConfig,
     ExpressiveCodeConfig,
     Favicon,
     MusicPlayerConfig,
     NavBarConfig,
-    SiteConfig,
+    NavbarTitleConfig,
+    PageScalingConfig,
+    SiteLanguage,
+    ThemeColorConfig,
+    TocConfig,
+    WallpaperModeConfig,
 } from "./config";
 
 export type ProfileRuntimeSettings = {
@@ -25,10 +31,10 @@ export type EditableSiteSettings = {
     auth: {
         register_enabled: boolean;
     };
-    navbarTitle: NonNullable<SiteConfig["navbarTitle"]>;
-    wallpaperMode: SiteConfig["wallpaperMode"];
-    banner: SiteConfig["banner"];
-    toc: SiteConfig["toc"];
+    navbarTitle: NavbarTitleConfig;
+    wallpaperMode: WallpaperModeConfig;
+    banner: BannerConfig;
+    toc: TocConfig;
     navBar: NavBarConfig;
     profile: ProfileRuntimeSettings;
     announcement: AnnouncementConfig;
@@ -54,10 +60,10 @@ export type PublicSiteSettings = EditableSiteSettings;
 
 export type SystemSiteConfig = {
     siteURL: string;
-    lang: SiteConfig["lang"];
+    lang: SiteLanguage;
     timeZone: string;
-    themeColor: SiteConfig["themeColor"];
-    pageScaling: NonNullable<SiteConfig["pageScaling"]>;
+    themeColor: ThemeColorConfig;
+    pageScaling: PageScalingConfig;
     expressiveCode: ExpressiveCodeConfig;
 };
 

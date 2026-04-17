@@ -1,7 +1,7 @@
-import type { SiteConfig } from "@/types/config";
+import type { SiteLanguage } from "@/types/config";
 import type { ResolvedSiteSettings } from "@/types/site-settings";
 
-const SITE_LOCALE_MAP: Record<SiteConfig["lang"], string> = {
+const SITE_LOCALE_MAP: Record<SiteLanguage, string> = {
     zh_CN: "zh-CN",
     zh_TW: "zh-TW",
     en: "en-US",
@@ -76,7 +76,7 @@ function readTimeParts(
 }
 
 export function resolveSiteLocale(lang: string | null | undefined): string {
-    const normalized = String(lang || "").trim() as SiteConfig["lang"];
+    const normalized = String(lang || "").trim() as SiteLanguage;
     return SITE_LOCALE_MAP[normalized] || FALLBACK_LOCALE;
 }
 

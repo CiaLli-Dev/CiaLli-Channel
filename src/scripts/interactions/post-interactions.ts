@@ -48,13 +48,13 @@ function getFilterDom(): {
     };
 }
 
-function isArchivePage(): boolean {
-    return Boolean(document.querySelector(".archive-posts"));
+function isArticleListPage(): boolean {
+    return document.body?.dataset.pageKind === "article-list";
 }
 
 function applyCalendarFilter(detail: CalendarFilterDetail): void {
-    // archive 页面有自己的筛选系统，跳过此处理
-    if (isArchivePage()) {
+    // 文章列表页有自己的筛选系统，跳过此处理
+    if (isArticleListPage()) {
         return;
     }
 
@@ -78,8 +78,8 @@ function applyCalendarFilter(detail: CalendarFilterDetail): void {
 }
 
 function clearCalendarFilter(): void {
-    // archive 页面有自己的筛选系统，跳过此处理
-    if (isArchivePage()) {
+    // 文章列表页有自己的筛选系统，跳过此处理
+    if (isArticleListPage()) {
         return;
     }
 

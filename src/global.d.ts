@@ -1,4 +1,3 @@
-import type { SiteConfig } from "./types/config";
 import type { Translation } from "./i18n/translation";
 import type { ResolvedSiteSettings } from "./types/site-settings";
 import type { ProgressOverlayApi } from "@/scripts/shared/progress-overlay-manager";
@@ -47,6 +46,5 @@ declare global {
         __ppDispatchPostDecryptTasks?: (
             contentBodyDiv: HTMLElement,
         ) => Promise<void>;
-        siteConfig?: SiteConfig;
     }
 }

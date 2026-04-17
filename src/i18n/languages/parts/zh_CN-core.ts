@@ -3,7 +3,6 @@ import Key from "../../i18nKey";
 export const zhCNCore: Record<string, string> = {
     [Key.coreHome]: "首页",
     [Key.coreAbout]: "关于我们",
-    [Key.coreArchive]: "归档",
     [Key.coreOther]: "其他",
     [Key.coreNavLinks]: "链接",
     [Key.coreNavMy]: "我的",

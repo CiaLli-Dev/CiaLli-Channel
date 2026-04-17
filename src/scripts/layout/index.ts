@@ -231,47 +231,83 @@ function setupHashOffsetNavigation(runtimeWindow: LayoutRuntimeWindow): void {
 // module on demand.
 // ---------------------------------------------------------------------------
 
-const runDynamicPageInit = async (): Promise<void> => {
-    const path = window.location.pathname.replace(/\/+$/, "") || "/";
+async function initPageKindModule(pageKind: string): Promise<boolean> {
+    if (pageKind !== "article-list") {
+        return false;
+    }
+
+    const { initArticleListFilter } =
+        await import("@/scripts/articles/list-filter");
+    initArticleListFilter();
+    return true;
+}
+
+async function initPathSpecificModule(path: string): Promise<void> {
     if (path === "/me") {
         const { initMePage } = await import("@/scripts/me/page");
         initMePage();
-    } else if (path === "/posts/new" || /^\/posts\/[^/]+\/edit$/.test(path)) {
+        return;
+    }
+    if (path === "/posts/new" || /^\/posts\/[^/]+\/edit$/.test(path)) {
         const { initPublishPage } = await import("@/scripts/publish/page");
         initPublishPage();
-    } else if (path === "/posts") {
-        const { initArchiveFilter } = await import("@/scripts/archives/filter");
-        initArchiveFilter();
-    } else if (/^\/[^/]+\/albums\/?$/.test(path)) {
+        return;
+    }
+    if (/^\/[^/]+\/albums\/?$/.test(path)) {
         const { initAlbumFilter } = await import("@/scripts/albums/filter");
         initAlbumFilter();
-    } else if (/^\/[^/]+\/bangumi\/?$/.test(path)) {
+        return;
+    }
+    if (/^\/[^/]+\/bangumi\/?$/.test(path)) {
         const { initBangumiFilter } = await import("@/scripts/bangumi/filter");
         initBangumiFilter();
-    } else if (/^\/[^/]+\/albums\/new\/?$/.test(path)) {
+        return;
+    }
+    if (/^\/[^/]+\/albums\/new\/?$/.test(path)) {
         const { initAlbumNewPage } = await import("@/scripts/albums/new-page");
         initAlbumNewPage();
-    } else if (path === "/admin/settings/site") {
+        return;
+    }
+    if (path === "/admin/settings/site") {
         const { initSiteSettingsPage } =
             await import("@/scripts/site-settings/page");
         initSiteSettingsPage();
-    } else if (path === "/admin/users") {
+        return;
+    }
+    if (path === "/admin/users") {
         const { initAdminUsersPage } =
             await import("@/scripts/admin/users-page");
         initAdminUsersPage();
-    } else if (path === "/admin/settings/bulletin") {
+        return;
+    }
+    if (path === "/admin/settings/bulletin") {
         const { initAdminBulletinPage } =
             await import("@/scripts/admin/bulletin-page");
         initAdminBulletinPage();
-    } else if (path === "/admin/settings/about") {
+        return;
+    }
+    if (path === "/admin/settings/about") {
         const { initAdminAboutPage } =
             await import("@/scripts/admin/about-page");
         initAdminAboutPage();
-    } else if (path === "/me/homepage") {
+        return;
+    }
+    if (path === "/me/homepage") {
         const { initMeHomepagePage } =
             await import("@/scripts/me/homepage-page");
         initMeHomepagePage();
     }
+}
+
+const runDynamicPageInit = async (): Promise<void> => {
+    const path = window.location.pathname.replace(/\/+$/, "") || "/";
+    const pageKind = document.body?.dataset.pageKind || "";
+
+    if (await initPageKindModule(pageKind)) {
+        return;
+    }
+
+    await initPathSpecificModule(path);
 };
 
 function bindPageLifecycle(runtimeWindow: LayoutRuntimeWindow): void {

@@ -14,7 +14,7 @@ import IconifyLoader from "../components/misc/IconifyLoader.astro";
 import ImageWrapper from "../components/misc/ImageWrapper.astro";
 import TypewriterText from "../components/TypewriterText.astro";
 import TOC from "../components/widget/TOC.astro";
-import { buildLegacySiteConfig } from "@/config";
+import { buildRuntimeSiteConfig } from "@/config";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
 import { BANNER_HEIGHT_EXTEND } from "../constants/constants";
 import Layout from "@layouts/Layout.astro";
@@ -38,15 +38,16 @@ interface Props {
   leftSidebarMobilePreset?: LeftSidebarMobilePreset;
   rightSidebarMobilePreset?: RightSidebarMobilePreset;
   hasCustomRightSidebarContent?: boolean;
+  pageKind?: string;
 }
 
 const resolvedSiteSettings =
   Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
-const siteConfig = buildLegacySiteConfig(
+const runtimeSiteConfig = buildRuntimeSiteConfig(
   resolvedSiteSettings.system,
   resolvedSiteSettings.settings,
 );
-const bannerImages = await getBannerImages(siteConfig);
+const bannerImages = await getBannerImages(runtimeSiteConfig);
 
 const {
   title,
@@ -58,6 +59,7 @@ const {
   leftSidebarMobilePreset = "footer",
   rightSidebarMobilePreset = "panel",
   hasCustomRightSidebarContent: hasCustomRightSidebarContentProp,
+  pageKind,
 } = Astro.props;
 
 const hasCustomRightSidebarSlot = Astro.slots.has("sidebar-right");
@@ -85,7 +87,7 @@ const {
   leftSidebarBuckets,
   rightSidebarBuckets,
 } = buildMainGridLayoutState(
-  siteConfig,
+  runtimeSiteConfig,
   bannerImages,
   Astro.url.pathname,
   hasCustomRightSidebarContent,
@@ -111,7 +113,7 @@ const rightSidebarPanelTitle = shouldRenderDedicatedPostToc
 const shouldRenderMobileArticleTocDrawer =
   rightSidebarMobilePreset === "drawer" &&
   !isPostEditorPage &&
-  siteConfig.toc.enable &&
+  runtimeSiteConfig.toc.enable &&
   isPostDetailPage;
 const shouldRenderMobileRightSidebarDrawer =
   rightSidebarMobilePreset === "drawer" &&
@@ -140,6 +142,7 @@ const shouldRelocateRightSidebarContent =
   description={description}
   lang={lang}
   setOGTypeArticle={setOGTypeArticle}
+  pageKind={pageKind}
 >
   <IconifyLoader />
 
@@ -179,7 +182,7 @@ const shouldRelocateRightSidebarContent =
                       "banner-image object-cover h-full w-full transition-transform duration-500 ease-out",
                     ]}
                     src={image}
-                    position={siteConfig.banner.position}
+                    position={runtimeSiteConfig.banner.position}
                     loading={index === 0 ? "eager" : "lazy"}
                   />
                 </li>
@@ -196,7 +199,7 @@ const shouldRelocateRightSidebarContent =
         data-astro-rerun
         define:vars={{
           desktopImages: bannerImages,
-          position: siteConfig.banner.position,
+          position: runtimeSiteConfig.banner.position,
         }}
       >
         (function () {
@@ -229,7 +232,7 @@ const shouldRelocateRightSidebarContent =
 
           const desktopImg = document.createElement("img");
           desktopImg.id = "banner";
-          desktopImg.alt = "Desktop banner image of the blog";
+          desktopImg.alt = "Desktop banner image of the site";
           desktopImg.className =
             "banner-image object-cover h-full w-full transition duration-700 opacity-100";
           desktopImg.src = picked;
@@ -244,35 +247,41 @@ const shouldRelocateRightSidebarContent =
       <div class="navbar-scrim" aria-hidden="true"></div>
 
       {
-        siteConfig.banner.homeText?.enable && (
+        runtimeSiteConfig.banner.homeText?.enable && (
           <div
             class={`banner-text-overlay absolute inset-0 z-20 flex items-center justify-center ${!showHomeText ? "hidden" : ""}`}
           >
             <div class="mb-0 w-[88%] max-w-[72rem] text-center">
               <div class="flex flex-col">
-                {siteConfig.banner.homeText?.title && (
+                {runtimeSiteConfig.banner.homeText?.title && (
                   <h1 class="banner-title text-8xl text-white drop-shadow-lg mb-4">
-                    {siteConfig.banner.homeText.title}
+                    {runtimeSiteConfig.banner.homeText.title}
                   </h1>
                 )}
-                {siteConfig.banner.homeText?.subtitle && (
+                {runtimeSiteConfig.banner.homeText?.subtitle && (
                   <h2 class="banner-subtitle text-3xl text-white/90 drop-shadow-md">
                     <span class="inline-block min-h-[1.2em]">
-                      {siteConfig.banner.homeText.typewriter?.enable ? (
+                      {runtimeSiteConfig.banner.homeText.typewriter?.enable ? (
                         <TypewriterText
-                          text={siteConfig.banner.homeText.subtitle}
-                          speed={siteConfig.banner.homeText.typewriter.speed}
+                          text={runtimeSiteConfig.banner.homeText.subtitle}
+                          speed={
+                            runtimeSiteConfig.banner.homeText.typewriter.speed
+                          }
                           deleteSpeed={
-                            siteConfig.banner.homeText.typewriter.deleteSpeed
+                            runtimeSiteConfig.banner.homeText.typewriter
+                              .deleteSpeed
                           }
                           pauseTime={
-                            siteConfig.banner.homeText.typewriter.pauseTime
+                            runtimeSiteConfig.banner.homeText.typewriter
+                              .pauseTime
                           }
                         />
-                      ) : Array.isArray(siteConfig.banner.homeText.subtitle) ? (
-                        siteConfig.banner.homeText.subtitle[0]
+                      ) : Array.isArray(
+                          runtimeSiteConfig.banner.homeText.subtitle,
+                        ) ? (
+                        runtimeSiteConfig.banner.homeText.subtitle[0]
                       ) : (
-                        siteConfig.banner.homeText.subtitle
+                        runtimeSiteConfig.banner.homeText.subtitle
                       )}
                     </span>
                   </h2>
@@ -284,7 +293,7 @@ const shouldRelocateRightSidebarContent =
       }
 
       {
-        siteConfig.banner.waves?.enable && (
+        runtimeSiteConfig.banner.waves?.enable && (
           <div
             class="waves absolute -bottom-px h-[15vh] max-h-[9.375rem] min-h-[3.125rem] w-full"
             id="header-waves"
@@ -349,7 +358,7 @@ const shouldRelocateRightSidebarContent =
     <!-- 过渡期独立背景层：与内容同启停，但承担更快的整页封顶覆盖。 -->
     <div class="main-panel-transition-bg" aria-hidden="true">
       {
-        siteConfig.banner.waves?.enable && (
+        runtimeSiteConfig.banner.waves?.enable && (
           <div class="main-panel-transition-bg-wave" aria-hidden="true">
             <svg
               class="waves"
@@ -812,7 +821,7 @@ const shouldRelocateRightSidebarContent =
       }
       <BackToTop />
       {
-        siteConfig.toc.enable && isFloatTOC && (
+        runtimeSiteConfig.toc.enable && isFloatTOC && (
           <div class="hidden lg:block">
             <FloatingTOC />
           </div>
@@ -822,7 +831,9 @@ const shouldRelocateRightSidebarContent =
   </div>
 
   {
-    (!siteConfig.toc.enable || isFloatTOC || !shouldRenderDedicatedPostToc) && (
+    (!runtimeSiteConfig.toc.enable ||
+      isFloatTOC ||
+      !shouldRenderDedicatedPostToc) && (
       <div id="toc-container" class="hidden" />
     )
   }

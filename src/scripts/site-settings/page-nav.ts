@@ -30,9 +30,9 @@ export interface NavBarLinkObj {
 export const PRESET_TO_LINK: Record<number, NavBarLinkObj> = {
     0: { name: t(I18nKey.coreHome), url: "/", icon: "material-symbols:home" },
     1: {
-        name: t(I18nKey.coreArchive),
+        name: t(I18nKey.contentPostList),
         url: "/posts",
-        icon: "material-symbols:archive",
+        icon: "material-symbols:article",
     },
     2: {
         name: t(I18nKey.coreAbout),

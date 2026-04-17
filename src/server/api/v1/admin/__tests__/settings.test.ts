@@ -251,10 +251,10 @@ describe("handleAdminSettings /site", () => {
             settings: {
                 site: {
                     title: "CiaLli",
-                    subtitle: "个人博客",
+                    subtitle: "内容社区",
                     lang: "zh_CN",
                     timeZone: "Asia/Shanghai",
-                    keywords: ["blog"],
+                    keywords: ["文章"],
                     siteStartDate: "2026-02-01",
                     favicon: [],
                 },

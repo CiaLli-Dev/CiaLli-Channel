@@ -3,7 +3,6 @@ import Key from "../../i18nKey";
 export const jaCore: Record<string, string> = {
     [Key.coreHome]: "ホーム",
     [Key.coreAbout]: "このブログについて",
-    [Key.coreArchive]: "アーカイブ",
     [Key.coreOther]: "その他",
     [Key.coreNavLinks]: "リンク",
     [Key.coreNavMy]: "私の",

@@ -159,7 +159,7 @@ describe("transition-hooks", () => {
         ).toEqual({
             payload: {
                 mode: "post-card",
-                layoutKey: "sidebar-main-right-archive",
+                layoutKey: "sidebar-main-right-article-list",
             },
             preservePreparedPayload: false,
         });

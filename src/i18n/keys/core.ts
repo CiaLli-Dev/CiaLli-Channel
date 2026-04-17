@@ -2,7 +2,6 @@
 export enum CoreKey {
     coreHome = "coreHome",
     coreAbout = "coreAbout",
-    coreArchive = "coreArchive",
     coreOther = "coreOther",
     coreNavLinks = "coreNavLinks",
     coreNavMy = "coreNavMy",

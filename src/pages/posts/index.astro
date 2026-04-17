@@ -30,7 +30,7 @@ const allPosts = await getSortedPosts(viewerId);
 const tags = await getTagList(viewerId);
 const categories = await getCategoryList(viewerId);
 const uncategorizedLabel = i18n(I18nKey.contentUncategorized);
-const archiveFeedItems: HomeFeedPageItem[] = allPosts.map((entry) => ({
+const articleListFeedItems: HomeFeedPageItem[] = allPosts.map((entry) => ({
   type: "article",
   id: entry.data.article_id,
   authorId: entry.data.author_id,
@@ -54,13 +54,15 @@ if (hasSessionCookie || viewerId) {
 ---
 
 <MainGridLayout
-  title={i18n(I18nKey.coreArchive)}
+  title={i18n(I18nKey.contentPostList)}
   leftSidebarMobilePreset="supplementary"
   rightSidebarMobilePreset="drawer"
+  pageKind="article-list"
 >
   <!-- 默认 slot: 文章列表 -->
   <div
-    class="archive-posts min-w-0 mb-4 lg:mb-0"
+    class="article-list-page min-w-0 mb-4 lg:mb-0"
+    data-page-kind="article-list"
     data-uncategorized-label={uncategorizedLabel}
   >
     {
@@ -69,20 +71,20 @@ if (hasSessionCookie || viewerId) {
           暂无公开文章。
         </div>
       ) : (
-        <PostPage items={archiveFeedItems} maxAnimationIndex={15} />
+        <PostPage items={articleListFeedItems} maxAnimationIndex={15} />
       )
     }
 
     <!-- 无筛选结果提示 -->
     <div
-      id="archive-no-results"
+      id="article-list-no-results"
       class="hidden card-base p-8 rounded-(--radius-large) text-70 mt-4"
     >
       没有匹配的文章。
     </div>
 
     <!-- 分页控件 -->
-    <div id="archive-pagination" class="hidden mt-4">
+    <div id="article-list-pagination" class="hidden mt-4">
       <div
         class="card-base p-3 rounded-(--radius-large) flex items-center justify-center gap-2"
       >
@@ -113,7 +115,7 @@ if (hasSessionCookie || viewerId) {
   <!-- 右侧栏 slot: 筛选面板 -->
   <div
     slot="sidebar-right"
-    class="archive-filter-panel w-full max-h-none overflow-visible flex flex-col gap-4 self-start lg:max-h-[calc(100dvh-6.5rem)] lg:overflow-y-auto"
+    class="article-list-filter-panel w-full max-h-none overflow-visible flex flex-col gap-4 self-start lg:max-h-[calc(100dvh-6.5rem)] lg:overflow-y-auto"
   >
     <!-- 日历 -->
     <Calendar defaultExpanded={false} />
@@ -127,13 +129,13 @@ if (hasSessionCookie || viewerId) {
       >
         {i18n(I18nKey.contentCategories)}
       </div>
-      <div class="px-4 flex flex-col gap-0.5" id="archive-categories">
+      <div class="px-4 flex flex-col gap-0.5" id="article-list-categories">
         {
           categories.map((c) => (
             <button
               data-filter="category"
               data-value={c.name}
-              class="archive-filter-btn w-full h-10 rounded-lg bg-none
+              class="article-list-filter-btn w-full h-10 rounded-lg bg-none
 							hover:bg-(--btn-plain-bg-hover) active:bg-(--btn-plain-bg-active)
 							transition-all pl-2 hover:pl-3 text-left
 							text-neutral-700 hover:text-(--primary)
@@ -168,13 +170,13 @@ if (hasSessionCookie || viewerId) {
       >
         {i18n(I18nKey.contentTags)}
       </div>
-      <div class="px-4 flex gap-2 flex-wrap" id="archive-tags">
+      <div class="px-4 flex gap-2 flex-wrap" id="article-list-tags">
         {
           tags.map((t) => (
             <button
               data-filter="tag"
               data-value={t.name}
-              class="archive-filter-btn btn-regular h-8 text-sm px-3 rounded-lg cursor-pointer"
+              class="article-list-filter-btn btn-regular h-8 text-sm px-3 rounded-lg cursor-pointer"
             >
               {t.name.trim()}
             </button>
@@ -203,13 +205,13 @@ if (hasSessionCookie || viewerId) {
   @reference "../../styles/main.css";
 
   /* 自定义滚动条 */
-  .archive-filter-panel::-webkit-scrollbar {
+  .article-list-filter-panel::-webkit-scrollbar {
     width: 4px;
   }
-  .archive-filter-panel::-webkit-scrollbar-track {
+  .article-list-filter-panel::-webkit-scrollbar-track {
     background: transparent;
   }
-  .archive-filter-panel::-webkit-scrollbar-thumb {
+  .article-list-filter-panel::-webkit-scrollbar-thumb {
     background-color: rgba(156, 163, 175, 0.3);
     border-radius: 2px;
   }
@@ -217,7 +219,7 @@ if (hasSessionCookie || viewerId) {
   /* 移动端/平板端：筛选面板回归自然高度 */
 
   /* 激活状态的筛选按钮 */
-  :global(.archive-filter-btn.active) {
+  :global(.article-list-filter-btn.active) {
     background-color: var(--primary) !important;
     color: white !important;
   }
@@ -232,7 +234,7 @@ if (hasSessionCookie || viewerId) {
     justify-content: space-between;
     gap: 0.5rem;
   }
-  :global(.archive-filter-btn.active .flex span:last-child) {
+  :global(.article-list-filter-btn.active .flex span:last-child) {
     background-color: rgba(255, 255, 255, 0.2) !important;
     color: white !important;
   }

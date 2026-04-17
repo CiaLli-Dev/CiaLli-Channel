@@ -1,5 +1,4 @@
 ---
-import { buildLegacySiteConfig } from "@/config";
 import { getTranslation } from "@/i18n/translation";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
 import type { ResolvedSiteSettings } from "@/types/site-settings";
@@ -12,10 +11,6 @@ const resolvedSiteSettings =
   Astro.props.resolvedSiteSettings ??
   Astro.locals.siteSettings ??
   (await getResolvedSiteSettings());
-const legacySiteConfig = buildLegacySiteConfig(
-  resolvedSiteSettings.system,
-  resolvedSiteSettings.settings,
-);
 const runtimeI18n = getTranslation(resolvedSiteSettings.system.lang);
 ---
 
@@ -34,11 +29,9 @@ const runtimeI18n = getTranslation(resolvedSiteSettings.system.lang);
   is:inline
   define:vars={{
     runtimeSettings: resolvedSiteSettings,
-    legacySiteConfig,
     runtimeI18n,
   }}
 >
   window.__CIALLI_RUNTIME_SETTINGS__ = runtimeSettings;
-  window.siteConfig = legacySiteConfig;
   window.__CIALLI_I18N__ = runtimeI18n;
 </script>

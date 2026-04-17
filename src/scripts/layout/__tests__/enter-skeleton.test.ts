@@ -122,7 +122,7 @@ describe("enter-skeleton", () => {
         expect(mainContainer.style.minHeight).toBe("1360px");
     });
 
-    it("resolveEnterSkeletonModeFromPath 会把文章详情、归档与个人页路由映射到稳定 mode", () => {
+    it("resolveEnterSkeletonModeFromPath 会把文章详情、文章列表与个人页路由映射到稳定 mode", () => {
         expect(resolveEnterSkeletonModeFromPath("/")).toBe("fallback");
         expect(resolveEnterSkeletonModeFromPath("/posts/demo")).toBe(
             "post-detail",
@@ -148,7 +148,7 @@ describe("enter-skeleton", () => {
 
     it("resolveTransitionProxyLayoutKeyFromPath 会把右栏与全宽页面映射到正确代理壳", () => {
         expect(resolveTransitionProxyLayoutKeyFromPath("/posts")).toBe(
-            "sidebar-main-right-archive",
+            "sidebar-main-right-article-list",
         );
         expect(resolveTransitionProxyLayoutKeyFromPath("/auth/login")).toBe(
             "sidebar-main",

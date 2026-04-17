@@ -3,7 +3,6 @@ import Key from "../../i18nKey";
 export const enCore: Record<string, string> = {
     [Key.coreHome]: "Home",
     [Key.coreAbout]: "About",
-    [Key.coreArchive]: "Archive",
     [Key.coreOther]: "Other",
     [Key.coreNavLinks]: "Links",
     [Key.coreNavMy]: "My",

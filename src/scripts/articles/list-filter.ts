@@ -1,7 +1,7 @@
 /**
- * 归档页筛选与分页逻辑。
+ * 文章列表页筛选与分页逻辑。
  *
- * 从 archive.astro 内联脚本抽离为模块，供全局 layout 运行时在
+ * 从文章列表页内联脚本抽离为模块，供全局 layout 运行时在
  * 页面导航后动态导入并再次执行。由于 ES module 在同一文档同一 URL
  * 只会执行一次，不能依赖自动反复触发页面脚本。
  *
@@ -17,7 +17,7 @@ import {
 import {
     buildPageNumbers,
     POSTS_PER_PAGE,
-} from "@/scripts/archives/filter-helpers";
+} from "@/scripts/articles/list-filter-helpers";
 
 // ---- 类型定义 ----
 
@@ -34,12 +34,12 @@ type FilterState = {
     calendar: CalendarFilterState | null;
 };
 
-type ArchiveRuntimeWindow = Window &
+type ArticleListRuntimeWindow = Window &
     typeof globalThis & {
-        __archiveFilterCleanup?: () => void;
+        __articleListFilterCleanup?: () => void;
     };
 
-export type { CalendarFilterState, FilterState, ArchiveRuntimeWindow };
+export type { ArticleListRuntimeWindow, CalendarFilterState, FilterState };
 
 // ---- 顶层纯辅助函数 ----
 
@@ -66,7 +66,7 @@ function toggleBtnDisabled(id: string, disabled: boolean): void {
 }
 
 function updatePaginationUI(page: number, totalPages: number): void {
-    const container = document.getElementById("archive-pagination");
+    const container = document.getElementById("article-list-pagination");
     if (!container) {
         return;
     }
@@ -100,9 +100,9 @@ function hasActiveFilters(filter: FilterState): boolean {
     );
 }
 
-// ---- ArchiveFilterCore：封装状态与业务逻辑 ----
+// ---- ArticleListFilterCore：封装状态与业务逻辑 ----
 
-class ArchiveFilterCore {
+class ArticleListFilterCore {
     private currentPage = 1;
     private currentFilter: FilterState = {
         tags: [],
@@ -243,7 +243,7 @@ class ArchiveFilterCore {
 
     renderPosts(): void {
         const postList = document.getElementById("post-list-container");
-        const noResults = document.getElementById("archive-no-results");
+        const noResults = document.getElementById("article-list-no-results");
         if (!postList) {
             return;
         }
@@ -323,20 +323,20 @@ class ArchiveFilterCore {
 
     updateButtonStates(filter: FilterState): void {
         document
-            .querySelectorAll<HTMLElement>(".archive-filter-btn")
+            .querySelectorAll<HTMLElement>(".article-list-filter-btn")
             .forEach((btn) => btn.classList.remove("active"));
         const selectedTags = normalizeTagList(filter.tags);
         selectedTags.forEach((tag) => {
             document
                 .querySelector<HTMLElement>(
-                    `.archive-filter-btn[data-filter="tag"][data-value="${CSS.escape(tag)}"]`,
+                    `.article-list-filter-btn[data-filter="tag"][data-value="${CSS.escape(tag)}"]`,
                 )
                 ?.classList.add("active");
         });
         if (filter.category) {
             document
                 .querySelector<HTMLElement>(
-                    `.archive-filter-btn[data-filter="category"][data-value="${CSS.escape(filter.category)}"]`,
+                    `.article-list-filter-btn[data-filter="category"][data-value="${CSS.escape(filter.category)}"]`,
                 )
                 ?.classList.add("active");
         }
@@ -368,14 +368,14 @@ class ArchiveFilterCore {
 // ---- 事件绑定（顶层）----
 
 function bindFilterButtonClick(
-    core: ArchiveFilterCore,
+    core: ArticleListFilterCore,
     signal: AbortSignal,
 ): void {
     document.addEventListener(
         "click",
         (e) => {
             const btn = (e.target as HTMLElement)?.closest<HTMLElement>(
-                ".archive-filter-btn",
+                ".article-list-filter-btn",
             );
             if (!btn) {
                 return;
@@ -406,13 +406,13 @@ function bindFilterButtonClick(
 }
 
 function bindCalendarEvents(
-    core: ArchiveFilterCore,
+    core: ArticleListFilterCore,
     signal: AbortSignal,
 ): void {
     window.addEventListener(
         "calendarFilterChange",
         (event) => {
-            if (!document.querySelector(".archive-posts")) {
+            if (document.body?.dataset.pageKind !== "article-list") {
                 return;
             }
             const detail = (
@@ -473,7 +473,7 @@ function scrollPostListIntoView(): void {
 }
 
 function bindPaginationClick(
-    core: ArchiveFilterCore,
+    core: ArticleListFilterCore,
     signal: AbortSignal,
 ): void {
     document.addEventListener(
@@ -517,17 +517,18 @@ function bindPaginationClick(
 
 // ---- 主入口 ----
 
-export function initArchiveFilter(): void {
-    const rw = window as ArchiveRuntimeWindow;
-    rw.__archiveFilterCleanup?.();
+export function initArticleListFilter(): void {
+    const rw = window as ArticleListRuntimeWindow;
+    rw.__articleListFilterCleanup?.();
 
-    const archiveRoot = document.querySelector<HTMLElement>(".archive-posts");
-    if (!archiveRoot) {
+    const articleListRoot =
+        document.querySelector<HTMLElement>(".article-list-page");
+    if (!articleListRoot) {
         return;
     }
 
-    const core = new ArchiveFilterCore(
-        archiveRoot.dataset.uncategorizedLabel || "",
+    const core = new ArticleListFilterCore(
+        articleListRoot.dataset.uncategorizedLabel || "",
     );
     const ac = new AbortController();
     const { signal } = ac;
@@ -539,9 +540,9 @@ export function initArchiveFilter(): void {
         .getElementById("filter-clear-btn")
         ?.addEventListener("click", () => core.clearAllFilters(), { signal });
 
-    rw.__archiveFilterCleanup = () => {
+    rw.__articleListFilterCleanup = () => {
         ac.abort();
-        rw.__archiveFilterCleanup = undefined;
+        rw.__articleListFilterCleanup = undefined;
     };
 
     const params = new URLSearchParams(window.location.search);

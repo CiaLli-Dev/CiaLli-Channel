@@ -381,10 +381,10 @@ export function resolveTransitionProxyPayloadFromDocument(
             layoutKey: "full-width-post-editor",
         };
     }
-    if (targetDocument.querySelector(".archive-filter-panel")) {
+    if (targetDocument.body?.dataset.pageKind === "article-list") {
         return {
             mode: resolvedMode,
-            layoutKey: "sidebar-main-right-archive",
+            layoutKey: "sidebar-main-right-article-list",
         };
     }
     if (targetDocument.querySelector(".bangumi-filter-panel")) {

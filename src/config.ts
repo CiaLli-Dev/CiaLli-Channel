@@ -1,4 +1,4 @@
-import type { SidebarLayoutConfig, SiteConfig } from "./types/config";
+import type { RuntimeSiteConfig, SidebarLayoutConfig } from "./types/config";
 import {
     type SiteSettingsPayload,
     type SystemSiteConfig,
@@ -24,7 +24,7 @@ export const systemSiteConfig: SystemSiteConfig = {
 export const defaultSiteSettings: SiteSettingsPayload = {
     site: {
         title: "CiaLli",
-        subtitle: "个人博客",
+        subtitle: "内容社区",
         lang: "zh_CN",
         timeZone: null,
         keywords: [],
@@ -88,7 +88,7 @@ export const defaultSiteSettings: SiteSettingsPayload = {
     navBar: {
         links: [
             LinkPreset.Home,
-            LinkPreset.Archive,
+            LinkPreset.Articles,
             {
                 name: "发布",
                 url: "/posts/new",
@@ -150,9 +150,9 @@ export const defaultSiteSettings: SiteSettingsPayload = {
     },
     announcement: {
         title: "",
-        summary: "欢迎来到博客！这是一条示例公告",
+        summary: "欢迎来到 CiaLli 社区，这是一条示例公告。",
         body_markdown:
-            "欢迎来到博客！\n\n这是公告页示例内容。你可以在管理台公告编辑页使用 **Markdown** 编辑完整公告。",
+            "欢迎来到 CiaLli 社区！\n\n这是公告页示例内容。你可以在管理台公告编辑页使用 **Markdown** 编辑完整公告。",
         closable: true,
     },
     musicPlayer: {
@@ -166,10 +166,10 @@ export const defaultSiteSettings: SiteSettingsPayload = {
     },
 };
 
-export function buildLegacySiteConfig(
+export function buildRuntimeSiteConfig(
     system: SystemSiteConfig,
     settings: SiteSettingsPayload,
-): SiteConfig {
+): RuntimeSiteConfig {
     return {
         title: settings.site.title,
         subtitle: settings.site.subtitle,

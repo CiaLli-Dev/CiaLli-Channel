@@ -4,7 +4,7 @@ import Analytics from "@vercel/analytics/astro";
 import SpeedInsights from "@vercel/speed-insights/astro";
 import ConfigCarrier from "@components/ConfigCarrier.astro";
 import MusicPlayer from "@components/widget/MusicPlayer/MusicPlayer.svelte";
-import { buildLegacySiteConfig } from "@/config";
+import { buildRuntimeSiteConfig } from "@/config";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
 import { readCsrfToken } from "@/server/security/csrf";
 import type { ResolvedSiteSettings } from "@/types/site-settings";
@@ -37,11 +37,12 @@ interface Props {
   description?: string;
   lang?: string;
   setOGTypeArticle?: boolean;
+  pageKind?: string;
 }
 
 const resolvedSiteSettings: ResolvedSiteSettings =
   Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
-const siteConfig = buildLegacySiteConfig(
+const runtimeSiteConfig = buildRuntimeSiteConfig(
   resolvedSiteSettings.system,
   resolvedSiteSettings.settings,
 );
@@ -55,8 +56,6 @@ const csrfToken = csrfTokenFromLocals || readCsrfToken(Astro);
 // 因此仍需在点击链接时通过 transition hooks 立即切换布局态
 const isHomePage = pathsEqual(Astro.url.pathname, url("/"));
 const normalizedPathname = Astro.url.pathname.replace(/\/+$/, "").toLowerCase();
-const isArchivePage =
-  normalizedPathname === "/posts" || normalizedPathname.endsWith("/posts");
 const isPostEditorRoute =
   normalizedPathname === "/posts/new" ||
   /^\/posts\/[^/]+\/edit$/.test(normalizedPathname);
@@ -64,29 +63,31 @@ const isPostEditorRoute =
 // 定义全局 CSS 变量
 // 放在 Layout 而非 GlobalStyles 的原因见：
 // https://github.com/withastro/astro/issues/6728#issuecomment-1502203757
-const configHue = siteConfig.themeColor.hue;
+const configHue = runtimeSiteConfig.themeColor.hue;
 
-let { title, description, lang, setOGTypeArticle } = Astro.props;
+let { title, description, lang, setOGTypeArticle, pageKind } = Astro.props;
 
-const enableBanner = !!siteConfig.banner.src;
+const enableBanner = !!runtimeSiteConfig.banner.src;
 const initialLayoutMode =
   enableBanner &&
   isHomePage &&
-  siteConfig.wallpaperMode.defaultMode === "banner"
+  runtimeSiteConfig.wallpaperMode.defaultMode === "banner"
     ? "banner"
     : "none";
 
 let pageTitle: string;
 if (title) {
-  pageTitle = `${title} - ${siteConfig.title}`;
+  pageTitle = `${title} - ${runtimeSiteConfig.title}`;
 } else {
-  pageTitle = siteConfig.subtitle
-    ? `${siteConfig.title} - ${siteConfig.subtitle}`
-    : siteConfig.title;
+  pageTitle = runtimeSiteConfig.subtitle
+    ? `${runtimeSiteConfig.title} - ${runtimeSiteConfig.subtitle}`
+    : runtimeSiteConfig.title;
 }
 
 const favicons: Favicon[] =
-  siteConfig.favicon.length > 0 ? siteConfig.favicon : defaultFavicons;
+  runtimeSiteConfig.favicon.length > 0
+    ? runtimeSiteConfig.favicon
+    : defaultFavicons;
 
 const resolveFaviconHref = (src: string): string => {
   const value = String(src || "").trim();
@@ -102,9 +103,9 @@ const resolveFaviconHref = (src: string): string => {
   return value;
 };
 
-// const siteLang = siteConfig.lang.replace('_', '-') // 预留：历史写法
+// const siteLang = runtimeSiteConfig.lang.replace('_', '-') // 预留：历史写法
 if (!lang) {
-  lang = `${siteConfig.lang}`;
+  lang = `${runtimeSiteConfig.lang}`;
 }
 const siteLang = lang.replace("_", "-");
 
@@ -114,7 +115,7 @@ const bannerOffsetByPosition = {
   bottom: "0",
 };
 const bannerOffset =
-  bannerOffsetByPosition[siteConfig.banner.position || "center"];
+  bannerOffsetByPosition[runtimeSiteConfig.banner.position || "center"];
 const pageWidthRem = `${PAGE_WIDTH}rem`;
 const bannerHeightHomeVh = `${BANNER_HEIGHT_HOME}vh`;
 const bannerHeightVh = `${BANNER_HEIGHT}vh`;
@@ -126,7 +127,6 @@ const htmlClassName = [
   .join(" ");
 const bodyClassName = [
   "min-h-screen",
-  isArchivePage ? "page-archive" : "",
   isPostEditorRoute ? "route-post-editor" : "",
   initialLayoutMode === "banner" ? "enable-banner" : "no-banner-mode",
   initialLayoutMode !== "banner" ? "waves-paused" : "",
@@ -217,11 +217,11 @@ const bodyClassName = [
     <meta charset="UTF-8" />
     <meta name="description" content={description || pageTitle} />
     {
-      siteConfig.keywords && siteConfig.keywords.length > 0 && (
-        <meta name="keywords" content={siteConfig.keywords.join(", ")} />
+      runtimeSiteConfig.keywords && runtimeSiteConfig.keywords.length > 0 && (
+        <meta name="keywords" content={runtimeSiteConfig.keywords.join(", ")} />
       )
     }
-    <meta property="og:site_name" content={siteConfig.title} />
+    <meta property="og:site_name" content={runtimeSiteConfig.title} />
     <meta property="og:url" content={Astro.url} />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description || pageTitle} />
@@ -289,7 +289,7 @@ const bodyClassName = [
         PAGE_WIDTH,
         PAGE_SCALE_MIN_WIDTH,
         configHue,
-        pageScaling: siteConfig.pageScaling,
+        pageScaling: runtimeSiteConfig.pageScaling,
       }}
     >
       // 从本地存储读取主题
@@ -363,7 +363,7 @@ const bodyClassName = [
     <link
       rel="alternate"
       type="application/rss+xml"
-      title={siteConfig.title}
+      title={runtimeSiteConfig.title}
       href={`${Astro.site}rss.xml`}
     />
   </head>
@@ -371,7 +371,7 @@ const bodyClassName = [
     class={bodyClassName}
     data-layout-mode={initialLayoutMode}
     data-route-home={String(isHomePage)}
-    data-route-archive={String(isArchivePage)}
+    data-page-kind={pageKind}
     data-route-post-editor={String(isPostEditorRoute)}
     data-overlayscrollbars-initialize
   >

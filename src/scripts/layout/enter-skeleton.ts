@@ -27,7 +27,7 @@ export type EnterSkeletonMode =
 export type TransitionProxyLayoutKey =
     | "sidebar-main"
     | "sidebar-main-right-default"
-    | "sidebar-main-right-archive"
+    | "sidebar-main-right-article-list"
     | "sidebar-main-right-bangumi"
     | "sidebar-main-right-albums"
     | "full-width-post-editor";
@@ -396,7 +396,7 @@ export function resolveTransitionProxyLayoutKeyFromPath(
         return "full-width-post-editor";
     }
     if (normalizedPath === "/posts") {
-        return "sidebar-main-right-archive";
+        return "sidebar-main-right-article-list";
     }
     if (/^\/[^/]+\/bangumi$/.test(normalizedPath)) {
         return "sidebar-main-right-bangumi";

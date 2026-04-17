@@ -1,84 +1,101 @@
 import type { DARK_MODE, LIGHT_MODE } from "../constants/constants";
 import type { JsonValue } from "./json";
 
-export type SiteConfig = {
+export type SiteLanguage =
+    | "en"
+    | "zh_CN"
+    | "zh_TW"
+    | "ja"
+    | "ko"
+    | "es"
+    | "th"
+    | "vi"
+    | "tr"
+    | "id";
+
+export type ThemeColorConfig = {
+    hue: number;
+};
+
+export type NavbarTitleConfig = {
+    mode?: "text-icon" | "logo"; // 显示模式："text-icon" 显示图标+文本，"logo" 仅显示 Logo
+    text: string; // 顶栏标题文本
+    icon?: string; // 顶栏标题图标路径
+    logo?: string; // 网站 Logo 图片路径
+};
+
+export type PageScalingConfig = {
+    targetWidth?: number; // 目标宽度，低于此宽度时开始缩放
+};
+
+export type WallpaperModeConfig = {
+    defaultMode: "banner" | "none"; // 默认壁纸模式：banner=顶部横幅，none=无壁纸
+};
+
+export type BannerCarouselConfig = {
+    enable: boolean; // 是否启用轮播
+    interval: number; // 轮播间隔时间（秒）
+};
+
+export type BannerWavesConfig = {
+    enable: boolean; // 是否启用波浪效果
+    performanceMode?: boolean; // 性能模式：减少动画复杂度
+};
+
+export type BannerImageApiConfig = {
+    enable: boolean; // 是否启用图片 API
+    url: string; // API 地址，返回每行一个图片链接的文本
+};
+
+export type BannerHomeTextTypewriterConfig = {
+    enable: boolean; // 是否启用打字机效果
+    speed: number; // 打字速度（毫秒）
+    deleteSpeed: number; // 删除速度（毫秒）
+    pauseTime: number; // 完整显示后的暂停时间（毫秒）
+};
+
+export type BannerHomeTextConfig = {
+    enable: boolean; // 是否在首页显示自定义文字
+    title?: string; // 主标题
+    subtitle?: string | string[]; // 副标题，支持单个字符串或字符串数组
+    typewriter?: BannerHomeTextTypewriterConfig;
+};
+
+export type BannerNavbarConfig = {
+    transparentMode?: "semi" | "full" | "semifull"; // 导航栏透明模式
+};
+
+export type BannerConfig = {
+    src: string | string[]; // Banner 图片源，所有端共用
+    position?: "top" | "center" | "bottom";
+    carousel?: BannerCarouselConfig;
+    waves?: BannerWavesConfig;
+    imageApi?: BannerImageApiConfig;
+    homeText?: BannerHomeTextConfig;
+    navbar?: BannerNavbarConfig;
+};
+
+export type TocConfig = {
+    enable: boolean;
+    mode: "float" | "sidebar"; // 目录显示模式："float" 悬浮按钮模式，"sidebar" 侧边栏模式
+    depth: 1 | 2 | 3;
+    useJapaneseBadge?: boolean; // 使用日语假名标记（あいうえお...）代替数字
+};
+
+export type RuntimeSiteConfig = {
     title: string;
     subtitle: string;
     siteURL: string; // 站点URL，以斜杠结尾，例如：https://cialli.mysqil.com/
     keywords?: string[]; // 站点关键词，用于生成 <meta name="keywords">
     siteStartDate?: string; // 建站日期，格式：YYYY-MM-DD，用于计算运行天数
 
-    lang:
-        | "en"
-        | "zh_CN"
-        | "zh_TW"
-        | "ja"
-        | "ko"
-        | "es"
-        | "th"
-        | "vi"
-        | "tr"
-        | "id";
-
-    themeColor: {
-        hue: number;
-    };
-
-    // 顶栏标题配置
-    navbarTitle?: {
-        mode?: "text-icon" | "logo"; // 显示模式："text-icon" 显示图标+文本，"logo" 仅显示Logo
-        text: string; // 顶栏标题文本
-        icon?: string; // 顶栏标题图标路径
-        logo?: string; // 网站Logo图片路径
-    };
-
-    // 页面自动缩放配置
-    pageScaling?: {
-        targetWidth?: number; // 目标宽度，低于此宽度时开始缩放
-    };
-
-    // 壁纸模式配置
-    wallpaperMode: {
-        // 默认壁纸模式：banner=顶部横幅，none=无壁纸
-        defaultMode: "banner" | "none";
-    };
-
-    banner: {
-        src: string | string[]; // Banner 图片源，所有端共用
-        position?: "top" | "center" | "bottom";
-        carousel?: {
-            enable: boolean; // 是否启用轮播
-            interval: number; // 轮播间隔时间（秒）
-        };
-        waves?: {
-            enable: boolean; // 是否启用波浪效果
-            performanceMode?: boolean; // 性能模式：减少动画复杂度
-        };
-        imageApi?: {
-            enable: boolean; // 是否启用图片API
-            url: string; // API地址，返回每行一个图片链接的文本
-        };
-        homeText?: {
-            enable: boolean; // 是否在首页显示自定义文字
-            title?: string; // 主标题
-            subtitle?: string | string[]; // 副标题，支持单个字符串或字符串数组
-            typewriter?: {
-                enable: boolean; // 是否启用打字机效果
-                speed: number; // 打字速度（毫秒）
-                deleteSpeed: number; // 删除速度（毫秒）
-                pauseTime: number; // 完整显示后的暂停时间（毫秒）
-            };
-        };
-        navbar?: {
-            transparentMode?: "semi" | "full" | "semifull"; // 导航栏透明模式
-        };
-    };
-    toc: {
-        enable: boolean;
-        mode: "float" | "sidebar"; // 目录显示模式："float" 悬浮按钮模式，"sidebar" 侧边栏模式
-        depth: 1 | 2 | 3;
-        useJapaneseBadge?: boolean; // 使用日语假名标记（あいうえお...）代替数字
-    };
+    lang: SiteLanguage;
+    themeColor: ThemeColorConfig;
+    navbarTitle?: NavbarTitleConfig;
+    pageScaling?: PageScalingConfig;
+    wallpaperMode: WallpaperModeConfig;
+    banner: BannerConfig;
+    toc: TocConfig;
     favicon: Favicon[];
 };
 
@@ -90,7 +107,7 @@ export type Favicon = {
 
 export enum LinkPreset {
     Home = 0,
-    Archive = 1,
+    Articles = 1,
     About = 2,
     Friends = 3,
     Anime = 4,

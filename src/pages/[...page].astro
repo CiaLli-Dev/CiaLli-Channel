@@ -86,12 +86,12 @@ if (!invalidPath) {
           ) : (
             <HomeFeedPage items={homeFeedItems} maxAnimationIndex={15} />
           )}
-          {/* 首页首屏收敛后仅保留归档入口，不再继续下拉加载 */}
-          <a href="/posts" class="home-archive-cta card-base">
+          {/* 首页首屏收敛后仅保留文章列表入口，不再继续下拉加载 */}
+          <a href="/posts" class="home-article-list-cta card-base">
             {i18n(I18nKey.coreViewMore)}
           </a>
         </div>
-        {/* 右侧占位，与归档页筛选面板等宽 */}
+        {/* 右侧占位，与文章列表筛选面板等宽 */}
         <div class="home-sidebar-placeholder" />
       </div>
     )
@@ -109,7 +109,7 @@ if (!invalidPath) {
     display: none;
   }
 
-  .home-archive-cta {
+  .home-article-list-cta {
     display: inline-flex;
     width: 100%;
     min-height: 4.5rem;
@@ -121,11 +121,11 @@ if (!invalidPath) {
     color: rgb(0 0 0 / 0.9);
   }
 
-  .home-archive-cta:hover {
+  .home-article-list-cta:hover {
     color: var(--primary);
   }
 
-  :global(:root.dark) .home-archive-cta {
+  :global(:root.dark) .home-article-list-cta {
     color: rgb(255 255 255 / 0.9);
   }
 
