@@ -11,10 +11,13 @@ import PasswordProtection from "@components/PasswordProtection.astro";
 import ResponsiveImage from "@components/misc/ResponsiveImage.astro";
 import { defaultSiteSettings } from "@/config";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
+import {
+  loadArticleDetailViewData,
+  resolveArticleDetailCacheControl,
+  resolveArticleDetailRoute,
+} from "@/server/application/public/article-detail-page.service";
 import { renderMarkdown } from "@/server/markdown/render";
 import {
-  DIRECTUS_ACCESS_COOKIE_NAME,
-  DIRECTUS_REFRESH_COOKIE_NAME,
   buildDirectusAssetUrl,
   buildPublicAssetUrl,
 } from "@/server/directus-auth";
@@ -29,7 +32,10 @@ import {
 } from "@/server/api/v1/shared";
 import { isShortId } from "@/server/utils/short-id";
 import { getAuthorBundle } from "@/server/api/v1/shared/author-cache";
-import { readAuthor } from "@/server/api/v1/public-data";
+import {
+  loadPublicProfileByUserId,
+  readAuthor,
+} from "@/server/api/v1/public-data";
 import {
   loadProfileForViewerByUserId,
   profileToSidebarData,
@@ -85,10 +91,7 @@ let viewerIsOwner = false;
 let ownerPasswordStorageKeys: string[] = [];
 let sessionUserId: string | null = null;
 let articleSupportsPublicInteraction = false;
-const hasSessionCookie = Boolean(
-  Astro.cookies.get(DIRECTUS_ACCESS_COOKIE_NAME)?.value ||
-  Astro.cookies.get(DIRECTUS_REFRESH_COOKIE_NAME)?.value,
-);
+let articleDetailMode: "public" | "owner" | "not_found" | "error";
 const resolvedSiteSettings =
   Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
 const siteDateContext = buildSiteDateFormatContext(resolvedSiteSettings);
@@ -119,119 +122,100 @@ function resolveOwnerArticleByRoute(
 
 if (rawId) {
   try {
-    // 会话与公开文章查询并行启动，减少首段串行等待。
-    const sessionUserPromise = getSessionUser(Astro);
-    const publicArticlePromise = runWithDirectusPublicAccess(
-      async () => await resolvePublicArticleByRoute(rawId),
-    );
-    const [sessionUser, publicArticle] = await Promise.all([
-      sessionUserPromise,
-      publicArticlePromise,
-    ]);
-    sessionUserId = sessionUser?.id ?? null;
+    const resolvedArticle = await resolveArticleDetailRoute({
+      routeId: rawId,
+      loadPublicArticleByRoute: async (routeId) =>
+        await runWithDirectusPublicAccess(
+          async () => await resolvePublicArticleByRoute(routeId),
+        ),
+      loadSessionUser: async () => await getSessionUser(Astro),
+      getSessionAccessToken: () => getSessionAccessToken(Astro),
+      loadOwnerArticleByRoute: async (routeId, accessToken) =>
+        await runWithDirectusUserAccess(
+          accessToken,
+          async () => await resolveOwnerArticleByRoute(routeId),
+        ),
+    });
 
-    let rawArticle = publicArticle;
+    articleDetailMode = resolvedArticle.mode;
+    sessionUserId = resolvedArticle.sessionUserId;
 
-    // 公开查询失败且已登录时，才触发 owner 回退查询。
-    if (!rawArticle && sessionUser) {
-      const candidate = await runWithDirectusUserAccess(
-        getSessionAccessToken(Astro),
-        async () => await resolveOwnerArticleByRoute(rawId),
-      );
-      if (candidate && candidate.author_id === sessionUser.id) {
-        rawArticle = candidate;
-      }
-    }
-
-    if (rawArticle) {
-      const rawBodyMarkdown = String(rawArticle.body_markdown || "");
-      const isEncryptedBody = rawBodyMarkdown.trim().startsWith("CL2:");
-      const isPubliclyVisible =
-        rawArticle.status === "published" && rawArticle.is_public === true;
-      const loadArticleViewData = async () => {
-        const authorMapPromise = getAuthorBundle([rawArticle!.author_id]);
-        const interactionPromise = isPubliclyVisible
-          ? loadArticleInteractionSnapshot({
-              articleId: rawArticle!.id,
-              viewerId: sessionUserId,
-            })
-          : Promise.resolve({
-              likeCount: 0,
-              commentCount: 0,
-              viewerLiked: false,
-            });
-        const authorProfilePromise = loadProfileForViewerByUserId(
-          rawArticle!.author_id,
+    if (resolvedArticle.mode === "public" || resolvedArticle.mode === "owner") {
+      const rawArticle = resolvedArticle.article;
+      const loadViewData = async () =>
+        await loadArticleDetailViewData({
+          article: rawArticle,
+          mode: resolvedArticle.mode,
           sessionUserId,
-        );
-        const articleHtmlPromise = isEncryptedBody
-          ? Promise.resolve("")
-          : renderMarkdown(rawBodyMarkdown, {
+          loadAuthorBundle: async (authorId) =>
+            await getAuthorBundle([authorId]),
+          loadArticleInteractionSnapshot,
+          loadPublicProfileByUserId,
+          loadProfileForViewerByUserId,
+          renderArticleMarkdown: async (bodyMarkdown) =>
+            await renderMarkdown(bodyMarkdown, {
               target: "page",
-            });
-        return await Promise.all([
-          authorMapPromise,
-          interactionPromise,
-          authorProfilePromise,
-          articleHtmlPromise,
-        ]);
-      };
+            }),
+        });
 
-      const [authorMap, interaction, authorProfile, renderedArticleHtml] =
-        sessionUserId
+      const viewData =
+        resolvedArticle.mode === "owner"
           ? await runWithDirectusUserAccess(
               getSessionAccessToken(Astro),
-              loadArticleViewData,
+              loadViewData,
             )
-          : await runWithDirectusPublicAccess(loadArticleViewData);
+          : await runWithDirectusPublicAccess(loadViewData);
 
       article = {
         ...rawArticle,
         tags: safeCsv(rawArticle.tags),
-        author: readAuthor(authorMap, rawArticle.author_id),
+        author: readAuthor(viewData.authorMap, rawArticle.author_id),
       };
-      articleLikeCount = interaction.likeCount;
-      articleCommentCount = interaction.commentCount;
-      articleLikedByViewer = interaction.viewerLiked;
+      articleLikeCount = viewData.interaction.likeCount;
+      articleCommentCount = viewData.interaction.commentCount;
+      articleLikedByViewer = viewData.interaction.viewerLiked;
       viewerIsOwner = Boolean(
-        sessionUserId && rawArticle.author_id === sessionUserId,
+        resolvedArticle.mode === "owner" &&
+        sessionUserId &&
+        rawArticle.author_id === sessionUserId,
       );
-      articleSupportsPublicInteraction = isPubliclyVisible;
+      articleSupportsPublicInteraction = viewData.isPubliclyVisible;
 
-      if (isEncryptedBody) {
-        encryptedBody = rawBodyMarkdown.trim();
+      if (viewData.isEncryptedBody) {
+        encryptedBody = viewData.encryptedBody;
         ownerPasswordStorageKeys = buildOwnerArticlePasswordStorageKeys({
           id: rawArticle.id,
           shortId: rawArticle.short_id,
           slug: rawArticle.slug,
         });
       } else {
-        articleHtml = renderedArticleHtml;
+        articleHtml = viewData.articleHtml;
       }
-      if (authorProfile) {
-        Astro.locals.sidebarProfile = profileToSidebarData(authorProfile);
+      if (viewData.authorProfile) {
+        Astro.locals.sidebarProfile = profileToSidebarData(
+          viewData.authorProfile,
+        );
       }
     } else {
       Astro.response.status = 404;
     }
   } catch (error) {
     console.error("[posts] failed to load article:", error);
+    articleDetailMode = "error";
     Astro.response.status = 500;
   }
 } else {
+  articleDetailMode = "not_found";
   Astro.response.status = 404;
 }
 
 const responseStatus = Astro.response.status ?? 200;
-if (responseStatus < 500) {
-  if (hasSessionCookie || sessionUserId) {
-    Astro.response.headers.set("Cache-Control", "private, no-store");
-  } else {
-    Astro.response.headers.set(
-      "Cache-Control",
-      "public, s-maxage=60, stale-while-revalidate=300",
-    );
-  }
+const cacheControl = resolveArticleDetailCacheControl({
+  responseStatus,
+  mode: articleDetailMode,
+});
+if (cacheControl) {
+  Astro.response.headers.set("Cache-Control", cacheControl);
 }
 
 const hasCoverFile = Boolean(article?.cover_file);
@@ -420,7 +404,7 @@ const articleSharePayload: SharePosterPayload | undefined =
             {encryptedBody ? (
               <PasswordProtection
                 encryptedContent={encryptedBody}
-                viewerIsOwner={viewerIsOwner}
+                ownerUserId={article?.author?.id || ""}
                 ownerPasswordStorageKeys={ownerPasswordStorageKeys}
               />
             ) : (

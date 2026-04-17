@@ -448,6 +448,7 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
     mountToFloatingAnchor,
     handleDeleteAction,
     handleLikeAction,
+    loadArticleViewerLikeState,
   } from "@/scripts/interactions/detail-action-float-helpers";
   import type { LikeActionState } from "@/scripts/interactions/detail-action-float-helpers";
 
@@ -525,6 +526,7 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
       likePending: false,
     };
     let currentAuthState: AuthState = getAuthState();
+    let lastViewerLikeSyncUserId = "";
     let isOpen = false;
     let mobileBarHiddenByScroll = false;
     let mobileBarHiddenNearFooter = false;
@@ -613,6 +615,51 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
       if (!canOpenPanel && isOpen) {
         closePanel();
       }
+    }
+
+    async function syncViewerLikeState(state: AuthState): Promise<void> {
+      if (contentType !== "article" || !contentId) {
+        return;
+      }
+
+      const normalizedUserId = String(state.userId || "").trim();
+      if (!state.isLoggedIn || !normalizedUserId) {
+        lastViewerLikeSyncUserId = "";
+        if (!likeState.likePending) {
+          likeState.liked = false;
+          applyLikeUI();
+        }
+        return;
+      }
+
+      if (
+        lastViewerLikeSyncUserId === normalizedUserId &&
+        !likeState.likePending
+      ) {
+        return;
+      }
+
+      lastViewerLikeSyncUserId = normalizedUserId;
+      const viewerLiked = await loadArticleViewerLikeState({
+        contentType,
+        contentId,
+        authState: state,
+      });
+      if (viewerLiked === null) {
+        return;
+      }
+
+      const latestAuthState = getAuthState();
+      if (
+        !latestAuthState.isLoggedIn ||
+        String(latestAuthState.userId || "").trim() !== normalizedUserId ||
+        likeState.likePending
+      ) {
+        return;
+      }
+
+      likeState.liked = viewerLiked;
+      applyLikeUI();
     }
 
     function openPanel(): void {
@@ -766,7 +813,11 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
     applyLikeUI();
     syncManageA11yState();
     applyActionVisibility(getAuthState());
-    subscribeAuthState((state) => applyActionVisibility(state));
+    void syncViewerLikeState(currentAuthState);
+    subscribeAuthState((state) => {
+      applyActionVisibility(state);
+      void syncViewerLikeState(state);
+    });
     bindMobileBarVisibility();
 
     manageBtn?.addEventListener("click", (event) => {

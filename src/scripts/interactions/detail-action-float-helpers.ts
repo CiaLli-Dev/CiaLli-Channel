@@ -1,6 +1,7 @@
 import { showConfirmDialog, showNoticeDialog } from "@/scripts/shared/dialogs";
 import { navigateToPage } from "@/utils/navigation-utils";
 import { getCsrfToken } from "@/utils/csrf";
+import type { AuthState } from "@/scripts/auth/state";
 
 export type DetailElements = {
     likeBtn: HTMLButtonElement | null;
@@ -222,6 +223,84 @@ export type LikeActionState = {
     likeCount: number;
     likePending: boolean;
 };
+
+const articleViewerLikeStateRequests = new Map<string, Promise<boolean>>();
+
+function buildArticleViewerLikeStateCacheKey(
+    articleId: string,
+    userId: string,
+): string {
+    return `${userId}:${articleId}`;
+}
+
+type ViewerLikeStateResponse = {
+    ok?: boolean;
+    liked?: boolean;
+};
+
+export function resetArticleViewerLikeStateRequestsForTest(): void {
+    articleViewerLikeStateRequests.clear();
+}
+
+export async function loadArticleViewerLikeState(input: {
+    contentType: string;
+    contentId: string;
+    authState: AuthState;
+    fetchImpl?: typeof fetch;
+}): Promise<boolean | null> {
+    const normalizedContentId = String(input.contentId || "").trim();
+    const normalizedUserId = String(input.authState.userId || "").trim();
+    if (
+        input.contentType !== "article" ||
+        !normalizedContentId ||
+        !input.authState.isLoggedIn ||
+        !normalizedUserId
+    ) {
+        return null;
+    }
+
+    const requestKey = buildArticleViewerLikeStateCacheKey(
+        normalizedContentId,
+        normalizedUserId,
+    );
+    const existingRequest = articleViewerLikeStateRequests.get(requestKey);
+    if (existingRequest) {
+        return await existingRequest;
+    }
+
+    // 详情页桌面/移动双浮条会并发初始化，这里按 userId + articleId 做单飞，避免重复打接口。
+    const request = (async () => {
+        try {
+            const response = await (input.fetchImpl ?? fetch)(
+                `/api/v1/me/article-likes/state/${encodeURIComponent(normalizedContentId)}`,
+                {
+                    method: "GET",
+                    credentials: "include",
+                    headers: {
+                        Accept: "application/json",
+                    },
+                    cache: "no-store",
+                },
+            );
+            if (!response.ok) {
+                return false;
+            }
+            const data = (await response
+                .json()
+                .catch(() => null)) as ViewerLikeStateResponse | null;
+            return Boolean(data?.ok && data.liked);
+        } catch (error) {
+            console.warn(
+                "[detail-action] sync viewer like state failed:",
+                error,
+            );
+            return false;
+        }
+    })();
+
+    articleViewerLikeStateRequests.set(requestKey, request);
+    return await request;
+}
 
 export type LikeActionContext = {
     contentType: string;

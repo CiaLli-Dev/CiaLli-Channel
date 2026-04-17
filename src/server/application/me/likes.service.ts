@@ -20,6 +20,7 @@ import {
     DIARY_FIELDS,
     invalidateArticleInteractionAggregate,
     invalidateArticleInteractionViewerState,
+    parseRouteId,
 } from "@/server/api/v1/shared";
 
 const ArticleLikeSchema = z.object({
@@ -74,11 +75,57 @@ async function getDiaryCommentLikeCount(commentId: string): Promise<number> {
     } as JsonObject);
 }
 
+async function hasViewerLikedArticle(
+    articleId: string,
+    viewerId: string,
+): Promise<boolean> {
+    const rows = await readMany("app_article_likes", {
+        filter: {
+            _and: [
+                { article_id: { _eq: articleId } },
+                { user_id: { _eq: viewerId } },
+                { status: { _eq: "published" } },
+            ],
+        } as JsonObject,
+        limit: 1,
+        fields: ["id"],
+    });
+    return rows.length > 0;
+}
+
+async function handleArticleLikeState(
+    context: APIContext,
+    access: AppAccess,
+    segments: string[],
+): Promise<Response> {
+    if (segments.length !== 3 || segments[1] !== "state") {
+        return fail("未找到接口", 404);
+    }
+    if (context.request.method !== "GET") {
+        return fail("方法不允许", 405);
+    }
+
+    const articleId = parseRouteId(segments[2]);
+    if (!articleId) {
+        return fail("缺少文章 ID", 400);
+    }
+
+    const liked = await hasViewerLikedArticle(articleId, access.user.id);
+    return ok({
+        article_id: articleId,
+        liked,
+    });
+}
+
 export async function handleMyArticleLikes(
     context: APIContext,
     access: AppAccess,
     segments: string[],
 ): Promise<Response> {
+    if (segments[1] === "state") {
+        return await handleArticleLikeState(context, access, segments);
+    }
+
     if (segments.length !== 1) {
         return fail("未找到接口", 404);
     }
