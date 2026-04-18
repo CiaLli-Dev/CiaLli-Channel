@@ -175,14 +175,15 @@ export async function materializePendingUploads(
     bodyMarkdown: string,
     state: PublishState,
     saveOverlay: SaveProgressOverlay,
-): Promise<{ body: string; coverFileId: string | null }> {
+): Promise<{ body: string; coverFileId: string | null; localUrls: string[] }> {
     const entries = Array.from(pendingUploads.entries());
     if (entries.length === 0) {
-        return { body: bodyMarkdown, coverFileId: null };
+        return { body: bodyMarkdown, coverFileId: null, localUrls: [] };
     }
 
     let nextBody = bodyMarkdown;
     let coverFileId: string | null = null;
+    const localUrls: string[] = [];
     const total = entries.length;
 
     for (let i = 0; i < entries.length; i++) {
@@ -242,11 +243,24 @@ export async function materializePendingUploads(
             nextBody = nextBody.split(localUrl).join(remoteUrl);
         }
 
-        URL.revokeObjectURL(localUrl);
-        pendingUploads.delete(localUrl);
+        localUrls.push(localUrl);
     }
 
-    return { body: nextBody, coverFileId };
+    return { body: nextBody, coverFileId, localUrls };
+}
+
+function commitMaterializedPendingUploads(
+    pendingUploads: Map<string, PendingUpload>,
+    localUrls: string[],
+): void {
+    for (const localUrl of localUrls) {
+        const pending = pendingUploads.get(localUrl);
+        if (!pending) {
+            continue;
+        }
+        URL.revokeObjectURL(pending.localUrl);
+        pendingUploads.delete(localUrl);
+    }
 }
 
 export async function renderFullPreviewHtml(
@@ -614,6 +628,8 @@ export async function submit(
                 targetStatus,
             },
         );
+        commitMaterializedPendingUploads(pendingUploads, uploads.localUrls);
+        ui.updateCoverPreview(pendingUploads);
         return true;
     } catch (error) {
         console.error("[publish] submit failed:", error);

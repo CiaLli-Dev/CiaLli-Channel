@@ -7,6 +7,8 @@ import {
 import { EDITOR_SAVE_FRESHNESS_PARAM } from "@/utils/editor-save-freshness";
 
 const navigateToPage = vi.fn();
+const api = vi.fn();
+const commitMaterializedDiaryUploads = vi.fn();
 const materializePendingUploads = vi.fn();
 const persistDiaryImages = vi.fn();
 const updateTask = vi.fn();
@@ -24,16 +26,8 @@ vi.mock("@/scripts/shared/progress-overlay-manager", () => ({
 }));
 
 vi.mock("@/scripts/diary-editor/helpers", () => ({
-    api: vi.fn(async () => ({
-        response: new Response(JSON.stringify({ ok: true }), { status: 200 }),
-        data: {
-            ok: true,
-            item: {
-                id: "diary-1",
-                short_id: "diary-short",
-            },
-        },
-    })),
+    api,
+    commitMaterializedDiaryUploads,
     getApiMessage: vi.fn(
         (_data: Record<string, unknown> | null, fallback: string) => fallback,
     ),
@@ -49,6 +43,21 @@ vi.mock("@/scripts/diary-editor/helpers", () => ({
 describe("diary save redirect", () => {
     beforeEach(() => {
         navigateToPage.mockClear();
+        commitMaterializedDiaryUploads.mockClear();
+        persistDiaryImages.mockClear();
+        materializePendingUploads.mockClear();
+        api.mockResolvedValue({
+            response: new Response(JSON.stringify({ ok: true }), {
+                status: 200,
+            }),
+            data: {
+                ok: true,
+                item: {
+                    id: "diary-1",
+                    short_id: "diary-short",
+                },
+            },
+        });
         materializePendingUploads.mockResolvedValue({
             content: "content",
             uploads: [],
@@ -128,6 +137,55 @@ describe("diary save redirect", () => {
         });
 
         expect(navigateToPage).not.toHaveBeenCalled();
+    });
+
+    it("日记保存失败时保留当前编辑内容且不写入成功态", async () => {
+        const { executeSaveDiary } =
+            await import("@/scripts/diary-editor/save");
+        const contentInput = {
+            value: "本地内容 blob:diary-local-image",
+        } as HTMLTextAreaElement;
+        const setCurrentDiaryId = vi.fn();
+        const setCurrentStatus = vi.fn();
+        const markDraftSaved = vi.fn();
+        materializePendingUploads.mockResolvedValueOnce({
+            content: "本地内容 /api/v1/public/assets/file-1",
+            uploads: [
+                {
+                    localUrl: "blob:diary-local-image",
+                    fileId: "file-1",
+                    remoteUrl: "/api/v1/public/assets/file-1",
+                },
+            ],
+        });
+        api.mockResolvedValueOnce({
+            response: new Response(JSON.stringify({ ok: false }), {
+                status: 500,
+            }),
+            data: {
+                ok: false,
+                error: { message: "保存失败" },
+            },
+        });
+
+        const saved = await executeSaveDiary(
+            makeSaveDiaryContext({
+                contentInput,
+                setCurrentDiaryId,
+                setCurrentStatus,
+                markDraftSaved,
+            }),
+            { targetStatus: "published" },
+        );
+
+        expect(saved).toBe(false);
+        expect(contentInput.value).toBe("本地内容 blob:diary-local-image");
+        expect(navigateToPage).not.toHaveBeenCalled();
+        expect(setCurrentDiaryId).not.toHaveBeenCalled();
+        expect(setCurrentStatus).not.toHaveBeenCalled();
+        expect(markDraftSaved).not.toHaveBeenCalled();
+        expect(commitMaterializedDiaryUploads).not.toHaveBeenCalled();
+        expect(persistDiaryImages).not.toHaveBeenCalled();
     });
 
     it("日记详情跳转目标由同一共享模块生成", () => {

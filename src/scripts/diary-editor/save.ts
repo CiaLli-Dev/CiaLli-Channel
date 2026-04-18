@@ -13,6 +13,7 @@ import {
     getApiMessage,
     toRecord,
     toStringValue,
+    commitMaterializedDiaryUploads,
     materializePendingUploads,
     persistDiaryImages,
     type EditorMode,
@@ -203,10 +204,6 @@ async function runSaveDiaryCore(
             });
         }
 
-        if (content !== sourceContent.trim()) {
-            ctx.contentInput.value = content;
-        }
-
         const saveResult = await saveDiaryContent(content, ctx, targetStatus);
         if (!saveResult) {
             return false;
@@ -217,6 +214,10 @@ async function runSaveDiaryCore(
         ctx.setCurrentDiaryId(id);
         ctx.setCurrentStatus(targetStatus);
         await syncImagesAfterSave(id, materializedUploads, ctx);
+        if (content !== sourceContent.trim()) {
+            ctx.contentInput.value = content;
+        }
+        commitMaterializedDiaryUploads(ctx.pendingUploads, materializedUploads);
         ctx.markDraftSaved();
 
         const finalHandle = ctx.getSaveTaskHandle();

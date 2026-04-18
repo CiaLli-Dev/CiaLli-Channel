@@ -199,13 +199,29 @@ export async function materializePendingUploads(
             nextContent = nextContent.split(localUrl).join(uploaded.remoteUrl);
         }
         uploads.push(uploaded);
-        URL.revokeObjectURL(localUrl);
-        pendingUploads.delete(localUrl);
     }
     return {
         content: nextContent,
         uploads,
     };
+}
+
+export function commitMaterializedDiaryUploads(
+    pendingUploads: Map<string, PendingDiaryUpload>,
+    uploads: MaterializedDiaryUpload[],
+): void {
+    for (const upload of uploads) {
+        const localUrl = toStringValue(upload.localUrl);
+        if (!localUrl) {
+            continue;
+        }
+        const pending = pendingUploads.get(localUrl);
+        if (!pending) {
+            continue;
+        }
+        URL.revokeObjectURL(pending.localUrl);
+        pendingUploads.delete(localUrl);
+    }
 }
 
 export async function deleteExistingImages(
