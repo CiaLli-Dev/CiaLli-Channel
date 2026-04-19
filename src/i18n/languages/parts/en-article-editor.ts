@@ -29,6 +29,10 @@ export const enArticleEditor: Record<string, string> = {
         "Encrypted content unlocked automatically",
     [Key.articleEditorEncryptedBodyLockedPlaceholder]:
         "Content is encrypted. Enter password to edit",
+    [Key.articleEditorEncryptedEditTitle]: "Encrypted content is still locked",
+    [Key.articleEditorEncryptedEditMessage]:
+        "Unlock the article with its password first, then come back to edit.",
+    [Key.articleEditorEncryptedEditGoUnlock]: "Go unlock",
     [Key.articleEditorGeneratingEncryptedContent]:
         "Generating encrypted content...",
     [Key.articleEditorLoadFailed]: "Failed to load",

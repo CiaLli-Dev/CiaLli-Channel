@@ -22,6 +22,9 @@ export const zhCNArticleEditor: Record<string, string> = {
     [Key.articleEditorEncryptedAutoUnlocked]: "已自动解锁加密内容",
     [Key.articleEditorEncryptedBodyLockedPlaceholder]:
         "内容已加密，输入密码后可编辑",
+    [Key.articleEditorEncryptedEditTitle]: "加密内容尚未解锁",
+    [Key.articleEditorEncryptedEditMessage]: "解锁后内容后才能进入编辑。",
+    [Key.articleEditorEncryptedEditGoUnlock]: "去解锁",
     [Key.articleEditorGeneratingEncryptedContent]: "正在生成加密内容...",
     [Key.articleEditorLoadFailed]: "加载失败",
     [Key.articleEditorLoadFailedRetry]: "加载失败，请重试",

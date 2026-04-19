@@ -441,6 +441,9 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
   import { getAuthState, subscribeAuthState } from "@/scripts/auth/state";
   import type { AuthState } from "@/scripts/auth/state";
   import { showAuthRequiredDialog } from "@/scripts/shared/dialogs";
+  import { showOverlayDialog } from "@/scripts/shared/overlay-dialog";
+  import { t } from "@/scripts/shared/i18n-runtime";
+  import I18nKey from "@/i18n/i18nKey";
   import { navigateToPage } from "@/utils/navigation-utils";
   import {
     queryDetailElements,
@@ -471,6 +474,54 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
       hasMobileBar,
     );
     document.body.classList.toggle("has-detail-mobile-bar", hasMobileBar);
+  }
+
+  // 加密文章未解锁时不能直接进入编辑页：解锁成功后 password-protection 节点会被移除，
+  // 因此用它的存在性作为"当前仍处于加密锁定态"的判断依据，避免在多处复制加密判断逻辑。
+  function isArticleEncryptedAndLocked(contentType: string): boolean {
+    if (contentType !== "article") {
+      return false;
+    }
+    const guardEl = document.getElementById("password-protection");
+    if (!(guardEl instanceof HTMLElement)) {
+      return false;
+    }
+    return Boolean(guardEl.dataset.encryptedContent);
+  }
+
+  async function promptUnlockBeforeEdit(): Promise<void> {
+    const result = await showOverlayDialog({
+      ariaLabel: t(I18nKey.articleEditorEncryptedEditTitle),
+      message: t(I18nKey.articleEditorEncryptedEditMessage),
+      dismissKey: "cancel",
+      actions: [
+        {
+          key: "unlock",
+          label: t(I18nKey.articleEditorEncryptedEditGoUnlock),
+          variant: "primary",
+        },
+        {
+          key: "cancel",
+          label: t(I18nKey.interactionCommonCancel),
+          variant: "secondary",
+        },
+      ],
+    });
+    if (result.actionKey !== "unlock") {
+      return;
+    }
+    const guardEl = document.getElementById("password-protection");
+    if (!(guardEl instanceof HTMLElement)) {
+      return;
+    }
+    guardEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    // 弹层关闭动画结束后焦点会回到触发按钮，下一帧再聚焦输入框，确保焦点最终落在密码框。
+    window.requestAnimationFrame(() => {
+      const inputEl = document.getElementById("password-input");
+      if (inputEl instanceof HTMLInputElement) {
+        inputEl.focus();
+      }
+    });
   }
 
   // 同一组件同时承载桌面浮条与移动端底部浮条，需要在绑定时分流布局行为。
@@ -845,6 +896,10 @@ const deleteLabel = i18n(I18nKey.interactionCommonDelete);
     editBtn?.addEventListener("click", () => {
       if (!editHref) return;
       closePanel();
+      if (isArticleEncryptedAndLocked(contentType)) {
+        void promptUnlockBeforeEdit();
+        return;
+      }
       navigateToPage(editHref, { force: contentType === "diary" });
     });
 
