@@ -5,6 +5,7 @@ import SpeedInsights from "@vercel/speed-insights/astro";
 import ConfigCarrier from "@components/ConfigCarrier.astro";
 import MusicPlayer from "@components/widget/MusicPlayer/MusicPlayer.svelte";
 import { buildRuntimeSiteConfig } from "@/config";
+import { readBooleanRuntimeEnv, readRuntimeEnv } from "@/server/env/runtime";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
 import { readCsrfToken } from "@/server/security/csrf";
 import type { ResolvedSiteSettings } from "@/types/site-settings";
@@ -56,6 +57,8 @@ const csrfToken = csrfTokenFromLocals || readCsrfToken(Astro);
 // 因此仍需在点击链接时通过 transition hooks 立即切换布局态
 const isHomePage = pathsEqual(Astro.url.pathname, url("/"));
 const normalizedPathname = Astro.url.pathname.replace(/\/+$/, "").toLowerCase();
+const isArchivePage =
+  normalizedPathname === "/posts" || normalizedPathname.endsWith("/posts");
 const isPostEditorRoute =
   normalizedPathname === "/posts/new" ||
   /^\/posts\/[^/]+\/edit$/.test(normalizedPathname);
@@ -119,6 +122,9 @@ const bannerOffset =
 const pageWidthRem = `${PAGE_WIDTH}rem`;
 const bannerHeightHomeVh = `${BANNER_HEIGHT_HOME}vh`;
 const bannerHeightVh = `${BANNER_HEIGHT}vh`;
+const deployTarget = readRuntimeEnv("DEPLOY_TARGET") || "vercel";
+const enableVercelTelemetry =
+  deployTarget !== "docker" || readBooleanRuntimeEnv("ENABLE_VERCEL_ANALYTICS");
 const htmlClassName = [
   "bg-(--page-bg)",
   isPostEditorRoute ? "route-post-editor" : "",
@@ -127,6 +133,7 @@ const htmlClassName = [
   .join(" ");
 const bodyClassName = [
   "min-h-screen",
+  isArchivePage ? "page-archive" : "",
   isPostEditorRoute ? "route-post-editor" : "",
   initialLayoutMode === "banner" ? "enable-banner" : "no-banner-mode",
   initialLayoutMode !== "banner" ? "waves-paused" : "",
@@ -364,7 +371,7 @@ const bodyClassName = [
       rel="alternate"
       type="application/rss+xml"
       title={runtimeSiteConfig.title}
-      href={`${Astro.site}rss.xml`}
+      href={url("/rss.xml")}
     />
   </head>
   <body
@@ -389,9 +396,14 @@ const bodyClassName = [
 
     <!-- 切页时临时增加页面高度，避免滚动动画跳变 -->
     <div id="page-height-extend" class="hidden h-[300vh]"></div>
-    <!-- Vercel 可观测性 -->
-    <Analytics />
-    <SpeedInsights />
+    {
+      enableVercelTelemetry && (
+        <>
+          <Analytics />
+          <SpeedInsights />
+        </>
+      )
+    }
   </body>
 </html>
 

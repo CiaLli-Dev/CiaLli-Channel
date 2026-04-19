@@ -5,6 +5,8 @@ import {
     randomBytes,
 } from "node:crypto";
 
+import { readRuntimeEnv } from "@/server/env/runtime";
+
 const ENCRYPTION_ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
@@ -16,9 +18,7 @@ function readKeyMaterial(): Buffer {
     if (cachedKey) {
         return cachedKey;
     }
-    const raw =
-        String(process.env.BANGUMI_TOKEN_ENCRYPTION_KEY || "").trim() ||
-        String(import.meta.env.BANGUMI_TOKEN_ENCRYPTION_KEY || "").trim();
+    const raw = readRuntimeEnv("BANGUMI_TOKEN_ENCRYPTION_KEY");
     if (!raw) {
         throw new Error("BANGUMI_TOKEN_ENCRYPTION_KEY is required");
     }

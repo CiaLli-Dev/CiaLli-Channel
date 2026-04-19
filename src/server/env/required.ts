@@ -1,3 +1,5 @@
+import { readRuntimeEnv } from "@/server/env/runtime";
+
 type RequiredEnvName =
     | "DIRECTUS_URL"
     | "DIRECTUS_STATIC_TOKEN"
@@ -13,8 +15,7 @@ let cachedError: Error | null = null;
 let checked = false;
 
 function getEnvValue(name: RequiredEnvName): string {
-    const value = process.env[name] || import.meta.env[name] || "";
-    return String(value || "").trim();
+    return readRuntimeEnv(name);
 }
 
 export function assertRequiredEnv(): void {

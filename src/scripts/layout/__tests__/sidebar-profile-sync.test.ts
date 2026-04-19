@@ -9,6 +9,13 @@ import {
     type SidebarProfilePatch,
 } from "../sidebar-profile-sync";
 
+const OPTIMIZED_AVATAR_FULL_URL =
+    "/_image?href=%2F_astro%2Favatar.webp&w=1536&q=100";
+const OPTIMIZED_AVATAR_96_URL =
+    "/_image?href=%2F_astro%2Favatar.webp&w=96&q=100";
+const OPTIMIZED_AVATAR_192_URL =
+    "/_image?href=%2F_astro%2Favatar.webp&w=192&q=100";
+
 class MockElement {
     dataset: Record<string, string> = {};
     textContent = "";
@@ -172,25 +179,24 @@ describe("sidebar-profile-sync", () => {
 
     it("resolveSidebarAvatarState 会优先使用已解析的 currentSrc，而不是相对 fallback", () => {
         const avatarState = resolveSidebarAvatarState({
-            currentSrc:
-                "/_vercel/image?url=_astro%2Favatar.BDCKBkzJ.webp&w=1536&q=100",
-            src: "/_vercel/image?url=_astro%2Favatar.BDCKBkzJ.webp&w=96&q=100",
-            srcset: "/_vercel/image?url=_astro%2Favatar.BDCKBkzJ.webp&w=96&q=100 96w",
+            currentSrc: OPTIMIZED_AVATAR_FULL_URL,
+            src: OPTIMIZED_AVATAR_96_URL,
+            srcset: `${OPTIMIZED_AVATAR_96_URL} 96w`,
             sizes: "96px",
             fallbackSrc: "assets/images/avatar.webp",
         });
 
         expect(avatarState).toEqual({
-            src: "/_vercel/image?url=_astro%2Favatar.BDCKBkzJ.webp&w=1536&q=100",
-            srcset: "/_vercel/image?url=_astro%2Favatar.BDCKBkzJ.webp&w=96&q=100 96w",
+            src: OPTIMIZED_AVATAR_FULL_URL,
+            srcset: `${OPTIMIZED_AVATAR_96_URL} 96w`,
             sizes: "96px",
         });
     });
 
     it("extractSidebarProfilePatch 会从 img 提取已渲染头像属性，而不是 data 中的相对路径", () => {
         const defaultAvatarState = createAvatarState({
-            src: "/_vercel/image?url=_astro%2Favatar.BDCKBkzJ.webp&w=1536&q=100",
-            srcset: "/_vercel/image?url=_astro%2Favatar.BDCKBkzJ.webp&w=96&q=100 96w, /_vercel/image?url=_astro%2Favatar.BDCKBkzJ.webp&w=192&q=100 192w",
+            src: OPTIMIZED_AVATAR_FULL_URL,
+            srcset: `${OPTIMIZED_AVATAR_96_URL} 96w, ${OPTIMIZED_AVATAR_192_URL} 192w`,
             sizes: "96px",
         });
         const fixture = createSidebarFixture({
@@ -226,8 +232,8 @@ describe("sidebar-profile-sync", () => {
             bio: "Default avatar",
             profileLink: "/bob",
             avatar: {
-                src: "/_vercel/image?url=_astro%2Favatar.BDCKBkzJ.webp&w=1536&q=100",
-                srcset: "/_vercel/image?url=_astro%2Favatar.BDCKBkzJ.webp&w=96&q=100 96w, /_vercel/image?url=_astro%2Favatar.BDCKBkzJ.webp&w=192&q=100 192w",
+                src: OPTIMIZED_AVATAR_FULL_URL,
+                srcset: `${OPTIMIZED_AVATAR_96_URL} 96w, ${OPTIMIZED_AVATAR_192_URL} 192w`,
                 sizes: "96px",
             },
             socialMode: "multi",
@@ -253,11 +259,8 @@ describe("sidebar-profile-sync", () => {
 
     it("applySidebarAvatarStateAttributes 会在切到外部头像时清理旧的 srcset 与 sizes", () => {
         const target = new MockImageElement();
-        target.setAttribute("src", "/_vercel/image?url=_astro%2Favatar.webp");
-        target.setAttribute(
-            "srcset",
-            "/_vercel/image?url=_astro%2Favatar.webp",
-        );
+        target.setAttribute("src", OPTIMIZED_AVATAR_FULL_URL);
+        target.setAttribute("srcset", OPTIMIZED_AVATAR_FULL_URL);
         target.setAttribute("sizes", "96px");
 
         applySidebarAvatarStateAttributes(target, {

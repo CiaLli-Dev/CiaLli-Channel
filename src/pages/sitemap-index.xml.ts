@@ -1,5 +1,7 @@
 import type { APIRoute } from "astro";
+
 import { resolveCanonicalSiteUrl } from "@/server/http/request-url";
+import { renderSitemapIndex } from "@/server/seo/sitemap";
 
 export const prerender = false;
 
@@ -9,18 +11,11 @@ export const GET: APIRoute = ({ request, url }) => {
         url,
         headers: request.headers,
     });
-    const robotsTxt = `
-User-agent: *
-Disallow: /
-Allow: /$
-Allow: /posts/
+    const body = renderSitemapIndex([new URL("sitemap-0.xml", site)]);
 
-Sitemap: ${new URL("sitemap-index.xml", site).href}
-`.trim();
-
-    return new Response(robotsTxt, {
+    return new Response(body, {
         headers: {
-            "Content-Type": "text/plain; charset=utf-8",
+            "content-type": "application/xml; charset=utf-8",
         },
     });
 };

@@ -288,6 +288,7 @@ function clearCookie(context: APIContext, cookieName: string): void {
         context.cookies.set(cookieName, "", {
             ...getCookieOptions({
                 requestUrl: context.url,
+                requestHeaders: context.request?.headers,
             }),
             maxAge: 0,
         });
@@ -304,6 +305,7 @@ function setSessionCookies(
         tokens.refreshToken,
         getCookieOptions({
             requestUrl: context.url,
+            requestHeaders: context.request?.headers,
             sessionOnly,
         }),
     );
@@ -312,6 +314,7 @@ function setSessionCookies(
         tokens.accessToken,
         getCookieOptions({
             requestUrl: context.url,
+            requestHeaders: context.request?.headers,
             maxAge: resolveAccessTokenMaxAgeSeconds(tokens.expiresMs),
             sessionOnly,
         }),

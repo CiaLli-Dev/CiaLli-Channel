@@ -1,12 +1,23 @@
 ---
 import MainGridLayout from "@layouts/MainGridLayout.astro";
 import { listSiteFeedPreviewEntries } from "@/server/application/feed/site-feed.service";
+import { resolveCanonicalSiteUrl } from "@/server/http/request-url";
 import { formatDateToYYYYMMDD } from "@utils/date-utils";
 import { Icon } from "astro-icon/components";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 
+export const prerender = false;
+
 const recentPosts = await listSiteFeedPreviewEntries(6);
+const atomUrl = new URL(
+  "atom.xml",
+  resolveCanonicalSiteUrl({
+    request: Astro.request,
+    url: Astro.url,
+    headers: Astro.request.headers,
+  }),
+).href;
 ---
 
 <MainGridLayout
@@ -63,12 +74,12 @@ const recentPosts = await listSiteFeedPreviewEntries(6);
               <code
                 class="bg-(--card-bg) px-3 py-2 rounded-lg text-sm font-mono text-75 border border-(--line-divider) break-all"
               >
-                {Astro.site}atom.xml
+                {atomUrl}
               </code>
               <button
                 id="copy-atom-btn"
                 class="px-4 py-2 bg-(--primary) text-white rounded-lg hover:opacity-80 transition-all duration-200 font-medium text-sm whitespace-nowrap"
-                data-url={`${Astro.site}atom.xml`}
+                data-url={atomUrl}
               >
                 {i18n(I18nKey.contentAtomCopyLink) || "Copy Link"}
               </button>

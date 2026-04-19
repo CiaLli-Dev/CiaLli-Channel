@@ -26,6 +26,7 @@ import type { AppUser } from "@/types/app";
 import type { JsonObject } from "@/types/json";
 import { internal } from "@/server/api/errors";
 import { getDirectusUrl } from "@/server/directus-auth";
+import { readRuntimeEnv } from "@/server/env/runtime";
 import {
     isDirectusItemNotFound,
     toDirectusError,
@@ -99,9 +100,7 @@ const DATA_FETCH_TIMEOUT_MS = 30_000;
 const directusScopeStorage = new AsyncLocalStorage<DirectusRequestScope>();
 
 function getStaticToken(): string {
-    const token =
-        process.env.DIRECTUS_STATIC_TOKEN ||
-        import.meta.env.DIRECTUS_STATIC_TOKEN;
+    const token = readRuntimeEnv("DIRECTUS_STATIC_TOKEN");
     if (!token || !token.trim()) {
         throw internal("DIRECTUS_STATIC_TOKEN 未配置");
     }

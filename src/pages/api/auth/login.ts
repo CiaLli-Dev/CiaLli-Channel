@@ -10,6 +10,7 @@ import {
     REMEMBER_COOKIE_NAME,
     resolveAccessTokenMaxAgeSeconds,
 } from "@/server/directus-auth";
+import { resolveRequestOrigin } from "@/server/http/request-url";
 import {
     clearRegistrationRequestCookie,
     REGISTRATION_REQUEST_COOKIE_NAME,
@@ -110,13 +111,18 @@ function setLoginCookies(
     cookies.set(
         DIRECTUS_REFRESH_COOKIE_NAME,
         tokens.refreshToken,
-        getCookieOptions({ requestUrl: url, sessionOnly }),
+        getCookieOptions({
+            requestUrl: url,
+            requestHeaders: context.request.headers,
+            sessionOnly,
+        }),
     );
     cookies.set(
         DIRECTUS_ACCESS_COOKIE_NAME,
         tokens.accessToken,
         getCookieOptions({
             requestUrl: url,
+            requestHeaders: context.request.headers,
             maxAge: resolveAccessTokenMaxAgeSeconds(tokens.expiresMs),
             sessionOnly,
         }),
@@ -124,7 +130,11 @@ function setLoginCookies(
     cookies.set(
         REMEMBER_COOKIE_NAME,
         remember ? "1" : "0",
-        getRememberCookieOptions({ requestUrl: url, remember }),
+        getRememberCookieOptions({
+            requestUrl: url,
+            requestHeaders: context.request.headers,
+            remember,
+        }),
     );
 }
 
@@ -213,7 +223,15 @@ export async function POST(context: APIContext): Promise<Response> {
     const { request, url } = context;
 
     const origin = request.headers.get("origin");
-    if (origin && origin !== url.origin) {
+    if (
+        origin &&
+        origin !==
+            resolveRequestOrigin({
+                request,
+                url,
+                headers: request.headers,
+            })
+    ) {
         return json(
             { ok: false, message: i18n(I18nKey.interactionApiIllegalOrigin) },
             { status: 403 },

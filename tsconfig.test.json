@@ -5,6 +5,7 @@
     "types": ["astro/client", "node", "vitest/globals"]
   },
   "include": [
+    "scripts/**/__tests__/**/*.ts",
     "src/**/__tests__/**/*.ts",
     "src/__tests__/setup.ts",
     "src/env.d.ts",

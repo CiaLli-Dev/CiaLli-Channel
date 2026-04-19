@@ -30,6 +30,7 @@ export function setRegistrationRequestCookie(
         normalized,
         getCookieOptions({
             requestUrl: context.url,
+            requestHeaders: context.request.headers,
             maxAge: REGISTRATION_REQUEST_COOKIE_MAX_AGE_SECONDS,
         }),
     );
@@ -42,6 +43,7 @@ export function clearRegistrationRequestCookie(context: APIContext): void {
         context.cookies.set(REGISTRATION_REQUEST_COOKIE_NAME, "", {
             ...getCookieOptions({
                 requestUrl: context.url,
+                requestHeaders: context.request.headers,
             }),
             maxAge: 0,
         });

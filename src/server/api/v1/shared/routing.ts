@@ -1,6 +1,7 @@
 import type { APIContext } from "astro";
 
 import { fail } from "@/server/api/response";
+import { resolveRequestOrigin } from "@/server/http/request-url";
 
 export function isWriteMethod(method: string): boolean {
     return (
@@ -16,7 +17,14 @@ export function assertSameOrigin(context: APIContext): Response | null {
     if (!origin) {
         return fail("缺少 Origin 头", 403);
     }
-    if (origin !== context.url.origin) {
+    if (
+        origin !==
+        resolveRequestOrigin({
+            request: context.request,
+            url: context.url,
+            headers: context.request.headers,
+        })
+    ) {
         return fail("非法来源请求", 403);
     }
     return null;

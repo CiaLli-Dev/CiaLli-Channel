@@ -1,4 +1,5 @@
 import { Redis } from "@upstash/redis";
+import { readRuntimeEnv } from "@/server/env/runtime";
 
 export type UpstashRedisConfig = {
     url: string;
@@ -22,7 +23,7 @@ const clientCache: Record<UpstashRedisClientMode, Redis | null | undefined> = {
 };
 
 function getEnvValue(name: "KV_REST_API_URL" | "KV_REST_API_TOKEN"): string {
-    return String(process.env[name] || import.meta.env[name] || "").trim();
+    return readRuntimeEnv(name);
 }
 
 function resolveClientMode(

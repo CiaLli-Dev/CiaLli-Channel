@@ -9,6 +9,8 @@ import path from "node:path";
 import { Readable } from "node:stream";
 import { pathToFileURL } from "node:url";
 
+import { loadLocalEnv, resolveEnvMode } from "./local-env.mjs";
+
 const DEFAULT_HOST = "127.0.0.1";
 const DEFAULT_PORT = 4321;
 const WORKSPACE_ROOT = process.cwd();
@@ -54,7 +56,7 @@ function exitWithUsage(message) {
         console.error(`[preview] ${message}`);
     }
     console.error(
-        "[preview] 用法：pnpm preview -- [--host <host>] [--port <port>]",
+        "[preview] 用法：pnpm preview -- [--host <host>] [--port <port>] [--mode <mode>]",
     );
     process.exit(1);
 }
@@ -86,7 +88,7 @@ function parseArgs(argv) {
 
         if (argument === "--help" || argument === "-h") {
             console.log(
-                "pnpm preview -- [--host <host>] [--port <port>]\n\n该命令仅预览现有的 Vercel 构建产物；若尚未构建，请先执行 pnpm build。",
+                "pnpm preview -- [--host <host>] [--port <port>] [--mode <mode>]\n\n该命令仅预览现有的 Vercel 构建产物；若尚未构建，请先执行 pnpm build。",
             );
             process.exit(0);
         }
@@ -111,11 +113,29 @@ function parseArgs(argv) {
             continue;
         }
 
+        if (argument === "--mode") {
+            const value = argv[index + 1];
+            if (!value) {
+                exitWithUsage("--mode 缺少参数");
+            }
+            index += 1;
+            continue;
+        }
+
+        if (argument.startsWith("--mode=")) {
+            continue;
+        }
+
         exitWithUsage(`不支持的参数：${argument}`);
     }
 
     return options;
 }
+
+const argv = process.argv.slice(2);
+const mode = resolveEnvMode(argv, "production");
+
+loadLocalEnv({ mode });
 
 function ensureBuildOutputExists() {
     const requiredPaths = [

@@ -13,6 +13,8 @@ import {
 import type { JsonObject, JsonValue } from "@/types/json";
 import { getJsonString, isJsonObject } from "@/utils/json-utils";
 import { internal } from "@/server/api/errors";
+import { readOptionalRuntimeEnv } from "@/server/env/runtime";
+import { isSecureRequest } from "@/server/http/request-url";
 
 export type DirectusAuthTokens = {
     accessToken: string;
@@ -45,14 +47,14 @@ export const DIRECTUS_ACCESS_COOKIE_NAME = "cialli_directus_access";
 export const DIRECTUS_REFRESH_COOKIE_NAME = "cialli_directus_refresh";
 export const REMEMBER_COOKIE_NAME = "cialli_remember";
 
-function resolveCookieSecure(requestUrl?: URL): boolean {
-    if (import.meta.env.PROD) {
-        return true;
-    }
-    if (requestUrl) {
-        return requestUrl.protocol === "https:";
-    }
-    return false;
+function resolveCookieSecure(params?: {
+    requestUrl?: URL;
+    requestHeaders?: Headers;
+}): boolean {
+    return isSecureRequest({
+        url: params?.requestUrl,
+        headers: params?.requestHeaders,
+    });
 }
 
 function clampCookieMaxAge(value: number): number {
@@ -94,12 +96,13 @@ export function isSessionOnlyMode(value: string | undefined | null): boolean {
 
 export function getCookieOptions(params?: {
     requestUrl?: URL;
+    requestHeaders?: Headers;
     maxAge?: number;
     sessionOnly?: boolean;
 }): AstroCookieSetOptions {
     const base: AstroCookieSetOptions = {
         httpOnly: true,
-        secure: resolveCookieSecure(params?.requestUrl),
+        secure: resolveCookieSecure(params),
         sameSite: "lax" as const,
         path: "/",
     };
@@ -117,11 +120,12 @@ export function getCookieOptions(params?: {
 
 export function getRememberCookieOptions(params: {
     requestUrl?: URL;
+    requestHeaders?: Headers;
     remember: boolean;
 }): AstroCookieSetOptions {
     const base: AstroCookieSetOptions = {
         httpOnly: true,
-        secure: resolveCookieSecure(params.requestUrl),
+        secure: resolveCookieSecure(params),
         sameSite: "lax" as const,
         path: "/",
     };
@@ -135,7 +139,7 @@ export function getRememberCookieOptions(params: {
 }
 
 export function getDirectusUrl(): string {
-    const url = process.env.DIRECTUS_URL || import.meta.env.DIRECTUS_URL || "";
+    const url = readOptionalRuntimeEnv("DIRECTUS_URL") || "";
     if (!url.trim()) {
         throw internal("DIRECTUS_URL 未配置");
     }
@@ -201,13 +205,7 @@ export function buildPublicAssetUrl(
         format?: string;
     },
 ): string {
-    const baseUrl = (
-        process.env.PUBLIC_ASSET_BASE_URL ||
-        import.meta.env.PUBLIC_ASSET_BASE_URL ||
-        ""
-    )
-        .toString()
-        .trim();
+    const baseUrl = readOptionalRuntimeEnv("PUBLIC_ASSET_BASE_URL") || "";
     if (!baseUrl) {
         return buildDirectusAssetUrl(fileId, options);
     }

@@ -198,6 +198,7 @@ describe("auth/session refresh race", () => {
         const releaseMock = vi.fn().mockResolvedValue(undefined);
         const expiredAccessToken = buildAccessToken(false);
         const recoveredAccessToken = buildAccessToken(false);
+        const refreshToken = "refresh-old-race-hit";
 
         mockedDirectusGetMe
             .mockRejectedValueOnce(new DirectusAuthError("expired", 401))
@@ -229,7 +230,7 @@ describe("auth/session refresh race", () => {
 
         const { context, setRecords, deleteRecords } = createSessionContext({
             [DIRECTUS_ACCESS_COOKIE_NAME]: expiredAccessToken,
-            [DIRECTUS_REFRESH_COOKIE_NAME]: "refresh-old",
+            [DIRECTUS_REFRESH_COOKIE_NAME]: refreshToken,
             [REMEMBER_COOKIE_NAME]: "1",
         });
 
@@ -256,6 +257,7 @@ describe("auth/session refresh race", () => {
     it("刷新 401 且无共享结果时仍会清理会话", async () => {
         const releaseMock = vi.fn().mockResolvedValue(undefined);
         const expiredAccessToken = buildAccessToken(false);
+        const refreshToken = "refresh-old-race-miss";
 
         mockedDirectusGetMe.mockRejectedValueOnce(
             new DirectusAuthError("expired", 401),
@@ -273,7 +275,7 @@ describe("auth/session refresh race", () => {
 
         const { context, deleteRecords } = createSessionContext({
             [DIRECTUS_ACCESS_COOKIE_NAME]: expiredAccessToken,
-            [DIRECTUS_REFRESH_COOKIE_NAME]: "refresh-old",
+            [DIRECTUS_REFRESH_COOKIE_NAME]: refreshToken,
             [REMEMBER_COOKIE_NAME]: "1",
         });
 
@@ -289,6 +291,7 @@ describe("auth/session refresh race", () => {
 
     it("分布式锁忙时可通过等待共享结果恢复且不触发 directusRefresh", async () => {
         const refreshedAccessToken = buildAccessToken(false);
+        const refreshToken = "refresh-old-race-busy";
 
         mockedDirectusGetMe.mockResolvedValueOnce({
             id: "user-2",
@@ -310,7 +313,7 @@ describe("auth/session refresh race", () => {
         });
 
         const { context, deleteRecords } = createSessionContext({
-            [DIRECTUS_REFRESH_COOKIE_NAME]: "refresh-old",
+            [DIRECTUS_REFRESH_COOKIE_NAME]: refreshToken,
         });
 
         const user = await getSessionUser(context);

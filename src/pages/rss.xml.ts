@@ -3,14 +3,19 @@ import rss from "@astrojs/rss";
 import type { APIContext } from "astro";
 
 import { buildSiteFeed } from "@/server/application/feed/site-feed.service";
+import { resolveCanonicalSiteUrl } from "@/server/http/request-url";
 import type { ResolvedSiteSettings } from "@/types/site-settings";
 
+export const prerender = false;
+
 export async function GET(context: APIContext): Promise<Response> {
-    if (!context.site) {
-        throw new Error("site not set");
-    }
+    const site = resolveCanonicalSiteUrl({
+        request: context.request,
+        url: context.url,
+        headers: context.request.headers,
+    });
     const feed = await buildSiteFeed({
-        site: context.site,
+        site,
         resolvedSiteSettings: context.locals.siteSettings as
             | ResolvedSiteSettings
             | undefined,
@@ -26,7 +31,7 @@ export async function GET(context: APIContext): Promise<Response> {
     return rss({
         title: feed.title,
         description: feed.description,
-        site: context.site,
+        site,
         items,
         customData: `<language>${feed.language}</language>`,
     });

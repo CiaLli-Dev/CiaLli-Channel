@@ -1,4 +1,4 @@
-import sitemap from "@astrojs/sitemap";
+import node from "@astrojs/node";
 import svelte, { vitePreprocess } from "@astrojs/svelte";
 import vercel from "@astrojs/vercel";
 import { pluginCollapsibleSections } from "@expressive-code/plugin-collapsible-sections";
@@ -17,21 +17,44 @@ import {
     remarkPlugins,
 } from "./src/server/markdown/pipeline.ts";
 
-const _siteHostname = new URL(systemSiteConfig.siteURL).hostname;
+const VALID_DEPLOY_TARGETS = ["vercel", "docker"];
 
-// https://astro.build/config
-export default defineConfig({
-    site: systemSiteConfig.siteURL,
-    base: "/",
-    trailingSlash: "never",
+function resolveDeployTarget() {
+    const rawTarget = String(process.env.DEPLOY_TARGET || "vercel")
+        .trim()
+        .toLowerCase();
 
-    security: {
-        allowedDomains: [{ hostname: _siteHostname }],
-    },
+    if (VALID_DEPLOY_TARGETS.includes(rawTarget)) {
+        return rawTarget;
+    }
 
-    // server 模式只改变默认渲染策略；静态例外继续由显式 prerender 控制。
-    output: "server",
-    adapter: vercel({
+    console.warn(
+        `[astro.config] 未识别的 DEPLOY_TARGET=${rawTarget}，已回退到 vercel`,
+    );
+    return "vercel";
+}
+
+function resolveConfiguredSiteUrl() {
+    const runtimeSiteUrl = String(process.env.APP_SITE_URL || "").trim();
+    if (runtimeSiteUrl) {
+        return runtimeSiteUrl;
+    }
+
+    return systemSiteConfig.siteURL;
+}
+
+const deployTarget = resolveDeployTarget();
+const configuredSiteUrl = resolveConfiguredSiteUrl();
+const siteHostname = new URL(configuredSiteUrl).hostname;
+
+function resolveAdapter() {
+    if (deployTarget === "docker") {
+        return node({
+            mode: "standalone",
+        });
+    }
+
+    return vercel({
         // 启用 Vercel Image Optimization
         imageService: true,
         imagesConfig: {
@@ -42,7 +65,24 @@ export default defineConfig({
             formats: ["image/avif", "image/webp"],
             minimumCacheTTL: 60 * 60 * 24 * 30,
         },
-    }),
+    });
+}
+
+// https://astro.build/config
+export default defineConfig({
+    site: deployTarget === "vercel" ? configuredSiteUrl : undefined,
+    base: "/",
+    trailingSlash: "never",
+
+    security:
+        deployTarget === "vercel"
+            ? {
+                  allowedDomains: [{ hostname: siteHostname }],
+              }
+            : undefined,
+
+    output: "static",
+    adapter: resolveAdapter(),
 
     prefetch: {
         prefetchAll: false,
@@ -100,7 +140,6 @@ export default defineConfig({
         svelte({
             preprocess: vitePreprocess(),
         }),
-        sitemap(),
     ],
     markdown: {
         remarkPlugins,

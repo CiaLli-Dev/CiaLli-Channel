@@ -1,4 +1,5 @@
 import { internal } from "@/server/api/errors";
+import { readRuntimeEnv } from "@/server/env/runtime";
 
 type RedisNamespaceSource = "explicit" | "derived" | "missing";
 
@@ -19,7 +20,7 @@ function readEnvValue(
         | "VERCEL_GIT_COMMIT_REF"
         | "NODE_ENV",
 ): string {
-    return String(process.env[name] || import.meta.env[name] || "").trim();
+    return readRuntimeEnv(name);
 }
 
 function collapseRepeatedDashes(value: string): string {

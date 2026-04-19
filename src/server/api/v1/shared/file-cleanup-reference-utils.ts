@@ -1,3 +1,5 @@
+import { readOptionalRuntimeEnv } from "@/server/env/runtime";
+
 const UUID_SOURCE =
     "[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
 
@@ -21,13 +23,7 @@ function toUuidCandidates(value: string): string[] {
 }
 
 function buildExternalPublicAssetPattern(): RegExp | null {
-    const rawBaseUrl = (
-        process.env.PUBLIC_ASSET_BASE_URL ||
-        import.meta.env.PUBLIC_ASSET_BASE_URL ||
-        ""
-    )
-        .toString()
-        .trim();
+    const rawBaseUrl = readOptionalRuntimeEnv("PUBLIC_ASSET_BASE_URL") || "";
     if (!rawBaseUrl) {
         return null;
     }

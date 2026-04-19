@@ -14,7 +14,10 @@ export default defineConfig({
         },
     },
     test: {
-        include: ["src/**/__tests__/**/*.test.ts"],
+        include: [
+            "scripts/**/__tests__/**/*.test.ts",
+            "src/**/__tests__/**/*.test.ts",
+        ],
         environment: "node",
         setupFiles: ["src/__tests__/setup.ts"],
         coverage: {

@@ -8,6 +8,7 @@ import {
     getCookieOptions,
     REMEMBER_COOKIE_NAME,
 } from "@/server/directus-auth";
+import { resolveRequestOrigin } from "@/server/http/request-url";
 import { assertCsrfToken } from "@/server/security/csrf";
 
 const AUTH_NO_STORE = "private, no-store";
@@ -33,18 +34,21 @@ function clearAuthCookie(context: APIContext) {
         cookies.set(DIRECTUS_REFRESH_COOKIE_NAME, "", {
             ...getCookieOptions({
                 requestUrl: url,
+                requestHeaders: context.request.headers,
             }),
             maxAge: 0,
         });
         cookies.set(DIRECTUS_ACCESS_COOKIE_NAME, "", {
             ...getCookieOptions({
                 requestUrl: url,
+                requestHeaders: context.request.headers,
             }),
             maxAge: 0,
         });
         cookies.set(REMEMBER_COOKIE_NAME, "", {
             ...getCookieOptions({
                 requestUrl: url,
+                requestHeaders: context.request.headers,
             }),
             maxAge: 0,
         });
@@ -55,7 +59,15 @@ export async function POST(context: APIContext): Promise<Response> {
     const { request, cookies, url } = context;
 
     const origin = request.headers.get("origin");
-    if (origin && origin !== url.origin) {
+    if (
+        origin &&
+        origin !==
+            resolveRequestOrigin({
+                request,
+                url,
+                headers: request.headers,
+            })
+    ) {
         return json(
             { ok: false, message: i18n(I18nKey.interactionApiIllegalOrigin) },
             { status: 403 },

@@ -1,12 +1,23 @@
 ---
 import MainGridLayout from "@layouts/MainGridLayout.astro";
 import { listSiteFeedPreviewEntries } from "@/server/application/feed/site-feed.service";
+import { resolveCanonicalSiteUrl } from "@/server/http/request-url";
 import { formatDateToYYYYMMDD } from "@utils/date-utils";
 import { Icon } from "astro-icon/components";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 
+export const prerender = false;
+
 const recentPosts = await listSiteFeedPreviewEntries(6);
+const rssUrl = new URL(
+  "rss.xml",
+  resolveCanonicalSiteUrl({
+    request: Astro.request,
+    url: Astro.url,
+    headers: Astro.request.headers,
+  }),
+).href;
 ---
 
 <MainGridLayout title={i18n(I18nKey.contentRss)}>
@@ -65,12 +76,12 @@ const recentPosts = await listSiteFeedPreviewEntries(6);
               <code
                 class="bg-(--card-bg) px-3 py-2 rounded-lg text-sm font-mono text-75 border border-(--line-divider) break-all"
               >
-                {Astro.site}rss.xml
+                {rssUrl}
               </code>
               <button
                 id="copy-rss-btn"
                 class="px-4 py-2 bg-(--primary) text-white rounded-lg hover:opacity-80 transition-all duration-200 font-medium text-sm whitespace-nowrap"
-                data-url={`${Astro.site}rss.xml`}
+                data-url={rssUrl}
               >
                 {i18n(I18nKey.contentRssCopyLink)}
               </button>
