@@ -56,6 +56,8 @@ import {
 import { hasEditorSaveFreshnessParam } from "@/utils/editor-save-freshness";
 import DetailActionFloat from "@components/control/DetailActionFloat.astro";
 
+export const prerender = false;
+
 const rawId = (Astro.params.id || "").replace(/^\/+|\/+$/g, "");
 const bypassPublicCache = hasEditorSaveFreshnessParam(Astro.url);
 

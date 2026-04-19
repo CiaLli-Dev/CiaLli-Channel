@@ -342,6 +342,7 @@ describe("buildSiteFeed", () => {
                 title: "预览 1",
                 url: "/posts/preview-1",
                 published: BASE_NOW,
+                updated: new Date(BASE_NOW.getTime() + 60_000),
             },
             {
                 id: "short-2",
@@ -349,6 +350,7 @@ describe("buildSiteFeed", () => {
                 title: "预览 2",
                 url: "/posts/short-2",
                 published: BASE_NOW,
+                updated: new Date(BASE_NOW.getTime() + 60_000),
             },
         ]);
     });

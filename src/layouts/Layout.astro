@@ -50,7 +50,8 @@ const runtimeSiteConfig = buildRuntimeSiteConfig(
 const musicPlayerSettings = resolvedSiteSettings.settings.musicPlayer;
 const csrfTokenFromLocals =
   typeof Astro.locals.csrfToken === "string" ? Astro.locals.csrfToken : "";
-const csrfToken = csrfTokenFromLocals || readCsrfToken(Astro);
+const csrfToken =
+  csrfTokenFromLocals || (Astro.isPrerendered ? "" : readCsrfToken(Astro));
 
 // 在首屏渲染时先为 body 打上类名，用于决定 banner 高度
 // 虽然 View Transitions 会在切页后更新 body，但时机在动画之后，会造成高度切换延迟

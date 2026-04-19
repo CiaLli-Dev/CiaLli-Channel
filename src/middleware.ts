@@ -75,7 +75,7 @@ export const onRequest: MiddlewareHandler = defineMiddleware(
                     applyCommonSecurityHeaders({
                         response: await next(),
                         url: context.url,
-                        headers: context.request.headers,
+                        headers: undefined,
                     }),
             );
         }

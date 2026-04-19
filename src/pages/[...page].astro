@@ -10,6 +10,8 @@ import {
 } from "@/server/application/feed/mixed-feed-page.service";
 import type { FeedPageItem } from "@/server/application/feed/feed.types";
 
+export const prerender = false;
+
 const rawPagePath = Astro.params.page || "";
 
 // 重定向旧分页 URL

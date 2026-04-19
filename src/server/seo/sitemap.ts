@@ -1,5 +1,4 @@
-import { getSortedPosts } from "@/utils/content-utils";
-import { getPostUrl } from "@/utils/url-utils";
+import { listSiteFeedPreviewEntries } from "@/server/application/feed/site-feed.service";
 
 export type SitemapEntry = {
     loc: string;
@@ -29,14 +28,12 @@ export async function buildPublicSitemapEntries(
         entries.set(loc, { loc });
     }
 
-    const posts = (await getSortedPosts()).filter(
-        (post) => !post.data.encrypted,
-    );
+    const posts = await listSiteFeedPreviewEntries();
     for (const post of posts) {
-        const loc = new URL(post.url || getPostUrl(post), site).href;
+        const loc = new URL(post.url, site).href;
         entries.set(loc, {
             loc,
-            lastmod: (post.data.updated || post.data.published).toISOString(),
+            lastmod: post.updated.toISOString(),
         });
     }
 

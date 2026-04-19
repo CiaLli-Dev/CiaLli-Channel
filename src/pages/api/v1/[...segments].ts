@@ -2,6 +2,8 @@ import type { APIContext } from "astro";
 
 import { handleV1 } from "@/server/api/v1";
 
+export const prerender = false;
+
 export async function GET(context: APIContext): Promise<Response> {
     return await handleV1(context);
 }

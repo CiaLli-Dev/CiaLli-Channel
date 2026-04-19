@@ -1,6 +1,5 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
-  import { slide } from "svelte/transition";
   import Key from "../../../i18n/i18nKey";
   import { i18n } from "../../../i18n/translation";
   import { getAssetPath } from "@/scripts/widgets/music-player/helpers";
@@ -15,7 +14,6 @@
 
 <div
   class="playlist-panel absolute bottom-full left-0 mb-4 w-full max-h-96 overflow-hidden z-50"
-  transition:slide={{ duration: 300, axis: "y" }}
 >
   <div
     class="playlist-header flex items-center justify-between p-4 border-b border-(--line-divider)"

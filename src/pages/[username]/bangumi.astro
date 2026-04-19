@@ -11,6 +11,8 @@ import {
 } from "@/server/api/v1/public-data";
 import { runWithDirectusPublicAccess } from "@/server/directus/client";
 
+export const prerender = false;
+
 const USER_PUBLIC_PAGE_CACHE_CONTROL =
   "public, s-maxage=60, stale-while-revalidate=300";
 

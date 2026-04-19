@@ -40,6 +40,8 @@ import {
 import { hasEditorSaveFreshnessParam } from "@/utils/editor-save-freshness";
 import DetailActionFloat from "@components/control/DetailActionFloat.astro";
 
+export const prerender = false;
+
 const username = (Astro.params.username || "").trim();
 const id = (Astro.params.id || "").trim();
 const bypassPublicCache = hasEditorSaveFreshnessParam(Astro.url);

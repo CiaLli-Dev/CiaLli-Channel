@@ -2,6 +2,8 @@ import type { APIContext } from "astro";
 
 import { ensureCsrfCookie } from "@/server/security/csrf";
 
+export const prerender = false;
+
 function json<T>(data: T, init?: ResponseInit): Response {
     return new Response(JSON.stringify(data), {
         ...init,

@@ -46,6 +46,7 @@ export type SiteFeedPreviewEntry = {
     summary: string;
     url: string;
     published: Date;
+    updated: Date;
 };
 
 export type SiteFeedEntry = {
@@ -184,9 +185,12 @@ async function renderFeedEntry(
 }
 
 export async function listSiteFeedPreviewEntries(
-    limit: number,
+    limit?: number,
 ): Promise<SiteFeedPreviewEntry[]> {
-    const normalizedLimit = Math.max(0, Math.trunc(limit));
+    const normalizedLimit =
+        typeof limit === "number" && Number.isFinite(limit)
+            ? Math.max(0, Math.trunc(limit))
+            : Number.POSITIVE_INFINITY;
     if (normalizedLimit === 0) {
         return [];
     }
@@ -198,6 +202,7 @@ export async function listSiteFeedPreviewEntries(
         summary: entry.summary,
         url: entry.link,
         published: entry.published,
+        updated: entry.updated,
     }));
 }
 
