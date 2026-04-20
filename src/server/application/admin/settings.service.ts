@@ -527,7 +527,7 @@ async function handleAdminSitePatch(
             app_visibility: "public",
         });
     }
-    invalidateSiteSettingsCache();
+    await invalidateSiteSettingsCache();
     await cleanupOwnedOrphanDirectusFiles({
         candidateFileIds: removedFileIds,
     });
@@ -607,7 +607,7 @@ async function handleAdminBulletinPatch(
         ...(input.closable !== undefined ? { closable: input.closable } : {}),
     });
     const { updatedAt } = await upsertSiteAnnouncement(announcementPatch);
-    invalidateSiteSettingsCache();
+    await invalidateSiteSettingsCache();
     return ok({
         announcement: announcementPatch,
         updated_at: updatedAt,

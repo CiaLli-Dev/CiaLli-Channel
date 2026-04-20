@@ -412,6 +412,92 @@ describe("handleAdminSettings /site", () => {
         expect(body.settings.site.themePreset).toBe("teal");
     });
 
+    it("PATCH /admin/settings/site 保存关闭波浪效果并在响应前等待缓存失效", async () => {
+        let finishInvalidation: (() => void) | undefined;
+        const invalidationFinished = new Promise<void>((resolve) => {
+            finishInvalidation = resolve;
+        });
+        mockedGetResolvedSiteSettings.mockResolvedValue({
+            system: {
+                timeZone: "Asia/Shanghai",
+            },
+            settings: defaultSiteSettings,
+        } as never);
+        mockedResolveSiteSettingsPayload.mockReturnValue({
+            ...defaultSiteSettings,
+            banner: {
+                ...defaultSiteSettings.banner,
+                waves: {
+                    enable: false,
+                },
+            },
+        } as never);
+        mockedReadMany.mockResolvedValue([
+            {
+                id: "row-1",
+                date_updated: "2026-02-15T12:00:00.000Z",
+                date_created: "2026-02-10T12:00:00.000Z",
+            },
+        ] as never);
+        mockedUpdateOne.mockResolvedValue({
+            date_updated: "2026-02-16T00:00:00.000Z",
+            date_created: "2026-02-10T12:00:00.000Z",
+        } as never);
+        mockedInvalidateSiteSettingsCache.mockReturnValueOnce(
+            invalidationFinished as never,
+        );
+
+        const ctx = makeCtx("admin/settings/site", "PATCH", {
+            banner: {
+                waves: {
+                    enable: false,
+                },
+            },
+        });
+        const responseTask = handleAdminSettings(ctx as unknown as APIContext, [
+            "settings",
+            "site",
+        ]);
+        const earlyResult = await Promise.race([
+            responseTask.then(() => "response"),
+            Promise.resolve("pending"),
+        ]);
+
+        expect(earlyResult).toBe("pending");
+
+        finishInvalidation?.();
+        const response = await responseTask;
+
+        expect(response.status).toBe(200);
+        expect(mockedUpdateOne).toHaveBeenCalledWith(
+            "app_site_settings",
+            "row-1",
+            expect.objectContaining({
+                settings_home: expect.objectContaining({
+                    banner: expect.objectContaining({
+                        waves: {
+                            enable: false,
+                        },
+                    }),
+                }),
+            }),
+        );
+        expect(mockedInvalidateSiteSettingsCache).toHaveBeenCalledTimes(1);
+
+        const body = await parseResponseJson<{
+            ok: boolean;
+            settings: {
+                banner: {
+                    waves?: {
+                        enable: boolean;
+                    };
+                };
+            };
+        }>(response);
+        expect(body.ok).toBe(true);
+        expect(body.settings.banner.waves?.enable).toBe(false);
+    });
+
     it("PATCH /admin/settings/site 拒绝非法站点时区", async () => {
         const ctx = makeCtx("admin/settings/site", "PATCH", {
             site: {

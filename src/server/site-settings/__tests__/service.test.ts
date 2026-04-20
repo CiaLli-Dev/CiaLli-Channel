@@ -2,16 +2,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { defaultSiteSettings } from "@/config";
 
-const { cacheGetMock, cacheSetMock, readManyMock } = vi.hoisted(() => ({
-    cacheGetMock: vi.fn(),
-    cacheSetMock: vi.fn(),
-    readManyMock: vi.fn(),
-}));
+const { cacheGetMock, cacheSetMock, cacheInvalidateMock, readManyMock } =
+    vi.hoisted(() => ({
+        cacheGetMock: vi.fn(),
+        cacheSetMock: vi.fn(),
+        cacheInvalidateMock: vi.fn(),
+        readManyMock: vi.fn(),
+    }));
 
 vi.mock("@/server/cache/manager", () => ({
     cacheManager: {
         get: cacheGetMock,
         set: cacheSetMock,
+        invalidate: cacheInvalidateMock,
     },
 }));
 
@@ -21,7 +24,10 @@ vi.mock("@/server/directus/client", () => ({
         await task(),
 }));
 
-import { resolveSiteSettingsPayload } from "@/server/site-settings/service";
+import {
+    resolveRequestSiteSettings,
+    resolveSiteSettingsPayload,
+} from "@/server/site-settings/service";
 
 function siteSettingsRow(
     sections: {
@@ -127,6 +133,66 @@ function fullSectionedSiteSettingsRow(): Record<string, unknown> {
         },
         theme_preset: "purple",
     });
+}
+
+function createLegacyResolvedSiteSettings(): {
+    system: {
+        siteURL: string;
+        lang: "zh_CN";
+        timeZone: string;
+        themeColor: {
+            hue: number;
+        };
+        pageScaling: {
+            targetWidth: number;
+        };
+        expressiveCode: {
+            theme: string;
+            hideDuringThemeTransition: boolean;
+        };
+    };
+    settings: Record<string, unknown>;
+} {
+    return {
+        system: {
+            siteURL: "https://www.ciallichannel.com/",
+            lang: "zh_CN",
+            timeZone: "Asia/Shanghai",
+            themeColor: {
+                hue: 256,
+            },
+            pageScaling: {
+                targetWidth: 2000,
+            },
+            expressiveCode: {
+                theme: "github-dark",
+                hideDuringThemeTransition: true,
+            },
+        },
+        settings: {
+            ...structuredClone(defaultSiteSettings),
+            banner: {
+                ...structuredClone(defaultSiteSettings.banner),
+                waves: {
+                    enable: true,
+                    performanceMode: false,
+                },
+                imageApi: {
+                    enable: false,
+                    url: "http://domain.com/api_v2.php?format=text&count=4",
+                },
+            },
+            umami: {
+                enabled: false,
+            },
+            footer: {
+                enable: false,
+            },
+            featurePages: {
+                friends: true,
+            },
+        },
+    };
 }
 
 describe("resolveSiteSettingsPayload", () => {
@@ -303,6 +369,20 @@ describe("resolveSiteSettingsPayload", () => {
             ),
         ).toBe(false);
     });
+
+    it("关闭波浪效果时会在归一化后保留 false，不回退默认 true", () => {
+        const result = resolveSiteSettingsPayload({
+            banner: {
+                waves: {
+                    enable: false,
+                },
+            },
+        });
+
+        expect(result.banner.waves).toEqual({
+            enable: false,
+        });
+    });
 });
 
 describe("site-settings/service", () => {
@@ -370,6 +450,74 @@ describe("site-settings/service", () => {
         expect(resolved.settings.musicPlayer.enable).toBe(false);
     });
 
+    it("从 Directus 分区字段读取时会保留关闭后的波浪效果配置", async () => {
+        readManyMock.mockImplementation((collection: string) => {
+            if (collection === "app_site_settings") {
+                const row = fullSectionedSiteSettingsRow();
+                const settingsHome = row.settings_home as {
+                    banner: {
+                        waves: {
+                            enable: boolean;
+                        };
+                    };
+                };
+                settingsHome.banner.waves.enable = false;
+                return Promise.resolve([row]);
+            }
+            if (collection === "app_site_announcements") {
+                return Promise.resolve([]);
+            }
+            return Promise.resolve([]);
+        });
+
+        const { getResolvedSiteSettings } =
+            await import("@/server/site-settings/service");
+        const resolved = await getResolvedSiteSettings();
+
+        expect(resolved.settings.banner.waves?.enable).toBe(false);
+    });
+
+    it("缓存失效会等待底层缓存删除完成", async () => {
+        let finishInvalidate: (() => void) | undefined;
+        const invalidateFinished = new Promise<void>((resolve) => {
+            finishInvalidate = resolve;
+        });
+        const events: string[] = [];
+        cacheInvalidateMock.mockImplementationOnce(async () => {
+            events.push("invalidate-start");
+            await invalidateFinished;
+            events.push("invalidate-done");
+        });
+
+        const { invalidateSiteSettingsCache } =
+            await import("@/server/site-settings/service");
+        const invalidateTask = invalidateSiteSettingsCache();
+        expect(invalidateTask).toBeInstanceOf(Promise);
+        await Promise.resolve();
+        events.push("after-call");
+
+        finishInvalidate?.();
+        await invalidateTask;
+
+        expect(events).toEqual([
+            "invalidate-start",
+            "after-call",
+            "invalidate-done",
+        ]);
+    });
+});
+
+describe("site-settings/service cache", () => {
+    beforeEach(() => {
+        vi.resetModules();
+        cacheGetMock.mockReset();
+        cacheSetMock.mockReset();
+        readManyMock.mockReset();
+        cacheGetMock.mockResolvedValue(null);
+        cacheSetMock.mockResolvedValue(undefined);
+        readManyMock.mockImplementation(async () => []);
+    });
+
     it("缓存 miss 时并发请求只回源一次", async () => {
         let resolveSiteRead:
             | ((value: Array<Record<string, unknown>>) => void)
@@ -429,6 +577,86 @@ describe("site-settings/service", () => {
 
         expect(first.settings.site.title).toBe(second.settings.site.title);
         expect(readManyMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("请求上下文命中 legacy site settings 时会回源当前规范化配置", async () => {
+        const freshResolved = {
+            system: {
+                siteURL: "https://www.ciallichannel.com/",
+                lang: "zh_CN" as const,
+                timeZone: "Asia/Shanghai",
+                themeColor: {
+                    hue: 256,
+                },
+                pageScaling: {
+                    targetWidth: 2000,
+                },
+                expressiveCode: {
+                    theme: "github-dark",
+                    hideDuringThemeTransition: true,
+                },
+            },
+            settings: {
+                ...structuredClone(defaultSiteSettings),
+                banner: {
+                    ...structuredClone(defaultSiteSettings.banner),
+                    waves: {
+                        enable: false,
+                    },
+                },
+            },
+        };
+        cacheGetMock.mockResolvedValueOnce({
+            resolved: freshResolved,
+            updatedAt: "2026-04-20T14:00:58.808Z",
+        });
+
+        const result = await resolveRequestSiteSettings(
+            createLegacyResolvedSiteSettings() as never,
+        );
+
+        expect(result.settings.banner.waves?.enable).toBe(false);
+        expect(
+            Object.prototype.hasOwnProperty.call(
+                result.settings as Record<string, unknown>,
+                "featurePages",
+            ),
+        ).toBe(false);
+        expect(cacheGetMock).toHaveBeenCalledWith("site-settings", "default");
+    });
+
+    it("请求上下文命中当前 schema 的 site settings 时直接复用", async () => {
+        const freshResolved = {
+            system: {
+                siteURL: "https://www.ciallichannel.com/",
+                lang: "zh_CN" as const,
+                timeZone: "Asia/Shanghai",
+                themeColor: {
+                    hue: 256,
+                },
+                pageScaling: {
+                    targetWidth: 2000,
+                },
+                expressiveCode: {
+                    theme: "github-dark",
+                    hideDuringThemeTransition: true,
+                },
+            },
+            settings: {
+                ...structuredClone(defaultSiteSettings),
+                banner: {
+                    ...structuredClone(defaultSiteSettings.banner),
+                    waves: {
+                        enable: false,
+                    },
+                },
+            },
+        };
+
+        const result = await resolveRequestSiteSettings(freshResolved);
+
+        expect(result).toBe(freshResolved);
+        expect(cacheGetMock).not.toHaveBeenCalled();
     });
 
     it("回源失败后使用最后一次成功值而非默认值", async () => {

@@ -5,7 +5,7 @@ import SpeedInsights from "@vercel/speed-insights/astro";
 import ConfigCarrier from "@components/ConfigCarrier.astro";
 import MusicPlayer from "@components/widget/MusicPlayer/MusicPlayer.svelte";
 import { buildRuntimeSiteConfig } from "@/config";
-import { getResolvedSiteSettings } from "@/server/site-settings/service";
+import { resolveRequestSiteSettings } from "@/server/site-settings/service";
 import { readCsrfToken } from "@/server/security/csrf";
 import type { ResolvedSiteSettings } from "@/types/site-settings";
 
@@ -41,7 +41,7 @@ interface Props {
 }
 
 const resolvedSiteSettings: ResolvedSiteSettings =
-  Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
+  await resolveRequestSiteSettings(Astro.locals.siteSettings);
 const runtimeSiteConfig = buildRuntimeSiteConfig(
   resolvedSiteSettings.system,
   resolvedSiteSettings.settings,

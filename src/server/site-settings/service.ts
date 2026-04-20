@@ -44,6 +44,16 @@ type SiteSettingsFailureFallback = {
     resolved: ResolvedSiteSettings;
 };
 
+const LEGACY_SETTINGS_TOP_LEVEL_KEYS = [
+    "analytics",
+    "featurePages",
+    "footer",
+    "license",
+    "sakura",
+    "sidebarLayout",
+    "umami",
+] as const;
+
 const SITE_SETTINGS_FAILURE_BACKOFF_MS = 5_000;
 const ANNOUNCEMENT_QUERY_FIELDS = [
     "id",
@@ -223,6 +233,28 @@ function buildDefaultResolvedSettings(): ResolvedSiteSettings {
         system: buildSystemSiteConfig(settings),
         settings,
     };
+}
+
+function hasLegacySiteSettingsFields(settings: SiteSettingsPayload): boolean {
+    const settingsRecord = settings as Record<string, unknown>;
+    if (
+        LEGACY_SETTINGS_TOP_LEVEL_KEYS.some((key) =>
+            Object.prototype.hasOwnProperty.call(settingsRecord, key),
+        )
+    ) {
+        return true;
+    }
+
+    const bannerRecord = settings.banner as Record<string, unknown>;
+    if (Object.prototype.hasOwnProperty.call(bannerRecord, "imageApi")) {
+        return true;
+    }
+
+    const wavesRecord = (settings.banner.waves ?? {}) as Record<
+        string,
+        unknown
+    >;
+    return Object.prototype.hasOwnProperty.call(wavesRecord, "performanceMode");
 }
 
 function readRecentFailureFallback(): ResolvedSiteSettings | null {
@@ -466,6 +498,18 @@ export async function getResolvedSiteSettings(): Promise<ResolvedSiteSettings> {
     return await loadResolvedSiteSettingsSingleFlight();
 }
 
+export async function resolveRequestSiteSettings(
+    initial: ResolvedSiteSettings | null | undefined,
+): Promise<ResolvedSiteSettings> {
+    if (initial && !hasLegacySiteSettingsFields(initial.settings)) {
+        return initial;
+    }
+
+    // 开发态热更新下，Astro.locals.siteSettings 可能短暂保留旧 schema。
+    // 发现 legacy 字段时直接回源当前规范化后的设置，避免页面 SSR 与 API 返回不一致。
+    return await getResolvedSiteSettings();
+}
+
 export async function getPublicSiteSettings(): Promise<{
     settings: PublicSiteSettings;
     updatedAt: string | null;
@@ -481,6 +525,6 @@ export async function getPublicSiteSettings(): Promise<{
     };
 }
 
-export function invalidateSiteSettingsCache(): void {
-    void cacheManager.invalidate("site-settings", "default");
+export async function invalidateSiteSettingsCache(): Promise<void> {
+    await cacheManager.invalidate("site-settings", "default");
 }
