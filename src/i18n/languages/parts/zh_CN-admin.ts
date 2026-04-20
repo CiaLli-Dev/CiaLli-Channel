@@ -182,8 +182,7 @@ export const zhCNAdmin: Record<string, string> = {
     [Key.adminSiteSettingsSiteLanguage]: "站点语言",
     [Key.adminSiteSettingsSiteLanguageHint]: "设置默认界面语言。",
     [Key.adminSiteSettingsThemePreset]: "站点主题色",
-    [Key.adminSiteSettingsThemePresetHint]:
-        "选择基于 Material Design 3 种子色的站点主题预设。",
+    [Key.adminSiteSettingsThemePresetHint]: "选择站点主题预设。",
     [Key.adminSiteSettingsThemePresetBlue]: "蓝色",
     [Key.adminSiteSettingsThemePresetPurple]: "紫色",
     [Key.adminSiteSettingsThemePresetTeal]: "青绿",
