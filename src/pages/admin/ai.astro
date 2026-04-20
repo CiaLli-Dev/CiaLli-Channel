@@ -1,0 +1,218 @@
+---
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import AdminLayout from "@layouts/AdminLayout.astro";
+import SettingsField from "@/components/admin/settings/SettingsField.astro";
+---
+
+<AdminLayout
+  title={i18n(I18nKey.adminAiPageTitle)}
+  description={i18n(I18nKey.adminAiPageDescription)}
+>
+  <div
+    data-enter-skeleton-page="admin-ai"
+    data-enter-skeleton-target="admin-ai"
+    data-ui-density="settings-console"
+  >
+    <div data-enter-skeleton-inline-content class="space-y-4 text-75">
+      <section
+        class="card-base settings-console-card settings-console-header-card rounded-(--radius-large)"
+      >
+        <h1
+          class="settings-console-header-title text-4xl font-bold text-90 mb-2 relative
+				before:w-1 before:h-8 before:rounded-md before:bg-(--primary)
+				before:absolute before:top-1/2 before:-translate-y-1/2 before:-left-4"
+        >
+          {i18n(I18nKey.adminAiPageTitle)}
+        </h1>
+        <p class="settings-console-header-copy text-base text-70">
+          {i18n(I18nKey.adminAiPageIntro)}
+        </p>
+      </section>
+
+      <section
+        class="card-base settings-console-card rounded-(--radius-large) space-y-4"
+      >
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-2xl font-semibold text-90">
+            {i18n(I18nKey.adminAiSectionOverview)}
+          </h2>
+          <span
+            class="inline-flex items-center rounded-full border border-(--line-divider) px-3 py-1 text-xs text-60"
+          >
+            {i18n(I18nKey.adminAiComingSoon)}
+          </span>
+        </div>
+        <p class="text-sm text-70 leading-6">
+          {i18n(I18nKey.adminAiPageDescription)}
+        </p>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <article
+            class="rounded-xl border border-(--line-divider) bg-black/5 dark:bg-white/5 p-4 space-y-2"
+          >
+            <h3 class="text-base font-semibold text-90">
+              {i18n(I18nKey.adminAiOverviewAssistantAccount)}
+            </h3>
+            <p class="text-sm text-70 leading-6">
+              {i18n(I18nKey.adminAiOverviewAssistantAccountHint)}
+            </p>
+          </article>
+          <article
+            class="rounded-xl border border-(--line-divider) bg-black/5 dark:bg-white/5 p-4 space-y-2"
+          >
+            <h3 class="text-base font-semibold text-90">
+              {i18n(I18nKey.adminAiOverviewFlowStrategy)}
+            </h3>
+            <p class="text-sm text-70 leading-6">
+              {i18n(I18nKey.adminAiOverviewFlowStrategyHint)}
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section
+        class="card-base settings-console-card rounded-(--radius-large) space-y-4"
+      >
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-2xl font-semibold text-90">
+            {i18n(I18nKey.adminAiSectionConnection)}
+          </h2>
+          <span class="text-xs text-50">{i18n(I18nKey.adminAiComingSoon)}</span>
+        </div>
+        <form class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <SettingsField label={i18n(I18nKey.adminAiConnectionApiBaseUrl)}>
+            <input
+              class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+              placeholder={i18n(I18nKey.adminAiPlaceholderApiBaseUrl)}
+              readonly
+            />
+          </SettingsField>
+          <SettingsField label={i18n(I18nKey.adminAiConnectionModel)}>
+            <input
+              class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+              placeholder={i18n(I18nKey.adminAiPlaceholderModel)}
+              readonly
+            />
+          </SettingsField>
+          <SettingsField label={i18n(I18nKey.adminAiConnectionApiKey)}>
+            <input
+              type="password"
+              class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+              placeholder={i18n(I18nKey.adminAiPlaceholderApiKey)}
+              readonly
+            />
+          </SettingsField>
+          <SettingsField
+            label={i18n(I18nKey.adminAiConnectionAssistantAccount)}
+          >
+            <input
+              class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+              placeholder={i18n(I18nKey.adminAiPlaceholderAssistantAccount)}
+              readonly
+            />
+          </SettingsField>
+          <SettingsField
+            label={i18n(I18nKey.adminAiConnectionFlowName)}
+            className="lg:col-span-2"
+          >
+            <input
+              class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
+              placeholder={i18n(I18nKey.adminAiPlaceholderFlowName)}
+              readonly
+            />
+          </SettingsField>
+        </form>
+      </section>
+
+      <section
+        class="card-base settings-console-card rounded-(--radius-large) space-y-4"
+      >
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-2xl font-semibold text-90">
+            {i18n(I18nKey.adminAiSectionFeatures)}
+          </h2>
+          <span class="text-xs text-50">{i18n(I18nKey.adminAiComingSoon)}</span>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <label
+            class="flex items-start gap-3 rounded-xl border border-(--line-divider) bg-black/5 dark:bg-white/5 p-4 text-75"
+          >
+            <input type="checkbox" disabled class="mt-1" />
+            <span class="space-y-1">
+              <span class="block text-base font-medium text-90">
+                {i18n(I18nKey.adminAiFeatureArticleSummary)}
+              </span>
+              <span class="block text-sm text-70 leading-6">
+                {i18n(I18nKey.adminAiFeatureReadonlyHint)}
+              </span>
+            </span>
+          </label>
+          <label
+            class="flex items-start gap-3 rounded-xl border border-(--line-divider) bg-black/5 dark:bg-white/5 p-4 text-75"
+          >
+            <input type="checkbox" disabled class="mt-1" />
+            <span class="space-y-1">
+              <span class="block text-base font-medium text-90">
+                {i18n(I18nKey.adminAiFeatureHotspotDigest)}
+              </span>
+              <span class="block text-sm text-70 leading-6">
+                {i18n(I18nKey.adminAiFeatureReadonlyHint)}
+              </span>
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <section
+        class="card-base settings-console-card rounded-(--radius-large) space-y-4"
+      >
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-2xl font-semibold text-90">
+            {i18n(I18nKey.adminAiSectionAutomation)}
+          </h2>
+          <button
+            type="button"
+            disabled
+            class="px-4 h-9 rounded-lg border border-(--line-divider) text-sm text-60 cursor-not-allowed"
+          >
+            {i18n(I18nKey.adminAiComingSoon)}
+          </button>
+        </div>
+        <p class="text-sm text-70 leading-6">
+          {i18n(I18nKey.adminAiAutomationDescription)}
+        </p>
+        <textarea
+          class="w-full min-h-32 rounded-xl border border-(--line-divider) bg-transparent px-3.5 py-3 text-sm text-75 placeholder:text-50 resize-none"
+          placeholder={i18n(I18nKey.adminAiAutomationReadonlyHint)}
+          readonly></textarea>
+      </section>
+    </div>
+
+    <div
+      data-enter-skeleton-inline-placeholder
+      aria-hidden="true"
+      class="space-y-4"
+    >
+      <section class="card-base px-9 py-6 rounded-(--radius-large) space-y-3">
+        <div
+          class="md3-skeleton-text"
+          style="--skeleton-width: 26%; --skeleton-height: 2rem;"
+        >
+        </div>
+        <div class="md3-skeleton-text" style="--skeleton-width: 62%;"></div>
+      </section>
+      {
+        Array.from({ length: 4 }).map(() => (
+          <section class="card-base px-6 py-5 rounded-(--radius-large) space-y-3">
+            <div
+              class="md3-skeleton-text"
+              style="--skeleton-width: 24%; --skeleton-height: 1.2rem;"
+            />
+            <div class="md3-skeleton-text" style="--skeleton-width: 94%;" />
+            <div class="md3-skeleton-text" style="--skeleton-width: 72%;" />
+          </section>
+        ))
+      }
+    </div>
+  </div>
+</AdminLayout>

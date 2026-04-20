@@ -5,6 +5,17 @@ import { i18n } from "@i18n/translation";
 
 <section class="grid grid-cols-1 gap-4">
   <a
+    href="/admin/ai"
+    class="card-base settings-console-card admin-dashboard-ai-card rounded-(--radius-large) border border-(--line-divider) transition-colors"
+  >
+    <h2 class="text-xl font-semibold text-90 mb-2">
+      {i18n(I18nKey.adminDashboardAiTitle)}
+    </h2>
+    <p class="text-sm text-70">
+      {i18n(I18nKey.adminDashboardAiDescription)}
+    </p>
+  </a>
+  <a
     href="/admin/users"
     class="card-base settings-console-card rounded-(--radius-large) border border-(--line-divider) hover:border-(--primary) transition-colors"
   >
@@ -47,3 +58,55 @@ import { i18n } from "@i18n/translation";
     <p class="text-sm text-70">{i18n(I18nKey.adminAboutDescription)}</p>
   </a>
 </section>
+
+<style>
+  .admin-dashboard-ai-card {
+    position: relative;
+    border-color: var(--line-divider);
+    background:
+      linear-gradient(var(--card-bg), var(--card-bg)) padding-box,
+      linear-gradient(120deg, transparent, transparent) border-box;
+    background-clip: padding-box, border-box;
+    background-origin: border-box;
+    background-size:
+      100% 100%,
+      220% 220%;
+    will-change: background-position, border-color;
+  }
+
+  .admin-dashboard-ai-card:hover,
+  .admin-dashboard-ai-card:focus-visible {
+    border-color: transparent;
+    background-image:
+      linear-gradient(var(--card-bg), var(--card-bg)),
+      linear-gradient(
+        120deg,
+        #ff6b6b 0%,
+        #f7b731 16%,
+        #4cd137 32%,
+        #34ace0 48%,
+        #706fd3 64%,
+        #ff6b81 82%,
+        #ff6b6b 100%
+      );
+    animation: admin-dashboard-ai-card-rainbow-flow 7s linear infinite;
+  }
+
+  .admin-dashboard-ai-card:focus-visible {
+    outline: none;
+  }
+
+  @keyframes admin-dashboard-ai-card-rainbow-flow {
+    0% {
+      background-position:
+        0 0,
+        0% 50%;
+    }
+
+    100% {
+      background-position:
+        0 0,
+        200% 50%;
+    }
+  }
+</style>

@@ -31,8 +31,50 @@ export const jaAdmin: Record<string, string> = {
     [Key.adminBulletinTitle]: "お知らせ設定",
     [Key.adminBulletinTitleLabel]: "お知らせタイトル",
     [Key.adminBulletinTitlePlaceholder]: "お知らせタイトルを入力してください",
+    [Key.adminDashboardAiDescription]:
+        "サイト全体の AI アシスタント、機能スイッチ、今後の自動化フローを設定します。",
+    [Key.adminDashboardAiTitle]: "AI",
     [Key.adminDashboardDescription]: "管理画面の概要",
     [Key.adminDashboardTitle]: "管理コンソール",
+    [Key.adminAiAutomationDescription]:
+        "今後は専用の AI アシスタントアカウントと Directus Flow を組み合わせ、要約生成、ホットトピック集約、日記の自動公開を実現します。",
+    [Key.adminAiAutomationReadonlyHint]:
+        "今回は自動化設計の表示のみです。Flow 編成、スケジュール、公開ポリシーの設定はまだ利用できません。",
+    [Key.adminAiComingSoon]: "近日公開",
+    [Key.adminAiConnectionApiBaseUrl]: "API / Base URL",
+    [Key.adminAiConnectionApiKey]: "API キー",
+    [Key.adminAiConnectionAssistantAccount]: "AI アシスタントアカウント",
+    [Key.adminAiConnectionFlowName]: "Directus Flow 識別子",
+    [Key.adminAiConnectionModel]: "モデル",
+    [Key.adminAiFeatureArticleSummary]: "記事 AI 要約",
+    [Key.adminAiFeatureHotspotDigest]:
+        "最近の記事・日記のホットトピック要約と日記の自動公開",
+    [Key.adminAiFeatureReadonlyHint]:
+        "機能スイッチと戦略設定は今後のバージョンで開放します。今回は読み取り専用のプレースホルダーです。",
+    [Key.adminAiOverviewAssistantAccount]: "AI アシスタントアカウント",
+    [Key.adminAiOverviewAssistantAccountHint]:
+        "将来的にサイト専用の AI アシスタントアカウントを作成し、要約、ホットトピック整理、自動公開を一元的に処理します。",
+    [Key.adminAiOverviewFlowStrategy]: "Directus Flow 自動化",
+    [Key.adminAiOverviewFlowStrategyHint]:
+        "各 AI 機能はページごとの個別実装ではなく、Directus Flow のローコード自動化を優先して構成します。",
+    [Key.adminAiPageDescription]:
+        "サイト全体の AI 設定用プレースホルダーページです。今回のリリースでは管理画面 UI の骨組みのみ実装します。",
+    [Key.adminAiPageIntro]:
+        "ここでは今後のサイト全体向け AI アシスタント設定、機能スイッチ、Directus Flow 自動化入口を計画します。今回は画面のみで、実際の設定や秘密情報の保存は行いません。",
+    [Key.adminAiPageTitle]: "AI 総合設定",
+    [Key.adminAiPlaceholderApiBaseUrl]:
+        "将来的に AI サービスのエンドポイントやゲートウェイ URL を入力します",
+    [Key.adminAiPlaceholderApiKey]: "将来的にサービスの API キーを入力します",
+    [Key.adminAiPlaceholderAssistantAccount]:
+        "将来的にサイト内 AI アシスタントアカウントを紐付けます",
+    [Key.adminAiPlaceholderFlowName]:
+        "将来的に Directus Flow 名または ID を設定します",
+    [Key.adminAiPlaceholderModel]:
+        "将来的にモデルまたは機能プリセットを選択します",
+    [Key.adminAiSectionAutomation]: "自動化メモ",
+    [Key.adminAiSectionConnection]: "接続設定",
+    [Key.adminAiSectionFeatures]: "機能スイッチ",
+    [Key.adminAiSectionOverview]: "AI 概要",
     [Key.adminMarkdownBodyLabel]: "本文",
     [Key.adminMarkdownBold]: "太字",
     [Key.adminMarkdownBoldPlaceholder]: "太字の内容を入力してください",

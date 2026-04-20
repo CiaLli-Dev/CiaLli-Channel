@@ -30,8 +30,50 @@ export const enAdmin: Record<string, string> = {
     [Key.adminBulletinTitle]: "Announcement settings",
     [Key.adminBulletinTitleLabel]: "Announcement title",
     [Key.adminBulletinTitlePlaceholder]: "Enter announcement title",
+    [Key.adminDashboardAiDescription]:
+        "Configure site-wide AI assistants, feature switches, and future automation flows.",
+    [Key.adminDashboardAiTitle]: "AI",
     [Key.adminDashboardDescription]: "Admin overview",
     [Key.adminDashboardTitle]: "Admin Console",
+    [Key.adminAiAutomationDescription]:
+        "Future automation will connect a dedicated AI assistant account with Directus Flows to generate summaries, aggregate hotspots, and auto-publish diary entries.",
+    [Key.adminAiAutomationReadonlyHint]:
+        "This release only shows the automation design. Flow orchestration, schedules, and publishing policies are not editable yet.",
+    [Key.adminAiComingSoon]: "Coming soon",
+    [Key.adminAiConnectionApiBaseUrl]: "API / Base URL",
+    [Key.adminAiConnectionApiKey]: "API key",
+    [Key.adminAiConnectionAssistantAccount]: "AI assistant account",
+    [Key.adminAiConnectionFlowName]: "Directus Flow identifier",
+    [Key.adminAiConnectionModel]: "Model",
+    [Key.adminAiFeatureArticleSummary]: "Article AI summaries",
+    [Key.adminAiFeatureHotspotDigest]:
+        "Recent article and diary hotspot digest with auto diary publishing",
+    [Key.adminAiFeatureReadonlyHint]:
+        "Feature switches and strategy controls will be enabled in a later release. This page is read-only for now.",
+    [Key.adminAiOverviewAssistantAccount]: "AI assistant account",
+    [Key.adminAiOverviewAssistantAccountHint]:
+        "A dedicated in-site AI assistant account will be created later to handle summaries, hotspot digests, and automated publishing.",
+    [Key.adminAiOverviewFlowStrategy]: "Directus Flow automation",
+    [Key.adminAiOverviewFlowStrategyHint]:
+        "AI capabilities will be orchestrated through Directus Flow low-code automation instead of page-level custom pipelines.",
+    [Key.adminAiPageDescription]:
+        "Placeholder page for site-wide AI configuration. This release only ships the admin UI skeleton.",
+    [Key.adminAiPageIntro]:
+        "Use this space to plan future site-wide AI assistant settings, feature switches, and Directus Flow automation entry points. This release only delivers the interface, without real configuration or secret storage.",
+    [Key.adminAiPageTitle]: "AI Configuration",
+    [Key.adminAiPlaceholderApiBaseUrl]:
+        "Future field for the AI service endpoint or gateway URL",
+    [Key.adminAiPlaceholderApiKey]: "Future field for the service API key",
+    [Key.adminAiPlaceholderAssistantAccount]:
+        "Future field for the in-site AI assistant account",
+    [Key.adminAiPlaceholderFlowName]:
+        "Future field for the Directus Flow name or ID",
+    [Key.adminAiPlaceholderModel]:
+        "Future field for the model or capability preset",
+    [Key.adminAiSectionAutomation]: "Automation notes",
+    [Key.adminAiSectionConnection]: "Connection settings",
+    [Key.adminAiSectionFeatures]: "Feature switches",
+    [Key.adminAiSectionOverview]: "AI overview",
     [Key.adminMarkdownBodyLabel]: "Body",
     [Key.adminMarkdownBold]: "Bold",
     [Key.adminMarkdownBoldPlaceholder]: "Enter bold text",

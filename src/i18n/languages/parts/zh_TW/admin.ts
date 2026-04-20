@@ -28,8 +28,46 @@ export const zhTWAdmin: Record<string, string> = {
     [Key.adminBulletinTitle]: "公告設定",
     [Key.adminBulletinTitleLabel]: "公告標題",
     [Key.adminBulletinTitlePlaceholder]: "請輸入公告標題",
+    [Key.adminDashboardAiDescription]:
+        "配置全站 AI 助手、功能開關與未來自動化流程。",
+    [Key.adminDashboardAiTitle]: "AI",
     [Key.adminDashboardDescription]: "後台管理概覽",
     [Key.adminDashboardTitle]: "管理控制台",
+    [Key.adminAiAutomationDescription]:
+        "未來將透過 Directus Flow 串接專用 AI 助手帳號與站內內容流程，用於生成摘要、彙整熱點並自動發布日記。",
+    [Key.adminAiAutomationReadonlyHint]:
+        "本輪僅展示自動化設計說明，暫不開放 Flow 編排、排程與發布策略設定。",
+    [Key.adminAiComingSoon]: "即將開放",
+    [Key.adminAiConnectionApiBaseUrl]: "API / Base URL",
+    [Key.adminAiConnectionApiKey]: "API 金鑰",
+    [Key.adminAiConnectionAssistantAccount]: "AI 助手帳號",
+    [Key.adminAiConnectionFlowName]: "Directus Flow 標識",
+    [Key.adminAiConnectionModel]: "模型",
+    [Key.adminAiFeatureArticleSummary]: "文章 AI 摘要",
+    [Key.adminAiFeatureHotspotDigest]:
+        "近期文章、日記內容熱點摘要並自動發布日記",
+    [Key.adminAiFeatureReadonlyHint]:
+        "功能開關與策略設定將在後續版本開放，本輪僅提供唯讀占位。",
+    [Key.adminAiOverviewAssistantAccount]: "AI 助手帳號",
+    [Key.adminAiOverviewAssistantAccountHint]:
+        "未來會為站點建立一個獨立 AI 助手帳號，統一承接摘要、熱點整理與自動化發布任務。",
+    [Key.adminAiOverviewFlowStrategy]: "Directus Flow 自動化",
+    [Key.adminAiOverviewFlowStrategyHint]:
+        "各項 AI 能力將優先復用 Directus Flow 的低代碼編排能力，避免在頁面層直接實作複雜流程。",
+    [Key.adminAiPageDescription]:
+        "全站 AI 總配置占位頁，目前僅實作管理台 UI 骨架。",
+    [Key.adminAiPageIntro]:
+        "在這裡規劃未來的全站 AI 助手設定、功能開關與 Directus Flow 自動化入口。本輪只交付介面，不接入任何真實配置或金鑰儲存。",
+    [Key.adminAiPageTitle]: "AI 總配置",
+    [Key.adminAiPlaceholderApiBaseUrl]: "未來用於填寫 AI 服務位址或閘道位址",
+    [Key.adminAiPlaceholderApiKey]: "未來用於填寫 API 金鑰",
+    [Key.adminAiPlaceholderAssistantAccount]: "未來用於綁定站內 AI 助手帳號",
+    [Key.adminAiPlaceholderFlowName]: "未來用於設定 Directus Flow 名稱或 ID",
+    [Key.adminAiPlaceholderModel]: "未來用於選擇模型或能力預設",
+    [Key.adminAiSectionAutomation]: "自動化說明",
+    [Key.adminAiSectionConnection]: "基礎連線配置",
+    [Key.adminAiSectionFeatures]: "功能開關",
+    [Key.adminAiSectionOverview]: "AI 總覽",
     [Key.adminMarkdownBodyLabel]: "正文內容",
     [Key.adminMarkdownBold]: "粗體",
     [Key.adminMarkdownBoldPlaceholder]: "請輸入粗體內容",
