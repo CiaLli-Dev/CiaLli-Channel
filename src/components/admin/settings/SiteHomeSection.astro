@@ -13,93 +13,8 @@ import SettingsField from "@/components/admin/settings/SettingsField.astro";
   </h2>
   <form id="ss-home-form" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
     <h3 class="text-lg font-medium text-75 lg:col-span-2">
-      {i18n(I18nKey.adminSiteSettingsCarouselWallpaper)}
+      {i18n(I18nKey.adminSiteSettingsBannerCopy)}
     </h3>
-    <SettingsField
-      label={i18n(I18nKey.adminSiteSettingsWallpaperMode)}
-      hint={i18n(I18nKey.adminSiteSettingsWallpaperModeHint)}
-    >
-      <select
-        id="ss-wallpaper-mode"
-        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
-      >
-        <option value="banner">
-          {i18n(I18nKey.adminSiteSettingsWallpaperModeBanner)}
-        </option>
-        <option value="none">
-          {i18n(I18nKey.adminSiteSettingsWallpaperModeNone)}
-        </option>
-      </select>
-    </SettingsField>
-    <SettingsField
-      label={i18n(I18nKey.adminSiteSettingsBannerAlignment)}
-      hint={i18n(I18nKey.adminSiteSettingsBannerAlignmentHint)}
-    >
-      <select
-        id="ss-banner-position"
-        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
-      >
-        <option value="top">
-          {i18n(I18nKey.adminSiteSettingsBannerAlignmentTop)}
-        </option>
-        <option value="center">
-          {i18n(I18nKey.adminSiteSettingsBannerAlignmentCenter)}
-        </option>
-        <option value="bottom">
-          {i18n(I18nKey.adminSiteSettingsBannerAlignmentBottom)}
-        </option>
-      </select>
-    </SettingsField>
-    <label
-      class="settings-console-toggle-label flex items-center gap-3 text-75 cursor-pointer select-none lg:col-span-2"
-    >
-      <input
-        type="checkbox"
-        id="ss-banner-carousel-enable"
-        class="toggle-checkbox"
-      />
-      <span class="toggle-track"><span class="toggle-knob"></span></span>
-      {i18n(I18nKey.adminSiteSettingsEnableWallpaperCarousel)}
-    </label>
-    <SettingsField
-      label={i18n(I18nKey.adminSiteSettingsCarouselIntervalSeconds)}
-      hint={i18n(I18nKey.adminSiteSettingsCarouselIntervalSecondsHint)}
-    >
-      <input
-        id="ss-banner-carousel-interval"
-        type="number"
-        min="1"
-        max="120"
-        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
-        placeholder="5"
-      />
-    </SettingsField>
-    <hr class="border-(--line-divider) lg:col-span-2" />
-    <h3 class="text-lg font-medium text-75 lg:col-span-2">
-      {i18n(I18nKey.adminSiteSettingsImageSourceAndCopy)}
-    </h3>
-    <label
-      class="settings-console-toggle-label flex items-center gap-3 text-75 cursor-pointer select-none lg:col-span-2"
-    >
-      <input
-        type="checkbox"
-        id="ss-banner-image-api-enable"
-        class="toggle-checkbox"
-      />
-      <span class="toggle-track"><span class="toggle-knob"></span></span>
-      {i18n(I18nKey.adminSiteSettingsEnableBannerApi)}
-    </label>
-    <SettingsField
-      label={i18n(I18nKey.adminSiteSettingsBannerApiUrl)}
-      hint={i18n(I18nKey.adminSiteSettingsBannerApiUrlHint)}
-      className="lg:col-span-2"
-    >
-      <input
-        id="ss-banner-image-api-url"
-        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75 placeholder:text-50"
-        placeholder="https://example.com/api/banner"
-      />
-    </SettingsField>
     <label
       class="settings-console-toggle-label flex items-center gap-3 text-75 cursor-pointer select-none lg:col-span-2"
     >
@@ -109,7 +24,7 @@ import SettingsField from "@/components/admin/settings/SettingsField.astro";
         class="toggle-checkbox"
       />
       <span class="toggle-track"><span class="toggle-knob"></span></span>
-      {i18n(I18nKey.adminSiteSettingsShowBannerCopy)}
+      {i18n(I18nKey.adminSiteSettingsShowBannerText)}
     </label>
     <SettingsField
       label={i18n(I18nKey.adminSiteSettingsHomeTitle)}
@@ -178,6 +93,69 @@ import SettingsField from "@/components/admin/settings/SettingsField.astro";
         class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
       />
     </SettingsField>
+    <hr class="border-(--line-divider) lg:col-span-2" />
+    <h3 class="text-lg font-medium text-75 lg:col-span-2">
+      {i18n(I18nKey.adminSiteSettingsCarouselWallpaper)}
+    </h3>
+    <SettingsField
+      label={i18n(I18nKey.adminSiteSettingsWallpaperMode)}
+      hint={i18n(I18nKey.adminSiteSettingsWallpaperModeHint)}
+    >
+      <select
+        id="ss-wallpaper-mode"
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
+      >
+        <option value="banner">
+          {i18n(I18nKey.adminSiteSettingsWallpaperModeBanner)}
+        </option>
+        <option value="none">
+          {i18n(I18nKey.adminSiteSettingsWallpaperModeNone)}
+        </option>
+      </select>
+    </SettingsField>
+    <SettingsField
+      label={i18n(I18nKey.adminSiteSettingsBannerAlignment)}
+      hint={i18n(I18nKey.adminSiteSettingsBannerAlignmentHint)}
+    >
+      <select
+        id="ss-banner-position"
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
+      >
+        <option value="top">
+          {i18n(I18nKey.adminSiteSettingsBannerAlignmentTop)}
+        </option>
+        <option value="center">
+          {i18n(I18nKey.adminSiteSettingsBannerAlignmentCenter)}
+        </option>
+        <option value="bottom">
+          {i18n(I18nKey.adminSiteSettingsBannerAlignmentBottom)}
+        </option>
+      </select>
+    </SettingsField>
+    <label
+      class="settings-console-toggle-label flex items-center gap-3 text-75 cursor-pointer select-none lg:col-span-2"
+    >
+      <input
+        type="checkbox"
+        id="ss-banner-carousel-enable"
+        class="toggle-checkbox"
+      />
+      <span class="toggle-track"><span class="toggle-knob"></span></span>
+      {i18n(I18nKey.adminSiteSettingsEnableWallpaperCarousel)}
+    </label>
+    <SettingsField
+      label={i18n(I18nKey.adminSiteSettingsCarouselIntervalSeconds)}
+      hint={i18n(I18nKey.adminSiteSettingsCarouselIntervalSecondsHint)}
+    >
+      <input
+        id="ss-banner-carousel-interval"
+        type="number"
+        min="1"
+        max="120"
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
+        placeholder="5"
+      />
+    </SettingsField>
     <label
       class="settings-console-toggle-label flex items-center gap-3 text-75 cursor-pointer select-none"
     >
@@ -189,21 +167,7 @@ import SettingsField from "@/components/admin/settings/SettingsField.astro";
       <span class="toggle-track"><span class="toggle-knob"></span></span>
       {i18n(I18nKey.adminSiteSettingsEnableWaveEffect)}
     </label>
-    <label
-      class="settings-console-toggle-label flex items-center gap-3 text-75 cursor-pointer select-none"
-    >
-      <input
-        type="checkbox"
-        id="ss-banner-waves-performance"
-        class="toggle-checkbox"
-      />
-      <span class="toggle-track"><span class="toggle-knob"></span></span>
-      {i18n(I18nKey.adminSiteSettingsOptimizeWavePerformance)}
-    </label>
     <div class="lg:col-span-2 space-y-2">
-      <h4 class="text-base font-medium text-75">
-        {i18n(I18nKey.adminSiteSettingsDesktopWallpaper)}
-      </h4>
       <div class="flex flex-wrap items-center gap-2">
         <button
           type="button"

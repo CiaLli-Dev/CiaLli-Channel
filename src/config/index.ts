@@ -56,11 +56,6 @@ export const defaultSiteSettings: SiteSettingsPayload = {
         },
         waves: {
             enable: true,
-            performanceMode: false,
-        },
-        imageApi: {
-            enable: false,
-            url: "http://domain.com/api_v2.php?format=text&count=4",
         },
         homeText: {
             enable: true,

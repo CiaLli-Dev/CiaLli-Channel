@@ -121,23 +121,4 @@ describe("cache/manager", () => {
             { ex: 900 },
         );
     });
-
-    it("banner-images 域按小时级 TTL 写入 Redis", async () => {
-        const redis = createRedisClientMock();
-        redis.get.mockResolvedValue("0");
-        redis.set.mockResolvedValue("OK");
-        getUpstashRedisClientMock.mockReturnValue(redis);
-
-        const { cacheManager } = await import("@/server/cache/manager");
-
-        await cacheManager.set("banner-images", "default", [
-            "https://example.com/a.jpg",
-        ]);
-
-        expect(redis.set).toHaveBeenCalledWith(
-            "cialli:test-cache:cache:v1:banner-images:v0:default",
-            JSON.stringify(["https://example.com/a.jpg"]),
-            { ex: 3600 },
-        );
-    });
 });

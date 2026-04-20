@@ -110,10 +110,7 @@ function bindTypewriterFields(bannerHomeTypewriter: SettingsObj): void {
     );
 }
 
-function bindBannerCarouselAndImageApi(
-    bannerCarousel: SettingsObj,
-    bannerImageApi: SettingsObj,
-): void {
+function bindBannerCarousel(bannerCarousel: SettingsObj): void {
     setChecked(
         "ss-banner-carousel-enable",
         Boolean(bannerCarousel.enable ?? false),
@@ -122,8 +119,6 @@ function bindBannerCarouselAndImageApi(
         "ss-banner-carousel-interval",
         String(bannerCarousel.interval ?? ""),
     );
-    setChecked("ss-banner-image-api-enable", Boolean(bannerImageApi.enable));
-    setVal("ss-banner-image-api-url", String(bannerImageApi.url ?? ""));
 }
 
 function bindBannerHomeTextField(bannerHomeText: SettingsObj): void {
@@ -144,7 +139,6 @@ function bindHomeSection(s: SettingsObj): void {
     const banner = (s.banner ?? {}) as SettingsObj;
     const bannerCarousel = (banner.carousel ?? {}) as SettingsObj;
     const bannerWaves = (banner.waves ?? {}) as SettingsObj;
-    const bannerImageApi = (banner.imageApi ?? {}) as SettingsObj;
     const bannerHomeText = (banner.homeText ?? {}) as SettingsObj;
     const bannerHomeTypewriter = (bannerHomeText.typewriter ??
         {}) as SettingsObj;
@@ -155,16 +149,11 @@ function bindHomeSection(s: SettingsObj): void {
     );
     setSelect("ss-banner-position", String(banner.position ?? "center"));
 
-    bindBannerCarouselAndImageApi(bannerCarousel, bannerImageApi);
+    bindBannerCarousel(bannerCarousel);
     bindBannerHomeTextField(bannerHomeText);
     bindTypewriterFields(bannerHomeTypewriter);
 
     setChecked("ss-banner-waves-enable", Boolean(bannerWaves.enable));
-    setChecked(
-        "ss-banner-waves-performance",
-        Boolean(bannerWaves.performanceMode),
-    );
-
     const bannerDesktopList = normalizeBannerEditorList(banner.src);
     if (bannerDesktopListContainer) {
         fillBannerList(
@@ -292,19 +281,22 @@ function collectBannerHomeText(
     };
 }
 
+function stripBannerImageApi(currentBanner: SettingsObj): SettingsObj {
+    const nextBanner: SettingsObj = { ...currentBanner };
+    delete nextBanner.imageApi;
+    return nextBanner;
+}
+
 function collectBannerPayload(currentBanner: SettingsObj): SettingsObj {
     const currentBannerCarousel = (currentBanner.carousel ?? {}) as SettingsObj;
-    const currentBannerImageApi = (currentBanner.imageApi ?? {}) as SettingsObj;
     const currentBannerHomeText = (currentBanner.homeText ?? {}) as SettingsObj;
     const currentBannerTypewriter = (currentBannerHomeText.typewriter ??
         {}) as SettingsObj;
-    const currentBannerWaves = (currentBanner.waves ?? {}) as SettingsObj;
-
     const intervalInput = Number(inputVal("ss-banner-carousel-interval") || 0);
     const intervalFallback = Number(currentBannerCarousel.interval ?? 5);
 
     return {
-        ...currentBanner,
+        ...stripBannerImageApi(currentBanner),
         position: inputVal("ss-banner-position") || "center",
         src: bannerDesktopListContainer
             ? collectBannerList(bannerDesktopListContainer)
@@ -314,19 +306,12 @@ function collectBannerPayload(currentBanner: SettingsObj): SettingsObj {
             enable: checked("ss-banner-carousel-enable"),
             interval: intervalInput || intervalFallback,
         },
-        imageApi: {
-            ...currentBannerImageApi,
-            enable: checked("ss-banner-image-api-enable"),
-            url: inputVal("ss-banner-image-api-url"),
-        },
         homeText: collectBannerHomeText(
             currentBannerHomeText,
             currentBannerTypewriter,
         ),
         waves: {
-            ...currentBannerWaves,
             enable: checked("ss-banner-waves-enable"),
-            performanceMode: checked("ss-banner-waves-performance"),
         },
     };
 }

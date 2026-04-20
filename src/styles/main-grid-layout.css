@@ -682,10 +682,6 @@ body[data-layout-mode="collapsed"] .main-panel-wrapper,
   backface-visibility: hidden;
 }
 
-.waves use {
-  will-change: fill;
-}
-
 body[data-layout-mode="none"] .waves > .parallax use,
 body[data-layout-mode="collapsed"] .waves > .parallax use {
   animation-play-state: paused;

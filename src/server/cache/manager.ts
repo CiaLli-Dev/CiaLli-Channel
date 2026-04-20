@@ -24,11 +24,6 @@ const STRATEGIES: Record<CacheDomain, CacheStrategy> = {
         l2TtlMs: 60 * 60_000,
         l1MaxEntries: 5,
     },
-    "banner-images": {
-        l1TtlMs: 30 * 60_000,
-        l2TtlMs: 60 * 60_000,
-        l1MaxEntries: 5,
-    },
     sidebar: {
         l1TtlMs: 10 * 60_000,
         l2TtlMs: 30 * 60_000,

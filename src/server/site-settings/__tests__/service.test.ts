@@ -23,6 +23,112 @@ vi.mock("@/server/directus/client", () => ({
 
 import { resolveSiteSettingsPayload } from "@/server/site-settings/service";
 
+function siteSettingsRow(
+    sections: {
+        settings_site?: Record<string, unknown>;
+        settings_nav?: Record<string, unknown>;
+        settings_home?: Record<string, unknown>;
+        settings_article?: Record<string, unknown>;
+        settings_other?: Record<string, unknown>;
+        theme_preset?: string;
+    } = {},
+): Record<string, unknown> {
+    return {
+        settings_site: sections.settings_site ?? {},
+        settings_nav: sections.settings_nav ?? {},
+        settings_home: sections.settings_home ?? {},
+        settings_article: sections.settings_article ?? {},
+        settings_other: sections.settings_other ?? {},
+        theme_preset: sections.theme_preset ?? "blue",
+        date_updated: "2026-03-11T00:00:00.000Z",
+        date_created: "2026-03-10T00:00:00.000Z",
+    };
+}
+
+function fullSectionedSiteSettingsRow(): Record<string, unknown> {
+    return siteSettingsRow({
+        settings_site: {
+            site: {
+                title: "Sectioned Site",
+                subtitle: "Split JSON",
+                lang: "zh_CN",
+                timeZone: "Asia/Shanghai",
+                keywords: ["split"],
+                siteStartDate: "2026-04-20",
+                favicon: [],
+            },
+            auth: {
+                register_enabled: true,
+            },
+            profile: {
+                avatar: "assets/images/avatar.webp",
+            },
+        },
+        settings_nav: {
+            navbarTitle: {
+                mode: "logo",
+                text: "Nav Title",
+                icon: "assets/home/home.png",
+                logo: "assets/home/default-logo.png",
+            },
+            navBar: {
+                links: [],
+            },
+            banner: {
+                navbar: {
+                    transparentMode: "full",
+                },
+            },
+        },
+        settings_home: {
+            wallpaperMode: {
+                defaultMode: "banner",
+            },
+            banner: {
+                src: ["/banner.jpg"],
+                position: "bottom",
+                carousel: {
+                    enable: true,
+                    interval: 8,
+                },
+                waves: {
+                    enable: true,
+                },
+                homeText: {
+                    enable: true,
+                    title: "Home Text",
+                    subtitle: ["Line"],
+                    typewriter: {
+                        enable: true,
+                        speed: 90,
+                        deleteSpeed: 40,
+                        pauseTime: 1800,
+                    },
+                },
+            },
+        },
+        settings_article: {
+            toc: {
+                enable: true,
+                mode: "sidebar",
+                depth: 3,
+                useJapaneseBadge: true,
+            },
+        },
+        settings_other: {
+            musicPlayer: {
+                enable: false,
+                meting_api: "https://example.com/meting",
+                id: "playlist",
+                server: "netease",
+                type: "playlist",
+                marqueeSpeed: 12,
+            },
+        },
+        theme_preset: "purple",
+    });
+}
+
 describe("resolveSiteSettingsPayload", () => {
     it("缺失主题预设时回退为蓝色默认主题", () => {
         const result = resolveSiteSettingsPayload({
@@ -136,6 +242,67 @@ describe("resolveSiteSettingsPayload", () => {
             ),
         ).toBe(false);
     });
+
+    it("会在归一化阶段剔除历史 banner.imageApi 并保留横幅文案", () => {
+        const result = resolveSiteSettingsPayload({
+            banner: {
+                imageApi: {
+                    enable: true,
+                    url: "https://example.com/banner.txt",
+                },
+                homeText: {
+                    enable: true,
+                    title: "首页标题",
+                    subtitle: ["第一行", "第二行"],
+                    typewriter: {
+                        enable: true,
+                        speed: 90,
+                        deleteSpeed: 40,
+                        pauseTime: 1800,
+                    },
+                },
+            },
+        });
+
+        expect(
+            Object.prototype.hasOwnProperty.call(
+                result.banner as Record<string, unknown>,
+                "imageApi",
+            ),
+        ).toBe(false);
+        expect(result.banner.homeText).toEqual({
+            enable: true,
+            title: "首页标题",
+            subtitle: ["第一行", "第二行"],
+            typewriter: {
+                enable: true,
+                speed: 90,
+                deleteSpeed: 40,
+                pauseTime: 1800,
+            },
+        });
+    });
+
+    it("会在归一化阶段剔除历史 banner.waves.performanceMode 并保留波浪开关", () => {
+        const result = resolveSiteSettingsPayload({
+            banner: {
+                waves: {
+                    enable: true,
+                    performanceMode: false,
+                },
+            },
+        });
+
+        expect(result.banner.waves).toEqual({
+            enable: true,
+        });
+        expect(
+            Object.prototype.hasOwnProperty.call(
+                (result.banner.waves ?? {}) as Record<string, unknown>,
+                "performanceMode",
+            ),
+        ).toBe(false);
+    });
 });
 
 describe("site-settings/service", () => {
@@ -153,17 +320,15 @@ describe("site-settings/service", () => {
         readManyMock.mockImplementation((collection: string) => {
             if (collection === "app_site_settings") {
                 return Promise.resolve([
-                    {
-                        settings: {
+                    siteSettingsRow({
+                        settings_site: {
                             site: {
                                 title: "Theme Test",
                                 themePreset: "orange",
                             },
                         },
                         theme_preset: "teal",
-                        date_updated: "2026-03-11T00:00:00.000Z",
-                        date_created: "2026-03-10T00:00:00.000Z",
-                    },
+                    }),
                 ]);
             }
             if (collection === "app_site_announcements") {
@@ -178,6 +343,31 @@ describe("site-settings/service", () => {
 
         expect(resolved.settings.site.title).toBe("Theme Test");
         expect(resolved.settings.site.themePreset).toBe("teal");
+    });
+
+    it("从 Directus 分区字段组装完整站点设置", async () => {
+        readManyMock.mockImplementation((collection: string) => {
+            if (collection === "app_site_settings") {
+                return Promise.resolve([fullSectionedSiteSettingsRow()]);
+            }
+            if (collection === "app_site_announcements") {
+                return Promise.resolve([]);
+            }
+            return Promise.resolve([]);
+        });
+
+        const { getResolvedSiteSettings } =
+            await import("@/server/site-settings/service");
+        const resolved = await getResolvedSiteSettings();
+
+        expect(resolved.settings.site.title).toBe("Sectioned Site");
+        expect(resolved.settings.site.themePreset).toBe("purple");
+        expect(resolved.settings.navbarTitle?.text).toBe("Nav Title");
+        expect(resolved.settings.banner.src).toEqual(["/banner.jpg"]);
+        expect(resolved.settings.banner.position).toBe("bottom");
+        expect(resolved.settings.banner.navbar?.transparentMode).toBe("full");
+        expect(resolved.settings.toc.depth).toBe(3);
+        expect(resolved.settings.musicPlayer.enable).toBe(false);
     });
 
     it("缓存 miss 时并发请求只回源一次", async () => {
@@ -214,13 +404,7 @@ describe("site-settings/service", () => {
         await Promise.resolve();
         expect(readManyMock).toHaveBeenCalledTimes(2);
 
-        resolveSiteRead?.([
-            {
-                settings: {},
-                date_updated: "2026-03-11T00:00:00.000Z",
-                date_created: "2026-03-10T00:00:00.000Z",
-            },
-        ]);
+        resolveSiteRead?.([siteSettingsRow()]);
         resolveAnnouncementRead?.([]);
 
         const [first, second, third] = await Promise.all([
@@ -256,11 +440,11 @@ describe("site-settings/service", () => {
                 siteReadCount += 1;
                 if (siteReadCount === 1) {
                     return Promise.resolve([
-                        {
-                            settings: { site: { title: customTitle } },
-                            date_updated: "2026-03-11T00:00:00.000Z",
-                            date_created: "2026-03-10T00:00:00.000Z",
-                        },
+                        siteSettingsRow({
+                            settings_site: {
+                                site: { title: customTitle },
+                            },
+                        }),
                     ]);
                 }
                 return Promise.reject(new Error("fetch failed"));
@@ -295,15 +479,13 @@ describe("site-settings/service", () => {
             if (collection === "app_site_settings") {
                 return Promise.resolve([
                     {
-                        settings: {
+                        settings_site: {
                             site: { title: "Site A" },
-                            announcement: {
-                                title: "旧公告",
-                                summary: "旧摘要",
-                                body_markdown: "旧正文",
-                                closable: false,
-                            },
                         },
+                        settings_nav: {},
+                        settings_home: {},
+                        settings_article: {},
+                        settings_other: {},
                         date_updated: "2026-03-11T00:00:00.000Z",
                         date_created: "2026-03-10T00:00:00.000Z",
                     },
@@ -340,9 +522,13 @@ describe("site-settings/service", () => {
             if (collection === "app_site_settings") {
                 return Promise.resolve([
                     {
-                        settings: {
+                        settings_site: {
                             site: { title: "Site C" },
                         },
+                        settings_nav: {},
+                        settings_home: {},
+                        settings_article: {},
+                        settings_other: {},
                         date_updated: "2026-03-11T00:00:00.000Z",
                         date_created: "2026-03-10T00:00:00.000Z",
                     },
@@ -375,23 +561,15 @@ describe("site-settings/service", () => {
         expect(resolved.settings.announcement.body_markdown).toBe("# 草稿正文");
     });
 
-    it("公告行缺失时回退默认公告，而不是读取旧 settings.announcement", async () => {
+    it("公告行缺失时回退默认公告", async () => {
         readManyMock.mockImplementation((collection: string) => {
             if (collection === "app_site_settings") {
                 return Promise.resolve([
-                    {
-                        settings: {
+                    siteSettingsRow({
+                        settings_site: {
                             site: { title: "Site B" },
-                            announcement: {
-                                title: "遗留公告",
-                                summary: "遗留摘要",
-                                body_markdown: "遗留正文",
-                                closable: false,
-                            },
                         },
-                        date_updated: "2026-03-11T00:00:00.000Z",
-                        date_created: "2026-03-10T00:00:00.000Z",
-                    },
+                    }),
                 ]);
             }
             if (collection === "app_site_announcements") {
@@ -408,6 +586,5 @@ describe("site-settings/service", () => {
         expect(resolved.settings.announcement).toEqual(
             defaultSiteSettings.announcement,
         );
-        expect(resolved.settings.announcement.title).not.toBe("遗留公告");
     });
 });

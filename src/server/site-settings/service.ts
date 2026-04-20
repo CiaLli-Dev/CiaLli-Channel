@@ -19,7 +19,6 @@ import {
     normalizeAnnouncement,
     normalizeBannerBasic,
     normalizeBannerHomeText,
-    normalizeBannerImageApi,
     normalizeBannerNavbar,
     normalizeMusicPlayer,
     normalizeNavBarLinks,
@@ -30,6 +29,10 @@ import {
     normalizeToc,
     readRawBannerSrc,
 } from "./normalize-helpers";
+import {
+    composeSiteSettingsFromStorageSections,
+    type StoredSiteSettingsSectionSources,
+} from "./storage-sections";
 
 type SiteSettingsCacheValue = {
     resolved: ResolvedSiteSettings;
@@ -97,18 +100,6 @@ function mergeWithDefaults<T>(defaults: T, patch: unknown): T {
         default:
             return defaults;
     }
-}
-
-function stripAnnouncementFromSiteSettingsRaw(raw: unknown): unknown {
-    if (!isRecord(raw)) {
-        return raw;
-    }
-    const sanitized: Record<string, unknown> = { ...raw };
-    if (Object.prototype.hasOwnProperty.call(sanitized, "announcement")) {
-        // 公告已拆分到独立集合，读取站点设置时必须丢弃历史 announcement 脏字段。
-        delete sanitized.announcement;
-    }
-    return sanitized;
 }
 
 function normalizeAnnouncementPayload(
@@ -190,7 +181,6 @@ function normalizeSettings(
     merged.wallpaperMode.defaultMode =
         merged.wallpaperMode.defaultMode === "none" ? "none" : "banner";
     normalizeBannerBasic(merged, base, rawBannerSrc);
-    normalizeBannerImageApi(merged, base);
     normalizeBannerHomeText(merged, base);
     normalizeBannerNavbar(merged, base);
     normalizeToc(merged);
@@ -254,7 +244,7 @@ function writeRecentFailureFallback(resolved: ResolvedSiteSettings): void {
 }
 
 async function readSiteSettingsRow(): Promise<{
-    settings: unknown;
+    sections: StoredSiteSettingsSectionSources;
     themePreset: unknown;
     updatedAt: string | null;
 } | null> {
@@ -271,7 +261,11 @@ async function readSiteSettingsRow(): Promise<{
                 sort: ["-date_updated", "-date_created"],
                 fields: [
                     "id",
-                    "settings",
+                    "settings_site",
+                    "settings_nav",
+                    "settings_home",
+                    "settings_article",
+                    "settings_other",
                     "theme_preset",
                     "date_updated",
                     "date_created",
@@ -283,7 +277,13 @@ async function readSiteSettingsRow(): Promise<{
         return null;
     }
     return {
-        settings: row.settings,
+        sections: {
+            settings_site: row.settings_site,
+            settings_nav: row.settings_nav,
+            settings_home: row.settings_home,
+            settings_article: row.settings_article,
+            settings_other: row.settings_other,
+        },
         themePreset: row.theme_preset,
         updatedAt: row.date_updated || row.date_created || null,
     };
@@ -409,7 +409,7 @@ const loadResolvedSiteSettingsSingleFlight = createSingleFlightRunner(
 
             const settings = siteRow
                 ? normalizeSettings(
-                      stripAnnouncementFromSiteSettingsRaw(siteRow.settings),
+                      composeSiteSettingsFromStorageSections(siteRow.sections),
                       defaultSiteSettings,
                   )
                 : cloneSettings(defaultSiteSettings);
@@ -482,8 +482,5 @@ export async function getPublicSiteSettings(): Promise<{
 }
 
 export function invalidateSiteSettingsCache(): void {
-    void Promise.all([
-        cacheManager.invalidate("site-settings", "default"),
-        cacheManager.invalidateByDomain("banner-images"),
-    ]);
+    void cacheManager.invalidate("site-settings", "default");
 }

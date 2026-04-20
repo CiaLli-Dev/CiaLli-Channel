@@ -363,17 +363,40 @@ describe("handleAdminSettings /site", () => {
         expect(mockedUpdateOne).toHaveBeenCalledWith(
             "app_site_settings",
             "row-1",
-            {
+            expect.objectContaining({
                 key: "default",
                 status: "published",
                 theme_preset: "teal",
-                settings: expect.objectContaining({
+                settings_site: expect.objectContaining({
                     site: expect.not.objectContaining({
                         themePreset: expect.anything(),
                     }),
                 }),
-            },
+                settings_nav: expect.objectContaining({
+                    navbarTitle: expect.anything(),
+                    navBar: expect.anything(),
+                    banner: expect.objectContaining({
+                        navbar: expect.anything(),
+                    }),
+                }),
+                settings_home: expect.objectContaining({
+                    wallpaperMode: expect.anything(),
+                    banner: expect.not.objectContaining({
+                        navbar: expect.anything(),
+                    }),
+                }),
+                settings_article: expect.objectContaining({
+                    toc: expect.anything(),
+                }),
+                settings_other: expect.objectContaining({
+                    musicPlayer: expect.anything(),
+                }),
+            }),
         );
+        const updatePayload = mockedUpdateOne.mock.calls[0]?.[2] as
+            | Record<string, unknown>
+            | undefined;
+        expect(updatePayload).not.toHaveProperty("settings");
 
         const body = await parseResponseJson<{
             ok: boolean;

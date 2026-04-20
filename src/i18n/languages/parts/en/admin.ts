@@ -112,7 +112,7 @@ export const enAdmin: Record<string, string> = {
     [Key.adminSiteSettingsBannerAlignment]: "Banner alignment",
     [Key.adminSiteSettingsBannerAlignmentBottom]: "Bottom",
     [Key.adminSiteSettingsBannerAlignmentCenter]: "Center",
-    [Key.adminSiteSettingsBannerApiUrl]: "Banner API URL",
+    [Key.adminSiteSettingsBannerCopy]: "Banner copy",
     [Key.adminSiteSettingsBannerAlignmentTop]: "Top",
     [Key.adminSiteSettingsBannerRemovedPendingSave]:
         "Banner removed. Changes take effect after saving",
@@ -132,9 +132,7 @@ export const enAdmin: Record<string, string> = {
     [Key.adminSiteSettingsCropInitFailed]: "Failed to initialize crop",
     [Key.adminSiteSettingsDefaultOption]: "Default",
     [Key.adminSiteSettingsDeleteSpeedMs]: "Delete speed (ms)",
-    [Key.adminSiteSettingsDesktopWallpaper]: "Desktop wallpaper",
     [Key.adminSiteSettingsEnableArticleToc]: "Enable article table of contents",
-    [Key.adminSiteSettingsEnableBannerApi]: "Enable banner API",
     [Key.adminSiteSettingsEnableMusicPlayer]: "Enable music player",
     [Key.adminSiteSettingsEnableTypewriter]: "Enable typewriter effect",
     [Key.adminSiteSettingsEnableWallpaperCarousel]: "Enable wallpaper carousel",
@@ -151,7 +149,6 @@ export const enAdmin: Record<string, string> = {
         "Icon updated. Changes take effect after saving",
     [Key.adminSiteSettingsIconRemovedPendingSave]:
         "Icon removed. Changes take effect after saving",
-    [Key.adminSiteSettingsImageSourceAndCopy]: "Image source and copyright",
     [Key.adminSiteSettingsImageTooLargeWithLimit]:
         "Image is too large (limit {limit})",
     [Key.adminSiteSettingsInvalidInput]: "Invalid input",
@@ -172,7 +169,6 @@ export const enAdmin: Record<string, string> = {
     [Key.adminSiteSettingsNavNamePlaceholder]: "Enter navigation name",
     [Key.adminSiteSettingsNavTextIcon]: "Navigation text icon",
     [Key.adminSiteSettingsNavTitleText]: "Navigation title",
-    [Key.adminSiteSettingsOptimizeWavePerformance]: "Optimize wave performance",
     [Key.adminSiteSettingsPageIntro]:
         "Configure site display info and feature toggles here.",
     [Key.adminSiteSettingsPauseTimeMs]: "Pause duration (ms)",
@@ -194,7 +190,7 @@ export const enAdmin: Record<string, string> = {
     [Key.adminSiteSettingsSectionOther]: "Other settings",
     [Key.adminSiteSettingsSectionSite]: "Site settings",
     [Key.adminSiteSettingsSelectImageFile]: "Select an image file",
-    [Key.adminSiteSettingsShowBannerCopy]: "Show banner copyright",
+    [Key.adminSiteSettingsShowBannerText]: "Show banner copy",
     [Key.adminSiteSettingsSiteKeywords]: "Site keywords",
     [Key.adminSiteSettingsSiteKeywordsHint]:
         "Use commas to separate multiple keywords for SEO metadata.",
@@ -242,8 +238,6 @@ export const enAdmin: Record<string, string> = {
         "Controls how the banner visual is aligned in its container.",
     [Key.adminSiteSettingsCarouselIntervalSecondsHint]:
         "Interval for desktop wallpaper carousel, in seconds.",
-    [Key.adminSiteSettingsBannerApiUrlHint]:
-        "When banner API is enabled, images are fetched from this URL.",
     [Key.adminSiteSettingsUploadFailedCanceled]:
         "Upload failed or was canceled",
     [Key.adminSiteSettingsUrlOrFileId]: "Enter URL or file ID",

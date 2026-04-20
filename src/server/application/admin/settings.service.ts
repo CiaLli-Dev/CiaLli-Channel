@@ -5,7 +5,6 @@ import type {
     EditableSiteSettings,
     SiteSettingsPayload,
     SiteAnnouncementPayload,
-    StoredSiteSettingsPayload,
 } from "@/types/site-settings";
 import type { JsonObject } from "@/types/json";
 import { resolveSiteThemePreset } from "@/config/theme-presets";
@@ -37,6 +36,7 @@ import {
     invalidateSiteSettingsCache,
     resolveSiteSettingsPayload,
 } from "@/server/site-settings/service";
+import { splitSiteSettingsForStorage } from "@/server/site-settings/storage-sections";
 import { cleanupOwnedOrphanDirectusFiles } from "@/server/api/v1/shared/file-cleanup";
 
 import { requireAdmin } from "@/server/api/v1/shared";
@@ -113,17 +113,6 @@ async function readSiteAnnouncementRowMeta(): Promise<{
     };
 }
 
-function stripAnnouncementFromSiteSettings(
-    settings: SiteSettingsPayload,
-): StoredSiteSettingsPayload {
-    const { announcement: _announcement, ...storedSettings } = settings;
-    const { themePreset: _themePreset, ...storedSite } = storedSettings.site;
-    return {
-        ...storedSettings,
-        site: storedSite,
-    };
-}
-
 type NormalizedAnnouncementContent = {
     title: string;
     summary: string;
@@ -170,7 +159,7 @@ function readAnnouncementFromRow(
 async function upsertSiteSettings(
     settings: SiteSettingsPayload,
 ): Promise<{ updatedAt: string | null }> {
-    const storedSettings = stripAnnouncementFromSiteSettings(settings);
+    const storedSections = splitSiteSettingsForStorage(settings);
     const themePreset = resolveSiteThemePreset(settings.site.themePreset);
     const existing = await readSiteSettingsRowMeta();
     if (!existing) {
@@ -178,7 +167,7 @@ async function upsertSiteSettings(
             key: "default",
             status: "published",
             theme_preset: themePreset,
-            settings: storedSettings,
+            ...storedSections,
         });
         return {
             updatedAt: created.date_updated || created.date_created || null,
@@ -189,7 +178,7 @@ async function upsertSiteSettings(
         key: "default",
         status: "published",
         theme_preset: themePreset,
-        settings: storedSettings,
+        ...storedSections,
     });
     return {
         updatedAt: updated.date_updated || updated.date_created || null,

@@ -2,7 +2,6 @@
 export type CacheDomain =
     | "author"
     | "site-settings"
-    | "banner-images"
     | "sidebar"
     | "profile-viewer"
     | "article-list"

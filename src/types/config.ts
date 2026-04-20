@@ -41,12 +41,6 @@ export type BannerCarouselConfig = {
 
 export type BannerWavesConfig = {
     enable: boolean; // 是否启用波浪效果
-    performanceMode?: boolean; // 性能模式：减少动画复杂度
-};
-
-export type BannerImageApiConfig = {
-    enable: boolean; // 是否启用图片 API
-    url: string; // API 地址，返回每行一个图片链接的文本
 };
 
 export type BannerHomeTextTypewriterConfig = {
@@ -72,7 +66,6 @@ export type BannerConfig = {
     position?: "top" | "center" | "bottom";
     carousel?: BannerCarouselConfig;
     waves?: BannerWavesConfig;
-    imageApi?: BannerImageApiConfig;
     homeText?: BannerHomeTextConfig;
     navbar?: BannerNavbarConfig;
 };

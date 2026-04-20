@@ -45,11 +45,37 @@ export type EditableSiteSettings = {
 
 export type SiteSettingsPayload = EditableSiteSettings;
 
-export type StoredSiteSettingsPayload = Omit<
-    SiteSettingsPayload,
-    "announcement" | "site"
-> & {
+export type StoredSiteSettingsSiteSection = {
     site: Omit<SiteSettingsPayload["site"], "themePreset">;
+    auth: SiteSettingsPayload["auth"];
+    profile: SiteSettingsPayload["profile"];
+};
+
+export type StoredSiteSettingsNavSection = {
+    navbarTitle: SiteSettingsPayload["navbarTitle"];
+    navBar: SiteSettingsPayload["navBar"];
+    banner: Pick<SiteSettingsPayload["banner"], "navbar">;
+};
+
+export type StoredSiteSettingsHomeSection = {
+    wallpaperMode: SiteSettingsPayload["wallpaperMode"];
+    banner: Omit<SiteSettingsPayload["banner"], "navbar">;
+};
+
+export type StoredSiteSettingsArticleSection = {
+    toc: SiteSettingsPayload["toc"];
+};
+
+export type StoredSiteSettingsOtherSection = {
+    musicPlayer: SiteSettingsPayload["musicPlayer"];
+};
+
+export type StoredSiteSettingsSectionFields = {
+    settings_site: StoredSiteSettingsSiteSection;
+    settings_nav: StoredSiteSettingsNavSection;
+    settings_home: StoredSiteSettingsHomeSection;
+    settings_article: StoredSiteSettingsArticleSection;
+    settings_other: StoredSiteSettingsOtherSection;
 };
 
 export type SiteAnnouncementPayload = {
@@ -79,7 +105,11 @@ export type ResolvedSiteSettings = {
 export type AppSiteSettings = {
     id: string;
     key: string;
-    settings: StoredSiteSettingsPayload | null;
+    settings_site: StoredSiteSettingsSiteSection | null;
+    settings_nav: StoredSiteSettingsNavSection | null;
+    settings_home: StoredSiteSettingsHomeSection | null;
+    settings_article: StoredSiteSettingsArticleSection | null;
+    settings_other: StoredSiteSettingsOtherSection | null;
     theme_preset: SiteThemePreset;
     status: AppStatus;
     sort: number | null;

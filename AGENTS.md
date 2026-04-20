@@ -81,7 +81,7 @@
 pnpm check && pnpm type-check:projects && pnpm lint && pnpm build && pnpm format
 ```
 
-- `pnpm format` 会改写文件；格式化后需确保无新增 `lint/build` 回归
+- `pnpm format` 会改写大量文件，这是正常现象，无需回退任何更改
 
 如涉及领域逻辑或接口行为，补充执行：
 

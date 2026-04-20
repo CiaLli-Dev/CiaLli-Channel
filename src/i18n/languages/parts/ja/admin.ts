@@ -111,7 +111,7 @@ export const jaAdmin: Record<string, string> = {
     [Key.adminSiteSettingsBannerAlignment]: "バナー配置",
     [Key.adminSiteSettingsBannerAlignmentBottom]: "下寄せ",
     [Key.adminSiteSettingsBannerAlignmentCenter]: "中央",
-    [Key.adminSiteSettingsBannerApiUrl]: "バナー API URL",
+    [Key.adminSiteSettingsBannerCopy]: "バナーコピー",
     [Key.adminSiteSettingsBannerAlignmentTop]: "上寄せ",
     [Key.adminSiteSettingsBannerRemovedPendingSave]:
         "バナーを削除しました。保存後に反映されます",
@@ -129,9 +129,7 @@ export const jaAdmin: Record<string, string> = {
     [Key.adminSiteSettingsCropInitFailed]: "切り抜きの初期化に失敗しました",
     [Key.adminSiteSettingsDefaultOption]: "デフォルト",
     [Key.adminSiteSettingsDeleteSpeedMs]: "削除速度（ms）",
-    [Key.adminSiteSettingsDesktopWallpaper]: "デスクトップ壁紙",
     [Key.adminSiteSettingsEnableArticleToc]: "記事目次を有効化",
-    [Key.adminSiteSettingsEnableBannerApi]: "バナー API を有効化",
     [Key.adminSiteSettingsEnableMusicPlayer]: "音楽プレーヤーを有効化",
     [Key.adminSiteSettingsEnableTypewriter]: "タイプライター効果を有効化",
     [Key.adminSiteSettingsEnableWallpaperCarousel]: "壁紙カルーセルを有効化",
@@ -149,7 +147,6 @@ export const jaAdmin: Record<string, string> = {
         "アイコンを更新しました。保存後に反映されます",
     [Key.adminSiteSettingsIconRemovedPendingSave]:
         "アイコンを削除しました。保存後に反映されます",
-    [Key.adminSiteSettingsImageSourceAndCopy]: "画像出典と著作権",
     [Key.adminSiteSettingsImageTooLargeWithLimit]:
         "画像サイズが大きすぎます（上限 {limit}）",
     [Key.adminSiteSettingsInvalidInput]: "入力が無効です",
@@ -169,7 +166,6 @@ export const jaAdmin: Record<string, string> = {
     [Key.adminSiteSettingsNavNamePlaceholder]: "ナビ名を入力してください",
     [Key.adminSiteSettingsNavTextIcon]: "ナビテキストアイコン",
     [Key.adminSiteSettingsNavTitleText]: "ナビタイトル",
-    [Key.adminSiteSettingsOptimizeWavePerformance]: "波エフェクト性能を最適化",
     [Key.adminSiteSettingsPageIntro]:
         "ここでサイト表示情報と機能スイッチを設定できます。",
     [Key.adminSiteSettingsPauseTimeMs]: "停止時間（ms）",
@@ -191,7 +187,7 @@ export const jaAdmin: Record<string, string> = {
     [Key.adminSiteSettingsSectionOther]: "その他設定",
     [Key.adminSiteSettingsSectionSite]: "サイト設定",
     [Key.adminSiteSettingsSelectImageFile]: "画像ファイルを選択してください",
-    [Key.adminSiteSettingsShowBannerCopy]: "バナー著作権を表示",
+    [Key.adminSiteSettingsShowBannerText]: "バナーコピーを表示",
     [Key.adminSiteSettingsSiteKeywords]: "サイトキーワード",
     [Key.adminSiteSettingsSiteKeywordsHint]:
         "複数キーワードはカンマ区切りで入力し、SEO メタ情報に使用します。",
@@ -239,8 +235,6 @@ export const jaAdmin: Record<string, string> = {
         "バナー画像のコンテナ内での配置を制御します。",
     [Key.adminSiteSettingsCarouselIntervalSecondsHint]:
         "デスクトップ壁紙カルーセルの間隔（秒）です。",
-    [Key.adminSiteSettingsBannerApiUrlHint]:
-        "バナー API 有効時、この URL から画像を取得します。",
     [Key.adminSiteSettingsUploadFailedCanceled]:
         "アップロードに失敗したか、キャンセルされました",
     [Key.adminSiteSettingsUrlOrFileId]: "URL またはファイル ID を入力",

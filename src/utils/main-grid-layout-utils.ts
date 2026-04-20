@@ -4,8 +4,6 @@ import type {
     WidgetComponentConfig,
     WidgetComponentType,
 } from "@/types/config";
-import { cacheManager } from "@/server/cache/manager";
-import { createSingleFlightRunner } from "@/server/utils/single-flight";
 import { widgetManager } from "@utils/widget-manager";
 import { BANNER_HEIGHT_HOME } from "../constants/constants";
 
@@ -190,68 +188,10 @@ export function normalizeBannerList(value: string | string[]): string[] {
     return [];
 }
 
-const BANNER_IMAGES_CACHE_KEY = "default";
-
-const refreshBannerImagesSingleFlight = createSingleFlightRunner(
-    async (imageApiUrl: string): Promise<string[]> => {
-        const response = await fetch(imageApiUrl);
-        const text = await response.text();
-        const images = text
-            .split("\n")
-            .map((line) => line.trim())
-            .filter(Boolean);
-        if (images.length > 0) {
-            await cacheManager.set(
-                "banner-images",
-                BANNER_IMAGES_CACHE_KEY,
-                images,
-            );
-        }
-        return images;
-    },
-    (imageApiUrl: string) => imageApiUrl,
-);
-
-function refreshBannerImagesInBackground(imageApiUrl: string): void {
-    // banner 外部源只做后台刷新，避免首屏 SSR 等待第三方接口。
-    void refreshBannerImagesSingleFlight(imageApiUrl).catch((error) => {
-        console.warn(
-            "[main-grid-layout] failed to refresh banner images from API:",
-            error,
-        );
-    });
-}
-
 export async function getBannerImages(
     runtimeSiteConfig: RuntimeSiteConfig,
 ): Promise<string[]> {
-    const configuredImages = normalizeBannerList(runtimeSiteConfig.banner.src);
-    const imageApiUrl = String(
-        runtimeSiteConfig.banner.imageApi?.url || "",
-    ).trim();
-    const shouldRefreshFromApi =
-        runtimeSiteConfig.banner.imageApi?.enable === true &&
-        imageApiUrl !== "";
-
-    if (shouldRefreshFromApi) {
-        refreshBannerImagesInBackground(imageApiUrl);
-    }
-
-    if (configuredImages.length > 0) {
-        return configuredImages;
-    }
-
-    if (shouldRefreshFromApi) {
-        const cachedImages = await cacheManager.get<string[]>(
-            "banner-images",
-            BANNER_IMAGES_CACHE_KEY,
-        );
-        if (Array.isArray(cachedImages) && cachedImages.length > 0) {
-            return normalizeBannerList(cachedImages);
-        }
-    }
-
-    return [];
+    return normalizeBannerList(runtimeSiteConfig.banner.src);
 }
 
 export function resolveGridCols(

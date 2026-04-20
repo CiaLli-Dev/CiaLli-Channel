@@ -40,11 +40,13 @@ describe("getBannerImages", () => {
         } as never);
 
         expect(result).toEqual(["/local-banner.jpg"]);
-        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(cacheGetMock).not.toHaveBeenCalled();
+        expect(cacheSetMock).not.toHaveBeenCalled();
         vi.unstubAllGlobals();
     });
 
-    it("未配置本地 banner 时回退到缓存的外部 banner 列表", async () => {
+    it("未配置本地 banner 时不再回退到外部 banner API 缓存", async () => {
         cacheGetMock.mockResolvedValue([
             "https://example.com/cached-banner.jpg",
         ]);
@@ -65,8 +67,10 @@ describe("getBannerImages", () => {
             },
         } as never);
 
-        expect(result).toEqual(["https://example.com/cached-banner.jpg"]);
-        expect(cacheGetMock).toHaveBeenCalledWith("banner-images", "default");
+        expect(result).toEqual([]);
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(cacheGetMock).not.toHaveBeenCalled();
+        expect(cacheSetMock).not.toHaveBeenCalled();
         vi.unstubAllGlobals();
     });
 });
