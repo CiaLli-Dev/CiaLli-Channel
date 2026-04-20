@@ -366,9 +366,11 @@ describe("handleAdminSettings /site", () => {
             {
                 key: "default",
                 status: "published",
-                settings: expect.not.objectContaining({
-                    announcement: expect.anything(),
-                    sakura: expect.anything(),
+                theme_preset: "teal",
+                settings: expect.objectContaining({
+                    site: expect.not.objectContaining({
+                        themePreset: expect.anything(),
+                    }),
                 }),
             },
         );

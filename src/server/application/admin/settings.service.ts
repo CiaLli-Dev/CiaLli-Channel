@@ -8,6 +8,7 @@ import type {
     StoredSiteSettingsPayload,
 } from "@/types/site-settings";
 import type { JsonObject } from "@/types/json";
+import { resolveSiteThemePreset } from "@/config/theme-presets";
 import { canonicalizeSiteTimeZone } from "@/utils/date-utils";
 import {
     createOne,
@@ -116,7 +117,11 @@ function stripAnnouncementFromSiteSettings(
     settings: SiteSettingsPayload,
 ): StoredSiteSettingsPayload {
     const { announcement: _announcement, ...storedSettings } = settings;
-    return storedSettings;
+    const { themePreset: _themePreset, ...storedSite } = storedSettings.site;
+    return {
+        ...storedSettings,
+        site: storedSite,
+    };
 }
 
 type NormalizedAnnouncementContent = {
@@ -166,11 +171,13 @@ async function upsertSiteSettings(
     settings: SiteSettingsPayload,
 ): Promise<{ updatedAt: string | null }> {
     const storedSettings = stripAnnouncementFromSiteSettings(settings);
+    const themePreset = resolveSiteThemePreset(settings.site.themePreset);
     const existing = await readSiteSettingsRowMeta();
     if (!existing) {
         const created = await createOne("app_site_settings", {
             key: "default",
             status: "published",
+            theme_preset: themePreset,
             settings: storedSettings,
         });
         return {
@@ -181,6 +188,7 @@ async function upsertSiteSettings(
     const updated = await updateOne("app_site_settings", existing.id, {
         key: "default",
         status: "published",
+        theme_preset: themePreset,
         settings: storedSettings,
     });
     return {

@@ -181,6 +181,7 @@ function normalizeSettings(
     }
 
     normalizeSiteInfo(merged, base);
+    merged.site.themePreset = resolveSiteThemePreset(merged.site.themePreset);
     normalizeSiteFavicon(merged);
     merged.auth.register_enabled = Boolean(
         merged.auth.register_enabled ?? base.auth.register_enabled,
@@ -254,6 +255,7 @@ function writeRecentFailureFallback(resolved: ResolvedSiteSettings): void {
 
 async function readSiteSettingsRow(): Promise<{
     settings: unknown;
+    themePreset: unknown;
     updatedAt: string | null;
 } | null> {
     const rows = await withServiceRepositoryContext(
@@ -267,7 +269,13 @@ async function readSiteSettingsRow(): Promise<{
                 },
                 limit: 1,
                 sort: ["-date_updated", "-date_created"],
-                fields: ["id", "settings", "date_updated", "date_created"],
+                fields: [
+                    "id",
+                    "settings",
+                    "theme_preset",
+                    "date_updated",
+                    "date_created",
+                ],
             }),
     );
     const row = rows[0];
@@ -276,6 +284,7 @@ async function readSiteSettingsRow(): Promise<{
     }
     return {
         settings: row.settings,
+        themePreset: row.theme_preset,
         updatedAt: row.date_updated || row.date_created || null,
     };
 }
@@ -404,6 +413,9 @@ const loadResolvedSiteSettingsSingleFlight = createSingleFlightRunner(
                       defaultSiteSettings,
                   )
                 : cloneSettings(defaultSiteSettings);
+            settings.site.themePreset = resolveSiteThemePreset(
+                siteRow?.themePreset,
+            );
             settings.announcement =
                 announcementRow?.announcement ||
                 normalizeAnnouncementPayload(

@@ -149,6 +149,37 @@ describe("site-settings/service", () => {
         readManyMock.mockImplementation(async () => []);
     });
 
+    it("读取时仅使用 theme_preset 列，忽略 settings.site.themePreset", async () => {
+        readManyMock.mockImplementation((collection: string) => {
+            if (collection === "app_site_settings") {
+                return Promise.resolve([
+                    {
+                        settings: {
+                            site: {
+                                title: "Theme Test",
+                                themePreset: "orange",
+                            },
+                        },
+                        theme_preset: "teal",
+                        date_updated: "2026-03-11T00:00:00.000Z",
+                        date_created: "2026-03-10T00:00:00.000Z",
+                    },
+                ]);
+            }
+            if (collection === "app_site_announcements") {
+                return Promise.resolve([]);
+            }
+            return Promise.resolve([]);
+        });
+
+        const { getResolvedSiteSettings } =
+            await import("@/server/site-settings/service");
+        const resolved = await getResolvedSiteSettings();
+
+        expect(resolved.settings.site.title).toBe("Theme Test");
+        expect(resolved.settings.site.themePreset).toBe("teal");
+    });
+
     it("缓存 miss 时并发请求只回源一次", async () => {
         let resolveSiteRead:
             | ((value: Array<Record<string, unknown>>) => void)

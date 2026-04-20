@@ -47,8 +47,10 @@ export type SiteSettingsPayload = EditableSiteSettings;
 
 export type StoredSiteSettingsPayload = Omit<
     SiteSettingsPayload,
-    "announcement"
->;
+    "announcement" | "site"
+> & {
+    site: Omit<SiteSettingsPayload["site"], "themePreset">;
+};
 
 export type SiteAnnouncementPayload = {
     key: string;
@@ -78,6 +80,7 @@ export type AppSiteSettings = {
     id: string;
     key: string;
     settings: StoredSiteSettingsPayload | null;
+    theme_preset: SiteThemePreset;
     status: AppStatus;
     sort: number | null;
     user_created: string | null;
