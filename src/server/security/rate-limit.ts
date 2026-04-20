@@ -2,11 +2,11 @@
  * 分级速率限制
  *
  * 按请求类别独立计数，每个分类拥有独立的 Ratelimit 实例。
- * 生产环境使用 Upstash Redis，开发环境使用内存兜底。
+ * 若配置了 Upstash Redis，则优先使用共享限流；
+ * 否则降级到单进程内存限流，方便 Docker 演示版在单节点直接运行。
  */
 import { Ratelimit } from "@upstash/ratelimit";
 
-import { internal } from "@/server/api/errors";
 import { prefixRedisKey } from "@/server/upstash/namespace";
 import {
     getUpstashRedisClient,
@@ -55,6 +55,7 @@ const CATEGORY_CONFIG: Record<RateLimitCategory, CategoryConfig> = {
 // ---- Upstash 实例缓存（按分类懒创建） ----
 
 const instanceCache = new Map<RateLimitCategory, Ratelimit>();
+let warnedMemoryFallback = false;
 
 function getIsProductionRuntime(): boolean {
     return import.meta.env.PROD || process.env.NODE_ENV === "production";
@@ -65,7 +66,9 @@ function getInstance(category: RateLimitCategory): Ratelimit {
     if (cached) return cached;
 
     const redis = getUpstashRedisClient();
-    if (!redis) throw internal("Upstash 限流服务未配置");
+    if (!redis) {
+        throw new Error("Upstash 限流服务未配置");
+    }
     const cat = CATEGORY_CONFIG[category];
 
     const instance = new Ratelimit({
@@ -121,7 +124,14 @@ export async function applyRateLimit(
     const isProduction = getIsProductionRuntime();
 
     if (!hasUpstash) {
-        if (isProduction) throw internal("Upstash 限流服务未配置");
+        if (!warnedMemoryFallback) {
+            warnedMemoryFallback = true;
+            console.warn(
+                isProduction
+                    ? "[rate-limit] 未配置 Upstash Redis，已降级为单实例内存限流；生产多副本部署请启用共享 Redis。"
+                    : "[rate-limit] 未配置 Upstash Redis，当前使用单实例内存限流。",
+            );
+        }
         const windowMs = cat.windowSeconds * 1000;
         return memoryRateLimit(`${cat.prefix}:${cleanIp}`, cat.limit, windowMs);
     }

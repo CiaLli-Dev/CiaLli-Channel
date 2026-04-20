@@ -119,6 +119,17 @@ const bannerOffset =
 const pageWidthRem = `${PAGE_WIDTH}rem`;
 const bannerHeightHomeVh = `${BANNER_HEIGHT_HOME}vh`;
 const bannerHeightVh = `${BANNER_HEIGHT}vh`;
+const TRUTHY_ENV_VALUES = new Set(["1", "true", "yes", "on"]);
+const deployTarget = String(process.env.DEPLOY_TARGET || "vercel")
+  .trim()
+  .toLowerCase();
+const enableVercelTelemetry =
+  deployTarget !== "docker" ||
+  TRUTHY_ENV_VALUES.has(
+    String(process.env.ENABLE_VERCEL_ANALYTICS || "")
+      .trim()
+      .toLowerCase(),
+  );
 const htmlClassName = [
   "bg-(--page-bg)",
   isPostEditorRoute ? "route-post-editor" : "",
@@ -390,8 +401,14 @@ const bodyClassName = [
     <!-- 切页时临时增加页面高度，避免滚动动画跳变 -->
     <div id="page-height-extend" class="hidden h-[300vh]"></div>
     <!-- Vercel 可观测性 -->
-    <Analytics />
-    <SpeedInsights />
+    {
+      enableVercelTelemetry && (
+        <>
+          <Analytics />
+          <SpeedInsights />
+        </>
+      )
+    }
   </body>
 </html>
 
