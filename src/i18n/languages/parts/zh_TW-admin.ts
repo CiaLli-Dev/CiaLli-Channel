@@ -181,6 +181,13 @@ export const zhTWAdmin: Record<string, string> = {
         "多個關鍵字請用英文逗號分隔，用於 SEO 中繼資訊。",
     [Key.adminSiteSettingsSiteLanguage]: "網站語言",
     [Key.adminSiteSettingsSiteLanguageHint]: "設定預設介面語言。",
+    [Key.adminSiteSettingsThemePreset]: "網站主題色",
+    [Key.adminSiteSettingsThemePresetHint]:
+        "選擇基於 Material Design 3 種子色的網站主題預設。",
+    [Key.adminSiteSettingsThemePresetBlue]: "藍色",
+    [Key.adminSiteSettingsThemePresetPurple]: "紫色",
+    [Key.adminSiteSettingsThemePresetTeal]: "青綠",
+    [Key.adminSiteSettingsThemePresetOrange]: "橙色",
     [Key.adminSiteSettingsSiteStartDateHint]:
         "用於計算網站運行天數等展示資訊。",
     [Key.adminSiteSettingsSiteTimeZone]: "網站時區",

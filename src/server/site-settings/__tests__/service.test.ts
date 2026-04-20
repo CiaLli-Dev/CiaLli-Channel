@@ -24,6 +24,36 @@ vi.mock("@/server/directus/client", () => ({
 import { resolveSiteSettingsPayload } from "@/server/site-settings/service";
 
 describe("resolveSiteSettingsPayload", () => {
+    it("缺失主题预设时回退为蓝色默认主题", () => {
+        const result = resolveSiteSettingsPayload({
+            site: {
+                title: "No Theme",
+            },
+        });
+
+        expect(result.site.themePreset).toBe("blue");
+    });
+
+    it("非法主题预设会回退为蓝色默认主题", () => {
+        const result = resolveSiteSettingsPayload({
+            site: {
+                themePreset: "pink",
+            },
+        });
+
+        expect(result.site.themePreset).toBe("blue");
+    });
+
+    it("合法主题预设会被保留", () => {
+        const result = resolveSiteSettingsPayload({
+            site: {
+                themePreset: "orange",
+            },
+        });
+
+        expect(result.site.themePreset).toBe("orange");
+    });
+
     it("允许将站点时区从 null 更新为显式字符串", () => {
         const base = {
             ...defaultSiteSettings,

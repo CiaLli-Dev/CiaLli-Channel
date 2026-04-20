@@ -201,6 +201,13 @@ export const enAdmin: Record<string, string> = {
     [Key.adminSiteSettingsSiteLanguage]: "Site language",
     [Key.adminSiteSettingsSiteLanguageHint]:
         "Sets the default interface language.",
+    [Key.adminSiteSettingsThemePreset]: "Site theme color",
+    [Key.adminSiteSettingsThemePresetHint]:
+        "Choose a site preset based on Material Design 3 seed colors.",
+    [Key.adminSiteSettingsThemePresetBlue]: "Blue",
+    [Key.adminSiteSettingsThemePresetPurple]: "Purple",
+    [Key.adminSiteSettingsThemePresetTeal]: "Teal",
+    [Key.adminSiteSettingsThemePresetOrange]: "Orange",
     [Key.adminSiteSettingsSiteStartDateHint]:
         "Used for runtime counters such as site running days.",
     [Key.adminSiteSettingsSiteTimeZone]: "Site time zone",

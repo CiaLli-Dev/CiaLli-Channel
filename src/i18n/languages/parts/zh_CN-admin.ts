@@ -181,6 +181,13 @@ export const zhCNAdmin: Record<string, string> = {
         "多个关键词请用英文逗号分隔，用于 SEO 元信息。",
     [Key.adminSiteSettingsSiteLanguage]: "站点语言",
     [Key.adminSiteSettingsSiteLanguageHint]: "设置默认界面语言。",
+    [Key.adminSiteSettingsThemePreset]: "站点主题色",
+    [Key.adminSiteSettingsThemePresetHint]:
+        "选择基于 Material Design 3 种子色的站点主题预设。",
+    [Key.adminSiteSettingsThemePresetBlue]: "蓝色",
+    [Key.adminSiteSettingsThemePresetPurple]: "紫色",
+    [Key.adminSiteSettingsThemePresetTeal]: "青绿",
+    [Key.adminSiteSettingsThemePresetOrange]: "橙色",
     [Key.adminSiteSettingsSiteStartDateHint]:
         "用于计算站点运行天数等展示信息。",
     [Key.adminSiteSettingsSiteTimeZone]: "站点时区",

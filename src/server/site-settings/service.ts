@@ -1,4 +1,8 @@
 import { defaultSiteSettings, systemSiteConfig } from "@/config";
+import {
+    resolveSiteThemePreset,
+    resolveThemeColorFromPreset,
+} from "@/config/theme-presets";
 import { cacheManager } from "@/server/cache/manager";
 import { readMany } from "@/server/directus/client";
 import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
@@ -209,12 +213,16 @@ function normalizeSettings(
 function buildSystemSiteConfig(
     settings: SiteSettingsPayload,
 ): ResolvedSiteSettings["system"] {
+    const resolvedThemePreset = resolveSiteThemePreset(
+        settings.site.themePreset,
+    );
     return {
         ...systemSiteConfig,
         timeZone: resolveEffectiveSiteTimeZone(settings.site.timeZone),
         lang: isSiteLanguageOption(settings.site.lang)
             ? settings.site.lang
             : systemSiteConfig.lang,
+        themeColor: resolveThemeColorFromPreset(resolvedThemePreset),
     };
 }
 

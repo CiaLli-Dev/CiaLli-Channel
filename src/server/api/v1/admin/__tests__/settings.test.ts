@@ -254,6 +254,7 @@ describe("handleAdminSettings /site", () => {
                     subtitle: "内容社区",
                     lang: "zh_CN",
                     timeZone: "Asia/Shanghai",
+                    themePreset: "blue",
                     keywords: ["文章"],
                     siteStartDate: "2026-02-01",
                     favicon: [],
@@ -309,6 +310,7 @@ describe("handleAdminSettings /site", () => {
                 ...defaultSiteSettings.site,
                 title: "旧标题",
                 timeZone: "UTC",
+                themePreset: "teal",
             },
             announcement: {
                 title: "不应写入",
@@ -332,6 +334,7 @@ describe("handleAdminSettings /site", () => {
         const ctx = makeCtx("admin/settings/site", "PATCH", {
             site: {
                 timeZone: "UTC",
+                themePreset: "teal",
             },
             announcement: {
                 title: "前端误传公告",
@@ -347,9 +350,10 @@ describe("handleAdminSettings /site", () => {
         expect(response.status).toBe(200);
         expect(mockedResolveSiteSettingsPayload).toHaveBeenCalledWith(
             expect.objectContaining({
-                site: {
+                site: expect.objectContaining({
                     timeZone: "UTC",
-                },
+                    themePreset: "teal",
+                }),
                 sakura: {
                     enable: true,
                 },
@@ -374,11 +378,13 @@ describe("handleAdminSettings /site", () => {
             settings: {
                 site: {
                     timeZone: string | null;
+                    themePreset: string;
                 };
             };
         }>(response);
         expect(body.ok).toBe(true);
         expect(body.settings.site.timeZone).toBe("UTC");
+        expect(body.settings.site.themePreset).toBe("teal");
     });
 
     it("PATCH /admin/settings/site 拒绝非法站点时区", async () => {

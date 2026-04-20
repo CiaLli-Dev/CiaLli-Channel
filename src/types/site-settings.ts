@@ -9,6 +9,7 @@ import type {
     NavbarTitleConfig,
     PageScalingConfig,
     SiteLanguage,
+    SiteThemePreset,
     ThemeColorConfig,
     TocConfig,
     WallpaperModeConfig,
@@ -24,6 +25,7 @@ export type EditableSiteSettings = {
         subtitle: string;
         lang: "en" | "zh_CN" | "zh_TW" | "ja";
         timeZone: string | null;
+        themePreset: SiteThemePreset;
         keywords: string[];
         siteStartDate: string | null;
         favicon: Favicon[];

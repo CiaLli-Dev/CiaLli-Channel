@@ -198,6 +198,13 @@ export const jaAdmin: Record<string, string> = {
     [Key.adminSiteSettingsSiteLanguage]: "サイト言語",
     [Key.adminSiteSettingsSiteLanguageHint]:
         "既定のインターフェース言語を設定します。",
+    [Key.adminSiteSettingsThemePreset]: "サイトテーマカラー",
+    [Key.adminSiteSettingsThemePresetHint]:
+        "Material Design 3 のシードカラーに基づくテーマプリセットを選択します。",
+    [Key.adminSiteSettingsThemePresetBlue]: "ブルー",
+    [Key.adminSiteSettingsThemePresetPurple]: "パープル",
+    [Key.adminSiteSettingsThemePresetTeal]: "ティール",
+    [Key.adminSiteSettingsThemePresetOrange]: "オレンジ",
     [Key.adminSiteSettingsSiteStartDateHint]:
         "サイト稼働日数などの表示計算に使用します。",
     [Key.adminSiteSettingsSiteTimeZone]: "サイトタイムゾーン",

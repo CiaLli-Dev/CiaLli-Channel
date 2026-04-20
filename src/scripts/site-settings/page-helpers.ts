@@ -55,6 +55,7 @@ function bindSiteBasicFields(site: SettingsObj): void {
             ? (site.keywords as string[]).join(", ")
             : "",
     );
+    setSelect("ss-theme-preset", String(site.themePreset ?? "blue"));
     setVal("ss-start-date", String(site.siteStartDate ?? ""));
 }
 
@@ -220,6 +221,7 @@ export function collectSitePayload(current: SettingsObj): SettingsObj {
                 inputVal("ss-timezone") === SITE_TIME_ZONE_AUTO_VALUE
                     ? null
                     : inputVal("ss-timezone") || null,
+            themePreset: inputVal("ss-theme-preset") || "blue",
             keywords: inputVal("ss-keywords")
                 .split(",")
                 .map((x) => x.trim())
