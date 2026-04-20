@@ -159,7 +159,7 @@ function setupBodyListeners(
 
 export async function initAdminBulletinPage(): Promise<void> {
     const normalizedPath = window.location.pathname.replace(/\/+$/, "") || "/";
-    if (normalizedPath !== "/admin/settings/bulletin") return;
+    if (normalizedPath !== "/admin/bulletin") return;
 
     const formEl = document.getElementById(
         "bulletin-form",

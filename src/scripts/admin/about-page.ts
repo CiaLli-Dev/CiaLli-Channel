@@ -393,7 +393,7 @@ async function saveAboutImpl(
 
 export function initAdminAboutPage(): void {
     const normalizedPath = window.location.pathname.replace(/\/+$/, "") || "/";
-    if (normalizedPath !== "/admin/settings/about") {
+    if (normalizedPath !== "/admin/about") {
         return;
     }
 

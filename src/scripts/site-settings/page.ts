@@ -1,5 +1,5 @@
 /**
- * /admin/settings/site 页面运行逻辑。
+ * /admin/settings 页面运行逻辑。
  *
  * 从原始 `<script is:inline>` 抽离，确保页面切换后可正确重新初始化，
  * 不依赖整页刷新。
@@ -203,7 +203,7 @@ function setupCropModal(
 
 export function initSiteSettingsPage(): void {
     const normalizedPath = window.location.pathname.replace(/\/+$/, "") || "/";
-    if (normalizedPath !== "/admin/settings/site") {
+    if (normalizedPath !== "/admin/settings") {
         return;
     }
 

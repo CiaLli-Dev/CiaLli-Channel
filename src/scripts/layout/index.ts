@@ -270,7 +270,7 @@ async function initPathSpecificModule(path: string): Promise<void> {
         initAlbumNewPage();
         return;
     }
-    if (path === "/admin/settings/site") {
+    if (path === "/admin/settings") {
         const { initSiteSettingsPage } =
             await import("@/scripts/site-settings/page");
         initSiteSettingsPage();
@@ -282,13 +282,13 @@ async function initPathSpecificModule(path: string): Promise<void> {
         initAdminUsersPage();
         return;
     }
-    if (path === "/admin/settings/bulletin") {
+    if (path === "/admin/bulletin") {
         const { initAdminBulletinPage } =
             await import("@/scripts/admin/bulletin-page");
         initAdminBulletinPage();
         return;
     }
-    if (path === "/admin/settings/about") {
+    if (path === "/admin/about") {
         const { initAdminAboutPage } =
             await import("@/scripts/admin/about-page");
         initAdminAboutPage();
