@@ -1,10 +1,10 @@
 ---
-import HomeFeedItems from "@/components/home/HomeFeedItems.astro";
-import type { HomeFeedPageItem } from "@/server/recommendation/home-feed.types";
+import FeedItems from "@/components/feed/FeedItems.astro";
+import type { FeedPageItem } from "@/server/application/feed/feed.types";
 import { widgetManager } from "@utils/widget-manager";
 
 interface Props {
-  items: HomeFeedPageItem[];
+  items: FeedPageItem[];
   maxAnimationIndex?: number;
 }
 
@@ -19,7 +19,7 @@ const hasRightSidebars =
   class="transition-all duration-500 ease-in-out rounded-(--radius-large) bg-(--card-bg) bg-transparent mb-4 list-mode"
   data-both-sidebars={hasRightSidebars}
 >
-  <HomeFeedItems items={items} maxAnimationIndex={maxAnimationIndex} />
+  <FeedItems items={items} maxAnimationIndex={maxAnimationIndex} />
 </div>
 
 <script>

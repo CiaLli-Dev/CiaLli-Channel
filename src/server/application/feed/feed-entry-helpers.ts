@@ -9,7 +9,7 @@ import {
     type DirectusPostEntry,
 } from "@/utils/content-utils";
 
-type HomeFeedAuthorMap = Map<string, AuthorBundleItem>;
+type FeedAuthorMap = Map<string, AuthorBundleItem>;
 
 export function normalizeIdentity(value: string | null | undefined): string {
     return String(value || "").trim();
@@ -39,7 +39,7 @@ function toFallbackAuthor(userId: string): AuthorBundleItem {
 }
 
 function readAuthorFromMap(
-    authorMap: HomeFeedAuthorMap,
+    authorMap: FeedAuthorMap,
     userId: string,
 ): AuthorBundleItem {
     const normalizedUserId = normalizeIdentity(userId);
@@ -96,7 +96,7 @@ export function buildDiaryImageMap(
 
 export function buildArticleFeedEntry(
     article: AppArticle,
-    authorMap: HomeFeedAuthorMap,
+    authorMap: FeedAuthorMap,
     articleLikeCountMap: Map<string, number>,
     articleCommentCountMap: Map<string, number>,
     options?: { forceAuthenticatedCover?: boolean },

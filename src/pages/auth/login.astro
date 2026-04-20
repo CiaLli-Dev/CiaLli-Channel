@@ -7,8 +7,6 @@ import AuthLoginShell from "@/components/auth/AuthLoginShell.astro";
 import AuthLoginSkeletonCard from "@/components/auth/AuthLoginSkeletonCard.astro";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
 
-export const prerender = false;
-
 const resolvedSettings =
   Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
 const registerEnabled = Boolean(

@@ -2,11 +2,11 @@
 import { Icon } from "astro-icon/components";
 
 import ExternalImage from "@components/misc/ExternalImage.astro";
-import type { AppDiary, AppDiaryImage } from "@/types/app";
 import type { AuthorBundleItem } from "@/server/api/v1/shared/author-cache";
-import type { HomeFeedViewerState } from "@/server/recommendation/home-feed.types";
 import { buildPublicAssetUrl } from "@/server/directus-auth";
+import type { FeedViewerState } from "@/server/application/feed/feed.types";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
+import type { AppDiary, AppDiaryImage } from "@/types/app";
 import { resolveAuthorIdentity } from "@/utils/author-identity";
 import { resolveDiaryDisplayDateSource } from "@/utils/diary-date";
 import { buildSiteDateFormatContext, formatSiteDate } from "@/utils/date-utils";
@@ -20,7 +20,7 @@ interface Props {
     like_count: number;
   };
   username: string;
-  viewerState?: HomeFeedViewerState;
+  viewerState?: FeedViewerState;
   displayDateOverride?: Date | string | null;
   titleSerif?: boolean;
 }
@@ -29,7 +29,7 @@ const { entry, username } = Astro.props;
 const className = Astro.props.class;
 const titleSerif = Astro.props.titleSerif === true;
 const displayDateOverride = Astro.props.displayDateOverride;
-const viewerState: HomeFeedViewerState = Astro.props.viewerState ?? {
+const viewerState: FeedViewerState = Astro.props.viewerState ?? {
   hasLiked: false,
   canDeleteOwn: false,
   canDeleteAdmin: false,

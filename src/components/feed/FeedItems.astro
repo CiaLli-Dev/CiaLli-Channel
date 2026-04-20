@@ -1,13 +1,13 @@
 ---
 import PostCard from "@components/PostCard.astro";
 import DiaryCard from "@/components/DiaryCard.astro";
-import type { HomeFeedPageItem } from "@/server/recommendation/home-feed.types";
+import type { FeedPageItem } from "@/server/application/feed/feed.types";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
 import { resolveAuthorIdentity } from "@/utils/author-identity";
 import { buildSiteDateFormatContext, formatSiteDate } from "@utils/date-utils";
 
 interface Props {
-  items: HomeFeedPageItem[];
+  items: FeedPageItem[];
   maxAnimationIndex?: number;
 }
 

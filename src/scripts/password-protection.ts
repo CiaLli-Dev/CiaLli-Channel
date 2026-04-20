@@ -21,27 +21,47 @@ type PasswordProtectionConfig = {
     i18nPasswordDecryptRetry: string;
 };
 
+type PasswordProtectionHelpersWindow = Window &
+    typeof globalThis & {
+        __ppDecryptPayloadV2?: (
+            input: unknown,
+            password: string,
+        ) => Promise<string>;
+        __ppSanitizeDecryptedHtml?: (rawHtml: unknown) => string;
+        __ppResolveProtectedHtml?: (rawContent: unknown) => string;
+        __ppDispatchPostDecryptTasks?: (
+            contentBodyDiv: HTMLElement,
+        ) => Promise<void>;
+    };
+
 function requireProtectionHelpers(): {
-    decryptPayloadV2: NonNullable<typeof window.__ppDecryptPayloadV2>;
-    sanitizeDecryptedHtml: NonNullable<typeof window.__ppSanitizeDecryptedHtml>;
-    resolveProtectedHtml: NonNullable<typeof window.__ppResolveProtectedHtml>;
+    decryptPayloadV2: NonNullable<
+        PasswordProtectionHelpersWindow["__ppDecryptPayloadV2"]
+    >;
+    sanitizeDecryptedHtml: NonNullable<
+        PasswordProtectionHelpersWindow["__ppSanitizeDecryptedHtml"]
+    >;
+    resolveProtectedHtml: NonNullable<
+        PasswordProtectionHelpersWindow["__ppResolveProtectedHtml"]
+    >;
     dispatchPostDecryptTasks: NonNullable<
-        typeof window.__ppDispatchPostDecryptTasks
+        PasswordProtectionHelpersWindow["__ppDispatchPostDecryptTasks"]
     >;
 } {
+    const ppWindow = window as PasswordProtectionHelpersWindow;
     if (
-        !window.__ppDecryptPayloadV2 ||
-        !window.__ppSanitizeDecryptedHtml ||
-        !window.__ppResolveProtectedHtml ||
-        !window.__ppDispatchPostDecryptTasks
+        !ppWindow.__ppDecryptPayloadV2 ||
+        !ppWindow.__ppSanitizeDecryptedHtml ||
+        !ppWindow.__ppResolveProtectedHtml ||
+        !ppWindow.__ppDispatchPostDecryptTasks
     ) {
         throw new Error("PASSWORD_PROTECTION_HELPERS_MISSING");
     }
     return {
-        decryptPayloadV2: window.__ppDecryptPayloadV2,
-        sanitizeDecryptedHtml: window.__ppSanitizeDecryptedHtml,
-        resolveProtectedHtml: window.__ppResolveProtectedHtml,
-        dispatchPostDecryptTasks: window.__ppDispatchPostDecryptTasks,
+        decryptPayloadV2: ppWindow.__ppDecryptPayloadV2,
+        sanitizeDecryptedHtml: ppWindow.__ppSanitizeDecryptedHtml,
+        resolveProtectedHtml: ppWindow.__ppResolveProtectedHtml,
+        dispatchPostDecryptTasks: ppWindow.__ppDispatchPostDecryptTasks,
     };
 }
 
@@ -278,6 +298,7 @@ function initPasswordProtection(): void {
     let autoUnlockPassword = "";
     let hasAutoUnlockTriggered = false;
     let isDecrypting = false;
+    let disposed = false;
 
     const tryRefreshAutoUnlockPassword = (): void => {
         autoUnlockPassword = resolveStoredPassword(
@@ -311,6 +332,45 @@ function initPasswordProtection(): void {
             }
         },
     );
+
+    const handleBeforeSwap = (): void => {
+        disposePasswordProtection();
+    };
+
+    const handlePageHide = (): void => {
+        disposePasswordProtection();
+    };
+
+    const handleUnlockClick = (): void => {
+        autoUnlockPassword = "";
+        void attemptUnlock();
+    };
+
+    const handlePasswordKeypress = (event: KeyboardEvent): void => {
+        if (event.key === "Enter") {
+            autoUnlockPassword = "";
+            void attemptUnlock();
+        }
+    };
+
+    /**
+     * Astro 局部切页与整页离开都会卸载当前保护 UI；
+     * 这里统一回收 owner-state 订阅和本实例事件，避免残留监听持有旧 DOM。
+     */
+    function disposePasswordProtection(): void {
+        if (disposed) {
+            return;
+        }
+        disposed = true;
+        stopOwnerSync();
+        document.removeEventListener("astro:before-swap", handleBeforeSwap);
+        window.removeEventListener("pagehide", handlePageHide);
+        unlockBtn.removeEventListener("click", handleUnlockClick);
+        passwordInput.removeEventListener("keypress", handlePasswordKeypress);
+    }
+
+    document.addEventListener("astro:before-swap", handleBeforeSwap);
+    window.addEventListener("pagehide", handlePageHide);
 
     function showError(message: string): void {
         errorMessage.textContent = message;
@@ -355,7 +415,7 @@ function initPasswordProtection(): void {
                 inputPassword,
                 isViewerOwner,
             );
-            stopOwnerSync();
+            disposePasswordProtection();
             protectionDiv.remove();
             setTimeout(async () => {
                 await protectionHelpers.dispatchPostDecryptTasks(
@@ -394,16 +454,8 @@ function initPasswordProtection(): void {
         }
     }
 
-    unlockBtn.addEventListener("click", () => {
-        autoUnlockPassword = "";
-        void attemptUnlock();
-    });
-    passwordInput.addEventListener("keypress", (event) => {
-        if (event.key === "Enter") {
-            autoUnlockPassword = "";
-            void attemptUnlock();
-        }
-    });
+    unlockBtn.addEventListener("click", handleUnlockClick);
+    passwordInput.addEventListener("keypress", handlePasswordKeypress);
 
     tryRefreshAutoUnlockPassword();
     if (autoUnlockPassword) {

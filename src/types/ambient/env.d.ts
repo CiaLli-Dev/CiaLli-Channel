@@ -1,12 +1,12 @@
 /// <reference types="astro/client" />
 
 // eslint-disable-next-line @typescript-eslint/triple-slash-reference
-/// <reference path="../.astro/types.d.ts" />
+/// <reference path="../../../.astro/types.d.ts" />
 
 declare namespace App {
     interface Locals {
-        sidebarProfile?: import("./types/app").SidebarProfileData;
-        siteSettings?: import("./types/site-settings").ResolvedSiteSettings;
+        sidebarProfile?: import("../app").SidebarProfileData;
+        siteSettings?: import("../site-settings").ResolvedSiteSettings;
         requestId?: string;
         csrfToken?: string;
         requestLanguage?: string;

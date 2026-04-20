@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { buildHomeFeed } from "@/server/recommendation/home-feed";
+import { buildMixedFeed } from "@/server/application/feed/mixed-feed.service";
 import type { AuthorBundleItem } from "@/server/api/v1/shared/author-cache";
 import type { AppArticle, AppDiary, AppDiaryImage } from "@/types/app";
 
@@ -119,7 +119,7 @@ beforeEach(() => {
     countItemsGroupedByFieldMock.mockResolvedValue(new Map());
 });
 
-describe("buildHomeFeed", () => {
+describe("buildMixedFeed", () => {
     it("会按最近修改时间对文章和日记做统一聚合排序", async () => {
         const articles = [
             createArticle({
@@ -166,7 +166,7 @@ describe("buildHomeFeed", () => {
             createAuthorMap(["author-a", "author-b", "author-c", "author-d"]),
         );
 
-        const result = await buildHomeFeed({ limit: 10 });
+        const result = await buildMixedFeed({ limit: 10 });
 
         expect(result.items.map((item) => item.id)).toEqual([
             "article-1",
@@ -220,7 +220,7 @@ describe("buildHomeFeed", () => {
             createAuthorMap(["author-a", "author-b", "author-c"]),
         );
 
-        const result = await buildHomeFeed({ limit: 10 });
+        const result = await buildMixedFeed({ limit: 10 });
 
         expect(result.items.map((item) => item.id)).toEqual([
             "article-a",

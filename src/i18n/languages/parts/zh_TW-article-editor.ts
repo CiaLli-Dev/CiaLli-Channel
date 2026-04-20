@@ -22,6 +22,10 @@ export const zhTWArticleEditor: Record<string, string> = {
     [Key.articleEditorEncryptedAutoUnlocked]: "已自動解鎖加密內容",
     [Key.articleEditorEncryptedBodyLockedPlaceholder]:
         "內容已加密，輸入密碼後可編輯",
+    [Key.articleEditorEncryptedEditTitle]: "加密內容尚未解鎖",
+    [Key.articleEditorEncryptedEditMessage]:
+        "需要先在文章裡輸入密碼解鎖後，才能進入編輯。",
+    [Key.articleEditorEncryptedEditGoUnlock]: "前往解鎖",
     [Key.articleEditorGeneratingEncryptedContent]: "正在產生加密內容...",
     [Key.articleEditorLoadFailed]: "載入失敗",
     [Key.articleEditorLoadFailedRetry]: "載入失敗，請重試",

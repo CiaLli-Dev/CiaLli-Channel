@@ -157,12 +157,12 @@ async function invalidatePatchCache(
             cacheManager.invalidateByDomain("article-taxonomy"),
             cacheManager.invalidateByDomain("article-public"),
             cacheManager.invalidate("article-detail", id),
-            cacheManager.invalidateByDomain("home-feed"),
+            cacheManager.invalidateByDomain("mixed-feed"),
         );
     } else if (module === "diaries") {
         tasks.push(
             cacheManager.invalidateByDomain("diary-list"),
-            cacheManager.invalidateByDomain("home-feed"),
+            cacheManager.invalidateByDomain("mixed-feed"),
             ...buildDiaryDetailInvalidationTasks(id, updatedShortId),
         );
     } else if (module === "albums") {
@@ -178,7 +178,7 @@ async function invalidatePatchCache(
                 cacheManager.invalidate("article-detail", articleId),
             );
         }
-        tasks.push(cacheManager.invalidateByDomain("home-feed"));
+        tasks.push(cacheManager.invalidateByDomain("mixed-feed"));
     } else if (module === "diary-comments") {
         const diaryId = toOptionalString(relatedComment?.diary_id);
         if (diaryId) {
@@ -187,7 +187,7 @@ async function invalidatePatchCache(
                 ...buildDiaryDetailInvalidationTasks(diaryId),
             );
         }
-        tasks.push(cacheManager.invalidateByDomain("home-feed"));
+        tasks.push(cacheManager.invalidateByDomain("mixed-feed"));
     }
 
     await awaitCacheInvalidations(tasks, {
@@ -365,12 +365,12 @@ async function invalidateDeleteCache(
             cacheManager.invalidateByDomain("article-taxonomy"),
             cacheManager.invalidateByDomain("article-public"),
             cacheManager.invalidate("article-detail", id),
-            cacheManager.invalidateByDomain("home-feed"),
+            cacheManager.invalidateByDomain("mixed-feed"),
         );
     } else if (module === "diaries") {
         tasks.push(
             cacheManager.invalidateByDomain("diary-list"),
-            cacheManager.invalidateByDomain("home-feed"),
+            cacheManager.invalidateByDomain("mixed-feed"),
             ...buildDiaryDetailInvalidationTasks(id, deletedDiaryShortId),
         );
     } else if (module === "albums") {
@@ -386,7 +386,7 @@ async function invalidateDeleteCache(
                 cacheManager.invalidate("article-detail", articleId),
             );
         }
-        tasks.push(cacheManager.invalidateByDomain("home-feed"));
+        tasks.push(cacheManager.invalidateByDomain("mixed-feed"));
     } else if (module === "diary-comments") {
         const diaryId = toOptionalString(relatedComment?.diary_id);
         if (diaryId) {
@@ -395,7 +395,7 @@ async function invalidateDeleteCache(
                 ...buildDiaryDetailInvalidationTasks(diaryId),
             );
         }
-        tasks.push(cacheManager.invalidateByDomain("home-feed"));
+        tasks.push(cacheManager.invalidateByDomain("mixed-feed"));
     }
 
     await awaitCacheInvalidations(tasks, {

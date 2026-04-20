@@ -507,6 +507,21 @@ const mobileLinks: NavBarLink[] = desktopLinks
     }
   };
 
+  const updateProtectedMeRouteLink = (
+    anchor: HTMLAnchorElement,
+    pathname: string,
+    search: string,
+    hash: string,
+    isLoggedIn: boolean,
+  ): void => {
+    const targetHref = `${pathname}${search}${hash}`;
+    if (isLoggedIn) {
+      clearAuthProtectedLink(anchor, targetHref);
+      return;
+    }
+    setAuthProtectedLink(anchor, targetHref);
+  };
+
   const updateLegacyLink = (
     anchor: HTMLAnchorElement,
     pathname: string,
@@ -560,15 +575,28 @@ const mobileLinks: NavBarLink[] = desktopLinks
 
     const hashLower = hash.replace(/^#/, "").trim().toLowerCase();
     if (pathname === "/me") {
-      updateMeHashLink(
-        anchor,
-        pathname,
-        search,
-        hash,
-        hashLower,
-        cleanUsername,
-        isLoggedIn,
-      );
+      // /me#bangumi 等入口要按公开个人页改写；裸 /me 则保持私有账户设置路由，
+      // 未登录时统一走 data-needs-login，避免先进页再被脚本重定向到登录页。
+      if (hashLower) {
+        updateMeHashLink(
+          anchor,
+          pathname,
+          search,
+          hash,
+          hashLower,
+          cleanUsername,
+          isLoggedIn,
+        );
+        if (["bangumi", "diary", "albums"].includes(hashLower)) {
+          return;
+        }
+      }
+      updateProtectedMeRouteLink(anchor, pathname, search, hash, isLoggedIn);
+      return;
+    }
+
+    if (pathname === "/me/homepage") {
+      updateProtectedMeRouteLink(anchor, pathname, search, hash, isLoggedIn);
       return;
     }
 

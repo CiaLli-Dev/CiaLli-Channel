@@ -79,7 +79,7 @@ const STRATEGIES: Record<CacheDomain, CacheStrategy> = {
         l2TtlMs: 10 * 60_000,
         l1MaxEntries: 100,
     },
-    "home-feed": {
+    "mixed-feed": {
         l1TtlMs: 5 * 60_000,
         l2TtlMs: 15 * 60_000,
         l1MaxEntries: 80,

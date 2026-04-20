@@ -37,12 +37,12 @@ import {
   buildSiteDateFormatContext,
   formatSiteDateTime,
 } from "@/utils/date-utils";
+import { hasEditorSaveFreshnessParam } from "@/utils/editor-save-freshness";
 import DetailActionFloat from "@components/control/DetailActionFloat.astro";
-
-export const prerender = false;
 
 const username = (Astro.params.username || "").trim();
 const id = (Astro.params.id || "").trim();
+const bypassPublicCache = hasEditorSaveFreshnessParam(Astro.url);
 
 let html = "";
 let diaryLikeCount = 0;
@@ -114,6 +114,7 @@ if (!username || !id) {
   try {
     const resolvedDiary = await resolveDiaryDetailRoute({
       routeId: id,
+      preferOwner: bypassPublicCache,
       loadPublicDiaryByRoute: async (routeId) => {
         const publicResult = await runWithDirectusPublicAccess(
           async () => await loadUserDiaryDetail(username, routeId),
@@ -134,7 +135,7 @@ if (!username || !id) {
       },
     });
 
-    diaryCacheScope = resolvedDiary.cacheScope;
+    diaryCacheScope = bypassPublicCache ? "private" : resolvedDiary.cacheScope;
 
     if (resolvedDiary.mode === "public" || resolvedDiary.mode === "owner") {
       const rawDiary = resolvedDiary.detail;

@@ -26,6 +26,7 @@ export type DiaryDetailRouteResolution =
 
 type ResolveDiaryDetailRouteInput = {
     routeId: string;
+    preferOwner?: boolean;
     loadPublicDiaryByRoute: (routeId: string) => Promise<DiaryDetail | null>;
     loadSessionUser: () => Promise<SessionUser | null>;
     getSessionAccessToken: () => string;
@@ -46,6 +47,7 @@ export async function resolveDiaryDetailRoute(
 ): Promise<DiaryDetailRouteResolution> {
     return await resolveDetailPageAccess({
         routeId: input.routeId,
+        preferOwner: input.preferOwner,
         loadPublicDetail: input.loadPublicDiaryByRoute,
         loadSessionUser: input.loadSessionUser,
         getSessionAccessToken: input.getSessionAccessToken,

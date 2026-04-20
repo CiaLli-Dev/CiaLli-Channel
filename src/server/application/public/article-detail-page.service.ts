@@ -36,6 +36,7 @@ export type ArticleDetailRouteResolution =
 
 type ResolveArticleDetailRouteInput = {
     routeId: string;
+    preferOwner?: boolean;
     loadPublicArticleByRoute: (routeId: string) => Promise<AppArticle | null>;
     loadSessionUser: () => Promise<SessionUser | null>;
     getSessionAccessToken: () => string;
@@ -50,6 +51,7 @@ export async function resolveArticleDetailRoute(
 ): Promise<ArticleDetailRouteResolution> {
     const result = await resolveDetailPageAccess({
         routeId: input.routeId,
+        preferOwner: input.preferOwner,
         loadPublicDetail: input.loadPublicArticleByRoute,
         loadSessionUser: input.loadSessionUser,
         getSessionAccessToken: input.getSessionAccessToken,

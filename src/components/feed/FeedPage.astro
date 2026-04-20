@@ -1,9 +1,9 @@
 ---
 import PostPage from "@components/PostPage.astro";
-import type { HomeFeedPageItem } from "@/server/recommendation/home-feed.types";
+import type { FeedPageItem } from "@/server/application/feed/feed.types";
 
 interface Props {
-  items: HomeFeedPageItem[];
+  items: FeedPageItem[];
   maxAnimationIndex?: number;
 }
 

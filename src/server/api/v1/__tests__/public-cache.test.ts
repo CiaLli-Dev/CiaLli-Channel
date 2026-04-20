@@ -5,11 +5,11 @@ import { createMockAPIContext } from "@/__tests__/helpers/mock-api-context";
 
 const {
     handlePublicArticlesMock,
-    handlePublicHomeFeedMock,
+    handlePublicMixedFeedMock,
     handlePublicSiteSettingsMock,
 } = vi.hoisted(() => ({
     handlePublicArticlesMock: vi.fn(),
-    handlePublicHomeFeedMock: vi.fn(),
+    handlePublicMixedFeedMock: vi.fn(),
     handlePublicSiteSettingsMock: vi.fn(),
 }));
 
@@ -17,8 +17,8 @@ vi.mock("@/server/api/v1/public/articles", () => ({
     handlePublicArticles: handlePublicArticlesMock,
 }));
 
-vi.mock("@/server/api/v1/public/home-feed", () => ({
-    handlePublicHomeFeed: handlePublicHomeFeedMock,
+vi.mock("@/server/api/v1/public/mixed-feed", () => ({
+    handlePublicMixedFeed: handlePublicMixedFeedMock,
 }));
 
 vi.mock("@/server/api/v1/public/site-settings", () => ({
@@ -71,7 +71,7 @@ describe("handlePublic cache headers", () => {
         handlePublicArticlesMock.mockResolvedValue(
             new Response("{}", { status: 200 }),
         );
-        handlePublicHomeFeedMock.mockResolvedValue(
+        handlePublicMixedFeedMock.mockResolvedValue(
             new Response("{}", { status: 200 }),
         );
         handlePublicSiteSettingsMock.mockResolvedValue(
@@ -92,12 +92,12 @@ describe("handlePublic cache headers", () => {
         );
     });
 
-    it("public/home-feed 在带登录 cookie 时仍返回公共缓存头", async () => {
+    it("public/mixed-feed 在带登录 cookie 时仍返回公共缓存头", async () => {
         const response = await handlePublic(
-            makeContext("public/home-feed", {
+            makeContext("public/mixed-feed", {
                 directus_access_token: "token",
             }),
-            ["public", "home-feed"],
+            ["public", "mixed-feed"],
         );
 
         expect(response.headers.get("Cache-Control")).toBe(

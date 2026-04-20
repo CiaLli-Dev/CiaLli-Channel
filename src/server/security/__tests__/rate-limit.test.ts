@@ -59,19 +59,19 @@ describe("security/rate-limit", () => {
         expect(ratelimitConstructorMock).not.toHaveBeenCalled();
     });
 
-    it("生产环境缺失 Upstash 配置时抛出既有错误", async () => {
+    it("生产环境缺失 Upstash 配置时降级到内存限流", async () => {
         process.env.NODE_ENV = "production";
         getUpstashRedisConfigMock.mockReturnValue(null);
+        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
         const { applyRateLimit } = await import("@/server/security/rate-limit");
 
-        await expect(applyRateLimit("127.0.0.1", "auth")).rejects.toMatchObject(
-            {
-                code: "INTERNAL_ERROR",
-                status: 500,
-                message: "Upstash 限流服务未配置",
-            },
-        );
+        const first = await applyRateLimit("127.0.0.1", "auth");
+        const second = await applyRateLimit("127.0.0.1", "auth");
+
+        expect(first).toMatchObject({ ok: true, remaining: 9 });
+        expect(second).toMatchObject({ ok: true, remaining: 8 });
+        expect(warnSpy).toHaveBeenCalledTimes(1);
     });
 
     it("存在 Upstash 配置时复用共享 Redis 客户端并缓存分类实例", async () => {

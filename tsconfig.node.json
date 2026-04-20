@@ -4,5 +4,5 @@
     "rootDir": ".",
     "types": ["node"]
   },
-  "include": ["vitest.config.ts"]
+  "include": ["vitest.config.ts", "config/vitest.config.ts"]
 }

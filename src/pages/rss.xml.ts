@@ -5,8 +5,6 @@ import type { APIContext } from "astro";
 import { buildSiteFeed } from "@/server/application/feed/site-feed.service";
 import type { ResolvedSiteSettings } from "@/types/site-settings";
 
-export const prerender = false;
-
 export async function GET(context: APIContext): Promise<Response> {
     if (!context.site) {
         throw new Error("site not set");

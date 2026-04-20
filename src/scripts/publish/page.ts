@@ -24,6 +24,7 @@ import { showConfirmDialog } from "@/scripts/shared/dialogs";
 import { requestApi as api } from "@/scripts/shared/http-client";
 import { t, tFmt } from "@/scripts/shared/i18n-runtime";
 import { showOverlayDialog } from "@/scripts/shared/overlay-dialog";
+import { ARTICLE_SAVE_SUCCESS_REDIRECT_URL } from "@/scripts/shared/editor-save-redirect";
 import { navigateToPage } from "@/utils/navigation-utils";
 import { generateClientShortId } from "@/utils/short-id";
 import {
@@ -530,6 +531,10 @@ function bindSettingsOverlay(ctx: PageContext): void {
             },
             {
                 redirectOnSuccess,
+                successRedirectUrl:
+                    redirectOnSuccess && targetStatus === "draft"
+                        ? ARTICLE_SAVE_SUCCESS_REDIRECT_URL
+                        : undefined,
                 targetStatus,
             },
         );
@@ -586,11 +591,10 @@ function bindSettingsOverlay(ctx: PageContext): void {
     openSettingsBtn?.addEventListener("click", openSettingsOverlay);
     cancelSettingsBtn?.addEventListener("click", closeSettingsOverlay);
     dom.saveDraftBtn.addEventListener("click", () => {
-        void submitCurrentArticle("draft", false);
+        void submitCurrentArticle("draft", true);
     });
     dom.savePublishedBtn.addEventListener("click", () => {
-        const shouldRedirect = state.currentStatus !== "published";
-        void submitCurrentArticle("published", shouldRedirect);
+        void submitCurrentArticle("published", true);
     });
     dom.discardDraftBtn.addEventListener("click", () => {
         void discardCurrentDraft();

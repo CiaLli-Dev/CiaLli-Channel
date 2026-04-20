@@ -15,23 +15,23 @@ import {
 import { createSingleFlightRunner } from "@/server/utils/single-flight";
 
 import type {
-    HomeFeedArticleItem,
-    HomeFeedBuildOptions,
-    HomeFeedBuildResult,
-    HomeFeedDiaryEntry,
-    HomeFeedDiaryItem,
-    HomeFeedItem,
-} from "./home-feed.types";
+    FeedArticleItem,
+    FeedBuildOptions,
+    FeedBuildResult,
+    FeedDiaryEntry,
+    FeedDiaryItem,
+    FeedItem,
+} from "./feed.types";
 import {
     buildArticleFeedEntry,
     buildDiaryImageMap,
     normalizeIdentity,
     toSafeDate,
-} from "./home-feed-helpers";
+} from "./feed-entry-helpers";
 
 const DEFAULT_OUTPUT_LIMIT = 60;
 
-type SortableHomeFeedItem = HomeFeedItem & {
+type SortableFeedItem = FeedItem & {
     sortCreatedAt: Date;
 };
 
@@ -50,7 +50,7 @@ function normalizePositiveInt(
     return Math.min(normalized, max);
 }
 
-function hydrateHomeFeedItem(item: HomeFeedItem): HomeFeedItem {
+function hydrateFeedItem(item: FeedItem): FeedItem {
     if (item.type === "article") {
         return {
             ...item,
@@ -72,12 +72,10 @@ function hydrateHomeFeedItem(item: HomeFeedItem): HomeFeedItem {
     };
 }
 
-function hydrateHomeFeedResult(
-    result: HomeFeedBuildResult,
-): HomeFeedBuildResult {
+function hydrateFeedResult(result: FeedBuildResult): FeedBuildResult {
     return {
         ...result,
-        items: result.items.map((item) => hydrateHomeFeedItem(item)),
+        items: result.items.map((item) => hydrateFeedItem(item)),
     };
 }
 
@@ -110,9 +108,9 @@ async function fetchInteractionCountMap(
     } as JsonObject);
 }
 
-function compareSortableHomeFeedItems(
-    left: SortableHomeFeedItem,
-    right: SortableHomeFeedItem,
+function compareSortableFeedItems(
+    left: SortableFeedItem,
+    right: SortableFeedItem,
 ): number {
     const publishedDiff =
         right.publishedAt.getTime() - left.publishedAt.getTime();
@@ -131,9 +129,7 @@ function compareSortableHomeFeedItems(
     return leftKey.localeCompare(rightKey);
 }
 
-async function loadArticleItems(
-    limit: number,
-): Promise<SortableHomeFeedItem[]> {
+async function loadArticleItems(limit: number): Promise<SortableFeedItem[]> {
     const articleFilters: JsonObject[] = [
         { status: { _eq: "published" } },
         { is_public: { _eq: true } },
@@ -191,7 +187,7 @@ async function loadArticleItems(
             ),
         ]);
 
-    const items: SortableHomeFeedItem[] = [];
+    const items: SortableFeedItem[] = [];
 
     for (const row of articleRows) {
         const entry = buildArticleFeedEntry(
@@ -204,7 +200,7 @@ async function loadArticleItems(
             continue;
         }
 
-        const item: HomeFeedArticleItem = {
+        const item: FeedArticleItem = {
             type: "article",
             id: normalizeIdentity(entry.data.article_id),
             authorId: normalizeIdentity(entry.data.author_id),
@@ -224,7 +220,7 @@ async function loadArticleItems(
     return items;
 }
 
-async function loadDiaryItems(limit: number): Promise<SortableHomeFeedItem[]> {
+async function loadDiaryItems(limit: number): Promise<SortableFeedItem[]> {
     const diaryRows = await readMany("app_diaries", {
         filter: {
             _and: [
@@ -277,7 +273,7 @@ async function loadDiaryItems(limit: number): Promise<SortableHomeFeedItem[]> {
         ]);
 
     const diaryImageMap = buildDiaryImageMap(diaryImages);
-    const items: SortableHomeFeedItem[] = [];
+    const items: SortableFeedItem[] = [];
 
     for (const row of diaryRows) {
         const diaryId = normalizeIdentity(row.id);
@@ -286,7 +282,7 @@ async function loadDiaryItems(limit: number): Promise<SortableHomeFeedItem[]> {
             continue;
         }
 
-        const entry: HomeFeedDiaryEntry = {
+        const entry: FeedDiaryEntry = {
             ...row,
             author: authorMap.get(authorId) || {
                 id: authorId,
@@ -299,7 +295,7 @@ async function loadDiaryItems(limit: number): Promise<SortableHomeFeedItem[]> {
             like_count: diaryLikeCountMap.get(diaryId) || 0,
         };
 
-        const item: HomeFeedDiaryItem = {
+        const item: FeedDiaryItem = {
             type: "diary",
             id: diaryId,
             authorId,
@@ -316,7 +312,7 @@ async function loadDiaryItems(limit: number): Promise<SortableHomeFeedItem[]> {
     return items;
 }
 
-async function buildMixedHomeFeed(limit: number): Promise<HomeFeedItem[]> {
+async function buildMixedFeedItems(limit: number): Promise<FeedItem[]> {
     const [articleItems, diaryItems] = await Promise.all([
         loadArticleItems(limit),
         loadDiaryItems(limit),
@@ -324,33 +320,33 @@ async function buildMixedHomeFeed(limit: number): Promise<HomeFeedItem[]> {
 
     // 首页只保留最近修改时间的统一排序，避免额外推荐打分与混排成本。
     return [...articleItems, ...diaryItems]
-        .sort(compareSortableHomeFeedItems)
+        .sort(compareSortableFeedItems)
         .slice(0, limit)
         .map(({ sortCreatedAt: _, ...item }) => item);
 }
 
-const buildHomeFeedSingleFlight = createSingleFlightRunner(
+const buildMixedFeedSingleFlight = createSingleFlightRunner(
     async (
         cacheKey: string,
         params: {
             limit: number;
             now: Date;
         },
-    ): Promise<HomeFeedBuildResult> => {
-        const result: HomeFeedBuildResult = {
-            items: await buildMixedHomeFeed(params.limit),
+    ): Promise<FeedBuildResult> => {
+        const result: FeedBuildResult = {
+            items: await buildMixedFeedItems(params.limit),
             generatedAt: params.now.toISOString(),
         };
 
-        void cacheManager.set("home-feed", cacheKey, result);
+        void cacheManager.set("mixed-feed", cacheKey, result);
         return result;
     },
     (cacheKey: string) => cacheKey,
 );
 
-export async function buildHomeFeed(
-    options: HomeFeedBuildOptions = {},
-): Promise<HomeFeedBuildResult> {
+export async function buildMixedFeed(
+    options: FeedBuildOptions = {},
+): Promise<FeedBuildResult> {
     return await runWithDirectusServiceAccess(async () => {
         const limit = normalizePositiveInt(
             options.limit,
@@ -362,15 +358,15 @@ export async function buildHomeFeed(
         const cacheKey = hashParams({
             limit,
         });
-        const cached = await cacheManager.get<HomeFeedBuildResult>(
-            "home-feed",
+        const cached = await cacheManager.get<FeedBuildResult>(
+            "mixed-feed",
             cacheKey,
         );
         if (cached) {
-            return hydrateHomeFeedResult(cached);
+            return hydrateFeedResult(cached);
         }
 
-        return await buildHomeFeedSingleFlight(cacheKey, {
+        return await buildMixedFeedSingleFlight(cacheKey, {
             limit,
             now,
         });

@@ -108,6 +108,17 @@ describe("public/articles.service", () => {
         });
     });
 
+    it("parsePublicArticleListInput 可携带保存后新鲜读取标记", () => {
+        const input = parsePublicArticleListInput(
+            new URL("http://localhost:4321/posts"),
+            {
+                bypassCache: true,
+            },
+        );
+
+        expect(input.bypassCache).toBe(true);
+    });
+
     it("getPublicArticleTaxonomyData 聚合 tag/category 并缓存", async () => {
         readManyMock.mockResolvedValue([
             {
@@ -195,6 +206,67 @@ describe("public/articles.service", () => {
             expect.any(String),
             result,
         );
+    });
+
+    it("普通文章列表请求命中缓存时不直读 Directus", async () => {
+        const cached = {
+            items: [],
+            page: 1,
+            limit: 5,
+            total: 0,
+        };
+        cacheGetMock.mockResolvedValueOnce(cached);
+
+        const result = await getPublicArticleListData({
+            page: 1,
+            limit: 5,
+            tags: [],
+            category: null,
+            q: null,
+            authorHandle: null,
+        });
+
+        expect(result).toBe(cached);
+        expect(readManyMock).not.toHaveBeenCalled();
+        expect(countItemsMock).not.toHaveBeenCalled();
+    });
+
+    it("保存后新鲜读取会绕过旧文章列表缓存", async () => {
+        readManyMock.mockResolvedValue([
+            {
+                id: "article-1",
+                short_id: "a1",
+                author_id: "author-1",
+                status: "published",
+                title: "新标题",
+                slug: "hello",
+                summary: "新摘要",
+                cover_file: null,
+                cover_url: null,
+                tags: [],
+                category: null,
+                is_public: true,
+                date_created: "2026-04-01T00:00:00.000Z",
+                date_updated: "2026-04-02T00:00:00.000Z",
+            },
+        ]);
+        countItemsMock.mockResolvedValue(1);
+
+        const result = await getPublicArticleListData({
+            page: 1,
+            limit: 5,
+            tags: [],
+            category: null,
+            q: null,
+            authorHandle: null,
+            bypassCache: true,
+        });
+
+        expect(cacheGetMock).not.toHaveBeenCalled();
+        expect((result.items[0] as DirectusPostEntry).data).toMatchObject({
+            title: "新标题",
+            description: "新摘要",
+        });
     });
 
     it("author 不存在时直接返回空分页", async () => {

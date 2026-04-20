@@ -24,7 +24,7 @@ import {
 import {
     buildArticleFeedEntry,
     normalizeIdentity,
-} from "@/server/recommendation/home-feed-helpers";
+} from "@/server/application/feed/feed-entry-helpers";
 import { buildPostUrl } from "@/utils/content-post-helpers";
 import type { DirectusPostEntry } from "@/utils/content-utils";
 
@@ -57,6 +57,7 @@ export type PublicArticleListInput = {
     category?: string | null;
     q?: string | null;
     authorHandle?: string | null;
+    bypassCache?: boolean;
 };
 
 export type PublicArticleListResult = {
@@ -241,14 +242,18 @@ function buildPublicArticleCategories(
         }));
 }
 
-export async function getPublicArticleTaxonomyData(): Promise<PublicArticleTaxonomyResult> {
+export async function getPublicArticleTaxonomyData(options?: {
+    bypassCache?: boolean;
+}): Promise<PublicArticleTaxonomyResult> {
     return await runWithDirectusServiceAccess(async () => {
-        const cached = await cacheManager.get<PublicArticleTaxonomyResult>(
-            "article-taxonomy",
-            ARTICLE_TAXONOMY_CACHE_KEY,
-        );
-        if (cached) {
-            return cached;
+        if (options?.bypassCache !== true) {
+            const cached = await cacheManager.get<PublicArticleTaxonomyResult>(
+                "article-taxonomy",
+                ARTICLE_TAXONOMY_CACHE_KEY,
+            );
+            if (cached) {
+                return cached;
+            }
         }
 
         // taxonomy 只读取标签/分类轻字段，避免列表页为侧栏聚合拉整篇文章数据。
@@ -264,11 +269,13 @@ export async function getPublicArticleTaxonomyData(): Promise<PublicArticleTaxon
             tags: buildPublicArticleTags(rows),
             categories: buildPublicArticleCategories(rows),
         };
-        void cacheManager.set(
-            "article-taxonomy",
-            ARTICLE_TAXONOMY_CACHE_KEY,
-            result,
-        );
+        if (options?.bypassCache !== true) {
+            void cacheManager.set(
+                "article-taxonomy",
+                ARTICLE_TAXONOMY_CACHE_KEY,
+                result,
+            );
+        }
         return result;
     });
 }
@@ -341,12 +348,14 @@ export async function getPublicArticleListData(
 ): Promise<PublicArticleListResult> {
     return await runWithDirectusServiceAccess(async () => {
         const cacheKey = buildPublicArticleCacheKey(input);
-        const cached = await cacheManager.get<PublicArticleListResult>(
-            "article-list",
-            cacheKey,
-        );
-        if (cached) {
-            return cached;
+        if (input.bypassCache !== true) {
+            const cached = await cacheManager.get<PublicArticleListResult>(
+                "article-list",
+                cacheKey,
+            );
+            if (cached) {
+                return cached;
+            }
         }
 
         const { filters, earlyReturn } = await buildArticleListFilters({
@@ -434,7 +443,9 @@ export async function getPublicArticleListData(
             limit: input.limit,
             total,
         };
-        void cacheManager.set("article-list", cacheKey, result);
+        if (input.bypassCache !== true) {
+            void cacheManager.set("article-list", cacheKey, result);
+        }
         return result;
     });
 }
@@ -444,6 +455,7 @@ export function parsePublicArticleListInput(
     options?: {
         defaultLimit?: number;
         maxLimit?: number;
+        bypassCache?: boolean;
     },
 ): PublicArticleListInput {
     const { page, limit } = parsePagination(url, {
@@ -468,6 +480,7 @@ export function parsePublicArticleListInput(
                     ""
                 ).slice(0, 100),
             ) || null,
+        ...(options?.bypassCache === true ? { bypassCache: true } : {}),
     };
 }
 

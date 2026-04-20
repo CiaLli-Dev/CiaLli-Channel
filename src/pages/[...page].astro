@@ -2,15 +2,14 @@
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
-import HomeFeedPage from "@components/home/HomeFeedPage.astro";
+import FeedPage from "@components/feed/FeedPage.astro";
 import {
-  buildHomeFeedPage,
-  DEFAULT_HOME_FEED_TOTAL_LIMIT,
-  HOME_FEED_HOME_PAGE_LIMIT,
-} from "@/server/application/feed/home-feed.service";
-import type { HomeFeedPageItem } from "@/server/recommendation/home-feed.types";
+  buildMixedFeedPage,
+  DEFAULT_MIXED_FEED_TOTAL_LIMIT,
+  MIXED_FEED_HOME_PAGE_LIMIT,
+} from "@/server/application/feed/mixed-feed-page.service";
+import type { FeedPageItem } from "@/server/application/feed/feed.types";
 
-export const prerender = false;
 const rawPagePath = Astro.params.page || "";
 
 // 重定向旧分页 URL
@@ -24,17 +23,17 @@ if (rawPagePath) {
   Astro.response.status = 404;
 }
 
-let homeFeedItems: HomeFeedPageItem[] = [];
+let mixedFeedItems: FeedPageItem[] = [];
 const invalidPath = Boolean(rawPagePath);
 
 if (!invalidPath) {
   try {
-    const homeFeed = await buildHomeFeedPage({
+    const mixedFeed = await buildMixedFeedPage({
       offset: 0,
-      pageLimit: HOME_FEED_HOME_PAGE_LIMIT,
-      totalLimit: DEFAULT_HOME_FEED_TOTAL_LIMIT,
+      pageLimit: MIXED_FEED_HOME_PAGE_LIMIT,
+      totalLimit: DEFAULT_MIXED_FEED_TOTAL_LIMIT,
     });
-    homeFeedItems = homeFeed.items;
+    mixedFeedItems = mixedFeed.items;
   } catch (error) {
     console.error("[home] failed to load mixed feed:", error);
   }
@@ -60,12 +59,12 @@ if (!invalidPath) {
     ) : (
       <div class="home-layout">
         <div class="min-w-0">
-          {homeFeedItems.length === 0 ? (
+          {mixedFeedItems.length === 0 ? (
             <div class="card-base p-8 rounded-(--radius-large) text-70 mb-4">
               {i18n(I18nKey.contentPageNoPublicPosts)}
             </div>
           ) : (
-            <HomeFeedPage items={homeFeedItems} maxAnimationIndex={15} />
+            <FeedPage items={mixedFeedItems} maxAnimationIndex={15} />
           )}
           {/* 首页首屏收敛后仅保留文章列表入口，不再继续下拉加载 */}
           <a href="/posts" class="home-article-list-cta card-base">

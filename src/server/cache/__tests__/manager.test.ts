@@ -90,17 +90,17 @@ describe("cache/manager", () => {
         );
     });
 
-    it("整域失效时只递增当前 home-feed 域版本号", async () => {
+    it("整域失效时只递增当前 mixed-feed 域版本号", async () => {
         const redis = createRedisClientMock();
         redis.incr.mockResolvedValue(1);
         getUpstashRedisClientMock.mockReturnValue(redis);
 
         const { cacheManager } = await import("@/server/cache/manager");
 
-        await cacheManager.invalidateByDomain("home-feed");
+        await cacheManager.invalidateByDomain("mixed-feed");
 
         expect(redis.incr.mock.calls.map(([key]) => key)).toEqual([
-            "cialli:test-cache:cache:v1:home-feed:__ver__",
+            "cialli:test-cache:cache:v1:mixed-feed:__ver__",
         ]);
     });
 

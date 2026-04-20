@@ -21,8 +21,6 @@ import {
 import RegisterFormSkeleton from "@/components/auth/RegisterFormSkeleton.astro";
 import RegisterAvatarCropModal from "@/components/auth/RegisterAvatarCropModal.astro";
 
-export const prerender = false;
-
 const resolvedSettings =
   Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
 const siteDateContext = buildSiteDateFormatContext(resolvedSettings);

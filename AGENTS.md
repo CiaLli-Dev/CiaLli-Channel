@@ -4,7 +4,7 @@
 
 - 项目简介：基于 Mizuki 和 Directus SDK 开发的内容社区
 - 包管理器：仅使用 `pnpm`
-- 构建输出：Astro `output: "static"`
+- 构建输出：Astro `output: "server"`，默认按需渲染，静态路由需显式 `prerender = true`
 
 ## 最高优先级规则
 

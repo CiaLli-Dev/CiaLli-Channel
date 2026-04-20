@@ -29,6 +29,11 @@ export const jaArticleEditor: Record<string, string> = {
         "暗号化コンテンツを自動で解除しました",
     [Key.articleEditorEncryptedBodyLockedPlaceholder]:
         "本文は暗号化されています。パスワード入力後に編集できます",
+    [Key.articleEditorEncryptedEditTitle]:
+        "暗号化コンテンツがロックされています",
+    [Key.articleEditorEncryptedEditMessage]:
+        "記事ページでパスワードを入力して解除してから編集を開始してください。",
+    [Key.articleEditorEncryptedEditGoUnlock]: "解除する",
     [Key.articleEditorGeneratingEncryptedContent]:
         "暗号化コンテンツを生成しています...",
     [Key.articleEditorLoadFailed]: "読み込みに失敗しました",

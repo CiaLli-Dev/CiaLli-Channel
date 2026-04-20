@@ -9,8 +9,6 @@ import {
 import { getSessionAccessToken, getSessionUser } from "@/server/auth/session";
 import { runWithDirectusUserAccess } from "@/server/directus/client";
 
-export const prerender = false;
-
 const username = (Astro.params.username || "").trim();
 
 if (!username) {

@@ -188,6 +188,11 @@ function setLikeButtonState(
     button.dataset.liked = liked ? "true" : "false";
     button.classList.toggle("text-(--primary)", liked);
     button.classList.toggle("text-50", !liked);
+    if (button.closest("[data-post-card]")) {
+        button.classList.toggle("post-card-muted-text", !liked);
+    } else if (button.closest("[data-diary-card]")) {
+        button.classList.toggle("diary-card-muted-text", !liked);
+    }
     const countEl = button.querySelector<HTMLElement>("[data-like-count]");
     if (countEl && typeof likeCount === "number") {
         const normalizedCount = Math.max(0, likeCount);

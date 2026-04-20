@@ -159,7 +159,7 @@ async function createDiaryCommentForEntry(
                 diary.short_id,
             ),
             invalidateDiaryInteractionAggregate(String(diary.id)),
-            cacheManager.invalidateByDomain("home-feed"),
+            cacheManager.invalidateByDomain("mixed-feed"),
         ],
         { label: "comments-diary#create" },
     );
@@ -215,7 +215,7 @@ async function patchDiaryComment(
         [
             invalidateDiaryDetailCacheByDiaryId(comment.diary_id),
             invalidateDiaryInteractionAggregate(comment.diary_id),
-            cacheManager.invalidateByDomain("home-feed"),
+            cacheManager.invalidateByDomain("mixed-feed"),
         ],
         { label: "comments-diary#patch" },
     );
@@ -244,7 +244,7 @@ async function deleteDiaryComment(
         [
             invalidateDiaryDetailCacheByDiaryId(comment.diary_id),
             invalidateDiaryInteractionAggregate(comment.diary_id),
-            cacheManager.invalidateByDomain("home-feed"),
+            cacheManager.invalidateByDomain("mixed-feed"),
         ],
         { label: "comments-diary#delete" },
     );

@@ -7,8 +7,6 @@ import PublishSettingsOverlay from "@components/publish/PublishSettingsOverlay.a
 import "@/styles/markdown.css";
 import "@/styles/markdown-extend.styl";
 
-export const prerender = false;
-
 const user = await getSessionUser(Astro);
 if (!user) {
   return Astro.redirect(

@@ -23,7 +23,6 @@ import { AppError } from "@/server/api/errors";
 import type { JsonObject, JsonValue } from "@/types/json";
 import { getJsonString, isJsonObject } from "@utils/json-utils";
 
-export const prerender = false;
 const AUTH_NO_STORE = "private, no-store";
 
 function resolveTrustedClientIp(headers: Headers): string {

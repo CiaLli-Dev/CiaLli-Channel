@@ -8,7 +8,7 @@ import { handlePublicArticles } from "./articles";
 import { handlePublicDiaries } from "./diaries";
 import { handlePublicFriends } from "./friends";
 import { handlePublicAlbums } from "./albums";
-import { handlePublicHomeFeed } from "./home-feed";
+import { handlePublicMixedFeed } from "./mixed-feed";
 import {
     handlePublicRegistrationRequests,
     handlePublicRegistrationCheck,
@@ -27,7 +27,7 @@ function canApplyPublicEdgeCache(segments: string[]): boolean {
         moduleName === "albums" ||
         moduleName === "friends" ||
         moduleName === "site-settings" ||
-        moduleName === "home-feed"
+        moduleName === "mixed-feed"
     );
 }
 
@@ -89,8 +89,8 @@ export async function handlePublic(
         response = await handlePublicAlbums(context, segments);
         return withPublicEdgeCache(context, segments, response);
     }
-    if (segments[1] === "home-feed") {
-        response = await handlePublicHomeFeed(context, segments);
+    if (segments[1] === "mixed-feed") {
+        response = await handlePublicMixedFeed(context, segments);
         return withPublicEdgeCache(context, segments, response);
     }
     return withPublicEdgeCache(context, segments, fail("未找到接口", 404));

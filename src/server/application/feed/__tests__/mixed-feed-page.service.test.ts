@@ -1,28 +1,20 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { buildHomeFeedPage } from "@/server/application/feed/home-feed.service";
+import { buildMixedFeedPage } from "@/server/application/feed/mixed-feed-page.service";
 import type {
-    HomeFeedBuildResult,
-    HomeFeedDiaryEntry,
-    HomeFeedItem,
-} from "@/server/recommendation/home-feed.types";
+    FeedBuildResult,
+    FeedDiaryEntry,
+    FeedItem,
+} from "@/server/application/feed/feed.types";
 import type { AppDiaryImage } from "@/types/app";
 import type { DirectusPostEntry } from "@/utils/content-utils";
 
-const { buildHomeFeedMock, readManyMock } = vi.hoisted(() => ({
-    buildHomeFeedMock: vi.fn<() => Promise<HomeFeedBuildResult>>(),
-    readManyMock: vi.fn(),
+const { buildMixedFeedMock } = vi.hoisted(() => ({
+    buildMixedFeedMock: vi.fn<() => Promise<FeedBuildResult>>(),
 }));
 
-vi.mock("@/server/recommendation/home-feed", () => ({
-    buildHomeFeed: buildHomeFeedMock,
-}));
-
-vi.mock("@/server/directus/client", () => ({
-    readMany: readManyMock,
-    runWithDirectusServiceAccess: async <T>(
-        task: () => Promise<T>,
-    ): Promise<T> => await task(),
+vi.mock("@/server/application/feed/mixed-feed.service", () => ({
+    buildMixedFeed: buildMixedFeedMock,
 }));
 
 const BASE_NOW = new Date("2026-03-16T12:00:00.000Z");
@@ -80,7 +72,7 @@ function createArticleEntry(params: {
 function createDiaryEntry(params: {
     id: string;
     authorId: string;
-}): HomeFeedDiaryEntry {
+}): FeedDiaryEntry {
     return {
         id: params.id,
         short_id: params.id,
@@ -103,10 +95,7 @@ function createDiaryEntry(params: {
     };
 }
 
-function createArticleItem(params: {
-    id: string;
-    authorId: string;
-}): HomeFeedItem {
+function createArticleItem(params: { id: string; authorId: string }): FeedItem {
     return {
         type: "article",
         id: params.id,
@@ -116,10 +105,7 @@ function createArticleItem(params: {
     };
 }
 
-function createDiaryItem(params: {
-    id: string;
-    authorId: string;
-}): HomeFeedItem {
+function createDiaryItem(params: { id: string; authorId: string }): FeedItem {
     return {
         type: "diary",
         id: params.id,
@@ -129,7 +115,7 @@ function createDiaryItem(params: {
     };
 }
 
-function createBuildResult(items: HomeFeedItem[]): HomeFeedBuildResult {
+function createBuildResult(items: FeedItem[]): FeedBuildResult {
     return {
         items,
         generatedAt: BASE_NOW.toISOString(),
@@ -137,13 +123,12 @@ function createBuildResult(items: HomeFeedItem[]): HomeFeedBuildResult {
 }
 
 afterEach(() => {
-    buildHomeFeedMock.mockReset();
-    readManyMock.mockReset();
+    buildMixedFeedMock.mockReset();
 });
 
-describe("buildHomeFeedPage", () => {
-    it("匿名用户返回默认 viewerState", async () => {
-        buildHomeFeedMock.mockResolvedValue(
+describe("buildMixedFeedPage", () => {
+    it("返回默认 feed viewer state", async () => {
+        buildMixedFeedMock.mockResolvedValue(
             createBuildResult([
                 createArticleItem({
                     id: "article-public",
@@ -152,14 +137,12 @@ describe("buildHomeFeedPage", () => {
             ]),
         );
 
-        const result = await buildHomeFeedPage({
-            viewerId: null,
+        const result = await buildMixedFeedPage({
             offset: 0,
             pageLimit: 20,
             totalLimit: 20,
         });
 
-        expect(readManyMock).not.toHaveBeenCalled();
         expect(result.items).toHaveLength(1);
         expect(result.items[0]?.viewerState).toEqual({
             hasLiked: false,
@@ -169,7 +152,7 @@ describe("buildHomeFeedPage", () => {
     });
 
     it("分页切片会按 10 条返回首页首屏结果", async () => {
-        buildHomeFeedMock.mockResolvedValue(
+        buildMixedFeedMock.mockResolvedValue(
             createBuildResult(
                 Array.from({ length: 12 }, (_, index) =>
                     createArticleItem({
@@ -180,14 +163,12 @@ describe("buildHomeFeedPage", () => {
             ),
         );
 
-        const result = await buildHomeFeedPage({
-            viewerId: null,
+        const result = await buildMixedFeedPage({
             offset: 0,
             pageLimit: 10,
             totalLimit: 12,
         });
 
-        expect(readManyMock).not.toHaveBeenCalled();
         expect(result.items).toHaveLength(10);
         expect(result.items.map((item) => item.id)).toEqual([
             "article-1",
@@ -206,12 +187,12 @@ describe("buildHomeFeedPage", () => {
         expect(result.total).toBe(12);
     });
 
-    it("登录用户附带点赞与删除权限 viewerState", async () => {
-        buildHomeFeedMock.mockResolvedValue(
+    it("混合流中的日记与文章都返回默认 viewer state", async () => {
+        buildMixedFeedMock.mockResolvedValue(
             createBuildResult([
                 createArticleItem({
-                    id: "article-own",
-                    authorId: "viewer-1",
+                    id: "article-visible",
+                    authorId: "author-visible",
                 }),
                 createDiaryItem({
                     id: "diary-visible",
@@ -219,75 +200,32 @@ describe("buildHomeFeedPage", () => {
                 }),
             ]),
         );
-        readManyMock
-            .mockResolvedValueOnce([
-                {
-                    article_id: "article-own",
-                },
-            ])
-            .mockResolvedValueOnce([
-                {
-                    diary_id: "diary-visible",
-                },
-            ]);
 
-        const result = await buildHomeFeedPage({
-            viewerId: "viewer-1",
-            viewerRoleName: "Site Admin",
-            isViewerSystemAdmin: false,
-            includeViewerState: true,
+        const result = await buildMixedFeedPage({
             offset: 0,
             pageLimit: 20,
             totalLimit: 20,
         });
 
-        expect(readManyMock).toHaveBeenCalledTimes(2);
         expect(result.total).toBe(2);
         expect(result.items.map((item) => item.id)).toEqual([
-            "article-own",
+            "article-visible",
             "diary-visible",
         ]);
         expect(result.items[0]?.viewerState).toEqual({
-            hasLiked: true,
-            canDeleteOwn: true,
+            hasLiked: false,
+            canDeleteOwn: false,
             canDeleteAdmin: false,
         });
         expect(result.items[1]?.viewerState).toEqual({
-            hasLiked: true,
-            canDeleteOwn: false,
-            canDeleteAdmin: true,
-        });
-    });
-
-    it("默认公共模式即使存在 viewerId 也不会补 viewerState", async () => {
-        buildHomeFeedMock.mockResolvedValue(
-            createBuildResult([
-                createArticleItem({
-                    id: "article-public",
-                    authorId: "viewer-1",
-                }),
-            ]),
-        );
-
-        const result = await buildHomeFeedPage({
-            viewerId: "viewer-1",
-            viewerRoleName: "Site Admin",
-            isViewerSystemAdmin: true,
-            offset: 0,
-            pageLimit: 20,
-            totalLimit: 20,
-        });
-
-        expect(readManyMock).not.toHaveBeenCalled();
-        expect(result.items[0]?.viewerState).toEqual({
             hasLiked: false,
             canDeleteOwn: false,
             canDeleteAdmin: false,
         });
     });
 
-    it("首页返回项不再暴露推荐算法字段", async () => {
-        buildHomeFeedMock.mockResolvedValue(
+    it("混合流返回项不再暴露推荐算法字段", async () => {
+        buildMixedFeedMock.mockResolvedValue(
             createBuildResult([
                 createArticleItem({
                     id: "article-public",
@@ -296,8 +234,7 @@ describe("buildHomeFeedPage", () => {
             ]),
         );
 
-        const result = await buildHomeFeedPage({
-            viewerId: null,
+        const result = await buildMixedFeedPage({
             offset: 0,
             pageLimit: 20,
             totalLimit: 20,

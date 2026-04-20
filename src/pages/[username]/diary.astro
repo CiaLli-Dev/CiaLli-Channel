@@ -17,12 +17,13 @@ import type {
 } from "@/server/api/v1/public-data";
 import type { AppDiary, AppDiaryImage } from "@/types/app";
 import type { AuthorBundleItem } from "@/server/api/v1/shared/author-cache";
+import { hasEditorSaveFreshnessParam } from "@/utils/editor-save-freshness";
 
-export const prerender = false;
 const USER_PUBLIC_PAGE_CACHE_CONTROL =
   "public, s-maxage=60, stale-while-revalidate=300";
 
 const username = (Astro.params.username || "").trim();
+const bypassPublicCache = hasEditorSaveFreshnessParam(Astro.url);
 
 type DiaryListItem = AppDiary & {
   author: AuthorBundleItem;
@@ -60,7 +61,9 @@ try {
       }
       Astro.response.headers.set(
         "Cache-Control",
-        USER_PUBLIC_PAGE_CACHE_CONTROL,
+        bypassPublicCache
+          ? "private, no-store"
+          : USER_PUBLIC_PAGE_CACHE_CONTROL,
       );
     }
   }

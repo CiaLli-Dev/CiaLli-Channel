@@ -4,6 +4,7 @@ import "@/styles/progress-overlay.css";
 import { DARK_MODE, DEFAULT_THEME } from "@/constants/constants";
 import { setupCodeCopyDelegation } from "@/scripts/markdown/code-copy";
 import { ensureProgressOverlayBridge } from "@/scripts/shared/progress-overlay-manager";
+import { relocateStaticOverlayDialogsToBody } from "@/scripts/shared/static-overlay-dialog-portal";
 import { initRunningDaysRuntime } from "@/scripts/layout/running-days-runtime";
 import {
     encodeHashId,
@@ -51,6 +52,7 @@ export function initLayoutRuntime(): void {
     }
 
     ensureProgressOverlayBridge();
+    relocateStaticOverlayDialogsToBody();
     runtimeWindow.__layoutRuntimeInitialized = true;
     const runtimeSettings = runtimeWindow.__CIALLI_RUNTIME_SETTINGS__;
     const bannerEnabled = Boolean(document.getElementById("banner-wrapper"));
@@ -322,6 +324,7 @@ function bindPageLifecycle(runtimeWindow: LayoutRuntimeWindow): void {
 
     document.addEventListener("astro:page-load", () => {
         updateBannerExtendCssVar();
+        relocateStaticOverlayDialogsToBody();
         if (
             document.documentElement.classList.contains(
                 BANNER_TO_SPEC_TRANSITION_CLASS,
@@ -355,5 +358,6 @@ export function bootstrapLayoutRuntime(): void {
     initRunningDaysRuntime();
     bindPageLifecycle(runtimeWindow);
     updateBannerExtendCssVar();
+    relocateStaticOverlayDialogsToBody();
     void runDynamicPageInit();
 }

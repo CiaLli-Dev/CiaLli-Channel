@@ -13,7 +13,7 @@ export type CacheDomain =
     | "diary-interaction"
     | "diary-list"
     | "diary-detail"
-    | "home-feed"
+    | "mixed-feed"
     | "album-list"
     | "album-detail"
     | "bangumi-list"

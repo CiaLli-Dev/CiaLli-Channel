@@ -265,7 +265,7 @@ export async function handleMyArticleLikes(
                     articleId,
                     access.user.id,
                 ),
-                cacheManager.invalidateByDomain("home-feed"),
+                cacheManager.invalidateByDomain("mixed-feed"),
             ],
             { label: "me/article-likes#toggle" },
         );
@@ -383,7 +383,7 @@ export async function handleMyDiaryLikes(
             [
                 invalidateDiaryInteractionAggregate(diaryId),
                 invalidateDiaryInteractionViewerState(diaryId, access.user.id),
-                cacheManager.invalidateByDomain("home-feed"),
+                cacheManager.invalidateByDomain("mixed-feed"),
             ],
             { label: "me/diary-likes#toggle" },
         );

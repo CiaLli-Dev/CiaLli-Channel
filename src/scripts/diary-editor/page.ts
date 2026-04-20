@@ -5,6 +5,7 @@ import { t, tFmt } from "@/scripts/shared/i18n-runtime";
 import { showOverlayDialog } from "@/scripts/shared/overlay-dialog";
 import type { ProgressTaskHandle } from "@/scripts/shared/progress-overlay-manager";
 import { setupUnsavedChangesGuard } from "@/scripts/shared/unsaved-changes-guard";
+import { buildDiarySaveSuccessRedirectUrl } from "@/scripts/shared/editor-save-redirect";
 import { setupPageInit } from "@/utils/page-init";
 import {
     api,
@@ -470,7 +471,7 @@ export function initDiaryEditorPage(options: InitOptions): boolean {
     });
     saveDraftBtn?.addEventListener("click", () => {
         void executeSaveDiary(saveDiaryCtx, {
-            redirectOnSuccess: false,
+            successRedirectUrl: buildDiarySaveSuccessRedirectUrl(username),
             targetStatus: "draft",
         });
     });

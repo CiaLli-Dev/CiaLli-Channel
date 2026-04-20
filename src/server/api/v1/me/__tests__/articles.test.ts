@@ -59,6 +59,7 @@ vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
 }));
 
 import { createOne, readMany, updateOne } from "@/server/directus/client";
+import { cacheManager } from "@/server/cache/manager";
 import { ARTICLE_FIELDS } from "@/server/api/v1/shared/constants";
 import {
     cleanupOwnedOrphanDirectusFiles,
@@ -71,6 +72,7 @@ import { handleMeArticles } from "@/server/api/v1/me/articles";
 const mockedCreateOne = vi.mocked(createOne);
 const mockedReadMany = vi.mocked(readMany);
 const mockedUpdateOne = vi.mocked(updateOne);
+const mockedCacheInvalidate = vi.mocked(cacheManager.invalidate);
 const mockedCreateWithShortId = vi.mocked(createWithShortId);
 const mockedCleanupOwnedOrphanDirectusFiles = vi.mocked(
     cleanupOwnedOrphanDirectusFiles,
@@ -380,10 +382,16 @@ describe("PUT /me/articles/working-draft", () => {
 
 describe("PATCH /me/articles/:id", () => {
     it("更新成功", async () => {
-        const article = mockArticle({ author_id: "user-1" });
+        const article = mockArticle({
+            author_id: "user-1",
+            short_id: "post-short",
+        });
         mockedReadMany.mockResolvedValue([article]);
         mockedUpdateOne.mockResolvedValue(
-            mockArticle({ title: "Updated Title" }),
+            mockArticle({
+                title: "Updated Title",
+                short_id: "post-short",
+            }),
         );
 
         const ctx = createMockAPIContext({
@@ -411,6 +419,14 @@ describe("PATCH /me/articles/:id", () => {
             "article-1",
             { title: "Updated Title" },
             { fields: [...ARTICLE_FIELDS] },
+        );
+        expect(mockedCacheInvalidate).toHaveBeenCalledWith(
+            "article-detail",
+            "article-1",
+        );
+        expect(mockedCacheInvalidate).toHaveBeenCalledWith(
+            "article-detail",
+            "post-short",
         );
     });
 

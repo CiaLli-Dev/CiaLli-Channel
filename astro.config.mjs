@@ -1,3 +1,6 @@
+import { resolve as resolvePath } from "node:path";
+import { fileURLToPath } from "node:url";
+import node from "@astrojs/node";
 import sitemap from "@astrojs/sitemap";
 import svelte, { vitePreprocess } from "@astrojs/svelte";
 import vercel from "@astrojs/vercel";
@@ -8,7 +11,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
 import expressiveCode from "astro-expressive-code";
 import icon from "astro-icon";
-import { systemSiteConfig } from "./src/config.ts";
+import { systemSiteConfig } from "./src/config/index.ts";
 import { pluginCustomCopyButton } from "./src/plugins/expressive-code/custom-copy-button.js";
 import { pluginLanguageBadge } from "./src/plugins/expressive-code/language-badge.ts";
 import { shouldIgnoreBuildWarning } from "./src/utils/vite-build-warning-filter.ts";
@@ -17,20 +20,56 @@ import {
     remarkPlugins,
 } from "./src/server/markdown/pipeline.ts";
 
-const _siteHostname = new URL(systemSiteConfig.siteURL).hostname;
+const VALID_DEPLOY_TARGETS = ["vercel", "docker"];
 
-// https://astro.build/config
-export default defineConfig({
-    site: systemSiteConfig.siteURL,
-    base: "/",
-    trailingSlash: "never",
+function resolveConfiguredSiteUrl() {
+    const rawSiteUrl = String(process.env.APP_SITE_URL || "").trim();
+    if (!rawSiteUrl) {
+        return systemSiteConfig.siteURL;
+    }
 
-    security: {
-        allowedDomains: [{ hostname: _siteHostname }],
-    },
+    try {
+        const parsed = new URL(rawSiteUrl);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+            throw new Error("invalid protocol");
+        }
+        return parsed.href;
+    } catch {
+        console.warn(
+            `[astro.config] 未识别的 APP_SITE_URL=${rawSiteUrl}，已回退到系统配置`,
+        );
+        return systemSiteConfig.siteURL;
+    }
+}
 
-    output: "static",
-    adapter: vercel({
+function resolveDeployTarget() {
+    const rawTarget = String(process.env.DEPLOY_TARGET || "vercel")
+        .trim()
+        .toLowerCase();
+
+    if (VALID_DEPLOY_TARGETS.includes(rawTarget)) {
+        return rawTarget;
+    }
+
+    console.warn(
+        `[astro.config] 未识别的 DEPLOY_TARGET=${rawTarget}，已回退到 vercel`,
+    );
+    return "vercel";
+}
+
+const deployTarget = resolveDeployTarget();
+const configuredSiteUrl = resolveConfiguredSiteUrl();
+const configuredSiteHostname = new URL(configuredSiteUrl).hostname;
+const projectRootDir = fileURLToPath(new URL("./", import.meta.url));
+
+function resolveAdapter() {
+    if (deployTarget === "docker") {
+        return node({
+            mode: "standalone",
+        });
+    }
+
+    return vercel({
         // 启用 Vercel Image Optimization
         imageService: true,
         imagesConfig: {
@@ -41,7 +80,23 @@ export default defineConfig({
             formats: ["image/avif", "image/webp"],
             minimumCacheTTL: 60 * 60 * 24 * 30,
         },
-    }),
+    });
+}
+
+// https://astro.build/config
+export default defineConfig({
+    root: projectRootDir,
+    site: configuredSiteUrl,
+    base: "/",
+    trailingSlash: "never",
+
+    security: {
+        allowedDomains: [{ hostname: configuredSiteHostname }],
+    },
+
+    // server 模式只改变默认渲染策略；静态例外继续由显式 prerender 控制。
+    output: "server",
+    adapter: resolveAdapter(),
 
     prefetch: {
         prefetchAll: false,
@@ -106,6 +161,17 @@ export default defineConfig({
         rehypePlugins,
     },
     vite: {
+        resolve: {
+            alias: {
+                "@": resolvePath(projectRootDir, "src"),
+                "@components": resolvePath(projectRootDir, "src/components"),
+                "@assets": resolvePath(projectRootDir, "src/assets"),
+                "@constants": resolvePath(projectRootDir, "src/constants"),
+                "@utils": resolvePath(projectRootDir, "src/utils"),
+                "@i18n": resolvePath(projectRootDir, "src/i18n"),
+                "@layouts": resolvePath(projectRootDir, "src/layouts"),
+            },
+        },
         plugins: [tailwindcss()],
         build: {
             // 静态资源处理优化，防止小图片转 base64 导致 HTML 体积过大（可选，根据需要调整）

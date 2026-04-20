@@ -3,7 +3,6 @@ import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import { getAuthenticatedViewer } from "@/server/application/auth/session.service";
 
-export const prerender = false;
 const AUTH_NO_STORE = "private, no-store";
 
 function json<T>(data: T, init?: ResponseInit): Response {

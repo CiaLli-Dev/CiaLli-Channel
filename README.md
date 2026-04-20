@@ -71,7 +71,7 @@ CiaLli 是一个现代化的轻量内容社区，基于 [Mizuki](https://github.
 
 ### 项目 Wiki
 
-见 [Deep Wiki](https://deepwiki.com/CiaLliChannel-Dev/CiaLli)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/CiaLliChannel-Dev/CiaLli)
 
 ### 贡献指南
 

@@ -53,11 +53,11 @@ import {
   buildSiteDateFormatContext,
   formatSiteDateTime,
 } from "@/utils/date-utils";
+import { hasEditorSaveFreshnessParam } from "@/utils/editor-save-freshness";
 import DetailActionFloat from "@components/control/DetailActionFloat.astro";
 
-export const prerender = false;
-
 const rawId = (Astro.params.id || "").replace(/^\/+|\/+$/g, "");
+const bypassPublicCache = hasEditorSaveFreshnessParam(Astro.url);
 
 let article: {
   id: string;
@@ -124,6 +124,7 @@ if (rawId) {
   try {
     const resolvedArticle = await resolveArticleDetailRoute({
       routeId: rawId,
+      preferOwner: bypassPublicCache,
       loadPublicArticleByRoute: async (routeId) =>
         await runWithDirectusPublicAccess(
           async () => await resolvePublicArticleByRoute(routeId),
@@ -137,7 +138,9 @@ if (rawId) {
         ),
     });
 
-    articleCacheScope = resolvedArticle.cacheScope;
+    articleCacheScope = bypassPublicCache
+      ? "private"
+      : resolvedArticle.cacheScope;
     sessionUserId = resolvedArticle.sessionUserId;
 
     if (resolvedArticle.mode === "public" || resolvedArticle.mode === "owner") {

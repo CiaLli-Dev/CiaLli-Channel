@@ -10,7 +10,6 @@ import {
 } from "@/server/directus-auth";
 import { assertCsrfToken } from "@/server/security/csrf";
 
-export const prerender = false;
 const AUTH_NO_STORE = "private, no-store";
 
 function json<T>(data: T, init?: ResponseInit): Response {

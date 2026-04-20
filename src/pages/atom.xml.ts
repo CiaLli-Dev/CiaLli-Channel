@@ -3,8 +3,6 @@ import type { APIContext } from "astro";
 import { buildSiteFeed } from "@/server/application/feed/site-feed.service";
 import type { ResolvedSiteSettings } from "@/types/site-settings";
 
-export const prerender = false;
-
 function escapeXml(raw: string): string {
     return raw
         .replaceAll("&", "&amp;")

@@ -6,8 +6,6 @@ import { i18n } from "@/i18n/translation";
 import { renderMarkdown } from "@/server/markdown/render";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
 
-export const prerender = false;
-
 const resolvedSiteSettings =
   Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
 const announcement = resolvedSiteSettings.settings.announcement;

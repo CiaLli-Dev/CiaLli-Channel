@@ -116,7 +116,7 @@ async function createArticleComment(
         [
             cacheManager.invalidate("article-detail", articleId),
             invalidateArticleInteractionAggregate(articleId),
-            cacheManager.invalidateByDomain("home-feed"),
+            cacheManager.invalidateByDomain("mixed-feed"),
         ],
         { label: "comments-article#create" },
     );
@@ -172,7 +172,7 @@ async function patchArticleComment(
         [
             cacheManager.invalidate("article-detail", comment.article_id),
             invalidateArticleInteractionAggregate(comment.article_id),
-            cacheManager.invalidateByDomain("home-feed"),
+            cacheManager.invalidateByDomain("mixed-feed"),
         ],
         { label: "comments-article#patch" },
     );
@@ -201,7 +201,7 @@ async function deleteArticleComment(
         [
             cacheManager.invalidate("article-detail", comment.article_id),
             invalidateArticleInteractionAggregate(comment.article_id),
-            cacheManager.invalidateByDomain("home-feed"),
+            cacheManager.invalidateByDomain("mixed-feed"),
         ],
         { label: "comments-article#delete" },
     );

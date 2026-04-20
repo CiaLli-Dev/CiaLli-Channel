@@ -9,8 +9,6 @@ import {
 } from "@/server/api/v1/public-data";
 import { runWithDirectusServiceAccess } from "@/server/directus/client";
 
-export const prerender = false;
-
 try {
   const user = await getSessionUser(Astro);
   if (user) {

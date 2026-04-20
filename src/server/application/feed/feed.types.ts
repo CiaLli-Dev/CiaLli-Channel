@@ -2,55 +2,55 @@ import type { AuthorBundleItem } from "@/server/api/v1/shared/author-cache";
 import type { AppDiary, AppDiaryImage } from "@/types/app";
 import type { DirectusPostEntry } from "@/utils/content-utils";
 
-export type HomeFeedItemType = "article" | "diary";
+export type FeedItemType = "article" | "diary";
 
-export type HomeFeedDiaryEntry = AppDiary & {
+export type FeedDiaryEntry = AppDiary & {
     author: AuthorBundleItem;
     images: AppDiaryImage[];
     comment_count: number;
     like_count: number;
 };
 
-type HomeFeedItemBase = {
+type FeedItemBase = {
     id: string;
     authorId: string;
     publishedAt: Date;
 };
 
-export type HomeFeedArticleItem = HomeFeedItemBase & {
+export type FeedArticleItem = FeedItemBase & {
     type: "article";
     entry: DirectusPostEntry;
 };
 
-export type HomeFeedDiaryItem = HomeFeedItemBase & {
+export type FeedDiaryItem = FeedItemBase & {
     type: "diary";
-    entry: HomeFeedDiaryEntry;
+    entry: FeedDiaryEntry;
 };
 
-export type HomeFeedItem = HomeFeedArticleItem | HomeFeedDiaryItem;
+export type FeedItem = FeedArticleItem | FeedDiaryItem;
 
-export type HomeFeedViewerState = {
+export type FeedViewerState = {
     hasLiked: boolean;
     canDeleteOwn: boolean;
     canDeleteAdmin: boolean;
 };
 
-export type HomeFeedPageItem = HomeFeedItem & {
-    viewerState: HomeFeedViewerState;
+export type FeedPageItem = FeedItem & {
+    viewerState: FeedViewerState;
 };
 
-export type HomeFeedBuildOptions = {
+export type FeedBuildOptions = {
     limit?: number;
     now?: Date;
 };
 
-export type HomeFeedBuildResult = {
-    items: HomeFeedItem[];
+export type FeedBuildResult = {
+    items: FeedItem[];
     generatedAt: string;
 };
 
-export type HomeFeedPageResponse = {
-    items: HomeFeedPageItem[];
+export type FeedPageResponse = {
+    items: FeedPageItem[];
     offset: number;
     limit: number;
     next_offset: number;

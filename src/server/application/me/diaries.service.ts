@@ -368,7 +368,7 @@ async function handleDiaryCreate(
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("diary-list"),
-            cacheManager.invalidateByDomain("home-feed"),
+            cacheManager.invalidateByDomain("mixed-feed"),
         ],
         { label: "me/diaries#create" },
     );
@@ -428,7 +428,7 @@ async function handleDiaryPatch(
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("diary-list"),
-            cacheManager.invalidateByDomain("home-feed"),
+            cacheManager.invalidateByDomain("mixed-feed"),
             ...buildDiaryDetailInvalidationTasks(diaryId, updated.short_id),
         ],
         { label: "me/diaries#patch" },
@@ -473,7 +473,7 @@ async function handleWorkingDraftPut(
         await awaitCacheInvalidations(
             [
                 cacheManager.invalidateByDomain("diary-list"),
-                cacheManager.invalidateByDomain("home-feed"),
+                cacheManager.invalidateByDomain("mixed-feed"),
             ],
             { label: "me/diaries#working-draft#create" },
         );
@@ -505,7 +505,7 @@ async function handleWorkingDraftPut(
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("diary-list"),
-            cacheManager.invalidateByDomain("home-feed"),
+            cacheManager.invalidateByDomain("mixed-feed"),
             ...buildDiaryDetailInvalidationTasks(target.id, updated.short_id),
         ],
         { label: "me/diaries#working-draft#update" },
@@ -552,7 +552,7 @@ async function handleDiaryDelete(
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("diary-list"),
-            cacheManager.invalidateByDomain("home-feed"),
+            cacheManager.invalidateByDomain("mixed-feed"),
             ...buildDiaryDetailInvalidationTasks(diaryId, target.short_id),
         ],
         { label: "me/diaries#delete" },
@@ -657,7 +657,7 @@ async function handleDiaryImageCreate(
     }
     await awaitCacheInvalidations(
         [
-            cacheManager.invalidateByDomain("home-feed"),
+            cacheManager.invalidateByDomain("mixed-feed"),
             ...buildDiaryDetailInvalidationTasks(diaryId, diary.short_id),
         ],
         { label: "me/diary-images#create" },
@@ -732,7 +732,7 @@ async function handleDiaryImagePatch(
     }
     await awaitCacheInvalidations(
         [
-            cacheManager.invalidateByDomain("home-feed"),
+            cacheManager.invalidateByDomain("mixed-feed"),
             ...buildDiaryDetailInvalidationTasks(
                 String(image.diary_id ?? ""),
                 typeof diary.short_id === "string" ? diary.short_id : null,
@@ -758,7 +758,7 @@ async function handleDiaryImageDelete(
     }
     await awaitCacheInvalidations(
         [
-            cacheManager.invalidateByDomain("home-feed"),
+            cacheManager.invalidateByDomain("mixed-feed"),
             ...buildDiaryDetailInvalidationTasks(
                 String(image.diary_id ?? ""),
                 typeof diary.short_id === "string" ? diary.short_id : null,

@@ -5,7 +5,6 @@ import { i18n } from "@i18n/translation";
 import MainGridLayout from "../layouts/MainGridLayout.astro";
 
 // 404 页会走公共 Layout（含运行时请求上下文），改为 SSR 以避免预渲染期的 request.headers 警告。
-export const prerender = false;
 ---
 
 <MainGridLayout

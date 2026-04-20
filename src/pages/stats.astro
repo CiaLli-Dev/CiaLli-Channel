@@ -7,8 +7,6 @@ import { i18n } from "@i18n/translation";
 import MainGridLayout from "../layouts/MainGridLayout.astro";
 import { getRunningDays } from "@utils/running-days";
 
-export const prerender = false;
-
 const title = i18n(I18nKey.coreSiteStats);
 const resolvedSiteSettings =
   Astro.locals.siteSettings ?? (await getResolvedSiteSettings());
