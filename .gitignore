@@ -19,7 +19,6 @@ pnpm-debug.log*
 # 环境变量文件
 .env
 .env.prod
-docker.env
 
 # 内容备份文件
 *.backup
