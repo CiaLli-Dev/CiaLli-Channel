@@ -1,14 +1,13 @@
 import type { MiddlewareHandler } from "astro";
 import { defineMiddleware } from "astro:middleware";
 
-import I18nKey from "./i18n/i18nKey";
-import { i18n } from "./i18n/translation";
-import { assertRequiredEnv } from "./server/env/required";
-import { registerRequestScopedI18n } from "./server/request-context/i18n";
-import { runWithRequestContext } from "./server/request-context";
-import { ensureCsrfCookie } from "./server/security/csrf";
-import { applyCommonSecurityHeaders } from "./server/security/response-headers";
-import { getResolvedSiteSettings } from "./server/site-settings/service";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import { assertRequiredEnv } from "@/server/env/required";
+import { registerRequestScopedI18n } from "@/server/request-context/i18n";
+import { runWithRequestContext } from "@/server/request-context";
+import { ensureCsrfCookie } from "@/server/security/csrf";
+import { getResolvedSiteSettings } from "@/server/site-settings/service";
 
 registerRequestScopedI18n();
 
@@ -43,15 +42,6 @@ function buildEnvErrorResponse(pathname: string): Response {
 
 export const onRequest: MiddlewareHandler = defineMiddleware(
     async (context, next) => {
-        // Docker/容器健康检查应独立于业务必填环境变量，避免编排系统误判实例不可用。
-        if (context.url.pathname === "/api/healthz") {
-            return applyCommonSecurityHeaders({
-                response: await next(),
-                url: context.url,
-                headers: context.request.headers,
-            });
-        }
-
         // 预渲染页面构建时，request.headers 不可用，跳过运行时逻辑
         if (context.isPrerendered) {
             let siteSettings = context.locals.siteSettings;
@@ -72,12 +62,7 @@ export const onRequest: MiddlewareHandler = defineMiddleware(
                     siteSettings,
                     isPrerendered: true,
                 },
-                async () =>
-                    applyCommonSecurityHeaders({
-                        response: await next(),
-                        url: context.url,
-                        headers: undefined,
-                    }),
+                async () => await next(),
             );
         }
 
@@ -97,11 +82,7 @@ export const onRequest: MiddlewareHandler = defineMiddleware(
                 "[middleware] required env validation failed:",
                 error,
             );
-            return applyCommonSecurityHeaders({
-                response: buildEnvErrorResponse(context.url.pathname),
-                url: context.url,
-                headers: context.request.headers,
-            });
+            return buildEnvErrorResponse(context.url.pathname);
         }
 
         // 3. 加载站点设置
@@ -123,12 +104,7 @@ export const onRequest: MiddlewareHandler = defineMiddleware(
                 language: siteSettings?.system.lang ?? "en",
                 siteSettings,
             },
-            async () =>
-                applyCommonSecurityHeaders({
-                    response: await next(),
-                    url: context.url,
-                    headers: context.request.headers,
-                }),
+            async () => await next(),
         );
 
         // 6. 响应头附加 requestId

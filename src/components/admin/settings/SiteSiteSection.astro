@@ -1,6 +1,7 @@
 ---
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
+import { SITE_THEME_PRESET_OPTIONS } from "@/config/theme-presets";
 import {
   getSupportedSiteTimeZones,
   resolveEnvironmentTimeZone,
@@ -10,6 +11,12 @@ import SettingsField from "@/components/admin/settings/SettingsField.astro";
 
 const environmentTimeZone = resolveEnvironmentTimeZone();
 const supportedTimeZones = getSupportedSiteTimeZones();
+const themePresetLabelKeyMap = {
+  blue: I18nKey.adminSiteSettingsThemePresetBlue,
+  purple: I18nKey.adminSiteSettingsThemePresetPurple,
+  teal: I18nKey.adminSiteSettingsThemePresetTeal,
+  orange: I18nKey.adminSiteSettingsThemePresetOrange,
+} as const;
 ---
 
 <!-- ===== Section 1: 站点信息 ===== -->
@@ -75,6 +82,23 @@ const supportedTimeZones = getSupportedSiteTimeZones();
           supportedTimeZones
             .filter((timeZone) => timeZone !== "UTC")
             .map((timeZone) => <option value={timeZone}>{timeZone}</option>)
+        }
+      </select>
+    </SettingsField>
+    <SettingsField
+      label={i18n(I18nKey.adminSiteSettingsThemePreset)}
+      hint={i18n(I18nKey.adminSiteSettingsThemePresetHint)}
+    >
+      <select
+        id="ss-theme-preset"
+        class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-75"
+      >
+        {
+          SITE_THEME_PRESET_OPTIONS.map((option) => (
+            <option value={option.id}>
+              {i18n(themePresetLabelKeyMap[option.id])}（{option.seedHex}）
+            </option>
+          ))
         }
       </select>
     </SettingsField>

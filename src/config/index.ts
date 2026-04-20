@@ -4,14 +4,17 @@ import {
     type SystemSiteConfig,
 } from "../types/site-settings";
 import { LinkPreset } from "../types/config";
+import {
+    DEFAULT_SITE_THEME_PRESET,
+    resolveSiteThemePreset,
+    resolveThemeColorFromPreset,
+} from "./theme-presets";
 
 export const systemSiteConfig: SystemSiteConfig = {
     siteURL: "https://www.ciallichannel.com/",
     lang: "zh_CN",
     timeZone: "UTC",
-    themeColor: {
-        hue: 285,
-    },
+    themeColor: resolveThemeColorFromPreset(DEFAULT_SITE_THEME_PRESET),
     pageScaling: {
         targetWidth: 2000,
     },
@@ -27,6 +30,7 @@ export const defaultSiteSettings: SiteSettingsPayload = {
         subtitle: "内容社区",
         lang: "zh_CN",
         timeZone: null,
+        themePreset: DEFAULT_SITE_THEME_PRESET,
         keywords: [],
         siteStartDate: "2026-02-01",
         favicon: [],
@@ -170,6 +174,9 @@ export function buildRuntimeSiteConfig(
     system: SystemSiteConfig,
     settings: SiteSettingsPayload,
 ): RuntimeSiteConfig {
+    const resolvedThemePreset = resolveSiteThemePreset(
+        settings.site.themePreset,
+    );
     return {
         title: settings.site.title,
         subtitle: settings.site.subtitle,
@@ -177,7 +184,7 @@ export function buildRuntimeSiteConfig(
         keywords: settings.site.keywords,
         siteStartDate: settings.site.siteStartDate || undefined,
         lang: settings.site.lang || system.lang,
-        themeColor: system.themeColor,
+        themeColor: resolveThemeColorFromPreset(resolvedThemePreset),
         navbarTitle: settings.navbarTitle,
         pageScaling: system.pageScaling,
         wallpaperMode: settings.wallpaperMode,

@@ -1,16 +1,14 @@
 {
   "name": "@cialli-dev/cialli-channel",
   "type": "module",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
     "check": "node scripts/i18n/check-i18n-hardcoded.mjs && node scripts/i18n/check-i18n-structure.mjs && astro check",
     "check:i18n": "node scripts/i18n/check-i18n-hardcoded.mjs",
     "build": "astro build",
-    "build:docker": "node scripts/build/run-astro-build.mjs docker",
-    "preview": "node scripts/build/preview-built-output.mjs",
-    "preview:docker": "node scripts/build/preview-docker-output.mjs",
+    "preview": "node scripts/preview-built-output.mjs",
     "astro": "astro",
     "type-check": "tsc --noEmit --isolatedDeclarations --skipLibCheck",
     "type-check:projects": "tsc -p tsconfig.json --noEmit --skipLibCheck && tsc -p tsconfig.test.json --noEmit --skipLibCheck && tsc -p tsconfig.node.json --noEmit --skipLibCheck",
@@ -27,7 +25,6 @@
   },
   "dependencies": {
     "@astrojs/check": "^0.9.8",
-    "@astrojs/node": "^10.0.5",
     "@astrojs/rss": "^4.0.18",
     "@astrojs/sitemap": "^3.7.2",
     "@astrojs/svelte": "^8.0.5",

@@ -17,31 +17,8 @@ function generateCsrfToken(): string {
     return crypto.randomUUID();
 }
 
-function shouldTrustProxyHeaders(): boolean {
-    const value = String(process.env.APP_TRUST_PROXY || "")
-        .trim()
-        .toLowerCase();
-    return (
-        value === "1" || value === "true" || value === "yes" || value === "on"
-    );
-}
-
-function isSecureRequest(context: APIContext): boolean {
-    if (context.url.protocol === "https:") {
-        return true;
-    }
-
-    if (!shouldTrustProxyHeaders()) {
-        return false;
-    }
-
-    // 兼容代理链路（例如 "https,http"），仅信任首个协议值。
-    const forwardedProto = context.request.headers
-        .get("x-forwarded-proto")
-        ?.split(",")[0]
-        ?.trim()
-        .toLowerCase();
-    return forwardedProto === "https";
+function isSecureRequest(url: URL): boolean {
+    return url.protocol === "https:";
 }
 
 function resolveCsrfCookieOptions(context: APIContext): {
@@ -55,7 +32,7 @@ function resolveCsrfCookieOptions(context: APIContext): {
         // CSRF token 不再允许被前端 JS 直接读取，改为服务端注入到 <meta>
         httpOnly: true,
         sameSite: "lax",
-        secure: isSecureRequest(context),
+        secure: isSecureRequest(context.url),
         path: "/",
         maxAge: 86400,
     };

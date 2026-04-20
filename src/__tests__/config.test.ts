@@ -40,4 +40,33 @@ describe("config runtime site config", () => {
             "博客",
         );
     });
+
+    it("根据站点主题预设推导运行时 hue，且默认主题为蓝色", () => {
+        const blueRuntime = buildRuntimeSiteConfig(
+            systemSiteConfig,
+            defaultSiteSettings,
+        );
+        const purpleRuntime = buildRuntimeSiteConfig(systemSiteConfig, {
+            ...defaultSiteSettings,
+            site: {
+                ...defaultSiteSettings.site,
+                themePreset: "purple",
+            },
+        });
+        const tealRuntime = buildRuntimeSiteConfig(systemSiteConfig, {
+            ...defaultSiteSettings,
+            site: {
+                ...defaultSiteSettings.site,
+                themePreset: "teal",
+            },
+        });
+
+        expect(defaultSiteSettings.site.themePreset).toBe("blue");
+        expect(blueRuntime.themeColor.hue).toBe(205);
+        expect(purpleRuntime.themeColor.hue).toBe(256);
+        expect(tealRuntime.themeColor.hue).toBe(174);
+        expect(blueRuntime.themeColor.hue).not.toBe(
+            purpleRuntime.themeColor.hue,
+        );
+    });
 });

@@ -1,4 +1,8 @@
 import type { SiteSettingsPayload } from "@/types/site-settings";
+import {
+    DEFAULT_SITE_THEME_PRESET,
+    isSiteThemePreset,
+} from "@/config/theme-presets";
 import { buildDirectusAssetUrl } from "@/server/directus-auth";
 import { canonicalizeSiteTimeZone } from "@/utils/date-utils";
 
@@ -178,6 +182,12 @@ export function normalizeSiteInfo(
         );
     }
     merged.site.timeZone = resolvedTimeZone;
+    // 站点主题预设需要可预测且可回退，避免历史脏值导致运行时主题异常。
+    merged.site.themePreset = isSiteThemePreset(merged.site.themePreset)
+        ? merged.site.themePreset
+        : isSiteThemePreset(base.site.themePreset)
+          ? base.site.themePreset
+          : DEFAULT_SITE_THEME_PRESET;
     merged.site.keywords = Array.isArray(merged.site.keywords)
         ? merged.site.keywords
               .map((item) => String(item || "").trim())

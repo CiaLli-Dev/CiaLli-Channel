@@ -100,7 +100,7 @@ function main() {
         const langKeySet = new Set();
 
         for (const { domain } of DOMAIN_FILES) {
-            const partFile = `src/i18n/languages/parts/${lang}-${domain}.ts`;
+            const partFile = `src/i18n/languages/parts/${lang}/${domain}.ts`;
             const absolutePath = path.join(WORKSPACE_ROOT, partFile);
 
             if (!fs.existsSync(absolutePath)) {

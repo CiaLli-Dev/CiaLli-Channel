@@ -13,6 +13,8 @@ export type SiteLanguage =
     | "tr"
     | "id";
 
+export type SiteThemePreset = "blue" | "purple" | "teal" | "orange";
+
 export type ThemeColorConfig = {
     hue: number;
 };
