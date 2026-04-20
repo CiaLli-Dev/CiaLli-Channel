@@ -1,4 +1,5 @@
 import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import js from "@eslint/js";
 import prettier from "eslint-config-prettier";
 import astro from "eslint-plugin-astro";
@@ -6,27 +7,27 @@ import svelte from "eslint-plugin-svelte";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
-const tsconfigRootDir = fileURLToPath(new URL(".", import.meta.url));
+const projectRootDir = fileURLToPath(new URL(".", import.meta.url));
 const typeAwareParserOptions = {
     project: "./tsconfig.json",
-    tsconfigRootDir,
+    tsconfigRootDir: projectRootDir,
 };
 const testParserOptions = {
     project: "./tsconfig.test.json",
-    tsconfigRootDir,
+    tsconfigRootDir: projectRootDir,
 };
 const astroParserOptions = {
     parser: tseslint.parser,
     project: "./tsconfig.json",
     extraFileExtensions: [".astro"],
-    tsconfigRootDir,
+    tsconfigRootDir: projectRootDir,
 };
 const svelteParserOptions = {
     parser: tseslint.parser,
     project: "./tsconfig.json",
     extraFileExtensions: [".svelte"],
-    svelteConfig: "./svelte.config.js",
-    tsconfigRootDir,
+    svelteConfig: join(projectRootDir, "svelte.config.js"),
+    tsconfigRootDir: projectRootDir,
 };
 
 export default tseslint.config(
@@ -54,6 +55,15 @@ export default tseslint.config(
         files: ["**/*.{ts,tsx,cts,mts}"],
         languageOptions: {
             parserOptions: typeAwareParserOptions,
+        },
+    },
+    {
+        files: ["vitest.config.ts"],
+        languageOptions: {
+            parserOptions: {
+                project: "./tsconfig.node.json",
+                tsconfigRootDir: projectRootDir,
+            },
         },
     },
     {

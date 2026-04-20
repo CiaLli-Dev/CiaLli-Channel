@@ -1,9 +1,9 @@
-import type { RuntimeSiteConfig, SidebarLayoutConfig } from "./types/config";
+import type { RuntimeSiteConfig, SidebarLayoutConfig } from "../types/config";
 import {
     type SiteSettingsPayload,
     type SystemSiteConfig,
-} from "./types/site-settings";
-import { LinkPreset } from "./types/config";
+} from "../types/site-settings";
+import { LinkPreset } from "../types/config";
 
 export const systemSiteConfig: SystemSiteConfig = {
     siteURL: "https://www.ciallichannel.com/",

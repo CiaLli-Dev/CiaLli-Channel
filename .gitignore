@@ -1,5 +1,6 @@
 # 构建产物
 dist/
+output/
 public/assets/font/
 src/generated/
 

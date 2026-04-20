@@ -1,5 +1,5 @@
-import type { Translation } from "./i18n/translation";
-import type { ResolvedSiteSettings } from "./types/site-settings";
+import type { Translation } from "../../i18n/translation";
+import type { ResolvedSiteSettings } from "../site-settings";
 import type { ProgressOverlayApi } from "@/scripts/shared/progress-overlay-manager";
 
 export {};
@@ -23,7 +23,7 @@ declare global {
         __updateBannerCarouselState?: () => void;
         _calendarFilterListenerAttached?: boolean;
 
-        panelManager?: typeof import("./utils/panel-manager").panelManager;
+        panelManager?: typeof import("../../utils/panel-manager").panelManager;
 
         floatingTOCInit?: () => void;
         iconifyLoaded?: boolean;

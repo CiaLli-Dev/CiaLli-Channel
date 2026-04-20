@@ -1,3 +1,5 @@
+import { resolve as resolvePath } from "node:path";
+import { fileURLToPath } from "node:url";
 import node from "@astrojs/node";
 import sitemap from "@astrojs/sitemap";
 import svelte, { vitePreprocess } from "@astrojs/svelte";
@@ -9,7 +11,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
 import expressiveCode from "astro-expressive-code";
 import icon from "astro-icon";
-import { systemSiteConfig } from "./src/config.ts";
+import { systemSiteConfig } from "./src/config/index.ts";
 import { pluginCustomCopyButton } from "./src/plugins/expressive-code/custom-copy-button.js";
 import { pluginLanguageBadge } from "./src/plugins/expressive-code/language-badge.ts";
 import { shouldIgnoreBuildWarning } from "./src/utils/vite-build-warning-filter.ts";
@@ -58,6 +60,7 @@ function resolveDeployTarget() {
 const deployTarget = resolveDeployTarget();
 const configuredSiteUrl = resolveConfiguredSiteUrl();
 const configuredSiteHostname = new URL(configuredSiteUrl).hostname;
+const projectRootDir = fileURLToPath(new URL("./", import.meta.url));
 
 function resolveAdapter() {
     if (deployTarget === "docker") {
@@ -82,6 +85,7 @@ function resolveAdapter() {
 
 // https://astro.build/config
 export default defineConfig({
+    root: projectRootDir,
     site: configuredSiteUrl,
     base: "/",
     trailingSlash: "never",
@@ -157,6 +161,17 @@ export default defineConfig({
         rehypePlugins,
     },
     vite: {
+        resolve: {
+            alias: {
+                "@": resolvePath(projectRootDir, "src"),
+                "@components": resolvePath(projectRootDir, "src/components"),
+                "@assets": resolvePath(projectRootDir, "src/assets"),
+                "@constants": resolvePath(projectRootDir, "src/constants"),
+                "@utils": resolvePath(projectRootDir, "src/utils"),
+                "@i18n": resolvePath(projectRootDir, "src/i18n"),
+                "@layouts": resolvePath(projectRootDir, "src/layouts"),
+            },
+        },
         plugins: [tailwindcss()],
         build: {
             // 静态资源处理优化，防止小图片转 base64 导致 HTML 体积过大（可选，根据需要调整）

@@ -1,22 +1,24 @@
 import { defineConfig } from "vitest/config";
 import { resolve } from "node:path";
 
+const projectRootDir = __dirname;
+
 export default defineConfig({
     resolve: {
         alias: {
-            "@": resolve(__dirname, "src"),
-            "@components": resolve(__dirname, "src/components"),
-            "@assets": resolve(__dirname, "src/assets"),
-            "@constants": resolve(__dirname, "src/constants"),
-            "@utils": resolve(__dirname, "src/utils"),
-            "@i18n": resolve(__dirname, "src/i18n"),
-            "@layouts": resolve(__dirname, "src/layouts"),
+            "@": resolve(projectRootDir, "src"),
+            "@components": resolve(projectRootDir, "src/components"),
+            "@assets": resolve(projectRootDir, "src/assets"),
+            "@constants": resolve(projectRootDir, "src/constants"),
+            "@utils": resolve(projectRootDir, "src/utils"),
+            "@i18n": resolve(projectRootDir, "src/i18n"),
+            "@layouts": resolve(projectRootDir, "src/layouts"),
         },
     },
     test: {
         include: ["src/**/__tests__/**/*.test.ts"],
         environment: "node",
-        setupFiles: ["src/__tests__/setup.ts"],
+        setupFiles: [resolve(projectRootDir, "src/__tests__/setup.ts")],
         coverage: {
             provider: "v8",
             reporter: ["text", "html", "lcov"],

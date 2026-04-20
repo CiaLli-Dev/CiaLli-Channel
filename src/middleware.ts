@@ -1,14 +1,14 @@
 import type { MiddlewareHandler } from "astro";
 import { defineMiddleware } from "astro:middleware";
 
-import I18nKey from "@/i18n/i18nKey";
-import { i18n } from "@/i18n/translation";
-import { assertRequiredEnv } from "@/server/env/required";
-import { registerRequestScopedI18n } from "@/server/request-context/i18n";
-import { runWithRequestContext } from "@/server/request-context";
-import { ensureCsrfCookie } from "@/server/security/csrf";
-import { applyCommonSecurityHeaders } from "@/server/security/response-headers";
-import { getResolvedSiteSettings } from "@/server/site-settings/service";
+import I18nKey from "./i18n/i18nKey";
+import { i18n } from "./i18n/translation";
+import { assertRequiredEnv } from "./server/env/required";
+import { registerRequestScopedI18n } from "./server/request-context/i18n";
+import { runWithRequestContext } from "./server/request-context";
+import { ensureCsrfCookie } from "./server/security/csrf";
+import { applyCommonSecurityHeaders } from "./server/security/response-headers";
+import { getResolvedSiteSettings } from "./server/site-settings/service";
 
 registerRequestScopedI18n();
 
