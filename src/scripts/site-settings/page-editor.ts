@@ -382,10 +382,11 @@ export const collectFaviconList = (container: HTMLElement): FaviconItem[] => {
 
 export const normalizeBannerEditorList = (raw: unknown): string[] => {
     if (typeof raw === "string") {
-        return [raw];
+        const normalized = raw.trim();
+        return normalized ? [normalized] : [];
     }
     if (Array.isArray(raw)) {
-        return raw.map(String);
+        return raw.map((entry) => String(entry || "").trim()).filter(Boolean);
     }
     return [];
 };

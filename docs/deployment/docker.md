@@ -103,7 +103,7 @@ docker compose -f docker-compose.yml up -d
 
 演示种子恢复后，Directus 后台默认管理员账号为：
 
-- 邮箱：`demo-admin@cialli.local`
+- 邮箱：`demo-admin@example.com`
 - 密码：`CiaLli-demo-admin-2026!`
 
 请注意：

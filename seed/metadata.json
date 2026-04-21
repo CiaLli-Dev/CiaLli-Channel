@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-04-21T14:50:48.801Z",
+  "generatedAt": "2026-04-21T16:10:36.568Z",
   "source": "local-docker-compose",
   "postgres": {
     "service": "postgres",
     "database": "directus",
     "dumpFile": "seed/postgres/demo.dump",
-    "dumpBytes": 329836
+    "dumpBytes": 331268
   },
   "minio": {
     "service": "minio",
@@ -14,7 +14,7 @@
     "objectCount": 0
   },
   "directus": {
-    "demoAdminEmail": "demo-admin@cialli.local",
+    "demoAdminEmail": "demo-admin@example.com",
     "schemaFile": "directus/schema/app-schema.json"
   },
   "restorePolicy": {
