@@ -1,0 +1,198 @@
+services:
+  proxy:
+    image: caddy:2.10-alpine
+    depends_on:
+      web:
+        condition: service_started
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:-ops@example.com}
+      APP_PUBLIC_HOSTNAME: ${APP_PUBLIC_HOSTNAME:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["pnpm", "start:prod"]
+    depends_on:
+      directus:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 4321
+      APP_PUBLIC_BASE_URL: ${APP_PUBLIC_BASE_URL:-https://localhost}
+      DIRECTUS_URL: ${DIRECTUS_INTERNAL_URL:-http://directus:8055}
+      DIRECTUS_PUBLIC_URL: ${DIRECTUS_PUBLIC_URL:-http://127.0.0.1:8055}
+      DIRECTUS_STATIC_TOKEN: ${DIRECTUS_STATIC_TOKEN:-}
+      PUBLIC_ASSET_BASE_URL: ${PUBLIC_ASSET_BASE_URL:-}
+      BANGUMI_TOKEN_ENCRYPTION_KEY: ${BANGUMI_TOKEN_ENCRYPTION_KEY:-}
+      REDIS_URL: ${REDIS_INTERNAL_URL:-redis://redis:6379/0}
+      REDIS_NAMESPACE: ${REDIS_NAMESPACE:-prod}
+      AI_SUMMARY_INTERNAL_SECRET: ${AI_SUMMARY_INTERNAL_SECRET:-change-me}
+      AI_SUMMARY_DIRECTUS_TOKEN: ${AI_SUMMARY_DIRECTUS_TOKEN:-}
+      AI_SUMMARY_WORKER_PORT: ${AI_SUMMARY_WORKER_PORT:-4322}
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["pnpm", "ai-summary:worker"]
+    depends_on:
+      directus:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DIRECTUS_URL: ${DIRECTUS_INTERNAL_URL:-http://directus:8055}
+      DIRECTUS_STATIC_TOKEN: ${DIRECTUS_STATIC_TOKEN:-}
+      AI_SUMMARY_DIRECTUS_TOKEN: ${AI_SUMMARY_DIRECTUS_TOKEN:-}
+      AI_SUMMARY_INTERNAL_SECRET: ${AI_SUMMARY_INTERNAL_SECRET:-change-me}
+      AI_SUMMARY_WORKER_PORT: ${AI_SUMMARY_WORKER_PORT:-4322}
+      REDIS_URL: ${REDIS_INTERNAL_URL:-redis://redis:6379/0}
+      REDIS_NAMESPACE: ${REDIS_NAMESPACE:-prod}
+      BANGUMI_TOKEN_ENCRYPTION_KEY: ${BANGUMI_TOKEN_ENCRYPTION_KEY:-}
+    restart: unless-stopped
+
+  postgres:
+    image: postgis/postgis:18-3.6
+    platform: linux/amd64
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-directus}
+      POSTGRES_USER: ${POSTGRES_USER:-directus}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-directus}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready --host=127.0.0.1 --username=$$POSTGRES_USER --dbname=$$POSTGRES_DB",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:RELEASE.2025-02-28T09-55-16Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /proc/1/cmdline"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    ports:
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-03-12T17-29-24Z
+    depends_on:
+      minio:
+        condition: service_started
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >
+        until mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin}; do sleep 2; done &&
+        mc mb --ignore-existing local/${MINIO_BUCKET:-cialli-assets}
+    restart: "no"
+
+  directus:
+    image: directus/directus:11.10.2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      SECRET: ${DIRECTUS_SECRET:-change-me}
+      KEY: ${DIRECTUS_KEY:-change-me-too}
+      PUBLIC_URL: ${DIRECTUS_PUBLIC_URL:-http://127.0.0.1:8055}
+
+      DB_CLIENT: pg
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${POSTGRES_DB:-directus}
+      DB_USER: ${POSTGRES_USER:-directus}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-directus}
+
+      CACHE_ENABLED: "true"
+      CACHE_AUTO_PURGE: "true"
+      CACHE_STORE: redis
+      REDIS: ${DIRECTUS_REDIS_URL:-redis://redis:6379}
+
+      WEBSOCKETS_ENABLED: "true"
+
+      ADMIN_EMAIL: ${DIRECTUS_ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${DIRECTUS_ADMIN_PASSWORD:-change-me}
+
+      STORAGE_LOCATIONS: ${STORAGE_LOCATIONS:-s3}
+      STORAGE_S3_DRIVER: ${STORAGE_S3_DRIVER:-s3}
+      STORAGE_S3_KEY: ${STORAGE_S3_KEY:-minioadmin}
+      STORAGE_S3_SECRET: ${STORAGE_S3_SECRET:-minioadmin}
+      STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:-cialli-assets}
+      STORAGE_S3_REGION: ${STORAGE_S3_REGION:-us-east-1}
+      STORAGE_S3_ENDPOINT: ${STORAGE_S3_ENDPOINT:-http://minio:9000}
+      STORAGE_S3_FORCE_PATH_STYLE: ${STORAGE_S3_FORCE_PATH_STYLE:-true}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8055/server/health').then((response)=>process.exit(response.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    ports:
+      - "127.0.0.1:8055:8055"
+    volumes:
+      - directus_extensions:/directus/extensions
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
+  postgres_data:
+  redis_data:
+  minio_data:
+  directus_extensions:

@@ -2,14 +2,14 @@
  * 两级缓存管理器
  *
  * L1: 进程内 Map（按域隔离，FIFO 淘汰）
- * L2: Upstash Redis 官方 SDK（可选，不可用时静默降级）
+ * L2: Redis（可选，不可用时静默降级）
  *
  * 域版本号机制：每个域维护 cache:v1:<domain>:__ver__ 计数器，
  * 完整键 = cache:v1:<domain>:v<ver>:<key>。invalidateByDomain() 递增版本号，
  * 旧键自然过期，无需 scan。
  */
-import { prefixRedisKey } from "@/server/upstash/namespace";
-import { getUpstashRedisClient } from "@/server/upstash/redis";
+import { prefixRedisKey } from "@/server/redis/namespace";
+import { getRedisClient } from "@/server/redis/client";
 
 import type { CacheDomain, CacheMetrics, CacheStrategy } from "./types";
 
@@ -179,7 +179,7 @@ function l1Clear(domain: CacheDomain): void {
 }
 
 // ---------------------------------------------------------------------------
-// L2 — Upstash Redis
+// L2 — Redis
 // ---------------------------------------------------------------------------
 
 async function l2Get(
@@ -188,7 +188,7 @@ async function l2Get(
 ): Promise<string | null> {
     const strategy = STRATEGIES[domain];
     if (strategy.l2TtlMs <= 0) return null;
-    const redis = getUpstashRedisClient({
+    const redis = getRedisClient({
         automaticDeserialization: false,
     });
     if (!redis) {
@@ -214,7 +214,7 @@ async function l2Set(
     const strategy = STRATEGIES[domain];
     if (strategy.l2TtlMs <= 0) return;
     const ttlSeconds = Math.ceil(strategy.l2TtlMs / 1000);
-    const redis = getUpstashRedisClient({
+    const redis = getRedisClient({
         automaticDeserialization: false,
     });
     if (!redis) {
@@ -229,7 +229,7 @@ async function l2Set(
 }
 
 async function l2Delete(fullKey: string): Promise<void> {
-    const redis = getUpstashRedisClient({
+    const redis = getRedisClient({
         automaticDeserialization: false,
     });
     if (!redis) {
@@ -266,7 +266,7 @@ async function getDomainVersion(domain: CacheDomain): Promise<number> {
         return local.version;
     }
 
-    const redis = getUpstashRedisClient({
+    const redis = getRedisClient({
         automaticDeserialization: false,
     });
     let ver = 0;
@@ -288,7 +288,7 @@ async function getDomainVersion(domain: CacheDomain): Promise<number> {
 }
 
 async function incrementDomainVersion(domain: CacheDomain): Promise<number> {
-    const redis = getUpstashRedisClient({
+    const redis = getRedisClient({
         automaticDeserialization: false,
     });
     let ver = 1;

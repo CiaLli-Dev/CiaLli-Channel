@@ -7,11 +7,11 @@ type MockRedisClient = {
     incr: ReturnType<typeof vi.fn>;
 };
 
-const getUpstashRedisClientMock = vi.fn();
+const getRedisClientMock = vi.fn();
 const originalRedisNamespace = process.env.REDIS_NAMESPACE;
 
-vi.mock("@/server/upstash/redis", () => ({
-    getUpstashRedisClient: getUpstashRedisClientMock,
+vi.mock("@/server/redis/client", () => ({
+    getRedisClient: getRedisClientMock,
 }));
 
 function createRedisClientMock(): MockRedisClient {
@@ -26,7 +26,7 @@ function createRedisClientMock(): MockRedisClient {
 beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    getUpstashRedisClientMock.mockReset();
+    getRedisClientMock.mockReset();
     process.env.REDIS_NAMESPACE = "test-cache";
 });
 
@@ -44,7 +44,7 @@ describe("cache/manager", () => {
         redis.get
             .mockResolvedValueOnce("0")
             .mockResolvedValueOnce(JSON.stringify({ title: "hello" }));
-        getUpstashRedisClientMock.mockReturnValue(redis);
+        getRedisClientMock.mockReturnValue(redis);
 
         const { cacheManager } = await import("@/server/cache/manager");
 
@@ -66,7 +66,7 @@ describe("cache/manager", () => {
         expect(redis.get.mock.calls[1]?.[0]).toBe(
             "cialli:test-cache:cache:v1:article-list:v0:article-1",
         );
-        expect(getUpstashRedisClientMock).toHaveBeenCalledWith({
+        expect(getRedisClientMock).toHaveBeenCalledWith({
             automaticDeserialization: false,
         });
     });
@@ -75,7 +75,7 @@ describe("cache/manager", () => {
         const redis = createRedisClientMock();
         redis.get.mockRejectedValue(new Error("redis unavailable"));
         redis.set.mockResolvedValue("OK");
-        getUpstashRedisClientMock.mockReturnValue(redis);
+        getRedisClientMock.mockReturnValue(redis);
 
         const { cacheManager } = await import("@/server/cache/manager");
 
@@ -93,7 +93,7 @@ describe("cache/manager", () => {
     it("整域失效时只递增当前 mixed-feed 域版本号", async () => {
         const redis = createRedisClientMock();
         redis.incr.mockResolvedValue(1);
-        getUpstashRedisClientMock.mockReturnValue(redis);
+        getRedisClientMock.mockReturnValue(redis);
 
         const { cacheManager } = await import("@/server/cache/manager");
 
@@ -108,7 +108,7 @@ describe("cache/manager", () => {
         const redis = createRedisClientMock();
         redis.incr.mockRejectedValue(new Error("incr failed"));
         redis.set.mockResolvedValue("OK");
-        getUpstashRedisClientMock.mockReturnValue(redis);
+        getRedisClientMock.mockReturnValue(redis);
 
         const { cacheManager } = await import("@/server/cache/manager");
 

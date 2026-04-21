@@ -1,32 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const limitMock = vi.fn();
-const ratelimitConstructorMock = vi.fn();
-const slidingWindowMock = vi.fn((limit: number, window: string) => ({
-    limit,
-    window,
-}));
+const getRedisClientMock = vi.fn();
+const getRedisConfigMock = vi.fn();
 
-const getUpstashRedisClientMock = vi.fn();
-const getUpstashRedisConfigMock = vi.fn();
-
-class MockRatelimit {
-    static slidingWindow = slidingWindowMock;
-
-    readonly limit = limitMock;
-
-    constructor(config: unknown) {
-        ratelimitConstructorMock(config);
-    }
-}
-
-vi.mock("@upstash/ratelimit", () => ({
-    Ratelimit: MockRatelimit,
-}));
-
-vi.mock("@/server/upstash/redis", () => ({
-    getUpstashRedisClient: getUpstashRedisClientMock,
-    getUpstashRedisConfig: getUpstashRedisConfigMock,
+vi.mock("@/server/redis/client", () => ({
+    getRedisClient: getRedisClientMock,
+    getRedisConfig: getRedisConfigMock,
 }));
 
 const originalNodeEnv = process.env.NODE_ENV;
@@ -35,18 +14,15 @@ const originalRedisNamespace = process.env.REDIS_NAMESPACE;
 beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    limitMock.mockReset();
-    ratelimitConstructorMock.mockReset();
-    slidingWindowMock.mockClear();
-    getUpstashRedisClientMock.mockReset();
-    getUpstashRedisConfigMock.mockReset();
+    getRedisClientMock.mockReset();
+    getRedisConfigMock.mockReset();
     process.env.NODE_ENV = "development";
     process.env.REDIS_NAMESPACE = "test-rate-limit";
 });
 
 describe("security/rate-limit", () => {
-    it("开发环境缺失 Upstash 配置时回退到内存限流", async () => {
-        getUpstashRedisConfigMock.mockReturnValue(null);
+    it("开发环境缺失 Redis 配置时回退到内存限流", async () => {
+        getRedisConfigMock.mockReturnValue(null);
 
         const { applyRateLimit } = await import("@/server/security/rate-limit");
 
@@ -55,13 +31,12 @@ describe("security/rate-limit", () => {
 
         expect(first).toMatchObject({ ok: true, remaining: 9 });
         expect(second).toMatchObject({ ok: true, remaining: 8 });
-        expect(getUpstashRedisClientMock).not.toHaveBeenCalled();
-        expect(ratelimitConstructorMock).not.toHaveBeenCalled();
+        expect(getRedisClientMock).not.toHaveBeenCalled();
     });
 
-    it("生产环境缺失 Upstash 配置时抛出既有错误", async () => {
+    it("生产环境缺失 Redis 配置时抛出既有错误", async () => {
         process.env.NODE_ENV = "production";
-        getUpstashRedisConfigMock.mockReturnValue(null);
+        getRedisConfigMock.mockReturnValue(null);
 
         const { applyRateLimit } = await import("@/server/security/rate-limit");
 
@@ -69,48 +44,62 @@ describe("security/rate-limit", () => {
             {
                 code: "INTERNAL_ERROR",
                 status: 500,
-                message: "Upstash 限流服务未配置",
+                message: "Redis 限流服务未配置",
             },
         );
     });
 
-    it("存在 Upstash 配置时复用共享 Redis 客户端并缓存分类实例", async () => {
-        const redis = { name: "shared-redis" };
-        getUpstashRedisConfigMock.mockReturnValue({
-            url: "https://redis.test",
-            token: "redis-token",
+    it("存在 Redis 配置时使用带命名空间的固定窗口键", async () => {
+        const redis = {
+            incr: vi.fn().mockResolvedValue(1),
+            expire: vi.fn().mockResolvedValue(1),
+            ttl: vi.fn().mockResolvedValue(300),
+        };
+        getRedisConfigMock.mockReturnValue({
+            url: "redis://redis.test:6379/0",
         });
-        getUpstashRedisClientMock.mockReturnValue(redis);
-        limitMock.mockResolvedValue({
-            success: true,
-            remaining: 9,
-            reset: 1_726_000_000_000,
-        });
+        getRedisClientMock.mockReturnValue(redis);
 
         const { applyRateLimit } = await import("@/server/security/rate-limit");
 
         const first = await applyRateLimit("127.0.0.1", "auth");
-        const second = await applyRateLimit("127.0.0.1", "auth");
 
         expect(first).toEqual({
             ok: true,
             remaining: 9,
-            resetAt: 1_726_000_000_000,
+            resetAt: expect.any(Number),
         });
-        expect(second).toEqual({
-            ok: true,
-            remaining: 9,
-            resetAt: 1_726_000_000_000,
+        expect(redis.incr).toHaveBeenCalledWith(
+            "cialli:test-rate-limit:rl:auth:ip:127.0.0.1",
+        );
+        expect(redis.expire).toHaveBeenCalledWith(
+            "cialli:test-rate-limit:rl:auth:ip:127.0.0.1",
+            300,
+        );
+        expect(redis.ttl).toHaveBeenCalledWith(
+            "cialli:test-rate-limit:rl:auth:ip:127.0.0.1",
+        );
+    });
+
+    it("超过阈值时返回 ok=false 且不出现负数剩余额度", async () => {
+        const redis = {
+            incr: vi.fn().mockResolvedValue(12),
+            expire: vi.fn(),
+            ttl: vi.fn().mockResolvedValue(120),
+        };
+        getRedisConfigMock.mockReturnValue({
+            url: "redis://redis.test:6379/0",
         });
-        expect(getUpstashRedisClientMock).toHaveBeenCalledTimes(1);
-        expect(ratelimitConstructorMock).toHaveBeenCalledTimes(1);
-        expect(slidingWindowMock).toHaveBeenCalledWith(10, "300 s");
-        expect(ratelimitConstructorMock.mock.calls[0]?.[0]).toMatchObject({
-            redis,
-            analytics: false,
-            prefix: "cialli:test-rate-limit:rl:auth",
+        getRedisClientMock.mockReturnValue(redis);
+
+        const { applyRateLimit } = await import("@/server/security/rate-limit");
+
+        await expect(applyRateLimit("127.0.0.1", "auth")).resolves.toEqual({
+            ok: false,
+            remaining: 0,
+            resetAt: expect.any(Number),
         });
-        expect(limitMock).toHaveBeenCalledTimes(2);
+        expect(redis.expire).not.toHaveBeenCalled();
     });
 });
 

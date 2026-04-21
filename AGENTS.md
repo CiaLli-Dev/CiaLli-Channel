@@ -4,7 +4,11 @@
 
 - 项目简介：基于 Mizuki 和 Directus SDK 开发的内容社区
 - 包管理器：仅使用 `pnpm`
-- 构建输出：Astro `output: "server"`，默认按需渲染，静态路由需显式 `prerender = true`
+- 运行形态：单机 `Docker Compose` 一体化部署，核心服务为 `proxy`、`web`、`worker`、`directus`、`postgres`、`redis`、`minio`
+- 构建输出：Astro `output: "server"` + `@astrojs/node`，默认按需渲染，静态路由需显式 `prerender = true`
+- 环境变量：根目录 `.env` 是唯一真源，同时供本机脚本与 Docker Compose 使用
+- 文件存储：运行时仅保留对象存储 `s3`（MinIO），`local uploads` 兼容层已删除，不要重新引入
+- 平台约束：项目已移除 Vercel 运行时依赖，新增功能不得重新绑定 Vercel 语义或服务
 
 ## 最高优先级规则
 
@@ -12,6 +16,8 @@
 - 复杂逻辑需编写中文注释
 - 后端数据访问优先走 Directus SDK 与现有封装，不要在 API Handler 中散落直连逻辑
 - 删除字段/链路时按用户要求直接收敛，不额外保留兼容层
+- 涉及部署、环境变量、对象存储时，优先复用现有 `Dockerfile`、`docker-compose.yml`、`scripts/env/check-env.mjs` 与仓库脚本，不要新起一套入口
+- 不要恢复已移除的 Vercel 兼容代码、Upstash 依赖或 `local` 存储兜底
 - 禁止引入 `any`、`as any`、隐式 `any` 与类型抑制注释
 
 ## Directus MCP
@@ -19,6 +25,9 @@
 - 若涉及数据库字段变更操作，必须使用 Directus MCP
 - 同时使用环境中存在的 2 个 Directus MCP 服务器：一个操作生产端、另一个操作测试端
 - 若工作环境中的 Directus MCP 服务器数量不等于 2，终止任何操作、告知用户并结束对话
+- Directus schema 变更需要同步进入仓库版本控制，主线流程是：
+  `pnpm directus:schema:snapshot` / `pnpm directus:schema:apply`
+- MCP 不再是唯一发布手段；涉及正式 schema 调整时，记得同步更新快照与发布文档
 
 ## 项目关键链路
 
@@ -38,6 +47,23 @@
 - 认证与会话：`src/server/directus-auth.ts`、`src/server/auth/session.ts`
 - 访问控制：`src/server/auth/acl.ts`、`src/server/auth/directus-access.ts`
 
+## 部署与运行时约定
+
+- Docker 编排真源：`docker-compose.yml`
+- 反向代理配置：`docker/Caddyfile`
+- 生产镜像入口：`Dockerfile`
+- Web 进程启动命令：`pnpm start:prod`
+- Worker 进程启动命令：`pnpm ai-summary:worker`
+- Directus 后台默认仅绑定 `127.0.0.1:8055`，不要改为公网直出；如需访问，优先走 SSH 隧道或宿主机本地访问
+- 容器内服务发现优先使用内部地址：
+  `DIRECTUS_INTERNAL_URL`
+  `REDIS_INTERNAL_URL`
+- 主机侧/本机脚本使用外部地址：
+  `DIRECTUS_URL`
+  `REDIS_URL`
+- 环境变量模板与说明以 `.env.example`、`docs/deployment/docker.md` 为准
+- 修改部署脚本或基础设施配置后，至少补跑 `pnpm check:env`
+
 ## Directus 数据模型约定
 
 - 业务集合前缀统一 `app_*`（定义见 `src/server/directus/schema.ts`）
@@ -55,6 +81,7 @@
   - 鉴权资源：`/api/v1/assets/:id`
 - 资源 URL 构建策略：公开资源优先 `buildPublicAssetUrl()`；鉴权资源使用 `buildDirectusAssetUrl()`（`src/server/directus-auth.ts`）
 - 写接口必须保留中枢守卫（`src/server/api/v1/router.ts`）：same-origin + CSRF + rate limit
+- 若处理资源/文件链路，默认假设 `directus_files.storage = 's3'`，对象存储为唯一运行时来源；不要再补 `local` 回退分支
 
 ## 数据与前端约定
 
@@ -72,6 +99,7 @@
 - 导入顺序：外部在前，内部在后，分组空行
 - 路径别名：`@components/*`、`@assets/*`、`@constants/*`、`@utils/*`、`@i18n/*`、`@layouts/*`、`@/*`
 - 服务端模块使用 `@/server/*`（不存在 `@server/*`）
+- 环境变量类型声明集中在 `src/types/ambient/env.d.ts`，新增变量时必须同步补齐类型
 
 ## 变更交付与质量门禁
 
@@ -82,6 +110,11 @@ pnpm check && pnpm type-check:projects && pnpm lint && pnpm build && pnpm format
 ```
 
 - `pnpm format` 会改写大量文件，这是正常现象，无需回退任何更改
+- 若改动部署、环境变量或对象存储链路，补充执行：
+
+```bash
+pnpm check:env
+```
 
 如涉及领域逻辑或接口行为，补充执行：
 

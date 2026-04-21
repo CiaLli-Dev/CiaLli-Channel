@@ -477,17 +477,21 @@ export function pickPublicUserInfo(me: DirectusMe): PublicUserInfo {
 }
 
 export function getClientIp(headers: Headers): string {
-    const vercelForwarded = headers.get("x-vercel-forwarded-for");
-    if (vercelForwarded) {
-        return vercelForwarded.split(",")[0]?.trim() || "unknown";
+    const forwardedFor = headers.get("x-forwarded-for");
+    if (forwardedFor) {
+        return forwardedFor.split(",")[0]?.trim() || "unknown";
+    }
+    const realIp = headers.get("x-real-ip");
+    if (realIp) {
+        return realIp.trim();
     }
     const cloudflare = headers.get("cf-connecting-ip");
     if (cloudflare) {
         return cloudflare.trim();
     }
-    const realIp = headers.get("x-real-ip");
-    if (realIp) {
-        return realIp.trim();
+    const vercelForwarded = headers.get("x-vercel-forwarded-for");
+    if (vercelForwarded) {
+        return vercelForwarded.split(",")[0]?.trim() || "unknown";
     }
     return "unknown";
 }

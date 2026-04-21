@@ -3,10 +3,8 @@ const BROWSER_COMPATIBILITY_WARNING_TEXT =
     "has been externalized for browser compatibility";
 
 const KNOWN_BROWSER_COMPATIBILITY_IMPORTER_SEGMENTS = [
-    "/node_modules/@astrojs/vercel/",
+    "/node_modules/@astrojs/node/",
     "/node_modules/@astrojs/internal-helpers/",
-    "/node_modules/@vercel/routing-utils/",
-    "/node_modules/@vercel/nft/",
     "/node_modules/@rollup/pluginutils/",
     "/node_modules/esbuild/",
     "/node_modules/glob/",

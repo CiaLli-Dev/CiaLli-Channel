@@ -81,7 +81,7 @@ function makeContext(body: Record<string, unknown>): APIContext {
         },
         headers: {
             "x-csrf-token": csrf,
-            "x-vercel-forwarded-for": "172.16.0.1",
+            "x-forwarded-for": "172.16.0.1",
         },
     }) as unknown as APIContext;
 }

@@ -1,0 +1,8 @@
+{
+	email {$ACME_EMAIL:ops@example.com}
+}
+
+{$APP_PUBLIC_HOSTNAME:localhost} {
+	encode gzip zstd
+	reverse_proxy web:4321
+}

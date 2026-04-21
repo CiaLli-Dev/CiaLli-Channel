@@ -1,96 +1,86 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-type RedisConstructorConfig = {
+type RedisCreateClientConfig = {
     url?: string;
-    token?: string;
-    automaticDeserialization?: boolean;
 };
 
-const redisConstructorMock = vi.fn();
+const redisCreateClientMock = vi.fn();
+const redisConnectMock = vi.fn();
+const redisOnMock = vi.fn();
 
-class MockRedis {
-    readonly config: RedisConstructorConfig;
-
-    constructor(config: RedisConstructorConfig) {
-        this.config = config;
-        redisConstructorMock(config);
-    }
-}
-
-vi.mock("@upstash/redis", () => ({
-    Redis: MockRedis,
+vi.mock("redis", () => ({
+    createClient: (config: RedisCreateClientConfig) => {
+        redisCreateClientMock(config);
+        return {
+            connect: redisConnectMock.mockResolvedValue(undefined),
+            on: redisOnMock,
+            get: vi.fn(),
+            set: vi.fn(),
+            del: vi.fn(),
+            incr: vi.fn(),
+            expire: vi.fn(),
+            ttl: vi.fn(),
+        };
+    },
 }));
 
-const originalUrl = process.env.KV_REST_API_URL;
-const originalToken = process.env.KV_REST_API_TOKEN;
+const originalUrl = process.env.REDIS_URL;
 
-function resetKvEnv(): void {
-    delete process.env.KV_REST_API_URL;
-    delete process.env.KV_REST_API_TOKEN;
+function resetRedisEnv(): void {
+    delete process.env.REDIS_URL;
 }
 
 beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    redisConstructorMock.mockReset();
-    resetKvEnv();
+    redisCreateClientMock.mockReset();
+    redisConnectMock.mockReset();
+    redisOnMock.mockReset();
+    resetRedisEnv();
 });
 
 afterEach(() => {
     if (originalUrl === undefined) {
-        delete process.env.KV_REST_API_URL;
+        delete process.env.REDIS_URL;
     } else {
-        process.env.KV_REST_API_URL = originalUrl;
-    }
-
-    if (originalToken === undefined) {
-        delete process.env.KV_REST_API_TOKEN;
-    } else {
-        process.env.KV_REST_API_TOKEN = originalToken;
+        process.env.REDIS_URL = originalUrl;
     }
 });
 
-describe("server/upstash/redis", () => {
+describe("server/redis/client", () => {
     it("缺失配置时返回 null 且不创建客户端", async () => {
-        const { getUpstashRedisClient, getUpstashRedisConfig } =
-            await import("@/server/upstash/redis");
+        const { getRedisClient, getRedisConfig } =
+            await import("@/server/redis/client");
 
-        expect(getUpstashRedisConfig()).toBeNull();
-        expect(getUpstashRedisClient()).toBeNull();
-        expect(getUpstashRedisClient({ automaticDeserialization: false })).toBe(
-            null,
-        );
-        expect(redisConstructorMock).not.toHaveBeenCalled();
+        expect(getRedisConfig()).toBeNull();
+        expect(getRedisClient()).toBeNull();
+        expect(getRedisClient({ automaticDeserialization: false })).toBe(null);
+        expect(redisCreateClientMock).not.toHaveBeenCalled();
     });
 
-    it("按模式缓存单例，并为原始字符串模式禁用自动反序列化", async () => {
-        process.env.KV_REST_API_URL = "https://redis.test";
-        process.env.KV_REST_API_TOKEN = "redis-token";
+    it("按单例缓存 Redis 客户端包装器", async () => {
+        process.env.REDIS_URL = "redis://redis.test:6379/0";
 
-        const { getUpstashRedisClient } =
-            await import("@/server/upstash/redis");
+        const { getRedisClient } = await import("@/server/redis/client");
 
-        const defaultClient = getUpstashRedisClient();
-        const sameDefaultClient = getUpstashRedisClient();
-        const rawClient = getUpstashRedisClient({
+        const defaultClient = getRedisClient();
+        const sameDefaultClient = getRedisClient();
+        const rawClient = getRedisClient({
             automaticDeserialization: false,
         });
-        const sameRawClient = getUpstashRedisClient({
+        const sameRawClient = getRedisClient({
             automaticDeserialization: false,
         });
 
         expect(defaultClient).toBe(sameDefaultClient);
         expect(rawClient).toBe(sameRawClient);
-        expect(rawClient).not.toBe(defaultClient);
-        expect(redisConstructorMock).toHaveBeenCalledTimes(2);
-        expect(redisConstructorMock.mock.calls[0]?.[0]).toEqual({
-            url: "https://redis.test",
-            token: "redis-token",
+        expect(rawClient).toBe(defaultClient);
+        await defaultClient?.get("cache-key");
+        expect(redisCreateClientMock).toHaveBeenCalledTimes(1);
+        expect(redisCreateClientMock.mock.calls[0]?.[0]).toMatchObject({
+            url: "redis://redis.test:6379/0",
         });
-        expect(redisConstructorMock.mock.calls[1]?.[0]).toEqual({
-            url: "https://redis.test",
-            token: "redis-token",
-            automaticDeserialization: false,
-        });
+        expect(redisConnectMock).toHaveBeenCalledTimes(1);
+        expect(redisOnMock).toHaveBeenCalledWith("error", expect.any(Function));
     });
 });

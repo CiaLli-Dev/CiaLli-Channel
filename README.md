@@ -57,6 +57,13 @@ CiaLli 是一个现代化的轻量内容社区，基于 [Mizuki](https://github.
 
 进入站点后，你可以直接浏览公开内容，无需登录。如果你希望发布内容、管理个人主页或参与评论互动，可以申请注册账号。
 
+## 部署
+
+项目现已切换为全 Docker 一体化部署，不再依赖 Vercel 运行时。
+
+- Docker Compose 部署说明见 [docs/deployment/docker.md](/Users/uednd/code/CiaLli-Channel/docs/deployment/docker.md)
+- Directus Schema 迁移约定见 [docs/directus-schema-migrations.md](/Users/uednd/code/CiaLli-Channel/docs/directus-schema-migrations.md)
+
 ## ❤️ 写在最后
 
 这个网站从无到有，离不开以下作者对本项目做出的贡献

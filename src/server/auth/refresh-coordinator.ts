@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 
 import type { DirectusAuthTokens } from "@/server/directus-auth";
-import { prefixRedisKey } from "@/server/upstash/namespace";
-import { getUpstashRedisClient } from "@/server/upstash/redis";
+import { prefixRedisKey } from "@/server/redis/namespace";
+import { getRedisClient } from "@/server/redis/client";
 
 const DISTRIBUTED_REFRESH_KEY_PREFIX = "auth:refresh:v1";
 const DISTRIBUTED_REFRESH_LOCK_TTL_SECONDS = 3;
@@ -114,7 +114,7 @@ export async function getDistributedRefreshResult(
         return null;
     }
 
-    const redis = getUpstashRedisClient({
+    const redis = getRedisClient({
         automaticDeserialization: false,
     });
     if (!redis) {
@@ -143,7 +143,7 @@ export async function cacheDistributedRefreshResult(params: {
         return;
     }
 
-    const redis = getUpstashRedisClient({
+    const redis = getRedisClient({
         automaticDeserialization: false,
     });
     if (!redis) {
@@ -176,7 +176,7 @@ export async function tryAcquireDistributedRefreshLock(
         return { status: "unavailable" };
     }
 
-    const redis = getUpstashRedisClient({
+    const redis = getRedisClient({
         automaticDeserialization: false,
     });
     if (!redis) {

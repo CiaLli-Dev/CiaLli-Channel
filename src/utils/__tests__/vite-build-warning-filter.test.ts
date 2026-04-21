@@ -11,7 +11,7 @@ describe("vite-build-warning-filter", () => {
             isKnownBrowserCompatibilityNoise({
                 plugin: "vite:resolve",
                 message:
-                    'Module "node:fs" has been externalized for browser compatibility, imported by "/Users/test/project/node_modules/.pnpm/@astrojs+vercel@10.0.0/node_modules/@astrojs/vercel/dist/index.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.',
+                    'Module "node:fs" has been externalized for browser compatibility, imported by "/Users/test/project/node_modules/.pnpm/@astrojs+node@9.5.0/node_modules/@astrojs/node/dist/server.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.',
             }),
         ).toBe(true);
     });
@@ -31,7 +31,7 @@ describe("vite-build-warning-filter", () => {
             isKnownBrowserCompatibilityNoise({
                 plugin: "commonjs",
                 message:
-                    'Module "node:fs" has been externalized for browser compatibility, imported by "/Users/test/project/node_modules/.pnpm/@astrojs+vercel@10.0.0/node_modules/@astrojs/vercel/dist/index.js".',
+                    'Module "node:fs" has been externalized for browser compatibility, imported by "/Users/test/project/node_modules/.pnpm/@astrojs+node@9.5.0/node_modules/@astrojs/node/dist/server.js".',
             }),
         ).toBe(false);
 

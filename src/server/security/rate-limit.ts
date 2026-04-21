@@ -1,17 +1,6 @@
-/**
- * 分级速率限制
- *
- * 按请求类别独立计数，每个分类拥有独立的 Ratelimit 实例。
- * 生产环境使用 Upstash Redis，开发环境使用内存兜底。
- */
-import { Ratelimit } from "@upstash/ratelimit";
-
 import { internal } from "@/server/api/errors";
-import { prefixRedisKey } from "@/server/upstash/namespace";
-import {
-    getUpstashRedisClient,
-    getUpstashRedisConfig,
-} from "@/server/upstash/redis";
+import { prefixRedisKey } from "@/server/redis/namespace";
+import { getRedisClient, getRedisConfig } from "@/server/redis/client";
 
 /** 限流分类 */
 export type RateLimitCategory =
@@ -52,30 +41,49 @@ const CATEGORY_CONFIG: Record<RateLimitCategory, CategoryConfig> = {
     },
 };
 
-// ---- Upstash 实例缓存（按分类懒创建） ----
-
-const instanceCache = new Map<RateLimitCategory, Ratelimit>();
-
 function getIsProductionRuntime(): boolean {
     return import.meta.env.PROD || process.env.NODE_ENV === "production";
 }
 
-function getInstance(category: RateLimitCategory): Ratelimit {
-    const cached = instanceCache.get(category);
-    if (cached) return cached;
+function buildRateLimitRedisKey(
+    category: RateLimitCategory,
+    cleanIp: string,
+): string {
+    return prefixRedisKey(`${CATEGORY_CONFIG[category].prefix}:ip:${cleanIp}`);
+}
 
-    const redis = getUpstashRedisClient();
-    if (!redis) throw internal("Upstash 限流服务未配置");
+/**
+ * 生产环境改为走标准 Redis，因此这里使用固定窗口计数。
+ * 当前业务只依赖“是否超过阈值 + 剩余额度 + 重置时间”，
+ * 因此改为使用标准 Redis 就足够支撑限流语义。
+ */
+async function redisRateLimit(
+    cleanIp: string,
+    category: RateLimitCategory,
+): Promise<RateLimitResult> {
+    const redis = getRedisClient();
+    if (!redis) {
+        throw internal("Redis 限流服务未配置");
+    }
+
     const cat = CATEGORY_CONFIG[category];
+    const key = buildRateLimitRedisKey(category, cleanIp);
+    const current = await redis.incr(key);
+    if (current <= 0) {
+        throw internal("Redis 限流服务不可用");
+    }
+    if (current === 1) {
+        await redis.expire(key, cat.windowSeconds);
+    }
 
-    const instance = new Ratelimit({
-        redis,
-        limiter: Ratelimit.slidingWindow(cat.limit, `${cat.windowSeconds} s`),
-        analytics: false,
-        prefix: prefixRedisKey(cat.prefix),
-    });
-    instanceCache.set(category, instance);
-    return instance;
+    const ttlSeconds = await redis.ttl(key);
+    const safeTtlSeconds = ttlSeconds > 0 ? ttlSeconds : cat.windowSeconds;
+
+    return {
+        ok: current <= cat.limit,
+        remaining: Math.max(0, cat.limit - current),
+        resetAt: Date.now() + safeTtlSeconds * 1000,
+    };
 }
 
 // ---- 内存兜底（开发环境） ----
@@ -117,27 +125,16 @@ export async function applyRateLimit(
 ): Promise<RateLimitResult> {
     const cleanIp = String(ip || "unknown").trim() || "unknown";
     const cat = CATEGORY_CONFIG[category];
-    const hasUpstash = Boolean(getUpstashRedisConfig());
+    const hasRedis = Boolean(getRedisConfig());
     const isProduction = getIsProductionRuntime();
 
-    if (!hasUpstash) {
-        if (isProduction) throw internal("Upstash 限流服务未配置");
+    if (!hasRedis) {
+        if (isProduction) throw internal("Redis 限流服务未配置");
         const windowMs = cat.windowSeconds * 1000;
         return memoryRateLimit(`${cat.prefix}:${cleanIp}`, cat.limit, windowMs);
     }
 
-    const instance = getInstance(category);
-    const result = await instance.limit(`ip:${cleanIp}`);
-    const resetAt =
-        typeof result.reset === "number"
-            ? result.reset
-            : Date.now() + cat.windowSeconds * 1000;
-
-    return {
-        ok: Boolean(result.success),
-        remaining: Number(result.remaining ?? 0),
-        resetAt,
-    };
+    return await redisRateLimit(cleanIp, category);
 }
 
 /** 构造 429 限流响应（含 Retry-After 头） */
