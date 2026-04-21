@@ -8,26 +8,22 @@
 - 构建输出：Astro `output: "server"` + `@astrojs/node`，默认按需渲染，静态路由需显式 `prerender = true`
 - 环境变量：根目录 `.env` 是唯一真源，同时供本机脚本与 Docker Compose 使用
 - 文件存储：运行时仅保留对象存储 `s3`（MinIO），`local uploads` 兼容层已删除，不要重新引入
-- 平台约束：项目已移除 Vercel 运行时依赖，新增功能不得重新绑定 Vercel 语义或服务
 
 ## 最高优先级规则
 
 - 实现功能前先检索现有模块，避免重复实现
-- 复杂逻辑需编写中文注释
 - 后端数据访问优先走 Directus SDK 与现有封装，不要在 API Handler 中散落直连逻辑
 - 删除字段/链路时按用户要求直接收敛，不额外保留兼容层
 - 涉及部署、环境变量、对象存储时，优先复用现有 `Dockerfile`、`docker-compose.yml`、`scripts/env/check-env.mjs` 与仓库脚本，不要新起一套入口
-- 不要恢复已移除的 Vercel 兼容代码、Upstash 依赖或 `local` 存储兜底
 - 禁止引入 `any`、`as any`、隐式 `any` 与类型抑制注释
 
 ## Directus MCP
 
-- 若涉及数据库字段变更操作，必须使用 Directus MCP
-- 同时使用环境中存在的 2 个 Directus MCP 服务器：一个操作生产端、另一个操作测试端
-- 若工作环境中的 Directus MCP 服务器数量不等于 2，终止任何操作、告知用户并结束对话
+- 若涉及远端 Directus 实例操作，可使用 Directus MCP
+- 环境中可能存在 2 个 Directus MCP 服务器：一个为生产端、另一个为测试端
 - Directus schema 变更需要同步进入仓库版本控制，主线流程是：
   `pnpm directus:schema:snapshot` / `pnpm directus:schema:apply`
-- MCP 不再是唯一发布手段；涉及正式 schema 调整时，记得同步更新快照与发布文档
+- MCP 不是唯一数据库迁移手段；涉及正式 schema 调整时，记得同步更新快照与发布文档
 
 ## 项目关键链路
 

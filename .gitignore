@@ -47,7 +47,11 @@ yarn.lock
 *.iml
 
 # Directus
-/directus/
+/directus/*
+!/directus/schema/
+/directus/schema/*
+!/directus/schema/.gitkeep
+!/directus/schema/app-schema.json
 /directus-config/
 
 # AGENTS & MCP

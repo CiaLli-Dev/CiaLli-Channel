@@ -10,7 +10,8 @@ mkdir -p "$(dirname "${SCHEMA_FILE}")"
 echo "[directus:schema:snapshot] exporting schema to ${SCHEMA_FILE}"
 
 docker compose exec -T directus sh -lc '
-  npx directus schema snapshot /tmp/directus-schema.json >/dev/null &&
+  rm -f /tmp/directus-schema.json &&
+  npx directus schema snapshot /tmp/directus-schema.json --yes --format json >/dev/null &&
   cat /tmp/directus-schema.json
 ' >"${SCHEMA_FILE}"
 

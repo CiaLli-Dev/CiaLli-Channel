@@ -44,6 +44,8 @@ Directus 后台默认只绑定到 `127.0.0.1:8055`，不直接暴露公网。
 建议在启动前先执行：
 
 ```bash
+git lfs install
+git lfs pull
 pnpm check:env
 ```
 
@@ -82,7 +84,33 @@ docker compose -f docker-compose.yml up -d
 - PostgreSQL 初始化
 - Redis 启动
 - MinIO bucket 创建
-- Directus 数据库迁移与管理员初始化
+- 演示 seed 恢复（仅空卷首次启动）
+- Directus 数据库迁移与管理员初始化（仅 seed 未恢复时触发）
+
+## 演示种子与后台账号
+
+仓库内置的演示种子覆盖：
+
+- PostgreSQL 业务与 Directus 系统表
+- MinIO bucket 中的对象资源
+
+恢复只会在以下条件同时成立时触发：
+
+- `postgres_data` 是空库或尚未完成业务初始化
+- `minio_data` 中的目标 bucket 为空
+
+若 volume 已有数据，恢复脚本会自动跳过，不会覆盖现有环境。
+
+演示种子恢复后，Directus 后台默认管理员账号为：
+
+- 邮箱：`demo-admin@cialli.local`
+- 密码：`CiaLli-demo-admin-2026!`
+
+请注意：
+
+- 该账号来自种子数据库，而不是 `.env` 中空库 bootstrap 的初始化逻辑
+- AI 运行时密钥与内部调用密钥仍必须通过 `.env` 提供，seed 不携带这些值
+- 如果需要重新触发演示恢复，请先删除 `postgres_data` 与 `minio_data` 对应的 Docker volume
 
 ## 访问
 
@@ -117,3 +145,21 @@ pnpm files:migrate:local-to-s3
 - 写出 JSON 迁移报告与回滚 SQL
 
 迁移完成并验证无误后，运行时配置应收敛为仅 `s3`。
+
+## 刷新仓库种子
+
+维护演示环境时，可直接基于当前本地 Docker 环境刷新仓库内 seed：
+
+```bash
+pnpm seed:refresh
+pnpm seed:verify
+```
+
+`pnpm seed:refresh` 会：
+
+- 复制当前 PostgreSQL 到临时数据库副本，避免直接改动源库
+- 清空 `app_site_settings` 中的 AI 站点配置
+- 把 Directus 管理员重置为固定演示账号
+- 刷新 `seed/postgres/demo.dump`
+- 刷新 `seed/minio/demo-bucket/**`
+- 同步刷新 `directus/schema/app-schema.json`

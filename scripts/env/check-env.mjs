@@ -58,6 +58,8 @@ const DANGEROUS_DEFAULTS = new Set([
     "minioadmin",
     "admin@example.com",
     "admin@123456",
+    "demo-admin@cialli.local",
+    "CiaLli-demo-admin-2026!",
     "local-ai-summary-secret",
 ]);
 
