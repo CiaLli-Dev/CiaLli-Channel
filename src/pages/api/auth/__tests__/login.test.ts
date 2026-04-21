@@ -70,11 +70,17 @@ const mockedRateLimitResponse = vi.mocked(rateLimitResponse);
 const mockedAssertCsrfToken = vi.mocked(assertCsrfToken);
 const mockedRotateCsrfCookie = vi.mocked(rotateCsrfCookie);
 
-function makeContext(body: Record<string, unknown>): APIContext {
+function makeContext(
+    body: Record<string, unknown>,
+    options?: {
+        url?: string;
+        headers?: Record<string, string>;
+    },
+): APIContext {
     const csrf = "csrf-token";
     return createMockAPIContext({
         method: "POST",
-        url: "http://localhost:4321/api/auth/login",
+        url: options?.url ?? "http://localhost:4321/api/auth/login",
         body,
         cookies: {
             cialli_csrf: csrf,
@@ -82,6 +88,7 @@ function makeContext(body: Record<string, unknown>): APIContext {
         headers: {
             "x-csrf-token": csrf,
             "x-forwarded-for": "172.16.0.1",
+            ...(options?.headers ?? {}),
         },
     }) as unknown as APIContext;
 }
@@ -178,5 +185,94 @@ describe("/api/auth/login rate limit", () => {
         expect(mockedRateLimitResponse).toHaveBeenCalledTimes(1);
         expect(mockedDirectusLogin).not.toHaveBeenCalled();
         expect(mockedRotateCsrfCookie).not.toHaveBeenCalled();
+    });
+
+    it("accepts forwarded localhost origin from reverse proxy", async () => {
+        mockedApplyRateLimit
+            .mockResolvedValueOnce({
+                ok: true,
+                remaining: 9,
+                resetAt: Date.now() + 5 * 60 * 1000,
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                remaining: 8,
+                resetAt: Date.now() + 5 * 60 * 1000,
+            });
+
+        const response = await POST(
+            makeContext(
+                {
+                    email: "cialichannel@example.com",
+                    password: "admin",
+                },
+                {
+                    url: "http://web:4321/api/auth/login",
+                    headers: {
+                        origin: "https://localhost",
+                        "x-forwarded-host": "localhost",
+                        "x-forwarded-proto": "https",
+                    },
+                },
+            ),
+        );
+
+        expect(response.status).toBe(200);
+        expect(mockedApplyRateLimit).toHaveBeenCalledTimes(2);
+        expect(mockedDirectusLogin).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns 403 for unknown origin before rate limit and login", async () => {
+        const response = await POST(
+            makeContext(
+                {
+                    email: "cialichannel@example.com",
+                    password: "admin",
+                },
+                {
+                    url: "http://web:4321/api/auth/login",
+                    headers: {
+                        origin: "https://evil.example",
+                        "x-forwarded-host": "localhost",
+                        "x-forwarded-proto": "https",
+                    },
+                },
+            ),
+        );
+
+        expect(response.status).toBe(403);
+        await expect(response.json()).resolves.toMatchObject({
+            ok: false,
+            error: { message: "非法来源请求" },
+        });
+        expect(mockedAssertCsrfToken).not.toHaveBeenCalled();
+        expect(mockedApplyRateLimit).not.toHaveBeenCalled();
+        expect(mockedDirectusLogin).not.toHaveBeenCalled();
+        expect(mockedRotateCsrfCookie).not.toHaveBeenCalled();
+    });
+
+    it("returns 403 when Origin header is missing", async () => {
+        const response = await POST(
+            makeContext(
+                {
+                    email: "cialichannel@example.com",
+                    password: "admin",
+                },
+                {
+                    headers: {
+                        origin: "",
+                    },
+                },
+            ),
+        );
+
+        expect(response.status).toBe(403);
+        await expect(response.json()).resolves.toMatchObject({
+            ok: false,
+            error: { message: "缺少 Origin 头" },
+        });
+        expect(mockedAssertCsrfToken).not.toHaveBeenCalled();
+        expect(mockedApplyRateLimit).not.toHaveBeenCalled();
+        expect(mockedDirectusLogin).not.toHaveBeenCalled();
     });
 });

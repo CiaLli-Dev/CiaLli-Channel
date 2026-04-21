@@ -1,6 +1,4 @@
 import type { APIContext } from "astro";
-import I18nKey from "@/i18n/i18nKey";
-import { i18n } from "@/i18n/translation";
 import { logoutWithRefreshToken } from "@/server/application/auth/logout.service";
 import {
     DIRECTUS_ACCESS_COOKIE_NAME,
@@ -9,6 +7,7 @@ import {
     REMEMBER_COOKIE_NAME,
 } from "@/server/directus-auth";
 import { assertCsrfToken } from "@/server/security/csrf";
+import { assertSameOrigin } from "@/server/security/origin";
 
 const AUTH_NO_STORE = "private, no-store";
 
@@ -52,14 +51,11 @@ function clearAuthCookie(context: APIContext) {
 }
 
 export async function POST(context: APIContext): Promise<Response> {
-    const { request, cookies, url } = context;
+    const { cookies } = context;
 
-    const origin = request.headers.get("origin");
-    if (origin && origin !== url.origin) {
-        return json(
-            { ok: false, message: i18n(I18nKey.interactionApiIllegalOrigin) },
-            { status: 403 },
-        );
+    const sameOriginDenied = assertSameOrigin(context);
+    if (sameOriginDenied) {
+        return sameOriginDenied;
     }
 
     const csrfDenied = assertCsrfToken(context);

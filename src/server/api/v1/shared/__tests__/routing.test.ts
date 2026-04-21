@@ -94,4 +94,16 @@ describe("assertSameOrigin", () => {
         expect(response?.status).toBe(403);
         await expect(response?.text()).resolves.toContain("非法来源请求");
     });
+
+    it("缺少 Origin 头时拒绝请求", async () => {
+        const context = createMockAPIContext({
+            method: "POST",
+            url: "http://web:4321/api/v1/me/articles",
+            headers: { origin: "" },
+        });
+
+        const response = assertSameOrigin(context as unknown as APIContext);
+        expect(response?.status).toBe(403);
+        await expect(response?.text()).resolves.toContain("缺少 Origin 头");
+    });
 });

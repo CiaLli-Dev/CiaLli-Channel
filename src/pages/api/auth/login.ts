@@ -19,6 +19,7 @@ import {
     rateLimitResponse,
 } from "@/server/security/rate-limit";
 import { assertCsrfToken, rotateCsrfCookie } from "@/server/security/csrf";
+import { assertSameOrigin } from "@/server/security/origin";
 import { AppError } from "@/server/api/errors";
 import type { JsonObject, JsonValue } from "@/types/json";
 import { getJsonString, isJsonObject } from "@utils/json-utils";
@@ -215,14 +216,11 @@ async function executeLogin(
 }
 
 export async function POST(context: APIContext): Promise<Response> {
-    const { request, url } = context;
+    const { request } = context;
 
-    const origin = request.headers.get("origin");
-    if (origin && origin !== url.origin) {
-        return json(
-            { ok: false, message: i18n(I18nKey.interactionApiIllegalOrigin) },
-            { status: 403 },
-        );
+    const sameOriginDenied = assertSameOrigin(context);
+    if (sameOriginDenied) {
+        return sameOriginDenied;
     }
 
     const csrfDenied = assertCsrfToken(context);
