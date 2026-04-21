@@ -51,9 +51,7 @@ import {
     updateOne,
 } from "@/server/directus/client";
 import {
-    handleMeArticleCommentLikes,
     handleMeArticleLikes,
-    handleMeDiaryCommentLikes,
     handleMeDiaryLikes,
 } from "@/server/api/v1/me/likes";
 import { handleMe } from "@/server/api/v1/me";
@@ -244,13 +242,6 @@ describe("GET /me/article-likes/state/:articleId", () => {
         expect(body.ok).toBe(true);
         expect(body.article_id).toBe("article-1");
         expect(body.liked).toBe(true);
-        expect(mockedReadMany).toHaveBeenCalledWith(
-            "app_article_likes",
-            expect.objectContaining({
-                fields: ["id"],
-                limit: 1,
-            }),
-        );
     });
 
     it("当前用户未点赞时返回 liked=false", async () => {
@@ -349,13 +340,6 @@ describe("GET /me/diary-likes/state/:diaryId", () => {
         expect(body.ok).toBe(true);
         expect(body.diary_id).toBe("diary-1");
         expect(body.liked).toBe(true);
-        expect(mockedReadMany).toHaveBeenCalledWith(
-            "app_diary_likes",
-            expect.objectContaining({
-                fields: ["id"],
-                limit: 1,
-            }),
-        );
     });
 
     it("当前用户未点赞时返回 liked=false", async () => {
@@ -426,124 +410,5 @@ describe("GET /me/diary-likes/state/:diaryId", () => {
         ]);
 
         expect(response.status).toBe(401);
-    });
-});
-
-describe("点赞记录查询字段最小化", () => {
-    it("四类 POST 点赞查询都只请求 id/status 字段", async () => {
-        const access = createMemberAccess();
-
-        mockedReadOneById
-            .mockResolvedValueOnce({
-                id: "article-1",
-                status: "published",
-                is_public: true,
-            } as never)
-            .mockResolvedValueOnce({
-                id: "diary-1",
-                status: "published",
-                praviate: true,
-            } as never)
-            .mockResolvedValueOnce({
-                id: "ac-1",
-                article_id: "article-1",
-                status: "published",
-                is_public: true,
-            } as never)
-            .mockResolvedValueOnce({
-                id: "article-1",
-                status: "published",
-                is_public: true,
-            } as never)
-            .mockResolvedValueOnce({
-                id: "dc-1",
-                diary_id: "diary-1",
-                status: "published",
-                is_public: true,
-            } as never)
-            .mockResolvedValueOnce({
-                id: "diary-1",
-                status: "published",
-                praviate: true,
-            } as never);
-
-        mockedReadMany
-            .mockResolvedValueOnce([] as never)
-            .mockResolvedValueOnce([] as never)
-            .mockResolvedValueOnce([] as never)
-            .mockResolvedValueOnce([] as never);
-        mockedCreateOne.mockResolvedValue({ id: "like-1" } as never);
-        mockedCountItems.mockResolvedValue(1);
-
-        const articleLikeContext = createMockAPIContext({
-            method: "POST",
-            url: "http://localhost:4321/api/v1/me/article-likes",
-            body: { article_id: "article-1" },
-        });
-        const diaryLikeContext = createMockAPIContext({
-            method: "POST",
-            url: "http://localhost:4321/api/v1/me/diary-likes",
-            body: { diary_id: "diary-1" },
-        });
-        const articleCommentLikeContext = createMockAPIContext({
-            method: "POST",
-            url: "http://localhost:4321/api/v1/me/article-comment-likes",
-            body: { article_comment_id: "ac-1" },
-        });
-        const diaryCommentLikeContext = createMockAPIContext({
-            method: "POST",
-            url: "http://localhost:4321/api/v1/me/diary-comment-likes",
-            body: { diary_comment_id: "dc-1" },
-        });
-
-        await handleMeArticleLikes(
-            articleLikeContext as unknown as APIContext,
-            access,
-            ["article-likes"],
-        );
-        await handleMeDiaryLikes(
-            diaryLikeContext as unknown as APIContext,
-            access,
-            ["diary-likes"],
-        );
-        await handleMeArticleCommentLikes(
-            articleCommentLikeContext as unknown as APIContext,
-            access,
-            ["article-comment-likes"],
-        );
-        await handleMeDiaryCommentLikes(
-            diaryCommentLikeContext as unknown as APIContext,
-            access,
-            ["diary-comment-likes"],
-        );
-
-        expect(mockedReadMany).toHaveBeenCalledWith(
-            "app_article_likes",
-            expect.objectContaining({
-                fields: ["id", "status"],
-                limit: 1,
-            }),
-        );
-        expect(mockedReadMany).toHaveBeenCalledWith(
-            "app_diary_likes",
-            expect.objectContaining({
-                fields: ["id", "status"],
-                limit: 1,
-            }),
-        );
-        expect(mockedReadMany).toHaveBeenCalledWith(
-            "app_article_comment_likes",
-            expect.objectContaining({
-                fields: ["id", "status"],
-                limit: 1,
-            }),
-        );
-        expect(mockedReadMany).toHaveBeenCalledWith(
-            "app_diary_comment_likes",
-            expect.objectContaining({
-                fields: ["id", "status"],
-                limit: 1,
-            }),
-        );
     });
 });

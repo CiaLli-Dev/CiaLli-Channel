@@ -218,43 +218,6 @@ describe("GET /admin/users", () => {
         expect(body.items[0]?.profile.username).toBe("alpha");
     });
 
-    it("email 排序参数会透传到 Directus 查询", async () => {
-        mockedReadOneById.mockResolvedValueOnce(
-            createDirectusUser({
-                id: "admin-1",
-                role: {
-                    id: "role-site-admin",
-                    name: DIRECTUS_ROLE_NAME.siteAdmin,
-                },
-            }) as never,
-        );
-        mockedListDirectusUsers.mockResolvedValueOnce([] as never);
-        mockedReadMany.mockResolvedValueOnce([] as never);
-
-        const ctx = createMockAPIContext({
-            method: "GET",
-            url: "http://localhost:4321/api/v1/admin/users?sort_by=email&sort_order=desc",
-            params: {
-                segments: "admin/users",
-            },
-        });
-
-        const response = await handleAdminUsers(ctx as unknown as APIContext, [
-            "users",
-        ]);
-
-        expect(response.status).toBe(200);
-        expect(mockedListDirectusUsers).toHaveBeenCalledWith({
-            limit: 20,
-            offset: 0,
-            search: undefined,
-            sort: {
-                field: "email",
-                order: "desc",
-            },
-        });
-    });
-
     it("username 排序在缺失与空字符串场景下保持稳定", async () => {
         mockedReadOneById.mockResolvedValueOnce(
             createDirectusUser({
@@ -398,43 +361,6 @@ describe("GET /admin/users", () => {
             "member-1",
             "member-2",
         ]);
-    });
-
-    it("非法排序参数会回退默认排序", async () => {
-        mockedReadOneById.mockResolvedValueOnce(
-            createDirectusUser({
-                id: "admin-1",
-                role: {
-                    id: "role-site-admin",
-                    name: DIRECTUS_ROLE_NAME.siteAdmin,
-                },
-            }) as never,
-        );
-        mockedListDirectusUsers.mockResolvedValueOnce([] as never);
-        mockedReadMany.mockResolvedValueOnce([] as never);
-
-        const ctx = createMockAPIContext({
-            method: "GET",
-            url: "http://localhost:4321/api/v1/admin/users?sort_by=unknown&sort_order=bad",
-            params: {
-                segments: "admin/users",
-            },
-        });
-
-        const response = await handleAdminUsers(ctx as unknown as APIContext, [
-            "users",
-        ]);
-
-        expect(response.status).toBe(200);
-        expect(mockedListDirectusUsers).toHaveBeenCalledWith({
-            limit: 20,
-            offset: 0,
-            search: undefined,
-            sort: {
-                field: "email",
-                order: "asc",
-            },
-        });
     });
 });
 

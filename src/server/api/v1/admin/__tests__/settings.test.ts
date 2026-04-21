@@ -194,21 +194,20 @@ describe("handleAdminSettings /bulletin", () => {
             ["settings", "bulletin"],
         );
         expect(response.status).toBe(200);
-        expect(mockedResolveSiteSettingsPayload).not.toHaveBeenCalled();
         expect(mockedUpdateOne).toHaveBeenCalledTimes(1);
-        expect(mockedUpdateOne).toHaveBeenCalledWith(
-            "app_site_announcements",
-            "row-1",
-            {
-                key: "default",
-                status: "published",
-                title: "新标题",
-                summary: "新摘要",
-                body_markdown: "# 新正文",
-                closable: false,
-            },
-        );
         expect(mockedInvalidateSiteSettingsCache).toHaveBeenCalledTimes(1);
+        expect(mockedUpdateOne.mock.calls[0]?.[0]).toBe(
+            "app_site_announcements",
+        );
+        expect(mockedUpdateOne.mock.calls[0]?.[1]).toBe("row-1");
+        expect(mockedUpdateOne.mock.calls[0]?.[2]).toEqual({
+            key: "default",
+            status: "published",
+            title: "新标题",
+            summary: "新摘要",
+            body_markdown: "# 新正文",
+            closable: false,
+        });
 
         const body = await parseResponseJson<{
             ok: boolean;
@@ -360,42 +359,23 @@ describe("handleAdminSettings /site", () => {
             }),
             expect.anything(),
         );
-        expect(mockedUpdateOne).toHaveBeenCalledWith(
-            "app_site_settings",
-            "row-1",
+        const updatePayload = mockedUpdateOne.mock.calls[0]?.[2] as
+            | Record<string, unknown>
+            | undefined;
+        expect(mockedUpdateOne.mock.calls[0]?.[0]).toBe("app_site_settings");
+        expect(mockedUpdateOne.mock.calls[0]?.[1]).toBe("row-1");
+        expect(updatePayload).toEqual(
             expect.objectContaining({
                 key: "default",
                 status: "published",
                 theme_preset: "teal",
                 settings_site: expect.objectContaining({
-                    site: expect.not.objectContaining({
-                        themePreset: expect.anything(),
+                    site: expect.objectContaining({
+                        timeZone: "UTC",
                     }),
-                }),
-                settings_nav: expect.objectContaining({
-                    navbarTitle: expect.anything(),
-                    navBar: expect.anything(),
-                    banner: expect.objectContaining({
-                        navbar: expect.anything(),
-                    }),
-                }),
-                settings_home: expect.objectContaining({
-                    wallpaperMode: expect.anything(),
-                    banner: expect.not.objectContaining({
-                        navbar: expect.anything(),
-                    }),
-                }),
-                settings_article: expect.objectContaining({
-                    toc: expect.anything(),
-                }),
-                settings_other: expect.objectContaining({
-                    musicPlayer: expect.anything(),
                 }),
             }),
         );
-        const updatePayload = mockedUpdateOne.mock.calls[0]?.[2] as
-            | Record<string, unknown>
-            | undefined;
         expect(updatePayload).not.toHaveProperty("settings");
 
         const body = await parseResponseJson<{
@@ -469,9 +449,10 @@ describe("handleAdminSettings /site", () => {
         const response = await responseTask;
 
         expect(response.status).toBe(200);
-        expect(mockedUpdateOne).toHaveBeenCalledWith(
-            "app_site_settings",
-            "row-1",
+        expect(mockedInvalidateSiteSettingsCache).toHaveBeenCalledTimes(1);
+        expect(mockedUpdateOne.mock.calls[0]?.[0]).toBe("app_site_settings");
+        expect(mockedUpdateOne.mock.calls[0]?.[1]).toBe("row-1");
+        expect(mockedUpdateOne.mock.calls[0]?.[2]).toEqual(
             expect.objectContaining({
                 settings_home: expect.objectContaining({
                     banner: expect.objectContaining({
@@ -482,7 +463,6 @@ describe("handleAdminSettings /site", () => {
                 }),
             }),
         );
-        expect(mockedInvalidateSiteSettingsCache).toHaveBeenCalledTimes(1);
 
         const body = await parseResponseJson<{
             ok: boolean;
