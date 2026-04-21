@@ -34,6 +34,9 @@ export const jaArticleEditor: Record<string, string> = {
     [Key.articleEditorEncryptedEditMessage]:
         "記事ページでパスワードを入力して解除してから編集を開始してください。",
     [Key.articleEditorEncryptedEditGoUnlock]: "解除する",
+    [Key.articleEditorAiSummaryEnabled]: "AI 要約",
+    [Key.articleEditorAiSummaryEnabledHint]:
+        "公開後に非同期で要約を生成します。空の要約または AI 生成済み要約のみ更新し、手書き要約は上書きしません。",
     [Key.articleEditorGeneratingEncryptedContent]:
         "暗号化コンテンツを生成しています...",
     [Key.articleEditorLoadFailed]: "読み込みに失敗しました",

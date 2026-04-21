@@ -1,5 +1,6 @@
 ---
-
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
 ---
 
 <div id="publish-settings-overlay" class="overlay-dialog" hidden>
@@ -34,6 +35,23 @@
             class="w-full rounded-lg border border-(--line-divider) px-3.5 py-2.5 bg-transparent text-90 resize-y"
           ></textarea>
         </label>
+
+        <div class="rounded-xl border border-(--line-divider) p-4 space-y-2">
+          <label
+            class="flex items-center gap-3 text-sm text-75 cursor-pointer select-none"
+          >
+            <input
+              id="publish-article-ai-summary-enabled"
+              type="checkbox"
+              class="toggle-checkbox"
+            />
+            <span class="toggle-track"><span class="toggle-knob"></span></span>
+            <span>{i18n(I18nKey.articleEditorAiSummaryEnabled)}</span>
+          </label>
+          <p class="text-xs text-60 leading-5">
+            {i18n(I18nKey.articleEditorAiSummaryEnabledHint)}
+          </p>
+        </div>
 
         <!-- 封面裁剪上传区域 -->
         <div class="space-y-2">

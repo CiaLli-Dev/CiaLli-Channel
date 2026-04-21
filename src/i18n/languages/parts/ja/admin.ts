@@ -71,6 +71,13 @@ export const jaAdmin: Record<string, string> = {
         "将来的に Directus Flow 名または ID を設定します",
     [Key.adminAiPlaceholderModel]:
         "将来的にモデルまたは機能プリセットを選択します",
+    [Key.adminAiSaveSettings]: "AI 設定を保存",
+    [Key.adminAiClearApiKey]: "API キーを削除",
+    [Key.adminAiApiKeyConfigured]: "API キー設定済み",
+    [Key.adminAiApiKeyMissing]: "API キー未設定",
+    [Key.adminAiSettingsSaved]: "AI 設定を保存しました",
+    [Key.adminAiSettingsSaveFailed]:
+        "AI 設定の保存に失敗しました。もう一度お試しください",
     [Key.adminAiSectionAutomation]: "自動化メモ",
     [Key.adminAiSectionConnection]: "接続設定",
     [Key.adminAiSectionFeatures]: "機能スイッチ",

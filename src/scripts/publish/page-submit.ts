@@ -331,6 +331,7 @@ export function buildSubmitPayload(
     const payload: Record<string, unknown> = {
         title: toStringValue(dom.articleTitleInput.value),
         summary: toNullableString(dom.articleSummaryInput.value),
+        ai_summary_enabled: dom.articleAiSummaryEnabledInput.checked,
         body_markdown: nextBodyMarkdown,
         cover_url: toNullableString(dom.articleCoverUrlInput.value),
         tags: csvToArray(dom.articleTagsInput.value),

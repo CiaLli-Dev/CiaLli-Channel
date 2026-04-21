@@ -33,6 +33,9 @@ export const enArticleEditor: Record<string, string> = {
     [Key.articleEditorEncryptedEditMessage]:
         "Unlock the article with its password first, then come back to edit.",
     [Key.articleEditorEncryptedEditGoUnlock]: "Go unlock",
+    [Key.articleEditorAiSummaryEnabled]: "AI summary",
+    [Key.articleEditorAiSummaryEnabledHint]:
+        "Generate a summary asynchronously after publishing. It only fills an empty or previously AI-generated summary, and never overwrites a manual summary.",
     [Key.articleEditorGeneratingEncryptedContent]:
         "Generating encrypted content...",
     [Key.articleEditorLoadFailed]: "Failed to load",

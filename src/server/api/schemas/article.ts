@@ -21,6 +21,7 @@ export type CreateArticleInput = {
     status: "published";
     slug?: OptionalString;
     summary?: OptionalString;
+    ai_summary_enabled?: boolean;
     cover_file?: OptionalString;
     cover_url?: OptionalString;
     tags: Tags;
@@ -33,6 +34,7 @@ export type UpdateArticleInput = {
     title?: string;
     slug?: OptionalString;
     summary?: OptionalString;
+    ai_summary_enabled?: boolean;
     body_markdown?: string;
     cover_file?: OptionalString;
     cover_url?: OptionalString;
@@ -46,6 +48,7 @@ export type UpdateArticleInput = {
 export type UpsertWorkingDraftInput = {
     title?: string;
     summary?: OptionalString;
+    ai_summary_enabled?: boolean;
     body_markdown?: string;
     cover_file?: OptionalString;
     cover_url?: OptionalString;
@@ -82,6 +85,7 @@ export const CreateArticleSchema: z.ZodType<CreateArticleInput> = z.object({
     status: z.literal("published").default("published"),
     slug: OptionalStringSchema,
     summary: OptionalStringSchema,
+    ai_summary_enabled: z.boolean().optional(),
     cover_file: OptionalStringSchema,
     cover_url: OptionalStringSchema,
     tags: TagsDefaultSchema,
@@ -97,6 +101,7 @@ export const UpdateArticleSchema: z.ZodType<UpdateArticleInput> = z
         title: ArticleTitleLengthSchema,
         slug: OptionalStringSchema,
         summary: OptionalStringSchema,
+        ai_summary_enabled: z.boolean(),
         body_markdown: z.string(),
         cover_file: OptionalStringSchema,
         cover_url: OptionalStringSchema,
@@ -114,6 +119,7 @@ export const UpsertWorkingDraftSchema: z.ZodType<UpsertWorkingDraftInput> =
     z.object({
         title: ArticleTitleLengthSchema.optional(),
         summary: OptionalStringSchema,
+        ai_summary_enabled: z.boolean().optional(),
         body_markdown: z.string().optional(),
         cover_file: OptionalStringSchema,
         cover_url: OptionalStringSchema,

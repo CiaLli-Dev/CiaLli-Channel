@@ -47,6 +47,7 @@ export function splitSiteSettingsForStorage(
         },
         settings_other: {
             musicPlayer: settings.musicPlayer,
+            ai: settings.ai,
         },
     };
 }
@@ -75,6 +76,7 @@ export function composeSiteSettingsFromStorageSections(
         banner,
         toc: settingsArticle.toc,
         musicPlayer: settingsOther.musicPlayer,
+        ai: settingsOther.ai,
     };
 }
 

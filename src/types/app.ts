@@ -1,4 +1,18 @@
 export type AppStatus = "draft" | "published" | "archived";
+export type ArticleSummarySource = "none" | "manual" | "ai";
+export type AiSummaryJobStatus =
+    | "pending"
+    | "processing"
+    | "succeeded"
+    | "failed"
+    | "canceled"
+    | "skipped";
+export type AiSummaryJobKind =
+    | "on_publish"
+    | "manual"
+    | "history"
+    | "regenerate";
+export type AiSummaryTargetLength = "short" | "medium" | "long";
 
 export type SocialLink = {
     platform: string;
@@ -71,6 +85,13 @@ export type AppArticle = {
     title: string;
     slug: string | null;
     summary: string | null;
+    summary_source: ArticleSummarySource;
+    summary_generated_at: string | null;
+    summary_model: string | null;
+    summary_prompt_version: string | null;
+    summary_content_hash: string | null;
+    summary_error: string | null;
+    ai_summary_enabled: boolean;
     body_markdown: string;
     cover_file: string | null;
     cover_url: string | null;
@@ -80,6 +101,38 @@ export type AppArticle = {
     is_public: boolean;
     date_created: string | null;
     date_updated: string | null;
+};
+
+export type AppAiSummaryJob = {
+    id: string;
+    status: AiSummaryJobStatus;
+    sort: number | null;
+    user_created: string | null;
+    date_created: string | null;
+    user_updated: string | null;
+    date_updated: string | null;
+    article_id: string;
+    author_id: string;
+    kind: AiSummaryJobKind;
+    priority: number;
+    dedupe_key: string;
+    content_hash: string;
+    prompt_version: string;
+    provider: "openai-compatible";
+    model: string;
+    target_length: AiSummaryTargetLength;
+    attempts: number;
+    max_attempts: number;
+    scheduled_at: string | null;
+    leased_until: string | null;
+    started_at: string | null;
+    finished_at: string | null;
+    input_chars: number | null;
+    chunk_count: number | null;
+    output_chars: number | null;
+    error_code: string | null;
+    error_message: string | null;
+    result_summary: string | null;
 };
 
 export type AppDiary = {

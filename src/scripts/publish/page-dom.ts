@@ -30,6 +30,7 @@ export type PublishDomRefs = {
     articleTitleInput: HTMLInputElement;
     articleTitleHintEl: HTMLElement | null;
     articleSummaryInput: HTMLTextAreaElement;
+    articleAiSummaryEnabledInput: HTMLInputElement;
     articleBodyInput: HTMLTextAreaElement;
     editorMonacoEl: HTMLElement | null;
     articleCoverUrlInput: HTMLInputElement;
@@ -56,6 +57,7 @@ type RequiredDomNodes = {
     discardDraftBtn: HTMLButtonElement;
     articleTitleInput: HTMLInputElement;
     articleSummaryInput: HTMLTextAreaElement;
+    articleAiSummaryEnabledInput: HTMLInputElement;
     articleBodyInput: HTMLTextAreaElement;
     articleCoverUrlInput: HTMLInputElement;
     articleTagsInput: HTMLInputElement;
@@ -98,6 +100,7 @@ function getRequiredDomNodesCoreGroup(): {
 function getRequiredDomNodesFormGroup(): {
     articleTitleInput: HTMLInputElement | null;
     articleSummaryInput: HTMLTextAreaElement | null;
+    articleAiSummaryEnabledInput: HTMLInputElement | null;
     articleBodyInput: HTMLTextAreaElement | null;
     articleCoverUrlInput: HTMLInputElement | null;
     articleTagsInput: HTMLInputElement | null;
@@ -115,6 +118,9 @@ function getRequiredDomNodesFormGroup(): {
         articleSummaryInput: document.getElementById(
             "publish-article-summary",
         ) as HTMLTextAreaElement | null,
+        articleAiSummaryEnabledInput: document.getElementById(
+            "publish-article-ai-summary-enabled",
+        ) as HTMLInputElement | null,
         articleBodyInput: document.getElementById(
             "publish-article-body",
         ) as HTMLTextAreaElement | null,
@@ -174,6 +180,7 @@ function isFormGroupComplete(
 ): form is {
     articleTitleInput: HTMLInputElement;
     articleSummaryInput: HTMLTextAreaElement;
+    articleAiSummaryEnabledInput: HTMLInputElement;
     articleBodyInput: HTMLTextAreaElement;
     articleCoverUrlInput: HTMLInputElement;
     articleTagsInput: HTMLInputElement;
@@ -187,6 +194,7 @@ function isFormGroupComplete(
     return Boolean(
         form.articleTitleInput &&
         form.articleSummaryInput &&
+        form.articleAiSummaryEnabledInput &&
         form.articleBodyInput &&
         form.articleCoverUrlInput &&
         form.articleTagsInput &&

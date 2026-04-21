@@ -65,6 +65,7 @@ let article: {
   title: string;
   slug: string | null;
   summary: string | null;
+  summary_source: "none" | "manual" | "ai";
   body_markdown: string;
   cover_file: string | null;
   cover_url: string | null;
@@ -366,7 +367,7 @@ const articleSharePayload: SharePosterPayload | undefined =
                   </span>
                 )}
               </div>
-              {article.summary && (
+              {article.summary && article.summary_source !== "ai" && (
                 <p class="text-base text-75">{article.summary}</p>
               )}
               {article.tags.length > 0 && (
@@ -409,9 +410,23 @@ const articleSharePayload: SharePosterPayload | undefined =
                 ownerPasswordStorageKeys={ownerPasswordStorageKeys}
               />
             ) : (
-              <Markdown class="markdown-content content-serif">
-                <Fragment set:html={articleHtml} />
-              </Markdown>
+              <>
+                {article.summary && article.summary_source === "ai" && (
+                  <aside class="article-ai-summary-card mb-6 rounded-2xl p-[1px]">
+                    <div class="rounded-[calc(var(--radius-large)-1px)] bg-(--card-bg) px-5 py-4">
+                      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-60 mb-2">
+                        AI Summary
+                      </p>
+                      <p class="text-base leading-7 text-80">
+                        {article.summary}
+                      </p>
+                    </div>
+                  </aside>
+                )}
+                <Markdown class="markdown-content content-serif">
+                  <Fragment set:html={articleHtml} />
+                </Markdown>
+              </>
             )}
           </div>
           <div
@@ -502,3 +517,37 @@ const articleSharePayload: SharePosterPayload | undefined =
     )
   }
 </MainGridLayout>
+
+<style>
+  .article-ai-summary-card {
+    background: linear-gradient(
+      120deg,
+      #ff4d8d,
+      #ffb84d,
+      #45d483,
+      #42a5ff,
+      #a855f7,
+      #ff4d8d
+    );
+    background-size: 240% 240%;
+    animation: article-ai-summary-border 10s ease infinite;
+  }
+
+  @keyframes article-ai-summary-border {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .article-ai-summary-card {
+      animation: none;
+    }
+  }
+</style>

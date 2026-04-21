@@ -9,6 +9,7 @@
     "check:i18n": "node scripts/i18n/check-i18n-hardcoded.mjs",
     "build": "astro build",
     "preview": "node scripts/preview-built-output.mjs",
+    "ai-summary:worker": "tsx src/worker/ai-summary/server.ts",
     "astro": "astro",
     "type-check": "tsc --noEmit --isolatedDeclarations --skipLibCheck",
     "type-check:projects": "tsc -p tsconfig.json --noEmit --skipLibCheck && tsc -p tsconfig.test.json --noEmit --skipLibCheck && tsc -p tsconfig.node.json --noEmit --skipLibCheck",
@@ -107,6 +108,7 @@
     "prettier": "^3.8.3",
     "prettier-plugin-astro": "^0.14.1",
     "prettier-plugin-svelte": "^3.5.1",
+    "tsx": "^4.21.0",
     "typescript-eslint": "^8.58.2",
     "vitest": "^4.1.4"
   },

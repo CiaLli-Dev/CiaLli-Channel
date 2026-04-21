@@ -103,6 +103,34 @@ function resolveArticleAssetVisibility(
         : "private";
 }
 
+function applyArticleSummaryFields(
+    payload: JsonObject,
+    input: { summary?: string | null },
+    target?: OwnedArticleRecord,
+): void {
+    if (input.summary === undefined) {
+        return;
+    }
+
+    const nextSummary = input.summary ?? null;
+    payload.summary = nextSummary;
+    const previousSummary = String(target?.summary ?? "");
+    const previousSource = String(target?.summary_source ?? "none");
+
+    if (!String(nextSummary || "").trim()) {
+        payload.summary_source = "none";
+    } else if (previousSource === "ai" && nextSummary === previousSummary) {
+        payload.summary_source = "ai";
+    } else {
+        payload.summary_source = "manual";
+        payload.summary_generated_at = null;
+        payload.summary_model = null;
+        payload.summary_prompt_version = null;
+        payload.summary_content_hash = null;
+        payload.summary_error = null;
+    }
+}
+
 function normalizeRequiredArticleText(value: unknown): string {
     return typeof value === "string" ? value.trim() : "";
 }
@@ -271,6 +299,8 @@ async function handleArticlesCreate(
         title: input.title,
         slug: specialSlug,
         summary: input.summary ?? null,
+        summary_source: input.summary ? ("manual" as const) : ("none" as const),
+        ai_summary_enabled: input.ai_summary_enabled ?? false,
         body_markdown: input.body_markdown,
         cover_file: input.cover_file ?? null,
         cover_url: input.cover_url ?? null,
@@ -321,6 +351,7 @@ function applyArticleBaseFields(
     payload: JsonObject,
     input: UpdateArticleInput,
     body: JsonObject,
+    target?: OwnedArticleRecord,
 ): string | null {
     let nextCoverFile: string | null = null;
 
@@ -330,11 +361,12 @@ function applyArticleBaseFields(
     if (input.slug !== undefined) {
         payload.slug = toSpecialArticleSlug(input.slug);
     }
-    if (input.summary !== undefined) {
-        payload.summary = input.summary;
-    }
+    applyArticleSummaryFields(payload, input, target);
     if (input.body_markdown !== undefined) {
         payload.body_markdown = input.body_markdown;
+    }
+    if (input.ai_summary_enabled !== undefined) {
+        payload.ai_summary_enabled = input.ai_summary_enabled;
     }
     if (hasOwn(body, "cover_file")) {
         nextCoverFile = normalizeDirectusFileId(input.cover_file);
@@ -382,7 +414,7 @@ function buildArticlePatchPayload(
     const prevCoverFile = normalizeDirectusFileId(target.cover_file);
     const payload: JsonObject = {};
 
-    const newCoverFile = applyArticleBaseFields(payload, input, body);
+    const newCoverFile = applyArticleBaseFields(payload, input, body, target);
     const nextCoverFile = newCoverFile ?? prevCoverFile;
     const currentStatus = normalizeArticleStatus(target.status);
     const nextStatus =
@@ -581,6 +613,8 @@ function buildWorkingDraftCreatePayload(
         author_id: access.user.id,
         title: input.title ?? "",
         summary: input.summary ?? null,
+        summary_source: input.summary ? ("manual" as const) : ("none" as const),
+        ai_summary_enabled: input.ai_summary_enabled ?? false,
         body_markdown: input.body_markdown ?? "",
         cover_file: input.cover_file ?? null,
         cover_url: input.cover_url ?? null,
@@ -602,6 +636,7 @@ function buildWorkingDraftUpdatePayload(
         payload,
         input as UpdateArticleInput,
         body,
+        target,
     );
     const nextCoverFile = newCoverFile ?? prevCoverFile;
     payload.status = "draft";

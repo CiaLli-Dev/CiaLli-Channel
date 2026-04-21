@@ -21,6 +21,8 @@ export enum ArticleEditorKey {
     articleEditorEncryptedEditTitle = "articleEditorEncryptedEditTitle",
     articleEditorEncryptedEditMessage = "articleEditorEncryptedEditMessage",
     articleEditorEncryptedEditGoUnlock = "articleEditorEncryptedEditGoUnlock",
+    articleEditorAiSummaryEnabled = "articleEditorAiSummaryEnabled",
+    articleEditorAiSummaryEnabledHint = "articleEditorAiSummaryEnabledHint",
     articleEditorGeneratingEncryptedContent = "articleEditorGeneratingEncryptedContent",
     articleEditorLoadFailed = "articleEditorLoadFailed",
     articleEditorLoadFailedRetry = "articleEditorLoadFailedRetry",

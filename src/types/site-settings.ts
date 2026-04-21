@@ -19,6 +19,15 @@ export type ProfileRuntimeSettings = {
     avatar: string;
 };
 
+export type AiRuntimeSettings = {
+    enabled: boolean;
+    articleSummaryEnabled: boolean;
+    baseUrl: string;
+    model: string;
+    apiKeyEncrypted: string | null;
+    updatedAt: string | null;
+};
+
 export type EditableSiteSettings = {
     site: {
         title: string;
@@ -41,6 +50,7 @@ export type EditableSiteSettings = {
     profile: ProfileRuntimeSettings;
     announcement: AnnouncementConfig;
     musicPlayer: MusicPlayerConfig;
+    ai: AiRuntimeSettings;
 };
 
 export type SiteSettingsPayload = EditableSiteSettings;
@@ -68,6 +78,7 @@ export type StoredSiteSettingsArticleSection = {
 
 export type StoredSiteSettingsOtherSection = {
     musicPlayer: SiteSettingsPayload["musicPlayer"];
+    ai: SiteSettingsPayload["ai"];
 };
 
 export type StoredSiteSettingsSectionFields = {

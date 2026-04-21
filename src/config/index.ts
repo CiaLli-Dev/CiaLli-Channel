@@ -163,6 +163,14 @@ export const defaultSiteSettings: SiteSettingsPayload = {
         type: "playlist",
         marqueeSpeed: 10,
     },
+    ai: {
+        enabled: false,
+        articleSummaryEnabled: false,
+        baseUrl: "",
+        model: "",
+        apiKeyEncrypted: null,
+        updatedAt: null,
+    },
 };
 
 export function buildRuntimeSiteConfig(

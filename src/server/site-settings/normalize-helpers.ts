@@ -431,6 +431,30 @@ export function normalizeMusicPlayer(merged: SiteSettingsPayload): void {
     );
 }
 
+export function normalizeAiSettings(
+    merged: SiteSettingsPayload,
+    base: SiteSettingsPayload,
+): void {
+    const raw: Record<string, unknown> = isRecord(merged.ai) ? merged.ai : {};
+    merged.ai = {
+        enabled: Boolean(raw.enabled ?? base.ai.enabled),
+        articleSummaryEnabled: Boolean(
+            raw.articleSummaryEnabled ?? base.ai.articleSummaryEnabled,
+        ),
+        baseUrl: String(raw.baseUrl || "").trim(),
+        model: String(raw.model || "").trim(),
+        apiKeyEncrypted:
+            typeof raw.apiKeyEncrypted === "string" &&
+            raw.apiKeyEncrypted.trim()
+                ? raw.apiKeyEncrypted.trim()
+                : null,
+        updatedAt:
+            typeof raw.updatedAt === "string" && raw.updatedAt.trim()
+                ? raw.updatedAt.trim()
+                : null,
+    };
+}
+
 // ---- banner.src 辅助 ----
 
 function normalizeBannerSrc(

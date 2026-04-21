@@ -70,6 +70,13 @@ export const enAdmin: Record<string, string> = {
         "Future field for the Directus Flow name or ID",
     [Key.adminAiPlaceholderModel]:
         "Future field for the model or capability preset",
+    [Key.adminAiSaveSettings]: "Save AI settings",
+    [Key.adminAiClearApiKey]: "Clear API key",
+    [Key.adminAiApiKeyConfigured]: "API key configured",
+    [Key.adminAiApiKeyMissing]: "API key missing",
+    [Key.adminAiSettingsSaved]: "AI settings saved",
+    [Key.adminAiSettingsSaveFailed]:
+        "Failed to save AI settings. Please try again",
     [Key.adminAiSectionAutomation]: "Automation notes",
     [Key.adminAiSectionConnection]: "Connection settings",
     [Key.adminAiSectionFeatures]: "Feature switches",

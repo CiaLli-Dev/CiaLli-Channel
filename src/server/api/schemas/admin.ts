@@ -65,6 +65,15 @@ export type AdminAboutPreviewInput = {
     render_mode: "fast" | "full";
 };
 
+export type AdminAiSettingsUpdateInput = {
+    enabled?: boolean;
+    articleSummaryEnabled?: boolean;
+    baseUrl?: OptionalString;
+    model?: OptionalString;
+    apiKey?: OptionalString;
+    clearApiKey?: boolean;
+};
+
 // ── 管理员更新用户 ──
 
 export const AdminUpdateUserSchema: z.ZodType<AdminUpdateUserInput> = z
@@ -139,3 +148,17 @@ export const AdminAboutPreviewSchema: z.ZodType<AdminAboutPreviewInput> =
         body_markdown: z.string(),
         render_mode: z.enum(["fast", "full"]).default("full"),
     });
+
+// ── 管理员 AI 配置 ──
+
+export const AdminAiSettingsUpdateSchema: z.ZodType<AdminAiSettingsUpdateInput> =
+    z
+        .object({
+            enabled: z.boolean(),
+            articleSummaryEnabled: z.boolean(),
+            baseUrl: OptionalStringSchema,
+            model: OptionalStringSchema,
+            apiKey: OptionalStringSchema,
+            clearApiKey: z.boolean(),
+        })
+        .partial();

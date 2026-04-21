@@ -1,6 +1,7 @@
 import type {
     AppAlbum,
     AppAlbumPhoto,
+    AppAiSummaryJob,
     AppArticle,
     AppArticleComment,
     AppArticleCommentLike,
@@ -23,6 +24,7 @@ import type {
 
 export type DirectusSchema = {
     app_user_profiles: AppProfile[];
+    app_ai_summary_jobs: AppAiSummaryJob[];
     app_articles: AppArticle[];
     app_article_comments: AppArticleComment[];
     app_article_comment_likes: AppArticleCommentLike[];

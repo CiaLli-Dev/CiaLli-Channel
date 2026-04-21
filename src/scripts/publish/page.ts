@@ -136,6 +136,7 @@ function buildPublishDraftSnapshot(
     return JSON.stringify({
         title: String(dom.articleTitleInput.value || ""),
         summary: String(dom.articleSummaryInput.value || ""),
+        aiSummaryEnabled: dom.articleAiSummaryEnabledInput.checked,
         body: String(dom.articleBodyInput.value || ""),
         coverUrl: String(dom.articleCoverUrlInput.value || ""),
         tags: String(dom.articleTagsInput.value || ""),
@@ -162,6 +163,10 @@ async function fillArticleForm(
 ): Promise<boolean> {
     dom.articleTitleInput.value = toStringValue(item.title);
     dom.articleSummaryInput.value = toStringValue(item.summary);
+    dom.articleAiSummaryEnabledInput.checked = toBooleanValue(
+        item.ai_summary_enabled,
+        false,
+    );
     const rawBodyMarkdown = toStringValue(item.body_markdown);
     const isEncryptedBody = isProtectedContentBody(rawBodyMarkdown);
     let unlockedEncryptedBody = false;
@@ -831,6 +836,7 @@ async function initPublishPageCore(): Promise<void> {
     const resetForm = (): void => {
         dom.articleTitleInput.value = "";
         dom.articleSummaryInput.value = "";
+        dom.articleAiSummaryEnabledInput.checked = false;
         editor.setValue("");
         dom.articleBodyInput.placeholder = DEFAULT_BODY_PLACEHOLDER;
         dom.articleCoverUrlInput.value = "";

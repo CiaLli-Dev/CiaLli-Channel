@@ -244,6 +244,9 @@ function makePublishDomRefs(
         toolbarEl: {} as HTMLElement,
         submitMsgEl: {} as HTMLElement,
         submitErrorEl: {} as HTMLElement,
+        articleAiSummaryEnabledInput: {
+            checked: false,
+        } as HTMLInputElement,
         saveDraftBtn: {
             disabled: false,
             textContent: "保存草稿",

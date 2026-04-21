@@ -13,6 +13,7 @@ import {
 
 import {
     handleAdminContent,
+    handleAdminAi,
     handleAdminRegistrationRequests,
     handleAdminSettings,
     handleAdminUsers,
@@ -74,6 +75,9 @@ async function dispatchAdminRoute(
     }
     if (segments[1] === "settings") {
         return handleAdminSettings(context, segments.slice(1));
+    }
+    if (segments[1] === "ai") {
+        return handleAdminAi(context, segments.slice(1));
     }
     return fail("未找到接口", 404);
 }

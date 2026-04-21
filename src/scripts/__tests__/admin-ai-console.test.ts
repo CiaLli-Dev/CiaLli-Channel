@@ -38,17 +38,17 @@ describe("admin AI console UI", () => {
         expect(dashboardNavCardsSource).not.toContain("box-shadow:");
     });
 
-    it("存在独立的 AI 管理页并保持只读占位形态", () => {
+    it("存在独立的 AI 管理页并接入真实保存接口", () => {
         expect(existsSync(adminAiPagePath)).toBe(true);
 
         const adminAiPageSource = readFileSync(adminAiPagePath, "utf8");
 
         expect(adminAiPageSource).toContain("AdminLayout");
         expect(adminAiPageSource).toContain("adminAiPageTitle");
+        expect(adminAiPageSource).toContain("/api/v1/admin/ai/settings");
+        expect(adminAiPageSource).toContain("adminAiApiKeyConfigured");
+        expect(adminAiPageSource).toContain("adminAiClearApiKey");
         expect(adminAiPageSource).not.toContain("/api/v1/admin/settings/site");
-        expect(adminAiPageSource).not.toContain('method="PATCH"');
-        expect(adminAiPageSource).toContain("disabled");
-        expect(adminAiPageSource).toContain("readonly");
     });
 
     it("AI 管理台文案 key 在管理台多语言中齐备", () => {
@@ -63,6 +63,10 @@ describe("admin AI console UI", () => {
             AdminKey.adminAiSectionFeatures,
             AdminKey.adminAiSectionAutomation,
             AdminKey.adminAiComingSoon,
+            AdminKey.adminAiSaveSettings,
+            AdminKey.adminAiClearApiKey,
+            AdminKey.adminAiApiKeyConfigured,
+            AdminKey.adminAiApiKeyMissing,
         ];
 
         for (const translations of adminTranslations) {

@@ -17,6 +17,7 @@ import {
     isRecord,
     isSiteLanguageOption,
     normalizeAnnouncement,
+    normalizeAiSettings,
     normalizeBannerBasic,
     normalizeBannerHomeText,
     normalizeBannerNavbar,
@@ -198,6 +199,7 @@ function normalizeSettings(
     normalizeProfile(merged, base);
     normalizeAnnouncement(merged);
     normalizeMusicPlayer(merged);
+    normalizeAiSettings(merged, base);
     const mergedRecord = merged as Record<string, unknown>;
     if (Object.prototype.hasOwnProperty.call(mergedRecord, "sakura")) {
         // 樱花特效已废弃：读取与保存时都主动收敛，避免历史配置继续透传。
