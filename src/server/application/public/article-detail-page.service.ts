@@ -2,6 +2,7 @@ import type { ArticleInteractionSnapshot } from "@/server/repositories/article/i
 import type { AuthorBundleItem } from "@/server/api/v1/shared/author-cache";
 import type { DetailPageCacheScope } from "@/server/application/public/detail-page-access.service";
 import type { DetailPageMode } from "@/server/application/public/detail-page-access.service";
+import type { AiSummaryJobStatus } from "@/types/app";
 import {
     DETAIL_PAGE_PRIVATE_CACHE_CONTROL,
     DETAIL_PAGE_PUBLIC_CACHE_CONTROL,
@@ -97,6 +98,9 @@ type LoadArticleDetailViewDataInput = {
         viewerId?: string | null,
     ) => Promise<AppProfileView | null>;
     renderArticleMarkdown: (bodyMarkdown: string) => Promise<string>;
+    loadLatestAiSummaryJob: (
+        articleId: string,
+    ) => Promise<{ status: AiSummaryJobStatus } | null>;
 };
 
 export type ArticleDetailViewData = {
@@ -107,7 +111,56 @@ export type ArticleDetailViewData = {
     encryptedBody: string;
     isEncryptedBody: boolean;
     isPubliclyVisible: boolean;
+    aiSummaryJobStatus: AiSummaryJobStatus | null;
+    showPendingAiSummarySkeleton: boolean;
 };
+
+function resolveAuthorProfilePromise(input: LoadArticleDetailViewDataInput) {
+    if (input.mode === "public") {
+        return input.loadPublicProfileByUserId(input.article.author_id);
+    }
+
+    return input.loadProfileForViewerByUserId(
+        input.article.author_id,
+        input.sessionUserId,
+    );
+}
+
+function resolveInteractionSnapshotPromise(
+    input: LoadArticleDetailViewDataInput,
+    isPubliclyVisible: boolean,
+) {
+    if (!isPubliclyVisible) {
+        return Promise.resolve({
+            likeCount: 0,
+            commentCount: 0,
+            viewerLiked: false,
+        } satisfies ArticleInteractionSnapshot);
+    }
+
+    return input.loadArticleInteractionSnapshot({
+        articleId: input.article.id,
+        viewerId: input.mode === "owner" ? input.sessionUserId : null,
+    });
+}
+
+function resolvePendingAiSummarySkeletonState(input: {
+    article: AppArticle;
+    isEncryptedBody: boolean;
+    latestAiSummaryJob: { status: AiSummaryJobStatus } | null;
+}): boolean {
+    const hasRenderedSummary = Boolean(
+        String(input.article.summary || "").trim(),
+    );
+
+    return (
+        !input.isEncryptedBody &&
+        input.article.ai_summary_enabled &&
+        !hasRenderedSummary &&
+        (input.latestAiSummaryJob?.status === "pending" ||
+            input.latestAiSummaryJob?.status === "processing")
+    );
+}
 
 export async function loadArticleDetailViewData(
     input: LoadArticleDetailViewDataInput,
@@ -119,33 +172,30 @@ export async function loadArticleDetailViewData(
         input.article.is_public === true;
 
     // 公开 SSR 只能读取公共快照；owner fallback 才允许读取 viewer-aware 资料。
-    const authorProfilePromise =
-        input.mode === "public"
-            ? input.loadPublicProfileByUserId(input.article.author_id)
-            : input.loadProfileForViewerByUserId(
-                  input.article.author_id,
-                  input.sessionUserId,
-              );
+    const authorProfilePromise = resolveAuthorProfilePromise(input);
 
-    const [authorMap, interaction, authorProfile, articleHtml] =
-        await Promise.all([
-            input.loadAuthorBundle(input.article.author_id),
-            isPubliclyVisible
-                ? input.loadArticleInteractionSnapshot({
-                      articleId: input.article.id,
-                      viewerId:
-                          input.mode === "owner" ? input.sessionUserId : null,
-                  })
-                : Promise.resolve({
-                      likeCount: 0,
-                      commentCount: 0,
-                      viewerLiked: false,
-                  } satisfies ArticleInteractionSnapshot),
-            authorProfilePromise,
-            isEncryptedBody
-                ? Promise.resolve("")
-                : input.renderArticleMarkdown(rawBodyMarkdown),
-        ]);
+    const [
+        authorMap,
+        interaction,
+        authorProfile,
+        articleHtml,
+        latestAiSummaryJob,
+    ] = await Promise.all([
+        input.loadAuthorBundle(input.article.author_id),
+        resolveInteractionSnapshotPromise(input, isPubliclyVisible),
+        authorProfilePromise,
+        isEncryptedBody
+            ? Promise.resolve("")
+            : input.renderArticleMarkdown(rawBodyMarkdown),
+        input.article.ai_summary_enabled
+            ? input.loadLatestAiSummaryJob(input.article.id)
+            : Promise.resolve(null),
+    ]);
+    const showPendingAiSummarySkeleton = resolvePendingAiSummarySkeletonState({
+        article: input.article,
+        isEncryptedBody,
+        latestAiSummaryJob,
+    });
 
     return {
         authorMap,
@@ -155,5 +205,7 @@ export async function loadArticleDetailViewData(
         encryptedBody: isEncryptedBody ? rawBodyMarkdown.trim() : "",
         isEncryptedBody,
         isPubliclyVisible,
+        aiSummaryJobStatus: latestAiSummaryJob?.status ?? null,
+        showPendingAiSummarySkeleton,
     };
 }

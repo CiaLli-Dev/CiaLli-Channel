@@ -14,6 +14,7 @@
     "ai-summary:worker": "tsx src/worker/ai-summary/server.ts",
     "docker:build": "docker compose build",
     "docker:up": "pnpm check:env && docker compose up -d",
+    "docker:up:prod": "pnpm check:env && docker compose -f docker-compose.yml up -d",
     "docker:down": "docker compose down",
     "directus:schema:snapshot": "bash scripts/directus/schema-snapshot.sh",
     "directus:schema:apply": "bash scripts/directus/schema-apply.sh",

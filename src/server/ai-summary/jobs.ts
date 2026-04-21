@@ -6,16 +6,27 @@ import type {
 } from "@/types/app";
 import type { JsonObject } from "@/types/json";
 import { createOne, readMany, updateOne } from "@/server/directus/client";
+import { getResolvedSiteSettings } from "@/server/site-settings/service";
 
 import { buildSummaryContentHash, buildSummaryJobDedupeKey } from "./hash";
-import { AI_SUMMARY_PROMPT_VERSION } from "./prompts";
 import type { DecryptedAiSettings } from "./config";
+import { resolveAiSummaryPromptVersion } from "./prompts";
 
 export type EnqueueSummaryJobResult = {
     jobId: string | null;
     status: "pending" | "skipped";
     reason?: string;
 };
+
+export type ArticleAiSummaryJobSnapshot = Pick<
+    AppAiSummaryJob,
+    | "id"
+    | "status"
+    | "error_message"
+    | "date_created"
+    | "started_at"
+    | "finished_at"
+>;
 
 const SUMMARY_JOB_FIELDS = [
     "id",
@@ -131,14 +142,21 @@ export async function enqueueArticleSummaryJob(input: {
     }
 
     const targetLength = input.targetLength ?? "medium";
+    const siteSettings = await getResolvedSiteSettings();
+    const promptVersion = resolveAiSummaryPromptVersion(
+        siteSettings.system.lang,
+    );
     const contentHash = buildSummaryContentHash({
         title: article.title,
         bodyMarkdown: article.body_markdown,
     });
+    // 摘要新鲜度不仅取决于正文内容，也取决于当前站点语言。
+    // 站点语言切换后，即使正文哈希不变，也需要重新生成对应语言的摘要。
     if (
         !input.force &&
         article.summary_source === "ai" &&
-        article.summary_content_hash === contentHash
+        article.summary_content_hash === contentHash &&
+        article.summary_prompt_version === promptVersion
     ) {
         return buildSkip("ai_summary_fresh");
     }
@@ -146,7 +164,7 @@ export async function enqueueArticleSummaryJob(input: {
     const dedupeKey = buildSummaryJobDedupeKey({
         articleId: article.id,
         contentHash,
-        promptVersion: AI_SUMMARY_PROMPT_VERSION,
+        promptVersion,
         targetLength,
     });
     const existing = await readExistingJob(dedupeKey);
@@ -164,7 +182,7 @@ export async function enqueueArticleSummaryJob(input: {
             priority: input.kind === "manual" ? 10 : 0,
             dedupe_key: dedupeKey,
             content_hash: contentHash,
-            prompt_version: AI_SUMMARY_PROMPT_VERSION,
+            prompt_version: promptVersion,
             provider: "openai-compatible",
             model: input.settings.model,
             target_length: targetLength,
@@ -186,6 +204,26 @@ export async function readPendingSummaryJobs(limit: number): Promise<string[]> {
         fields: ["id"],
     });
     return rows.map((row) => row.id);
+}
+
+export async function readLatestArticleSummaryJob(
+    articleId: string,
+): Promise<ArticleAiSummaryJobSnapshot | null> {
+    const rows = await readMany("app_ai_summary_jobs", {
+        filter: { article_id: { _eq: articleId } } as JsonObject,
+        sort: ["-date_created"],
+        limit: 1,
+        fields: [
+            "id",
+            "status",
+            "error_message",
+            "date_created",
+            "started_at",
+            "finished_at",
+        ],
+    });
+
+    return rows[0] ?? null;
 }
 
 export async function recoverStuckSummaryJobs(

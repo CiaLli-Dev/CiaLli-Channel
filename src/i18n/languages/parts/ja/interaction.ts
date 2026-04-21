@@ -70,6 +70,16 @@ export const jaInteraction: Record<string, string> = {
     [Key.interactionCommonZoomIn]: "拡大",
     [Key.interactionCommonZoomOut]: "縮小",
     [Key.interactionCommonReset]: "リセット",
+    [Key.interactionArticleAiSummaryTitle]: "AI 要約",
+    [Key.interactionArticleAiSummaryGenerating]: "生成中",
+    [Key.interactionArticleAiSummaryQueued]: "待機中",
+    [Key.interactionArticleAiSummaryFailed]: "失敗",
+    [Key.interactionArticleAiSummaryGeneratingHint]:
+        "AI が要約を生成しています...",
+    [Key.interactionArticleAiSummaryQueuedHint]:
+        "AI 要約タスクを作成しました。現在キューで待機しています...",
+    [Key.interactionArticleAiSummaryFailedHint]:
+        "AI 要約を表示できません。しばらくしてから再読み込みしてください。",
     [Key.interactionDialogAuthRequiredTitle]: "ログインが必要です",
     [Key.interactionDialogAuthRequiredMessage]:
         "この機能を使うにはログインが必要です。",

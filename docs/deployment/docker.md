@@ -53,11 +53,28 @@ pnpm check:env
 CHECK_ENV_STRICT=1 pnpm check:env
 ```
 
-## 启动
+## 本地热更新启动
 
 ```bash
 pnpm docker:build
 pnpm docker:up
+```
+
+仓库提供 [docker-compose.override.yml](/Users/uednd/code/CiaLli-Channel/docker-compose.override.yml) 作为本地开发覆盖配置。使用默认 `docker compose up` 时，`web` 会以 `pnpm dev` 运行并挂载源码，`worker` 会以 `tsx watch` 运行，代码改动会自动热更新或重启。
+
+## 生产启动
+
+生产环境需要显式绕过本地 override，只加载主 [docker-compose.yml](/Users/uednd/code/CiaLli-Channel/docker-compose.yml)：
+
+```bash
+pnpm docker:build
+pnpm docker:up:prod
+```
+
+等价的原生命令是：
+
+```bash
+docker compose -f docker-compose.yml up -d
 ```
 
 首次启动会自动完成：

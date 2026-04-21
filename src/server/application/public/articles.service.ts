@@ -21,6 +21,7 @@ import {
     readMany,
     runWithDirectusServiceAccess,
 } from "@/server/directus/client";
+import { readLatestArticleSummaryJob } from "@/server/ai-summary/jobs";
 import {
     buildArticleFeedEntry,
     normalizeIdentity,
@@ -491,19 +492,30 @@ async function handleArticleList(context: APIContext): Promise<Response> {
     return ok(result);
 }
 
-async function handleArticleDetail(segments: string[]): Promise<Response> {
+function shouldBypassArticleDetailCache(url: URL): boolean {
+    return url.searchParams.get("bypass_cache") === "1";
+}
+
+async function handleArticleDetail(
+    context: APIContext,
+    segments: string[],
+): Promise<Response> {
     const articleId = parseRouteId(segments[2]);
     if (!articleId) {
         return fail("缺少文章 ID", 400);
     }
 
+    const bypassCache = shouldBypassArticleDetailCache(context.url);
+
     return await runWithDirectusServiceAccess(async () => {
-        const cached = await cacheManager.get<unknown>(
-            "article-detail",
-            articleId,
-        );
-        if (cached) {
-            return ok(cached);
+        if (!bypassCache) {
+            const cached = await cacheManager.get<unknown>(
+                "article-detail",
+                articleId,
+            );
+            if (cached) {
+                return ok(cached);
+            }
         }
 
         const articleById = await loadPublicArticleById(articleId);
@@ -516,15 +528,30 @@ async function handleArticleDetail(segments: string[]): Promise<Response> {
             return fail("文章不存在", 404);
         }
         const authorMap = await getAuthorBundle([article.author_id]);
+        const latestAiSummaryJob = article.ai_summary_enabled
+            ? await readLatestArticleSummaryJob(article.id)
+            : null;
         const result = {
             item: {
                 ...article,
                 tags: safeCsv(article.tags),
                 author: readAuthor(authorMap, article.author_id),
+                ai_summary_status: latestAiSummaryJob?.status ?? null,
             },
         };
-        void cacheManager.set("article-detail", articleId, result);
-        return ok(result);
+        if (!bypassCache) {
+            void cacheManager.set("article-detail", articleId, result);
+        }
+        return ok(
+            result,
+            bypassCache
+                ? {
+                      headers: {
+                          "Cache-Control": "private, no-store",
+                      },
+                  }
+                : undefined,
+        );
     });
 }
 
@@ -541,7 +568,7 @@ export async function handlePublicArticlesRoute(
     }
 
     if (segments.length === 3) {
-        return await handleArticleDetail(segments);
+        return await handleArticleDetail(context, segments);
     }
 
     return fail("未找到接口", 404);

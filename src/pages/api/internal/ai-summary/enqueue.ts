@@ -2,9 +2,8 @@ import type { APIContext } from "astro";
 
 import { fail, ok } from "@/server/api/response";
 import { parseJsonBody } from "@/server/api/utils";
-import { loadDecryptedAiSettings } from "@/server/ai-summary/config";
+import { enqueueAndTriggerArticleSummaryJob } from "@/server/ai-summary/dispatch";
 import { assertInternalAiSummaryRequest } from "@/server/ai-summary/internal-auth";
-import { enqueueArticleSummaryJob } from "@/server/ai-summary/jobs";
 import { runWithDirectusServiceAccess } from "@/server/directus/client";
 
 function readArticleId(body: unknown): string {
@@ -26,9 +25,8 @@ export async function POST(context: APIContext): Promise<Response> {
     }
 
     const result = await runWithDirectusServiceAccess(async () =>
-        enqueueArticleSummaryJob({
+        enqueueAndTriggerArticleSummaryJob({
             articleId,
-            settings: await loadDecryptedAiSettings(),
             kind: "on_publish",
             force:
                 typeof body === "object" &&

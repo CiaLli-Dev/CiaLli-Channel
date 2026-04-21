@@ -63,6 +63,15 @@ export const zhCNInteraction: Record<string, string> = {
     [Key.interactionCommonZoomIn]: "放大",
     [Key.interactionCommonZoomOut]: "缩小",
     [Key.interactionCommonReset]: "重置",
+    [Key.interactionArticleAiSummaryTitle]: "AI 摘要",
+    [Key.interactionArticleAiSummaryGenerating]: "生成中",
+    [Key.interactionArticleAiSummaryQueued]: "排队中",
+    [Key.interactionArticleAiSummaryFailed]: "生成失败",
+    [Key.interactionArticleAiSummaryGeneratingHint]: "AI 正在生成摘要...",
+    [Key.interactionArticleAiSummaryQueuedHint]:
+        "AI 摘要任务已创建，正在排队处理中...",
+    [Key.interactionArticleAiSummaryFailedHint]:
+        "AI 摘要暂时不可用，请稍后刷新重试。",
     [Key.interactionDialogAuthRequiredTitle]: "登录提示",
     [Key.interactionDialogAuthRequiredMessage]: "登录后才能使用该功能。",
     [Key.interactionDialogGoLogin]: "前往登录",

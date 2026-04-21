@@ -64,6 +64,15 @@ export const zhTWInteraction: Record<string, string> = {
     [Key.interactionCommonZoomIn]: "放大",
     [Key.interactionCommonZoomOut]: "縮小",
     [Key.interactionCommonReset]: "重設",
+    [Key.interactionArticleAiSummaryTitle]: "AI 摘要",
+    [Key.interactionArticleAiSummaryGenerating]: "生成中",
+    [Key.interactionArticleAiSummaryQueued]: "排隊中",
+    [Key.interactionArticleAiSummaryFailed]: "生成失敗",
+    [Key.interactionArticleAiSummaryGeneratingHint]: "AI 正在生成摘要...",
+    [Key.interactionArticleAiSummaryQueuedHint]:
+        "AI 摘要任務已建立，正在排隊處理中...",
+    [Key.interactionArticleAiSummaryFailedHint]:
+        "AI 摘要暫時不可用，請稍後重新整理再試。",
     [Key.interactionDialogAuthRequiredTitle]: "登入提示",
     [Key.interactionDialogAuthRequiredMessage]: "登入後才能使用此功能。",
     [Key.interactionDialogGoLogin]: "前往登入",

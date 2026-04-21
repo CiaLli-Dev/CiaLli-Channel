@@ -68,6 +68,16 @@ export const enInteraction: Record<string, string> = {
     [Key.interactionCommonZoomIn]: "Zoom in",
     [Key.interactionCommonZoomOut]: "Zoom out",
     [Key.interactionCommonReset]: "Reset",
+    [Key.interactionArticleAiSummaryTitle]: "AI Summary",
+    [Key.interactionArticleAiSummaryGenerating]: "Generating",
+    [Key.interactionArticleAiSummaryQueued]: "Queued",
+    [Key.interactionArticleAiSummaryFailed]: "Failed",
+    [Key.interactionArticleAiSummaryGeneratingHint]:
+        "AI is generating the summary...",
+    [Key.interactionArticleAiSummaryQueuedHint]:
+        "The AI summary job has been created and is waiting to be processed...",
+    [Key.interactionArticleAiSummaryFailedHint]:
+        "The AI summary is temporarily unavailable. Please refresh and try again later.",
     [Key.interactionDialogAuthRequiredTitle]: "Login required",
     [Key.interactionDialogAuthRequiredMessage]:
         "You need to log in before using this feature.",

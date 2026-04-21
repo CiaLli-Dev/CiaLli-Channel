@@ -18,6 +18,7 @@ import type {
 } from "@/server/api/schemas";
 import { parseJsonBody, parsePagination } from "@/server/api/utils";
 import { validateBody } from "@/server/api/validate";
+import { enqueueAndTriggerArticleSummaryJob } from "@/server/ai-summary/dispatch";
 import { awaitCacheInvalidations } from "@/server/cache/invalidation";
 import { cacheManager } from "@/server/cache/manager";
 import {
@@ -101,6 +102,20 @@ function resolveArticleAssetVisibility(
     return normalizeArticleStatus(status) === "published" && Boolean(isPublic)
         ? "public"
         : "private";
+}
+
+async function queuePublishedArticleAiSummary(
+    articleId: string,
+): Promise<void> {
+    try {
+        await enqueueAndTriggerArticleSummaryJob({
+            articleId,
+            kind: "on_publish",
+        });
+    } catch (error) {
+        // AI 总结属于发布后的异步增强能力；即使调度失败，也不能反向阻断文章发布。
+        console.error("[me/articles] failed to queue AI summary job", error);
+    }
 }
 
 function applyArticleSummaryFields(
@@ -344,6 +359,7 @@ async function handleArticlesCreate(
         ],
         { label: "me/articles#create" },
     );
+    void queuePublishedArticleAiSummary(created.id);
     return ok({ item: { ...created, tags: safeCsv(created?.tags) } });
 }
 
@@ -801,6 +817,9 @@ async function handleArticlePatch(
         ],
         { label: "me/articles#patch" },
     );
+    if (nextStatus === "published") {
+        void queuePublishedArticleAiSummary(updated.id);
+    }
     return ok({ item: { ...updated, tags: safeCsv(updated.tags) } });
 }
 

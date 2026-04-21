@@ -3,13 +3,20 @@ import type { JsonObject } from "@/types/json";
 import { awaitCacheInvalidations } from "@/server/cache/invalidation";
 import { cacheManager } from "@/server/cache/manager";
 import { readMany, updateOne } from "@/server/directus/client";
+import { getResolvedSiteSettings } from "@/server/site-settings/service";
 
 import type { DecryptedAiSettings } from "./config";
-import { classifyAiSummaryError, buildRetryDelayMs } from "./errors";
+import {
+    AiSummaryError,
+    classifyAiSummaryError,
+    buildRetryDelayMs,
+} from "./errors";
 import { buildSummaryContentHash } from "./hash";
 import {
     buildChunkSummaryMessages,
     buildFinalSummaryMessages,
+    normalizeAiSummaryText,
+    resolveAiSummaryPromptVersion,
 } from "./prompts";
 import { callOpenAICompatibleChatCompletion } from "./provider";
 import { splitMarkdownForSummary } from "./splitter";
@@ -106,6 +113,7 @@ async function markJobSkipped(
 async function generateSummary(input: {
     article: AppArticle;
     settings: DecryptedAiSettings;
+    language: string;
     fetch?: typeof fetch;
 }): Promise<{
     summary: string;
@@ -122,6 +130,7 @@ async function generateSummary(input: {
             apiKey: input.settings.apiKey || "",
             model: input.settings.model,
             messages: buildChunkSummaryMessages({
+                language: input.language,
                 title: input.article.title,
                 chunk: chunks[index] ?? "",
                 chunkIndex: index,
@@ -132,7 +141,7 @@ async function generateSummary(input: {
         chunkSummaries.push(chunkSummary);
     }
 
-    const summary =
+    const rawSummary =
         chunkSummaries.length === 1
             ? (chunkSummaries[0] ?? "")
             : await callOpenAICompatibleChatCompletion({
@@ -141,14 +150,21 @@ async function generateSummary(input: {
                   apiKey: input.settings.apiKey || "",
                   model: input.settings.model,
                   messages: buildFinalSummaryMessages({
+                      language: input.language,
                       title: input.article.title,
                       chunkSummaries,
                   }),
                   maxTokens: 300,
               });
+    const summary = normalizeAiSummaryText(rawSummary);
+    if (!summary) {
+        throw new AiSummaryError("PROVIDER_BAD_RESPONSE", "AI 摘要内容为空", {
+            retryable: true,
+        });
+    }
 
     return {
-        summary: summary.trim(),
+        summary,
         inputChars: input.article.body_markdown.length,
         chunkCount: chunks.length,
         outputChars: summary.length,
@@ -209,6 +225,10 @@ export async function runAiSummaryJob(
         if (!article) {
             return await markJobSkipped(job, "article_not_found", now);
         }
+        const siteSettings = await getResolvedSiteSettings();
+        const promptVersion = resolveAiSummaryPromptVersion(
+            siteSettings.system.lang,
+        );
         if (
             article.status !== "published" ||
             !article.ai_summary_enabled ||
@@ -223,6 +243,7 @@ export async function runAiSummaryJob(
         const generated = await generateSummary({
             article,
             settings: input.settings,
+            language: siteSettings.system.lang,
             fetch: input.fetch,
         });
         const contentHash = buildSummaryContentHash({
@@ -238,7 +259,7 @@ export async function runAiSummaryJob(
                 summary_source: "ai",
                 summary_generated_at: now.toISOString(),
                 summary_model: input.settings.model,
-                summary_prompt_version: job.prompt_version,
+                summary_prompt_version: promptVersion,
                 summary_content_hash: contentHash,
                 summary_error: null,
             },

@@ -1,6 +1,12 @@
+import type { APIContext } from "astro";
 import { describe, it, expect } from "vitest";
 
-import { isWriteMethod, parseSegments } from "@/server/api/v1/shared/routing";
+import { createMockAPIContext } from "@/__tests__/helpers/mock-api-context";
+import {
+    assertSameOrigin,
+    isWriteMethod,
+    parseSegments,
+} from "@/server/api/v1/shared/routing";
 
 describe("isWriteMethod", () => {
     it("POST → true", () => {
@@ -21,9 +27,10 @@ describe("isWriteMethod", () => {
 });
 
 describe("parseSegments", () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    function makeContext(segments?: string): any {
-        return { params: { segments } };
+    function makeContext(segments?: string): APIContext {
+        return {
+            params: { segments },
+        } as unknown as APIContext;
     }
 
     it("undefined → []", () => {
@@ -44,5 +51,47 @@ describe("parseSegments", () => {
     });
     it("尾斜杠", () => {
         expect(parseSegments(makeContext("a/b/"))).toEqual(["a", "b"]);
+    });
+});
+
+describe("assertSameOrigin", () => {
+    it("接受与内部请求 origin 一致的来源", () => {
+        const context = createMockAPIContext({
+            method: "POST",
+            url: "http://web:4321/api/v1/me/articles",
+            headers: { origin: "http://web:4321" },
+        });
+
+        expect(assertSameOrigin(context as unknown as APIContext)).toBeNull();
+    });
+
+    it("接受反向代理透传的外部来源", () => {
+        const context = createMockAPIContext({
+            method: "POST",
+            url: "http://web:4321/api/v1/me/articles",
+            headers: {
+                origin: "https://localhost",
+                "x-forwarded-host": "localhost",
+                "x-forwarded-proto": "https",
+            },
+        });
+
+        expect(assertSameOrigin(context as unknown as APIContext)).toBeNull();
+    });
+
+    it("拒绝未知来源", async () => {
+        const context = createMockAPIContext({
+            method: "POST",
+            url: "http://web:4321/api/v1/me/articles",
+            headers: {
+                origin: "https://evil.example",
+                "x-forwarded-host": "localhost",
+                "x-forwarded-proto": "https",
+            },
+        });
+
+        const response = assertSameOrigin(context as unknown as APIContext);
+        expect(response?.status).toBe(403);
+        await expect(response?.text()).resolves.toContain("非法来源请求");
     });
 });
