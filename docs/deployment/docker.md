@@ -185,25 +185,6 @@ pnpm docker:data:import backups/docker-data-20260422-153000.zip --no-backup
 - `--no-backup` 会直接覆盖当前数据，不会生成导入前备份，无法由脚本提供回滚包
 - 如果覆盖过程中失败，脚本会输出导入前备份路径；确认原因后可用该备份 zip 手动回滚
 
-## 历史文件迁移
-
-本仓库提供一次性迁移脚本，将 `directus_files.storage='local'` 的历史文件迁移到对象存储：
-
-```bash
-pnpm files:migrate:local-to-s3:dry-run
-pnpm files:migrate:local-to-s3
-```
-
-迁移脚本会自动：
-
-- 备份本地数据库
-- 备份当前 uploads volume
-- 上传历史文件到 MinIO
-- 成功后把 `directus_files.storage` 更新为 `s3`
-- 写出 JSON 迁移报告与回滚 SQL
-
-迁移完成并验证无误后，运行时配置应收敛为仅 `s3`。
-
 ## 校验仓库种子
 
 仓库内置演示 seed 可用以下命令校验：
