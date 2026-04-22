@@ -59,6 +59,7 @@ import {
     type PreviewHelpers,
     makePreviewHelpers,
 } from "@/scripts/publish/page-preview";
+import { syncArticleSummaryInputForAiMode } from "@/scripts/publish/summary-mode";
 import { makeUiHelpers } from "@/scripts/publish/page-ui";
 import { setupUnsavedChangesGuard } from "@/scripts/shared/unsaved-changes-guard";
 import { setupPageInit } from "@/utils/page-init";
@@ -161,12 +162,15 @@ async function fillArticleForm(
     updateTitleHint: () => void,
     item: Record<string, unknown>,
 ): Promise<boolean> {
+    const aiSummaryEnabled = toBooleanValue(item.ai_summary_enabled, false);
+    const summarySource = toStringValue(item.summary_source);
     dom.articleTitleInput.value = toStringValue(item.title);
-    dom.articleSummaryInput.value = toStringValue(item.summary);
-    dom.articleAiSummaryEnabledInput.checked = toBooleanValue(
-        item.ai_summary_enabled,
-        false,
-    );
+    dom.articleSummaryInput.value =
+        aiSummaryEnabled && summarySource !== "ai"
+            ? ""
+            : toStringValue(item.summary);
+    dom.articleAiSummaryEnabledInput.checked = aiSummaryEnabled;
+    syncArticleSummaryInputForAiMode(dom, { clearWhenEnabled: false });
     const rawBodyMarkdown = toStringValue(item.body_markdown);
     const isEncryptedBody = isProtectedContentBody(rawBodyMarkdown);
     let unlockedEncryptedBody = false;
@@ -251,6 +255,10 @@ function bindEditorEvents(ctx: PageContext): void {
 
     dom.articleEncryptEnabledInput.addEventListener("change", () => {
         ui.updateEncryptPanel();
+    });
+
+    dom.articleAiSummaryEnabledInput.addEventListener("change", () => {
+        syncArticleSummaryInputForAiMode(dom, { clearWhenEnabled: true });
     });
 
     editor.onInput(() => {
@@ -837,6 +845,7 @@ async function initPublishPageCore(): Promise<void> {
         dom.articleTitleInput.value = "";
         dom.articleSummaryInput.value = "";
         dom.articleAiSummaryEnabledInput.checked = false;
+        syncArticleSummaryInputForAiMode(dom, { clearWhenEnabled: false });
         editor.setValue("");
         dom.articleBodyInput.placeholder = DEFAULT_BODY_PLACEHOLDER;
         dom.articleCoverUrlInput.value = "";

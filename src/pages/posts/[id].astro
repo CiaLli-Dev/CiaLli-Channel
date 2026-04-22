@@ -304,16 +304,21 @@ const articleSharePayload: SharePosterPayload | undefined =
 const hasReadyAiSummary = Boolean(
   article?.summary && article.summary_source === "ai",
 );
-const isAiSummaryGenerating =
-  articleAiSummaryJobStatus === "pending" ||
-  articleAiSummaryJobStatus === "processing";
+const hasStaticSummaryCard = Boolean(
+  article?.summary &&
+  (article.summary_source === "manual" || article.summary_source === "ai"),
+);
 const shouldRenderAiSummaryCard =
-  showPendingAiSummarySkeleton || hasReadyAiSummary;
+  showPendingAiSummarySkeleton || hasStaticSummaryCard;
 const articleAiSummaryInitialStatus =
   articleAiSummaryJobStatus || (hasReadyAiSummary ? "succeeded" : null);
 const articleAiSummaryPollUrl = article
   ? `/api/v1/public/articles/${encodeURIComponent(article.id)}?bypass_cache=1`
   : "";
+const summaryCardTitle =
+  article?.summary_source === "ai"
+    ? i18n(I18nKey.interactionArticleAiSummaryTitle)
+    : i18n(I18nKey.interactionArticleSummaryTitle);
 ---
 
 <MainGridLayout
@@ -397,9 +402,6 @@ const articleAiSummaryPollUrl = article
                   </span>
                 )}
               </div>
-              {article.summary && article.summary_source !== "ai" && (
-                <p class="text-base text-75">{article.summary}</p>
-              )}
               {article.tags.length > 0 && (
                 <div class="flex flex-wrap gap-2">
                   {article.tags.map((tag) => (
@@ -469,7 +471,7 @@ const articleAiSummaryPollUrl = article
                   >
                     <aside
                       class:list={[
-                        "article-ai-summary-card article-ai-summary-card--pending rounded-2xl p-[1px]",
+                        "article-ai-summary-card article-ai-summary-card--pending article-ai-summary-card--marquee rounded-2xl p-[1px]",
                         {
                           hidden: !showPendingAiSummarySkeleton,
                         },
@@ -534,20 +536,22 @@ const articleAiSummaryPollUrl = article
                       class:list={[
                         "article-ai-summary-card article-ai-summary-card--ready rounded-2xl p-[1px]",
                         {
-                          hidden: !hasReadyAiSummary || isAiSummaryGenerating,
+                          hidden:
+                            !hasStaticSummaryCard ||
+                            showPendingAiSummarySkeleton,
                         },
                       ]}
                       data-ai-summary-final-card
                     >
                       <div class="article-ai-summary-panel rounded-[calc(var(--radius-large)-1px)] px-5 py-4">
                         <p class="article-ai-summary-title text-xs font-semibold uppercase tracking-[0.18em] mb-2">
-                          {i18n(I18nKey.interactionArticleAiSummaryTitle)}
+                          {summaryCardTitle}
                         </p>
                         <p
                           class="article-ai-summary-body text-base leading-7"
                           data-ai-summary-final-text
                         >
-                          {hasReadyAiSummary ? article?.summary : ""}
+                          {hasStaticSummaryCard ? article?.summary : ""}
                         </p>
                       </div>
                     </aside>
@@ -655,6 +659,16 @@ const articleAiSummaryPollUrl = article
 
 <style>
   .article-ai-summary-card {
+    --article-ai-summary-rainbow: conic-gradient(
+      from 0turn,
+      #ff4d6d 0%,
+      #ff9f1c 16%,
+      #ffe66d 32%,
+      #2ec4b6 48%,
+      #3a86ff 64%,
+      #8338ec 80%,
+      #ff4d6d 100%
+    );
     --article-ai-summary-border: color-mix(
       in srgb,
       var(--primary) 58%,
@@ -667,11 +681,15 @@ const articleAiSummaryPollUrl = article
     );
     --article-ai-summary-title-color: rgba(0, 0, 0, 0.6);
     --article-ai-summary-body-color: rgba(0, 0, 0, 0.88);
+    position: relative;
+    overflow: hidden;
     background: var(--article-ai-summary-border);
     box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
   }
 
   .article-ai-summary-panel {
+    position: relative;
+    z-index: 1;
     background: var(--article-ai-summary-surface);
   }
 
@@ -692,22 +710,28 @@ const articleAiSummaryPollUrl = article
     width: var(--ai-summary-line-width, 100%);
     height: 0.9rem;
     border-radius: 999px;
-    background:
-      linear-gradient(
-        90deg,
-        color-mix(in srgb, var(--primary) 10%, transparent) 0%,
-        color-mix(in srgb, white 26%, var(--primary) 14%) 18%,
-        color-mix(in srgb, var(--primary) 10%, transparent) 36%
-      ),
-      linear-gradient(
-        135deg,
-        color-mix(in srgb, var(--primary) 18%, var(--card-bg) 82%),
-        color-mix(in srgb, var(--line-divider) 22%, var(--card-bg) 78%)
-      );
-    background-size:
-      220% 100%,
-      100% 100%;
-    animation: article-ai-summary-shimmer 1.8s ease-in-out infinite;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--primary) 18%, var(--card-bg) 82%),
+      color-mix(in srgb, var(--line-divider) 22%, var(--card-bg) 78%)
+    );
+  }
+
+  .article-ai-summary-skeleton-line::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 58%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, white 36%, var(--primary) 18%),
+      transparent
+    );
+    transform: translateX(-120%);
+    animation: article-ai-summary-shimmer 3.4s ease-in-out infinite;
   }
 
   .article-ai-summary-status-pill {
@@ -742,6 +766,18 @@ const articleAiSummaryPollUrl = article
       0 0 0 1px color-mix(in srgb, var(--primary) 16%, transparent);
   }
 
+  .article-ai-summary-card--marquee:not([data-ai-summary-terminal]) {
+    background: transparent;
+  }
+
+  .article-ai-summary-card--marquee:not([data-ai-summary-terminal])::before {
+    content: "";
+    position: absolute;
+    inset: -80%;
+    background: var(--article-ai-summary-rainbow);
+    animation: article-ai-summary-card-marquee 5.8s linear infinite;
+  }
+
   .article-ai-summary-card--pending[data-ai-summary-terminal="failed"],
   .article-ai-summary-card--pending[data-ai-summary-terminal="timeout"] {
     --article-ai-summary-border: color-mix(
@@ -760,20 +796,31 @@ const articleAiSummaryPollUrl = article
     .article-ai-summary-skeleton-line,
   .article-ai-summary-card--pending[data-ai-summary-terminal="timeout"]
     .article-ai-summary-skeleton-line {
-    animation: none;
     opacity: 0.38;
+  }
+
+  .article-ai-summary-card--pending[data-ai-summary-terminal="failed"]
+    .article-ai-summary-skeleton-line::after,
+  .article-ai-summary-card--pending[data-ai-summary-terminal="timeout"]
+    .article-ai-summary-skeleton-line::after {
+    animation: none;
   }
 
   @keyframes article-ai-summary-shimmer {
     0% {
-      background-position:
-        100% 50%,
-        0% 0%;
+      transform: translateX(-120%);
     }
     100% {
-      background-position:
-        -100% 50%,
-        0% 0%;
+      transform: translateX(220%);
+    }
+  }
+
+  @keyframes article-ai-summary-card-marquee {
+    0% {
+      transform: rotate(0turn);
+    }
+    100% {
+      transform: rotate(1turn);
     }
   }
 
@@ -803,7 +850,8 @@ const articleAiSummaryPollUrl = article
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .article-ai-summary-skeleton-line,
+    .article-ai-summary-card--marquee::before,
+    .article-ai-summary-skeleton-line::after,
     .article-ai-summary-status-pill::before {
       animation: none;
     }

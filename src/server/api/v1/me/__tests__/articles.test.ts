@@ -442,7 +442,9 @@ describe("PATCH /me/articles/:id", () => {
         expect(res.status).toBe(200);
         expect(mockedUpdateOne).toHaveBeenCalledTimes(1);
     });
+});
 
+describe("PATCH /me/articles/:id AI summary", () => {
     it("编辑已发布文章并开启 AI 总结时会尝试排队", async () => {
         mockedReadMany.mockResolvedValue([
             mockArticle({
@@ -483,6 +485,60 @@ describe("PATCH /me/articles/:id", () => {
         );
 
         expect(res.status).toBe(200);
+        expect(mockedEnqueueAndTriggerArticleSummaryJob).toHaveBeenCalledWith({
+            articleId: "article-1",
+            kind: "on_publish",
+        });
+    });
+
+    it("开启 AI 总结并提交空摘要时会解除手写摘要锁定并排队", async () => {
+        mockedReadMany.mockResolvedValue([
+            mockArticle({
+                id: "article-1",
+                author_id: "user-1",
+                short_id: "post-short",
+                status: "published",
+                title: "Published Title",
+                body_markdown: "# Body",
+                summary: "作者手写摘要",
+                summary_source: "manual",
+                ai_summary_enabled: false,
+            }),
+        ]);
+        mockedUpdateOne.mockResolvedValue(
+            mockArticle({
+                id: "article-1",
+                author_id: "user-1",
+                short_id: "post-short",
+                status: "published",
+                title: "Published Title",
+                body_markdown: "# Body",
+                summary: null,
+                summary_source: "none",
+                ai_summary_enabled: true,
+            }),
+        );
+
+        const ctx = createMockAPIContext({
+            method: "PATCH",
+            url: "http://localhost:4321/api/v1/me/articles/article-1",
+            body: {
+                summary: null,
+                ai_summary_enabled: true,
+            },
+        });
+        const access = createMemberAccess();
+
+        const res = await handleMeArticles(
+            ctx as unknown as APIContext,
+            access,
+            ["articles", "article-1"],
+        );
+
+        expect(res.status).toBe(200);
+        const payload = readLastArticleUpdatePayload();
+        expect(payload.summary).toBeNull();
+        expect(payload.summary_source).toBe("none");
         expect(mockedEnqueueAndTriggerArticleSummaryJob).toHaveBeenCalledWith({
             articleId: "article-1",
             kind: "on_publish",
@@ -622,7 +678,9 @@ describe("PATCH /me/articles/:id", () => {
         expect(payload.summary_source).toBe("manual");
         expect(payload.summary_generated_at).toBeNull();
     });
+});
 
+describe("PATCH /me/articles/:id publish validation and file cleanup", () => {
     it("draft 发布时若标题正文不完整则失败", async () => {
         mockedReadMany.mockResolvedValue([
             mockArticle({

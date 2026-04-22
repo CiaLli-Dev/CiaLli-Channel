@@ -156,7 +156,7 @@ describe("article-detail-page.service", () => {
         expect(result.showPendingAiSummarySkeleton).toBe(false);
     });
 
-    it("手写摘要存在时，即使 AI 开关开启也不会凭空展示生成骨架", async () => {
+    it("手写摘要存在时，即使 AI 任务 pending 也不会展示生成骨架", async () => {
         const result = await loadArticleDetailViewData({
             article: createArticle({
                 summary: "人工摘要",
@@ -175,11 +175,11 @@ describe("article-detail-page.service", () => {
             loadProfileForViewerByUserId: vi.fn().mockResolvedValue(null),
             renderArticleMarkdown: vi.fn().mockResolvedValue("<p>body</p>"),
             loadLatestAiSummaryJob: vi.fn().mockResolvedValue({
-                status: "failed",
+                status: "pending",
             }),
         });
 
-        expect(result.aiSummaryJobStatus).toBe("failed");
+        expect(result.aiSummaryJobStatus).toBe("pending");
         expect(result.showPendingAiSummarySkeleton).toBe(false);
     });
 });

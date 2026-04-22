@@ -61,6 +61,7 @@ export enum InteractionKey {
     interactionCommonZoomIn = "interactionCommonZoomIn",
     interactionCommonZoomOut = "interactionCommonZoomOut",
     interactionCommonReset = "interactionCommonReset",
+    interactionArticleSummaryTitle = "interactionArticleSummaryTitle",
     interactionArticleAiSummaryTitle = "interactionArticleAiSummaryTitle",
     interactionArticleAiSummaryGenerating = "interactionArticleAiSummaryGenerating",
     interactionArticleAiSummaryQueued = "interactionArticleAiSummaryQueued",

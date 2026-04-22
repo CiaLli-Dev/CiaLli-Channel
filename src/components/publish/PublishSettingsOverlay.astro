@@ -219,3 +219,14 @@ import { i18n } from "@i18n/translation";
     </div>
   </div>
 </div>
+
+<style>
+  .publish-article-summary--ai-locked {
+    background: color-mix(in srgb, var(--line-divider) 18%, transparent);
+    color: rgba(0, 0, 0, 0.48);
+  }
+
+  :global(:root.dark) .publish-article-summary--ai-locked {
+    color: rgba(255, 255, 255, 0.5);
+  }
+</style>

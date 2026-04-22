@@ -70,6 +70,7 @@ export const jaInteraction: Record<string, string> = {
     [Key.interactionCommonZoomIn]: "拡大",
     [Key.interactionCommonZoomOut]: "縮小",
     [Key.interactionCommonReset]: "リセット",
+    [Key.interactionArticleSummaryTitle]: "要約",
     [Key.interactionArticleAiSummaryTitle]: "AI 要約",
     [Key.interactionArticleAiSummaryGenerating]: "生成中",
     [Key.interactionArticleAiSummaryQueued]: "待機中",

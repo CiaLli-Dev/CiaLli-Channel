@@ -68,6 +68,7 @@ export const enInteraction: Record<string, string> = {
     [Key.interactionCommonZoomIn]: "Zoom in",
     [Key.interactionCommonZoomOut]: "Zoom out",
     [Key.interactionCommonReset]: "Reset",
+    [Key.interactionArticleSummaryTitle]: "Summary",
     [Key.interactionArticleAiSummaryTitle]: "AI Summary",
     [Key.interactionArticleAiSummaryGenerating]: "Generating",
     [Key.interactionArticleAiSummaryQueued]: "Queued",

@@ -64,6 +64,7 @@ export const zhTWInteraction: Record<string, string> = {
     [Key.interactionCommonZoomIn]: "放大",
     [Key.interactionCommonZoomOut]: "縮小",
     [Key.interactionCommonReset]: "重設",
+    [Key.interactionArticleSummaryTitle]: "摘要",
     [Key.interactionArticleAiSummaryTitle]: "AI 摘要",
     [Key.interactionArticleAiSummaryGenerating]: "生成中",
     [Key.interactionArticleAiSummaryQueued]: "排隊中",

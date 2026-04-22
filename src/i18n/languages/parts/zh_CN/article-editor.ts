@@ -27,7 +27,7 @@ export const zhCNArticleEditor: Record<string, string> = {
     [Key.articleEditorEncryptedEditGoUnlock]: "去解锁",
     [Key.articleEditorAiSummaryEnabled]: "AI 总结",
     [Key.articleEditorAiSummaryEnabledHint]:
-        "发布后异步生成摘要；仅在摘要为空或摘要由 AI 生成时回填，不覆盖手写摘要。",
+        "开启后将使用 AI 异步生成摘要，手写摘要会被清空并禁用。",
     [Key.articleEditorGeneratingEncryptedContent]: "正在生成加密内容...",
     [Key.articleEditorLoadFailed]: "加载失败",
     [Key.articleEditorLoadFailedRetry]: "加载失败，请重试",
