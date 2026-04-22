@@ -3,7 +3,7 @@ import Key from "../../../i18nKey";
 export const zhCNAdmin: Record<string, string> = {
     [Key.adminAboutBodyPlaceholder]: "请输入关于页面正文",
     [Key.adminAboutBodyRequired]: "关于页面正文不能为空",
-    [Key.adminAboutDescription]: "在这里编辑站点「关于」页内容。",
+    [Key.adminAboutDescription]: "编辑站点「关于」页内容。",
     [Key.adminAboutLoadFailed]: "加载关于页面数据失败",
     [Key.adminAboutLoadFailedRetry]: "加载关于页面数据失败，请重试",
     [Key.adminAboutPageTitleLabel]: "页面标题",
@@ -17,7 +17,7 @@ export const zhCNAdmin: Record<string, string> = {
     [Key.adminBulletinBodyPlaceholder]: "请输入公告正文",
     [Key.adminBulletinBodyRequired]: "公告正文不能为空",
     [Key.adminBulletinClosable]: "公告可关闭",
-    [Key.adminBulletinDescription]: "在这里维护站点公告内容。",
+    [Key.adminBulletinDescription]: "编辑站点公告，向访客传达最新提醒。",
     [Key.adminBulletinLoadFailed]: "加载公告数据失败",
     [Key.adminBulletinLoadFailedRetry]: "加载公告数据失败，请重试",
     [Key.adminBulletinSave]: "保存公告",
@@ -29,14 +29,14 @@ export const zhCNAdmin: Record<string, string> = {
     [Key.adminBulletinTitleLabel]: "公告标题",
     [Key.adminBulletinTitlePlaceholder]: "请输入公告标题",
     [Key.adminDashboardAiDescription]:
-        "配置全站 AI 助手、功能开关与未来自动化流程。",
+        "管理 AI 功能、连接信息与后续自动化能力。",
     [Key.adminDashboardAiTitle]: "AI",
-    [Key.adminDashboardDescription]: "后台管理概览",
-    [Key.adminDashboardTitle]: "管理控制台",
+    [Key.adminDashboardDescription]: "管理站点内容、成员与全局设置。",
+    [Key.adminDashboardTitle]: "站点管理",
     [Key.adminAiAutomationDescription]:
-        "未来将通过 Directus Flow 串联 AI 助手帐号与站内内容流程，用于生成总结、聚合热点并自动发布日记。",
+        "自动化能力将用于生成摘要、整理热点，并支持自动发布日记。",
     [Key.adminAiAutomationReadonlyHint]:
-        "本轮仅展示自动化设计说明，暂不开放 Flow 编排、调度与发布策略配置。",
+        "自动化功能暂未开放，目前仅展示可用方向。",
     [Key.adminAiComingSoon]: "即将开放",
     [Key.adminAiConnectionApiBaseUrl]: "API / Base URL",
     [Key.adminAiConnectionApiKey]: "API 密钥",
@@ -47,17 +47,17 @@ export const zhCNAdmin: Record<string, string> = {
     [Key.adminAiFeatureHotspotDigest]:
         "近期文章、日记内容热点总结并自动发布日记",
     [Key.adminAiFeatureReadonlyHint]:
-        "功能开关与策略配置将在后续版本开放，本轮仅提供只读占位。",
+        "这些功能暂未开放，后续会在这里统一管理。",
     [Key.adminAiOverviewAssistantAccount]: "AI 助手帐号",
     [Key.adminAiOverviewAssistantAccountHint]:
-        "未来会为站点创建一个独立 AI 助手帐号，统一承接摘要、热点整理与自动化发布任务。",
+        "后续会接入专用 AI 助手帐号，统一处理摘要、热点整理和自动发布。",
     [Key.adminAiOverviewFlowStrategy]: "Directus Flow 自动化",
     [Key.adminAiOverviewFlowStrategyHint]:
-        "各项 AI 能力将优先复用 Directus Flow 的低代码编排能力，避免在页面层直接实现复杂流程。",
+        "后续会提供统一的自动化入口，方便集中管理各项 AI 能力。",
     [Key.adminAiPageDescription]:
-        "全站 AI 总配置占位页，当前仅实现管理台 UI 骨架。",
+        "在这里查看站点 AI 功能与设置规划，目前仅提供说明信息。",
     [Key.adminAiPageIntro]:
-        "在这里规划未来的全站 AI 助手配置、功能开关与 Directus Flow 自动化入口。本轮只交付界面，不接入任何真实配置或密钥保存。",
+        "你可以先了解站点 AI 功能的规划和入口。当前还不能填写真实配置或保存密钥。",
     [Key.adminAiPageTitle]: "AI 总配置",
     [Key.adminAiPlaceholderApiBaseUrl]: "未来用于填写 AI 服务地址或网关地址",
     [Key.adminAiPlaceholderApiKey]: "未来用于填写 API 密钥",
@@ -90,7 +90,7 @@ export const zhCNAdmin: Record<string, string> = {
     [Key.adminMarkdownStrikePlaceholder]: "请输入删除线文本",
     [Key.adminMarkdownUnderline]: "下划线",
     [Key.adminMarkdownUnderlinePlaceholder]: "请输入下划线文本",
-    [Key.adminSiteSettingsDescription]: "配置站点全局展示与功能开关。",
+    [Key.adminSiteSettingsDescription]: "调整站点展示信息与功能开关。",
     [Key.adminSiteSettingsTitle]: "站点设置",
     [Key.adminUsersActions]: "操作",
     [Key.adminUsersApprove]: "通过",
@@ -100,7 +100,7 @@ export const zhCNAdmin: Record<string, string> = {
         "此操作会永久删除该账号及关联数据，是否继续？",
     [Key.adminUsersDeleteExpectedText]: "确认删除 {name}",
     [Key.adminUsersDeleted]: "用户已删除",
-    [Key.adminUsersDescription]: "管理用户与注册申请。",
+    [Key.adminUsersDescription]: "查看成员信息并处理注册申请。",
     [Key.adminUsersEmailExists]: "邮箱已存在",
     [Key.adminUsersListTitle]: "用户列表",
     [Key.adminUsersLoadRegistrationsFailed]: "加载注册申请失败",
@@ -196,7 +196,8 @@ export const zhCNAdmin: Record<string, string> = {
     [Key.adminSiteSettingsNavNamePlaceholder]: "请输入导航名称",
     [Key.adminSiteSettingsNavTextIcon]: "导航文字图标",
     [Key.adminSiteSettingsNavTitleText]: "导航标题",
-    [Key.adminSiteSettingsPageIntro]: "在这里配置站点展示信息与功能开关。",
+    [Key.adminSiteSettingsPageIntro]:
+        "你可以在这里调整站点展示信息与功能开关。",
     [Key.adminSiteSettingsPauseTimeMs]: "停顿时间（毫秒）",
     [Key.adminSiteSettingsPauseTimeMsHint]: "每轮打字完成后的停顿时长。",
     [Key.adminSiteSettingsPlaylistId]: "歌单 ID",

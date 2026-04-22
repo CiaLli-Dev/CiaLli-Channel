@@ -166,44 +166,46 @@ export const jaContent: Record<string, string> = {
         "この記事は現在あなたにだけ見えます。このページではいいねとコメントを無効にしています。",
     [Key.contentArticleNewDraftTitle]: "新しい記事",
     [Key.contentRss]: "RSSフィード",
-    [Key.contentRssDescription]: "最新情報を受け取るために購読する",
+    [Key.contentRssDescription]: "最新の記事や更新を受け取る",
     [Key.contentRssSubtitle]:
-        "RSSフィードを購読すると最新の記事や更新情報をすぐに確認できます。",
+        "RSSを購読すると、最新の記事や更新を追いかけやすくなります。",
     [Key.contentRssLink]: "RSSフィードのリンク",
     [Key.contentRssCopyToReader]: "RSSリーダーへのリンクをコピーします",
     [Key.contentRssCopyLink]: "コピー",
     [Key.contentRssLatestPosts]: "最新の投稿",
     [Key.contentRssWhatIsRSS]: "RSSとは何ですか?",
     [Key.contentRssWhatIsRSSDescription]:
-        "RSS(Really Simple Syndication)は、頻繁に更新されるコンテンツを公開するための標準フォーマットです:",
+        "RSS（Really Simple Syndication）は、更新の多いコンテンツをまとめて追いかけるのに向いています。購読すると、次のことができます。",
     [Key.contentRssBenefit1]:
-        "手動でウェブサイトにアクセスすることなく、最新のコンテンツをタイムリーに入手できます",
-    [Key.contentRssBenefit2]: "複数のウェブサイトへの購読を一括で管理できます",
+        "サイトを開き直さなくても、新しい記事や更新を確認できます",
+    [Key.contentRssBenefit2]:
+        "複数サイトの購読をひとつのリーダーでまとめて管理できます",
     [Key.contentRssBenefit3]: "重要な更新情報や記事を見逃すこともありません",
     [Key.contentRssBenefit4]: "広告なしのクリーンな読書体験を楽しめます",
     [Key.contentRssHowToUse]:
-        "このサイトの購読はFeedly、Inoreaderまたはその他のRSSリーダーの使用をおすすめします。",
+        "Feedly や Inoreader などの RSS リーダーでこのサイトを購読できます。",
     [Key.contentRssCopied]: "RSSのリンクをクリップボードにコピーしました!",
     [Key.contentRssCopyFailed]:
         "コピーに失敗しました。リンクを手動で追加してください。",
     [Key.contentAtom]: "Atomフィード",
-    [Key.contentAtomDescription]: "最新情報を受け取るために購読する",
+    [Key.contentAtomDescription]: "最新の記事や更新を受け取る",
     [Key.contentAtomSubtitle]:
-        "Atomフィードを購読すると最新の記事や更新情報をすぐに確認できます。",
+        "Atomを購読すると、最新の記事や更新を追いかけやすくなります。",
     [Key.contentAtomLink]: "Atomフィードのリンク",
     [Key.contentAtomCopyToReader]: "Atomリーダーへのリンクをコピーします",
     [Key.contentAtomCopyLink]: "コピー",
     [Key.contentAtomLatestPosts]: "最新の投稿",
     [Key.contentAtomWhatIsAtom]: "Atomとは何ですか?",
     [Key.contentAtomWhatIsAtomDescription]:
-        "Atom(Atom Syndication Format)はフィードとその項目を記述するためのXMLベースの標準フォーマットです:",
+        "Atom（Atom Syndication Format）は、更新の多いコンテンツをまとめて追いかけるのに向いています。購読すると、次のことができます。",
     [Key.contentAtomBenefit1]:
-        "手動でウェブサイトにアクセスすることなく、最新のコンテンツをタイムリーに入手できます",
-    [Key.contentAtomBenefit2]: "複数のウェブサイトへの購読を一括で管理できます",
+        "サイトを開き直さなくても、新しい記事や更新を確認できます",
+    [Key.contentAtomBenefit2]:
+        "複数サイトの購読をひとつのリーダーでまとめて管理できます",
     [Key.contentAtomBenefit3]: "重要な更新情報や記事を見逃すこともありません",
     [Key.contentAtomBenefit4]: "広告なしのクリーンな読書体験を楽しめます",
     [Key.contentAtomHowToUse]:
-        "このサイトの購読はFeedly、Inoreaderまたはその他のAtomリーダーの使用をおすすめします。",
+        "Feedly や Inoreader などの Atom リーダーでこのサイトを購読できます。",
     [Key.contentAtomCopied]: "Atomのリンクをクリップボードにコピーしました!",
     [Key.contentAtomCopyFailed]:
         "コピーに失敗しました。リンクを手動で追加してください。",

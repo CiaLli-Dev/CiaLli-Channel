@@ -4,7 +4,8 @@ export const jaAuth: Record<string, string> = {
     [Key.author]: "著者",
     [Key.authLoginTitle]: "ログイン",
     [Key.authLoginDescription]: "アカウントにログイン",
-    [Key.authLoginHint]: "アカウントは管理者による作成または招待が必要です。",
+    [Key.authLoginHint]:
+        "まだアカウントがない場合は、登録申請を送信するか、管理者に招待を依頼してください。",
     [Key.authEmailLabel]: "メールアドレス",
     [Key.authPasswordLabel]: "パスワード",
     [Key.authPasswordPlaceholder]: "パスワードを入力してください",
@@ -43,7 +44,7 @@ export const jaAuth: Record<string, string> = {
     [Key.authRegisterCropAvatarTitle]: "アバターを切り抜き",
     [Key.authRegisterCropUploading]: "切り抜き結果をアップロード中...",
     [Key.authRegisterDescription]:
-        "登録申請を送信後、審査完了までお待ちください。",
+        "申請を送信すると、確認が終わり次第お知らせします。",
     [Key.authRegisterDisabled]: "登録は停止中です",
     [Key.authRegisterDisplayNameLabel]: "ニックネーム",
     [Key.authRegisterDisplayNamePlaceholder]: "ニックネームを入力してください",
@@ -57,7 +58,7 @@ export const jaAuth: Record<string, string> = {
     [Key.authRegisterFixAccountFirst]: "先にアカウント情報を修正してください",
     [Key.authRegisterFixPasswordFirst]: "先にパスワードを修正してください",
     [Key.authRegisterHint]:
-        "正しい情報を入力してください。承認後にログインできます。",
+        "確認しやすいように、実際の情報を入力してください。",
     [Key.authRegisterInvalidRequestId]: "無効な申請 ID",
     [Key.authRegisterPasswordEmpty]: "パスワードは空にできません",
     [Key.authRegisterPasswordInvalid]: "パスワード形式が正しくありません",
@@ -86,16 +87,17 @@ export const jaAuth: Record<string, string> = {
     [Key.authRegisterSelectImage]: "画像を選択",
     [Key.authRegisterStatusApproved]: "承認済み",
     [Key.authRegisterStatusApprovedDesc]:
-        "審査に通過しました。すぐにログインできます。",
+        "申請が承認されました。すぐにログインできます。",
     [Key.authRegisterStatusCancelled]: "キャンセル済み",
-    [Key.authRegisterStatusCancelledDesc]: "この申請はキャンセルされました。",
+    [Key.authRegisterStatusCancelledDesc]:
+        "この申請はキャンセルしました。必要になったら再度送信できます。",
     [Key.authRegisterStatusConflict]: "登録状態の競合",
     [Key.authRegisterStatusPending]: "審査待ち",
     [Key.authRegisterStatusPendingDesc]:
-        "申請を審査中です。しばらくお待ちください。",
+        "申請を確認しています。更新されるまでしばらくお待ちください。",
     [Key.authRegisterStatusRejected]: "却下",
     [Key.authRegisterStatusRejectedDesc]:
-        "申請は承認されませんでした。修正して再申請できます。",
+        "今回は承認されませんでした。内容を見直して再申請できます。",
     [Key.authRegisterStatusUpdated]: "登録状態を更新しました",
     [Key.authRegisterSubmit]: "申請を送信",
     [Key.authRegisterSubmitFailed]: "送信に失敗しました",
@@ -108,7 +110,7 @@ export const jaAuth: Record<string, string> = {
     [Key.authRegisterSubmittingText]:
         "申請を送信中です。しばらくお待ちください",
     [Key.authRegisterSubmittingTitle]: "送信中",
-    [Key.authRegisterTitle]: "登録申請",
+    [Key.authRegisterTitle]: "利用申請",
     [Key.authRegisterUploadAvatar]: "アバターをアップロード",
     [Key.authRegisterUploadingAvatar]: "アバターをアップロード中",
     [Key.authRegisterUploadingAvatarText]: "アバターをアップロード中",

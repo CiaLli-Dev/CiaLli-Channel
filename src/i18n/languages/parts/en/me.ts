@@ -7,7 +7,7 @@ export const enMe: Record<string, string> = {
     [Key.meHomepageCropInitFailed]: "Failed to initialize crop",
     [Key.meHomepageCropTitle]: "Crop homepage header",
     [Key.meHomepageDescription]:
-        "Configure how your personal homepage content is displayed.",
+        "Decide what appears on your personal homepage.",
     [Key.meHomepageHeaderChangeBtn]: "Change header image",
     [Key.meHomepageHeaderChangeHint]:
         "A clear horizontal image is recommended for better results.",
@@ -38,7 +38,7 @@ export const enMe: Record<string, string> = {
     [Key.meHomepageSectionSubmittingText]: "Submitting module order...",
     [Key.meHomepageBangumiConfigTitle]: "Bangumi Display Settings",
     [Key.meHomepageBangumiConfigDescription]:
-        "Set your Bangumi ID to show collections on homepage. You can optionally include private collections with an access token.",
+        "Add your Bangumi ID to show your collection on your homepage. If you also want to show private items, add an access token.",
     [Key.meHomepageBangumiShowLabel]: "Show on homepage",
     [Key.meHomepageBangumiUsernameLabel]: "Bangumi ID",
     [Key.meHomepageBangumiUsernamePlaceholder]: "e.g. 914320",
@@ -76,7 +76,7 @@ export const enMe: Record<string, string> = {
     [Key.meSettingsCropInitFailed]: "Failed to initialize crop",
     [Key.meSettingsDangerZoneTitle]: "Danger zone",
     [Key.meSettingsDescription]:
-        "Edit your profile, privacy preferences, and social links here.",
+        "Manage your profile, privacy, and social links.",
     [Key.meSettingsDisplayNameClickEdit]: "Click to edit display name",
     [Key.meSettingsDisplayNameLabel]: "Display name",
     [Key.meSettingsDisplayNameRequired]: "Display name cannot be empty",
@@ -116,7 +116,7 @@ export const enMe: Record<string, string> = {
     [Key.meSettingsSocialLinkUrl]: "Social link URL",
     [Key.meSettingsSocialLinks]: "Social links",
     [Key.meSettingsSocialSelectPlatform]: "Select platform",
-    [Key.meSettingsTitle]: "Profile settings",
+    [Key.meSettingsTitle]: "Account settings",
     [Key.meSettingsUsernameClickEdit]: "Click to edit username",
     [Key.meSettingsUsernameLabel]: "Username",
     [Key.meSettingsUsernameRequired]: "Username cannot be empty",

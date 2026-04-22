@@ -3,8 +3,7 @@ import Key from "../../../i18nKey";
 export const jaAdmin: Record<string, string> = {
     [Key.adminAboutBodyPlaceholder]: "About ページ本文を入力してください",
     [Key.adminAboutBodyRequired]: "About ページ本文は必須です",
-    [Key.adminAboutDescription]:
-        "ここでサイトの「About」ページ内容を編集します。",
+    [Key.adminAboutDescription]: "サイトの「About」ページを更新します。",
     [Key.adminAboutLoadFailed]: "About ページデータの読み込みに失敗しました",
     [Key.adminAboutLoadFailedRetry]:
         "About ページデータの読み込みに失敗しました。再試行してください",
@@ -19,7 +18,7 @@ export const jaAdmin: Record<string, string> = {
     [Key.adminBulletinBodyPlaceholder]: "お知らせ本文を入力してください",
     [Key.adminBulletinBodyRequired]: "お知らせ本文は必須です",
     [Key.adminBulletinClosable]: "お知らせを閉じられるようにする",
-    [Key.adminBulletinDescription]: "ここでサイトのお知らせを管理します。",
+    [Key.adminBulletinDescription]: "サイトに表示するお知らせを更新します。",
     [Key.adminBulletinLoadFailed]: "お知らせデータの読み込みに失敗しました",
     [Key.adminBulletinLoadFailedRetry]:
         "お知らせデータの読み込みに失敗しました。再試行してください",
@@ -32,14 +31,15 @@ export const jaAdmin: Record<string, string> = {
     [Key.adminBulletinTitleLabel]: "お知らせタイトル",
     [Key.adminBulletinTitlePlaceholder]: "お知らせタイトルを入力してください",
     [Key.adminDashboardAiDescription]:
-        "サイト全体の AI アシスタント、機能スイッチ、今後の自動化フローを設定します。",
+        "AI 機能、接続設定、今後の自動化オプションを確認できます。",
     [Key.adminDashboardAiTitle]: "AI",
-    [Key.adminDashboardDescription]: "管理画面の概要",
-    [Key.adminDashboardTitle]: "管理コンソール",
+    [Key.adminDashboardDescription]:
+        "コンテンツ、メンバー、サイト全体の設定を管理します。",
+    [Key.adminDashboardTitle]: "サイト管理",
     [Key.adminAiAutomationDescription]:
-        "今後は専用の AI アシスタントアカウントと Directus Flow を組み合わせ、要約生成、ホットトピック集約、日記の自動公開を実現します。",
+        "自動化では、要約の生成、話題の整理、日記の自動公開に対応していく予定です。",
     [Key.adminAiAutomationReadonlyHint]:
-        "今回は自動化設計の表示のみです。Flow 編成、スケジュール、公開ポリシーの設定はまだ利用できません。",
+        "自動化機能はまだ利用できません。現在は案内のみ表示しています。",
     [Key.adminAiComingSoon]: "近日公開",
     [Key.adminAiConnectionApiBaseUrl]: "API / Base URL",
     [Key.adminAiConnectionApiKey]: "API キー",
@@ -50,17 +50,17 @@ export const jaAdmin: Record<string, string> = {
     [Key.adminAiFeatureHotspotDigest]:
         "最近の記事・日記のホットトピック要約と日記の自動公開",
     [Key.adminAiFeatureReadonlyHint]:
-        "機能スイッチと戦略設定は今後のバージョンで開放します。今回は読み取り専用のプレースホルダーです。",
+        "これらの機能はまだ利用できません。今後ここでまとめて管理できるようになります。",
     [Key.adminAiOverviewAssistantAccount]: "AI アシスタントアカウント",
     [Key.adminAiOverviewAssistantAccountHint]:
-        "将来的にサイト専用の AI アシスタントアカウントを作成し、要約、ホットトピック整理、自動公開を一元的に処理します。",
+        "今後は専用の AI アシスタントアカウントを追加し、要約や話題整理、自動公開をまとめて扱えるようにします。",
     [Key.adminAiOverviewFlowStrategy]: "Directus Flow 自動化",
     [Key.adminAiOverviewFlowStrategyHint]:
-        "各 AI 機能はページごとの個別実装ではなく、Directus Flow のローコード自動化を優先して構成します。",
+        "今後は AI 機能をまとめて管理できる自動化入口を用意します。",
     [Key.adminAiPageDescription]:
-        "サイト全体の AI 設定用プレースホルダーページです。今回のリリースでは管理画面 UI の骨組みのみ実装します。",
+        "サイト全体の AI 機能と設定予定を確認できます。現在は案内のみです。",
     [Key.adminAiPageIntro]:
-        "ここでは今後のサイト全体向け AI アシスタント設定、機能スイッチ、Directus Flow 自動化入口を計画します。今回は画面のみで、実際の設定や秘密情報の保存は行いません。",
+        "このページでは、サイト全体で使う AI 機能の予定と入口を確認できます。実際の設定や秘密情報の保存はまだ利用できません。",
     [Key.adminAiPageTitle]: "AI 総合設定",
     [Key.adminAiPlaceholderApiBaseUrl]:
         "将来的に AI サービスのエンドポイントやゲートウェイ URL を入力します",
@@ -100,7 +100,7 @@ export const jaAdmin: Record<string, string> = {
     [Key.adminMarkdownUnderline]: "下線",
     [Key.adminMarkdownUnderlinePlaceholder]: "下線の内容を入力してください",
     [Key.adminSiteSettingsDescription]:
-        "サイト全体の表示と機能スイッチを設定します。",
+        "サイト全体の表示内容と機能スイッチを調整します。",
     [Key.adminSiteSettingsTitle]: "サイト設定",
     [Key.adminUsersActions]: "操作",
     [Key.adminUsersApprove]: "承認",
@@ -110,7 +110,8 @@ export const jaAdmin: Record<string, string> = {
         "この操作はアカウントと関連データを完全に削除します。続行しますか？",
     [Key.adminUsersDeleteExpectedText]: "{name} の削除を確認",
     [Key.adminUsersDeleted]: "ユーザーを削除しました",
-    [Key.adminUsersDescription]: "ユーザーと登録申請を管理します。",
+    [Key.adminUsersDescription]:
+        "メンバー情報の確認と登録申請の対応を行います。",
     [Key.adminUsersEmailExists]: "メールアドレスは既に存在します",
     [Key.adminUsersListTitle]: "ユーザー一覧",
     [Key.adminUsersLoadRegistrationsFailed]: "登録申請の読み込みに失敗しました",
@@ -216,7 +217,7 @@ export const jaAdmin: Record<string, string> = {
     [Key.adminSiteSettingsNavTextIcon]: "ナビテキストアイコン",
     [Key.adminSiteSettingsNavTitleText]: "ナビタイトル",
     [Key.adminSiteSettingsPageIntro]:
-        "ここでサイト表示情報と機能スイッチを設定できます。",
+        "ここでサイト全体の表示内容と機能スイッチを調整できます。",
     [Key.adminSiteSettingsPauseTimeMs]: "停止時間（ms）",
     [Key.adminSiteSettingsPauseTimeMsHint]:
         "各タイピングサイクル完了後の待機時間です。",

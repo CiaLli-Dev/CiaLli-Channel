@@ -3,7 +3,7 @@ import Key from "../../../i18nKey";
 export const enAdmin: Record<string, string> = {
     [Key.adminAboutBodyPlaceholder]: "Enter About page content",
     [Key.adminAboutBodyRequired]: "About page content cannot be empty",
-    [Key.adminAboutDescription]: "Edit your site's About page content here.",
+    [Key.adminAboutDescription]: "Update your site's About page.",
     [Key.adminAboutLoadFailed]: "Failed to load About page data",
     [Key.adminAboutLoadFailedRetry]:
         "Failed to load About page data. Please try again",
@@ -18,7 +18,8 @@ export const enAdmin: Record<string, string> = {
     [Key.adminBulletinBodyPlaceholder]: "Enter announcement content",
     [Key.adminBulletinBodyRequired]: "Announcement content cannot be empty",
     [Key.adminBulletinClosable]: "Allow closing announcement",
-    [Key.adminBulletinDescription]: "Manage site announcements here.",
+    [Key.adminBulletinDescription]:
+        "Update the announcement shown on your site.",
     [Key.adminBulletinLoadFailed]: "Failed to load announcement data",
     [Key.adminBulletinLoadFailedRetry]:
         "Failed to load announcement data. Please try again",
@@ -31,14 +32,15 @@ export const enAdmin: Record<string, string> = {
     [Key.adminBulletinTitleLabel]: "Announcement title",
     [Key.adminBulletinTitlePlaceholder]: "Enter announcement title",
     [Key.adminDashboardAiDescription]:
-        "Configure site-wide AI assistants, feature switches, and future automation flows.",
+        "Review AI features, connection settings, and upcoming automation options.",
     [Key.adminDashboardAiTitle]: "AI",
-    [Key.adminDashboardDescription]: "Admin overview",
-    [Key.adminDashboardTitle]: "Admin Console",
+    [Key.adminDashboardDescription]:
+        "Manage content, members, and site-wide settings.",
+    [Key.adminDashboardTitle]: "Site Admin",
     [Key.adminAiAutomationDescription]:
-        "Future automation will connect a dedicated AI assistant account with Directus Flows to generate summaries, aggregate hotspots, and auto-publish diary entries.",
+        "Automation will help generate summaries, surface trending topics, and support auto-published diary posts.",
     [Key.adminAiAutomationReadonlyHint]:
-        "This release only shows the automation design. Flow orchestration, schedules, and publishing policies are not editable yet.",
+        "Automation tools aren't available yet. For now, this page only outlines what's coming.",
     [Key.adminAiComingSoon]: "Coming soon",
     [Key.adminAiConnectionApiBaseUrl]: "API / Base URL",
     [Key.adminAiConnectionApiKey]: "API key",
@@ -49,17 +51,17 @@ export const enAdmin: Record<string, string> = {
     [Key.adminAiFeatureHotspotDigest]:
         "Recent article and diary hotspot digest with auto diary publishing",
     [Key.adminAiFeatureReadonlyHint]:
-        "Feature switches and strategy controls will be enabled in a later release. This page is read-only for now.",
+        "These features are not available yet. You'll manage them here later.",
     [Key.adminAiOverviewAssistantAccount]: "AI assistant account",
     [Key.adminAiOverviewAssistantAccountHint]:
-        "A dedicated in-site AI assistant account will be created later to handle summaries, hotspot digests, and automated publishing.",
+        "A dedicated AI assistant account will be added later for summaries, trend digests, and automated publishing.",
     [Key.adminAiOverviewFlowStrategy]: "Directus Flow automation",
     [Key.adminAiOverviewFlowStrategyHint]:
-        "AI capabilities will be orchestrated through Directus Flow low-code automation instead of page-level custom pipelines.",
+        "A unified automation entry point will be added later so you can manage AI workflows in one place.",
     [Key.adminAiPageDescription]:
-        "Placeholder page for site-wide AI configuration. This release only ships the admin UI skeleton.",
+        "Review upcoming AI features and settings here. For now, this page is informational only.",
     [Key.adminAiPageIntro]:
-        "Use this space to plan future site-wide AI assistant settings, feature switches, and Directus Flow automation entry points. This release only delivers the interface, without real configuration or secret storage.",
+        "This page previews how site-wide AI features will be managed. Real settings and secret storage are not available yet.",
     [Key.adminAiPageTitle]: "AI Configuration",
     [Key.adminAiPlaceholderApiBaseUrl]:
         "Future field for the AI service endpoint or gateway URL",
@@ -98,7 +100,7 @@ export const enAdmin: Record<string, string> = {
     [Key.adminMarkdownUnderline]: "Underline",
     [Key.adminMarkdownUnderlinePlaceholder]: "Enter underlined text",
     [Key.adminSiteSettingsDescription]:
-        "Configure global site display and feature toggles.",
+        "Adjust site-wide display details and feature switches.",
     [Key.adminSiteSettingsTitle]: "Site settings",
     [Key.adminUsersActions]: "Actions",
     [Key.adminUsersApprove]: "Approve",
@@ -108,7 +110,8 @@ export const enAdmin: Record<string, string> = {
         "This action permanently deletes the account and related data. Continue?",
     [Key.adminUsersDeleteExpectedText]: "Confirm deletion of {name}",
     [Key.adminUsersDeleted]: "User deleted",
-    [Key.adminUsersDescription]: "Manage users and registration requests.",
+    [Key.adminUsersDescription]:
+        "Review members and handle registration requests.",
     [Key.adminUsersEmailExists]: "Email already exists",
     [Key.adminUsersListTitle]: "User list",
     [Key.adminUsersLoadRegistrationsFailed]:
@@ -219,7 +222,7 @@ export const enAdmin: Record<string, string> = {
     [Key.adminSiteSettingsNavTextIcon]: "Navigation text icon",
     [Key.adminSiteSettingsNavTitleText]: "Navigation title",
     [Key.adminSiteSettingsPageIntro]:
-        "Configure site display info and feature toggles here.",
+        "Update site-wide display details and feature switches.",
     [Key.adminSiteSettingsPauseTimeMs]: "Pause duration (ms)",
     [Key.adminSiteSettingsPauseTimeMsHint]:
         "How long to pause after each typing cycle.",

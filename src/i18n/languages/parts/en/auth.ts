@@ -5,7 +5,7 @@ export const enAuth: Record<string, string> = {
     [Key.authLoginTitle]: "Login",
     [Key.authLoginDescription]: "Log in to your account",
     [Key.authLoginHint]:
-        "Accounts must be created or invited by an administrator.",
+        "If you don't have an account yet, submit a registration request or ask an administrator for an invite.",
     [Key.authEmailLabel]: "Email",
     [Key.authPasswordLabel]: "Password",
     [Key.authPasswordPlaceholder]: "Enter your password",
@@ -40,7 +40,7 @@ export const enAuth: Record<string, string> = {
     [Key.authRegisterCropAvatarTitle]: "Crop avatar",
     [Key.authRegisterCropUploading]: "Uploading cropped avatar...",
     [Key.authRegisterDescription]:
-        "After submitting a registration request, approval is required.",
+        "Send your request and we'll review it as soon as possible.",
     [Key.authRegisterDisabled]: "Registration is closed",
     [Key.authRegisterDisplayNameLabel]: "Display name",
     [Key.authRegisterDisplayNamePlaceholder]: "Enter display name",
@@ -54,7 +54,7 @@ export const enAuth: Record<string, string> = {
     [Key.authRegisterFixAccountFirst]: "Please fix account info first",
     [Key.authRegisterFixPasswordFirst]: "Please fix password first",
     [Key.authRegisterHint]:
-        "Please provide real information. You can sign in after approval.",
+        "Use real information so we can review your request more quickly.",
     [Key.authRegisterInvalidRequestId]: "Invalid request ID",
     [Key.authRegisterPasswordEmpty]: "Password cannot be empty",
     [Key.authRegisterPasswordInvalid]: "Invalid password format",
@@ -83,16 +83,17 @@ export const enAuth: Record<string, string> = {
     [Key.authRegisterSelectImage]: "Select image",
     [Key.authRegisterStatusApproved]: "Approved",
     [Key.authRegisterStatusApprovedDesc]:
-        "Your request is approved. You can sign in now.",
+        "Your request was approved. You can sign in now.",
     [Key.authRegisterStatusCancelled]: "Cancelled",
-    [Key.authRegisterStatusCancelledDesc]: "You cancelled this request.",
+    [Key.authRegisterStatusCancelledDesc]:
+        "You cancelled this request. You can submit a new one anytime.",
     [Key.authRegisterStatusConflict]: "Registration status conflict",
     [Key.authRegisterStatusPending]: "Pending review",
     [Key.authRegisterStatusPendingDesc]:
-        "Your request is under review. Please wait patiently.",
+        "Your request is under review. Check back soon for an update.",
     [Key.authRegisterStatusRejected]: "Rejected",
     [Key.authRegisterStatusRejectedDesc]:
-        "Your request was not approved. You can revise and apply again.",
+        "This request wasn't approved. Update it and try again.",
     [Key.authRegisterStatusUpdated]: "Registration status updated",
     [Key.authRegisterSubmit]: "Submit request",
     [Key.authRegisterSubmitFailed]: "Submit failed",
@@ -103,7 +104,7 @@ export const enAuth: Record<string, string> = {
     [Key.authRegisterSubmittingRequestText]: "Creating registration request...",
     [Key.authRegisterSubmittingText]: "Submitting request, please wait",
     [Key.authRegisterSubmittingTitle]: "Submitting",
-    [Key.authRegisterTitle]: "Registration request",
+    [Key.authRegisterTitle]: "Request access",
     [Key.authRegisterUploadAvatar]: "Upload avatar",
     [Key.authRegisterUploadingAvatar]: "Uploading avatar",
     [Key.authRegisterUploadingAvatarText]: "Uploading avatar",

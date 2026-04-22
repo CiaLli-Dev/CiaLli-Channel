@@ -6,8 +6,7 @@ export const jaMe: Record<string, string> = {
     [Key.meHomepageCropHint]: "ドラッグまたは拡大縮小して保存してください",
     [Key.meHomepageCropInitFailed]: "切り抜きの初期化に失敗しました",
     [Key.meHomepageCropTitle]: "ホームヘッダーを切り抜き",
-    [Key.meHomepageDescription]:
-        "ここで個人ホームページの表示内容を設定できます。",
+    [Key.meHomepageDescription]: "個人ホームに表示する内容を調整できます。",
     [Key.meHomepageHeaderChangeBtn]: "ヘッダー画像を変更",
     [Key.meHomepageHeaderChangeHint]:
         "鮮明な横長画像のアップロードをおすすめします。",
@@ -39,7 +38,7 @@ export const jaMe: Record<string, string> = {
     [Key.meHomepageSectionSubmittingText]: "モジュール順序を送信しています...",
     [Key.meHomepageBangumiConfigTitle]: "Bangumi 表示設定",
     [Key.meHomepageBangumiConfigDescription]:
-        "Bangumi ID を入力するとホームにコレクションを表示できます。必要に応じて非公開コレクションを含めるため AccessToken を設定してください。",
+        "Bangumi ID を追加すると、コレクションをホームに表示できます。非公開のコレクションも表示したい場合は AccessToken を設定してください。",
     [Key.meHomepageBangumiShowLabel]: "個人ホームに表示",
     [Key.meHomepageBangumiUsernameLabel]: "Bangumi ID",
     [Key.meHomepageBangumiUsernamePlaceholder]: "例: 914320",
@@ -78,7 +77,7 @@ export const jaMe: Record<string, string> = {
     [Key.meSettingsCropInitFailed]: "切り抜きの初期化に失敗しました",
     [Key.meSettingsDangerZoneTitle]: "危険な操作",
     [Key.meSettingsDescription]:
-        "ここでプロフィール、プライバシー、SNSリンクを編集できます。",
+        "プロフィール、プライバシー、SNSリンクをまとめて管理できます。",
     [Key.meSettingsDisplayNameClickEdit]: "クリックして表示名を編集",
     [Key.meSettingsDisplayNameLabel]: "表示名",
     [Key.meSettingsDisplayNameRequired]: "表示名は必須です",
@@ -118,7 +117,7 @@ export const jaMe: Record<string, string> = {
     [Key.meSettingsSocialLinkUrl]: "SNSリンク URL",
     [Key.meSettingsSocialLinks]: "SNSリンク",
     [Key.meSettingsSocialSelectPlatform]: "プラットフォームを選択",
-    [Key.meSettingsTitle]: "個人設定",
+    [Key.meSettingsTitle]: "アカウント設定",
     [Key.meSettingsUsernameClickEdit]: "クリックしてユーザー名を編集",
     [Key.meSettingsUsernameLabel]: "ユーザー名",
     [Key.meSettingsUsernameRequired]: "ユーザー名は必須です",

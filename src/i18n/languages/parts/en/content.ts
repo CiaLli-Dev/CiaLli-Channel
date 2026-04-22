@@ -162,45 +162,45 @@ export const enContent: Record<string, string> = {
         "This article is currently only visible to you. Likes and comments are disabled on this page.",
     [Key.contentArticleNewDraftTitle]: "New Article",
     [Key.contentRss]: "RSS Feed",
-    [Key.contentRssDescription]: "Subscribe to get latest updates",
+    [Key.contentRssDescription]: "Get the latest posts and updates",
     [Key.contentRssSubtitle]:
-        "Subscribe via RSS to get the latest articles and updates immediately",
+        "Subscribe with RSS to keep up with the latest posts and updates",
     [Key.contentRssLink]: "RSS Link",
     [Key.contentRssCopyToReader]: "Copy link to your RSS reader",
     [Key.contentRssCopyLink]: "Copy",
     [Key.contentRssLatestPosts]: "Latest Posts",
     [Key.contentRssWhatIsRSS]: "What is RSS?",
     [Key.contentRssWhatIsRSSDescription]:
-        "RSS (Really Simple Syndication) is a standard format for publishing frequently updated content. With RSS, you can:",
+        "RSS (Really Simple Syndication) lets you follow frequently updated content. With RSS, you can:",
     [Key.contentRssBenefit1]:
-        "Get latest website content in time without manually visiting",
+        "Keep up with new posts without checking the site manually",
     [Key.contentRssBenefit2]:
-        "Manage subscriptions to multiple websites in one place",
+        "Manage subscriptions from multiple sites in one reader",
     [Key.contentRssBenefit3]: "Avoid missing important updates and articles",
     [Key.contentRssBenefit4]: "Enjoy an ad-free, clean reading experience",
     [Key.contentRssHowToUse]:
-        "It is recommended to use Feedly, Inoreader or other RSS readers to subscribe to this site.",
+        "Use Feedly, Inoreader, or any other RSS reader to follow this site.",
     [Key.contentRssCopied]: "RSS link copied to clipboard!",
     [Key.contentRssCopyFailed]: "Copy failed, please copy the link manually",
     [Key.contentAtom]: "Atom Feed",
-    [Key.contentAtomDescription]: "Subscribe to get latest updates",
+    [Key.contentAtomDescription]: "Get the latest posts and updates",
     [Key.contentAtomSubtitle]:
-        "Subscribe via Atom to get the latest articles and updates immediately",
+        "Subscribe with Atom to keep up with the latest posts and updates",
     [Key.contentAtomLink]: "Atom Link",
     [Key.contentAtomCopyToReader]: "Copy link to your Atom reader",
     [Key.contentAtomCopyLink]: "Copy",
     [Key.contentAtomLatestPosts]: "Latest Posts",
     [Key.contentAtomWhatIsAtom]: "What is Atom?",
     [Key.contentAtomWhatIsAtomDescription]:
-        "Atom (Atom Syndication Format) is an XML-based standard for describing feeds and their items. With Atom, you can:",
+        "Atom (Atom Syndication Format) lets you follow frequently updated content. With Atom, you can:",
     [Key.contentAtomBenefit1]:
-        "Get latest website content in time without manually visiting",
+        "Keep up with new posts without checking the site manually",
     [Key.contentAtomBenefit2]:
-        "Manage subscriptions to multiple websites in one place",
+        "Manage subscriptions from multiple sites in one reader",
     [Key.contentAtomBenefit3]: "Avoid missing important updates and articles",
     [Key.contentAtomBenefit4]: "Enjoy an ad-free, clean reading experience",
     [Key.contentAtomHowToUse]:
-        "It is recommended to use Feedly, Inoreader or other Atom readers to subscribe to this site.",
+        "Use Feedly, Inoreader, or any other Atom reader to follow this site.",
     [Key.contentAtomCopied]: "Atom link copied to clipboard!",
     [Key.contentAtomCopyFailed]: "Copy failed, please copy the link manually",
     [Key.contentUserProfileTitle]: "User Homepage",
