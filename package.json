@@ -2,10 +2,14 @@
   "name": "@cialli-dev/cialli-channel",
   "type": "module",
   "version": "1.2.5",
+  "bin": {
+    "cialli-install": "./scripts/install/cli.mjs"
+  },
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
     "start:prod": "node ./dist/server/entry.mjs",
+    "install:host": "node ./scripts/install/cli.mjs install",
     "check:env": "node scripts/env/check-env.mjs",
     "check": "node scripts/i18n/check-i18n-hardcoded.mjs && node scripts/i18n/check-i18n-structure.mjs && astro check",
     "check:i18n": "node scripts/i18n/check-i18n-hardcoded.mjs",

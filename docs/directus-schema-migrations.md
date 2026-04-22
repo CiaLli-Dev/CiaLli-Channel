@@ -11,6 +11,8 @@
 
 两者职责不同，不能互相替代。
 
+当前仓库内的演示 seed 已经基于本地 Docker Compose 演示环境重建为干净产物。后续如果需要再次刷新 seed，应继续以运行中的演示 Docker 环境为源，但结构性变更仍应以 schema snapshot 为准。
+
 ## 约定
 
 - 结构性变更以 `schema snapshot / apply` 为主

@@ -28,12 +28,27 @@ const MINIO_OBJECTS_ROOT_ENTRY = "minio/objects";
 const MINIO_OBJECTS_MANIFEST_ENTRY = "minio/objects-manifest.json";
 const MANIFEST_ENTRY = "manifest.json";
 const WRITABLE_SERVICES = ["web", "worker", "directus"];
-const POSTGRES_DATABASE = "directus";
-const POSTGRES_USER = "directus";
-const MINIO_ROOT_USER = "minioadmin";
 const MINIO_BUCKET = "cialli-assets";
 
-const REQUIRED_ENV_NAMES = ["POSTGRES_PASSWORD", "MINIO_ROOT_PASSWORD"];
+const REQUIRED_ENV_NAMES = [
+    "POSTGRES_USER",
+    "POSTGRES_DB",
+    "POSTGRES_PASSWORD",
+    "MINIO_ROOT_USER",
+    "MINIO_ROOT_PASSWORD",
+];
+
+function readPostgresDatabase() {
+    return readEnv("POSTGRES_DB");
+}
+
+function readPostgresUser() {
+    return readEnv("POSTGRES_USER");
+}
+
+function readMinioRootUser() {
+    return readEnv("MINIO_ROOT_USER");
+}
 
 function nowStamp() {
     const date = new Date();
@@ -149,7 +164,7 @@ function minioShell(script, options = {}) {
             "-e",
             `MINIO_BUCKET=${MINIO_BUCKET}`,
             "-e",
-            `MINIO_ROOT_USER=${MINIO_ROOT_USER}`,
+            `MINIO_ROOT_USER=${readMinioRootUser()}`,
             "-e",
             `MINIO_ROOT_PASSWORD=${readEnv("MINIO_ROOT_PASSWORD")}`,
             "minio",
@@ -507,7 +522,14 @@ function ensureDockerServices() {
 async function exportPostgresDump(dumpPath) {
     console.info("[docker:data:export] 导出 PostgreSQL dump。");
     const dumpBuffer = runPostgresExec(
-        ["pg_dump", "-U", POSTGRES_USER, "-d", POSTGRES_DATABASE, "-Fc"],
+        [
+            "pg_dump",
+            "-U",
+            readPostgresUser(),
+            "-d",
+            readPostgresDatabase(),
+            "-Fc",
+        ],
         { encoding: null },
     );
     await fs.writeFile(dumpPath, dumpBuffer);
@@ -582,7 +604,7 @@ async function createManifest(stagingDir) {
         },
         postgres: {
             service: "postgres",
-            database: POSTGRES_DATABASE,
+            database: readPostgresDatabase(),
             dumpFile: POSTGRES_DUMP_ENTRY,
             dumpBytes: dumpStats.bytes,
             dumpSha256: dumpStats.sha256,
@@ -662,9 +684,9 @@ async function restorePostgres(packageDir) {
         runPostgresExec([
             "psql",
             "-U",
-            POSTGRES_USER,
+            readPostgresUser(),
             "-d",
-            POSTGRES_DATABASE,
+            readPostgresDatabase(),
             "-v",
             "ON_ERROR_STOP=1",
             "-c",
@@ -673,9 +695,9 @@ async function restorePostgres(packageDir) {
         runPostgresExec([
             "pg_restore",
             "-U",
-            POSTGRES_USER,
+            readPostgresUser(),
             "-d",
-            POSTGRES_DATABASE,
+            readPostgresDatabase(),
             "--clean",
             "--if-exists",
             containerDumpPath,
@@ -751,9 +773,9 @@ function runPostImportChecks(manifest) {
     runPostgresExec([
         "psql",
         "-U",
-        POSTGRES_USER,
+        readPostgresUser(),
         "-d",
-        POSTGRES_DATABASE,
+        readPostgresDatabase(),
         "-At",
         "-c",
         "select 1;",

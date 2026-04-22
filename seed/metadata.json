@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-04-22T07:37:00.000Z",
+  "generatedAt": "2026-04-22T16:53:36.241Z",
   "source": "local-docker-compose",
   "postgres": {
     "service": "postgres",
     "database": "directus",
     "dumpFile": "seed/postgres/demo.dump",
-    "dumpBytes": 330351
+    "dumpBytes": 329793
   },
   "minio": {
     "service": "minio",
@@ -14,18 +14,17 @@
     "objectCount": 0
   },
   "directus": {
-    "demoAdminEmail": "demo-admin@example.com",
-    "schemaFile": "directus/schema/app-schema.json"
+    "schemaFile": "directus/schema/app-schema.json",
+    "seedContract": {
+      "installerCreatesAdmin": true,
+      "legacyDemoAdminEmailRemoved": "demo-admin@example.com",
+      "staticTokensCleared": true,
+      "sessionsCleared": true
+    }
   },
   "restorePolicy": {
     "postgres": "仅在空库或未完成业务初始化时恢复，不覆盖现有数据。",
     "minio": "仅在目标 bucket 为空时恢复，不覆盖现有对象。"
   },
-  "sanitized": {
-    "aiSettingsCleared": true,
-    "adminPasswordReset": true,
-    "contentPruned": true,
-    "orphanAssetsRemoved": true,
-    "siteSettingsResetToDefault": true
-  }
+  "rebuiltFromCurrentDocker": true
 }

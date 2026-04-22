@@ -30,8 +30,7 @@ export const DIRECTUS_SCHEMA_PATH = path.join(
     "app-schema.json",
 );
 
-export const DEMO_ADMIN_EMAIL = "demo-admin@example.com";
-export const DEMO_ADMIN_PASSWORD = "CiaLli-demo-admin-2026!";
+export const LEGACY_DEMO_ADMIN_EMAIL = "demo-admin@example.com";
 
 export function readEnv(name) {
     return String(process.env[name] || "").trim();

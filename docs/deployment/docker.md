@@ -21,35 +21,70 @@ Directus 后台默认只绑定到 `127.0.0.1:8055`，不直接暴露公网。
 
 ## 准备环境变量
 
-1. 根目录 [`.env.example`](/Users/uednd/code/CiaLli-Channel/.env.example) 是唯一环境变量模板，复制为 `.env` 后统一维护。
-2. 同一份 `.env` 同时服务于：
+1. 首次安装默认使用全局安装器 `cialli-install install` 自动生成根目录 `.env`，并在命令行中完成管理员引导账户创建。
+2. 手动维护 `.env` 仅用于已有环境恢复、排障或高级部署；模板文件仍以 [`.env.example`](/Users/uednd/code/CiaLli-Channel/.env.example) 为准。
+3. 同一份 `.env` 同时服务于：
    本机脚本 / 开发调试
    Docker Compose
-3. 容器内互联地址、PostgreSQL/MinIO 默认账号、对象存储 bucket、Directus `s3` 存储参数与 AI worker 端口都已固定在仓库配置中，不再通过 `.env` 覆写。
-4. 当前建议显式配置的环境变量为：
+4. 容器内互联地址、PostgreSQL/MinIO 默认账号、对象存储 bucket、Directus `s3` 存储参数与 AI worker 端口都已固定在仓库配置中，不再通过 `.env` 覆写。
+5. 当前运行时要求的环境变量为：
    `APP_PUBLIC_BASE_URL`
    `DIRECTUS_URL`
    `DIRECTUS_STATIC_TOKEN`
    `BANGUMI_TOKEN_ENCRYPTION_KEY`
    `AI_SUMMARY_INTERNAL_SECRET`
    `DIRECTUS_SECRET`
-   `DIRECTUS_ADMIN_EMAIL`
-   `DIRECTUS_ADMIN_PASSWORD`
+   `POSTGRES_USER`
+   `POSTGRES_DB`
    `POSTGRES_PASSWORD`
+   `MINIO_ROOT_USER`
    `MINIO_ROOT_PASSWORD`
    `STORAGE_S3_KEY`
    `STORAGE_S3_SECRET`
-5. `PUBLIC_ASSET_BASE_URL` 是唯一保留的可选环境变量；留空时继续统一走站内 BFF 代理资源地址。
+6. 安装器还会把 `DIRECTUS_ADMIN_EMAIL` 与 `DIRECTUS_ADMIN_PASSWORD` 一并写入 `.env`，用于首次安装后的后台登录与运维排障；运行时服务本身不依赖这两项。
+7. `PUBLIC_ASSET_BASE_URL` 是唯一保留的可选环境变量；留空时继续统一走站内 BFF 代理资源地址。
+8. `pnpm check:env` 只负责校验已存在的 `.env`；首次安装所需密钥、账号名与静态 token 都由安装器生成并写入。
+
+## 全局安装器
+
+首次部署推荐使用全局安装器：
+
+```bash
+pnpm install -g .
+cialli-install install
+```
+
+安装器会自动完成：
+
+- 宿主机环境检查（Docker / Compose / 端口 / Git LFS / 支持的平台）
+- 先让用户选择安装器语言（当前支持 `en`、`zh_CN`、`zh_TW`、`ja`）
+- 仅要求用户输入站点公开 URL，其余账号、密码、token、secret 自动生成并写入 `.env`
+- 构建 `web` / `worker`
+- 启动基础设施与 Directus
+- 使用生成的管理员账户完成 Directus 初始化
+- 自动生成并回填 `DIRECTUS_STATIC_TOKEN`
+- 将所选语言写入站点默认语言设置
+- 启动 `web`、`worker`、`proxy`
+- 在 CLI 中按分组展示所有生成值，并提示可随时在 `.env` 查看
+
+非交互部署可显式提供参数：
+
+```bash
+cialli-install install \
+  --lang zh_CN \
+  --site-url https://example.com
+```
+
+如果当前目录已有 `.env`、Compose volumes 或历史容器记录，安装器默认拒绝覆盖；显式传入 `--reset` 才会清空当前 Compose 资源并重装。
 
 建议在启动前先执行：
 
 ```bash
 git lfs install
 git lfs pull
-pnpm check:env
 ```
 
-本地环境默认会放宽对占位值的检查；如需在 CI 或正式发版前强制按生产标准校验，可使用：
+已有 `.env` 的环境可继续手动运行校验；本地环境默认会放宽对占位值的检查。如需在 CI 或正式发版前强制按生产标准校验，可使用：
 
 ```bash
 CHECK_ENV_STRICT=1 pnpm check:env
@@ -85,7 +120,8 @@ docker compose -f docker-compose.yml up -d
 - Redis 启动
 - MinIO bucket 创建
 - 演示 seed 恢复（仅空卷首次启动）
-- Directus 数据库迁移与管理员初始化（仅 seed 未恢复时触发）
+- Directus 数据库迁移
+- 安装器通过 CLI 创建管理员账户并写入服务端静态 token
 
 ## 演示种子与后台账号
 
@@ -101,16 +137,12 @@ docker compose -f docker-compose.yml up -d
 
 若 volume 已有数据，恢复脚本会自动跳过，不会覆盖现有环境。
 
-演示种子恢复后，Directus 后台默认管理员账号为：
-
-- 邮箱：`demo-admin@example.com`
-- 密码：`CiaLli-demo-admin-2026!`
-
 请注意：
 
-- 该账号来自种子数据库，而不是 `.env` 中空库 bootstrap 的初始化逻辑
-- AI 运行时密钥与内部调用密钥仍必须通过 `.env` 提供，seed 不携带这些值
-- 如果需要重新触发演示恢复，请先删除 `postgres_data` 与 `minio_data` 对应的 Docker volume
+- 当前仓库内的 seed 已是干净产物：不包含可直接登录的固定管理员账户，也不包含可复用的静态 token 或会话
+- 管理员账户由安装器在 restore 后自动生成并写入 `.env`，而不是来自 seed
+- AI 运行时密钥、基础设施账号名与内部调用密钥都由安装器写入 `.env`
+- 如果需要重新触发演示恢复，请先删除 `postgres_data` 与 `minio_data` 对应的 Docker volume，或使用 `cialli-install install --reset`
 
 ## 访问
 
@@ -199,3 +231,8 @@ pnpm seed:verify
 - `seed/minio/demo-bucket/**` 中的对象不是 Git LFS pointer
 - `seed/metadata.json` 中记录的 dump 大小与对象数量与实际文件一致
 - `directus/schema/app-schema.json` 是有效的 Directus schema 快照
+- 临时还原 `seed/postgres/demo.dump` 后，不存在 `demo-admin@example.com`
+- 临时还原的 `directus_users.token` 全部为空
+- 临时还原的 `directus_sessions` 为空
+
+当前仓库中的 seed 已基于本地 Docker Compose 演示环境重建为干净产物，并明确不再依赖 restore 后的运行时净化步骤。

@@ -5,10 +5,14 @@ import { describe, expect, it } from "vitest";
 
 interface PackageJsonScripts {
     lint?: string;
+    "install:host"?: string;
 }
 
 interface PackageJsonShape {
     scripts?: PackageJsonScripts;
+    bin?: {
+        "cialli-install"?: string;
+    };
 }
 
 function readPackageJson(): PackageJsonShape {
@@ -23,5 +27,16 @@ describe("package.json scripts", () => {
         const packageJson = readPackageJson();
 
         expect(packageJson.scripts?.lint).toContain("--concurrency off");
+    });
+
+    it("exposes the global installer bin and local helper script", () => {
+        const packageJson = readPackageJson();
+
+        expect(packageJson.bin?.["cialli-install"]).toBe(
+            "./scripts/install/cli.mjs",
+        );
+        expect(packageJson.scripts?.["install:host"]).toBe(
+            "node ./scripts/install/cli.mjs install",
+        );
     });
 });

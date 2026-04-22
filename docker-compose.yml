@@ -59,14 +59,14 @@ services:
     image: postgis/postgis:18-3.6
     platform: linux/amd64
     environment:
-      POSTGRES_DB: directus
-      POSTGRES_USER: directus
+      POSTGRES_DB: ${POSTGRES_DB:-directus}
+      POSTGRES_USER: ${POSTGRES_USER:-directus}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-directus}
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "pg_isready --host=127.0.0.1 --username=directus --dbname=directus",
+          "pg_isready --host=127.0.0.1 --username=$${POSTGRES_USER} --dbname=$${POSTGRES_DB}",
         ]
       interval: 10s
       timeout: 5s
@@ -95,7 +95,7 @@ services:
     image: minio/minio:RELEASE.2025-02-28T09-55-16Z
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
-      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     healthcheck:
       test: ["CMD-SHELL", "test -f /proc/1/cmdline"]
@@ -118,7 +118,7 @@ services:
       - /bin/sh
       - -c
       - >
-        until mc alias set local http://minio:9000 minioadmin ${MINIO_ROOT_PASSWORD:-minioadmin}; do sleep 2; done &&
+        until mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin}; do sleep 2; done &&
         mc mb --ignore-existing local/cialli-assets
     restart: "no"
 
@@ -129,8 +129,8 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      POSTGRES_DB: directus
-      POSTGRES_USER: directus
+      POSTGRES_DB: ${POSTGRES_DB:-directus}
+      POSTGRES_USER: ${POSTGRES_USER:-directus}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-directus}
     entrypoint:
       - /bin/sh
@@ -188,7 +188,7 @@ services:
       minio-init:
         condition: service_completed_successfully
     environment:
-      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
       MINIO_BUCKET: cialli-assets
     entrypoint:
@@ -233,6 +233,12 @@ services:
         condition: service_completed_successfully
       seed-minio-restore:
         condition: service_completed_successfully
+    command:
+      - /bin/sh
+      - -ceu
+      - |
+        npx directus bootstrap --skipAdminInit
+        exec npx directus start
     environment:
       SECRET: ${DIRECTUS_SECRET:-change-me}
       PUBLIC_URL: http://127.0.0.1:8055
@@ -240,8 +246,8 @@ services:
       DB_CLIENT: pg
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_DATABASE: directus
-      DB_USER: directus
+      DB_DATABASE: ${POSTGRES_DB:-directus}
+      DB_USER: ${POSTGRES_USER:-directus}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-directus}
 
       CACHE_ENABLED: "true"
@@ -250,9 +256,6 @@ services:
       REDIS: redis://redis:6379
 
       WEBSOCKETS_ENABLED: "true"
-
-      ADMIN_EMAIL: ${DIRECTUS_ADMIN_EMAIL:-demo-admin@example.com}
-      ADMIN_PASSWORD: ${DIRECTUS_ADMIN_PASSWORD:-CiaLli-demo-admin-2026!}
 
       STORAGE_LOCATIONS: s3
       STORAGE_S3_DRIVER: s3

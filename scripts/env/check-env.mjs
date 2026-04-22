@@ -9,10 +9,11 @@ const REQUIRED_KEYS = [
     "DIRECTUS_URL",
     "DIRECTUS_STATIC_TOKEN",
     "DIRECTUS_SECRET",
-    "DIRECTUS_ADMIN_EMAIL",
-    "DIRECTUS_ADMIN_PASSWORD",
+    "POSTGRES_USER",
+    "POSTGRES_DB",
     "POSTGRES_PASSWORD",
     "REDIS_URL",
+    "MINIO_ROOT_USER",
     "MINIO_ROOT_PASSWORD",
     "STORAGE_S3_KEY",
     "STORAGE_S3_SECRET",
@@ -23,7 +24,6 @@ const REQUIRED_KEYS = [
 const PRODUCTION_SENSITIVE_KEYS = [
     "DIRECTUS_STATIC_TOKEN",
     "DIRECTUS_SECRET",
-    "DIRECTUS_ADMIN_PASSWORD",
     "POSTGRES_PASSWORD",
     "MINIO_ROOT_PASSWORD",
     "STORAGE_S3_SECRET",
@@ -36,11 +36,6 @@ const DANGEROUS_DEFAULTS = new Set([
     "change-me",
     "directus",
     "minioadmin",
-    "admin@example.com",
-    "admin@123456",
-    "demo-admin@example.com",
-    "demo-admin@cialli.local",
-    "CiaLli-demo-admin-2026!",
     "local-ai-summary-secret",
 ]);
 
