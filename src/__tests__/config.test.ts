@@ -5,6 +5,7 @@ import {
     defaultSiteSettings,
     systemSiteConfig,
 } from "@/config";
+import { DEFAULT_SITE_THEME_PRESET } from "@/config/theme-presets";
 
 describe("config runtime site config", () => {
     it("buildRuntimeSiteConfig 会把站点设置投影为布局运行时配置", () => {
@@ -41,8 +42,8 @@ describe("config runtime site config", () => {
         );
     });
 
-    it("根据站点主题预设推导运行时 hue，且默认主题为蓝色", () => {
-        const blueRuntime = buildRuntimeSiteConfig(
+    it("根据站点主题预设推导运行时 hue，且默认主题为紫色", () => {
+        const defaultRuntime = buildRuntimeSiteConfig(
             systemSiteConfig,
             defaultSiteSettings,
         );
@@ -61,12 +62,14 @@ describe("config runtime site config", () => {
             },
         });
 
-        expect(defaultSiteSettings.site.themePreset).toBe("blue");
-        expect(blueRuntime.themeColor.hue).toBe(205);
+        expect(defaultSiteSettings.site.themePreset).toBe(
+            DEFAULT_SITE_THEME_PRESET,
+        );
+        expect(defaultRuntime.themeColor.hue).toBe(256);
         expect(purpleRuntime.themeColor.hue).toBe(256);
         expect(tealRuntime.themeColor.hue).toBe(174);
-        expect(blueRuntime.themeColor.hue).not.toBe(
-            purpleRuntime.themeColor.hue,
+        expect(defaultRuntime.themeColor.hue).not.toBe(
+            tealRuntime.themeColor.hue,
         );
     });
 });

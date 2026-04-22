@@ -11739,7 +11739,7 @@
         "name": "theme_preset",
         "table": "app_site_settings",
         "data_type": "character varying",
-        "default_value": "blue",
+        "default_value": "purple",
         "max_length": 32,
         "numeric_precision": null,
         "numeric_scale": null,

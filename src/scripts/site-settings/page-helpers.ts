@@ -4,16 +4,17 @@
  * 包含 bindSettings（及各分区子函数）与 collectXxxPayload 系列函数。
  */
 
+import { DEFAULT_SITE_THEME_PRESET } from "@/config/theme-presets";
 import { t } from "@/scripts/shared/i18n-runtime";
 import { SITE_TIME_ZONE_AUTO_VALUE } from "@/utils/date-utils";
 import {
-    inputVal,
-    textareaVal,
     checked,
-    setVal,
+    inputVal,
+    numberOrFallback,
     setChecked,
     setSelect,
-    numberOrFallback,
+    setVal,
+    textareaVal,
 } from "@/scripts/shared/dom-helpers";
 import type { FaviconItem } from "@/scripts/site-settings/page-editor";
 import {
@@ -55,7 +56,10 @@ function bindSiteBasicFields(site: SettingsObj): void {
             ? (site.keywords as string[]).join(", ")
             : "",
     );
-    setSelect("ss-theme-preset", String(site.themePreset ?? "blue"));
+    setSelect(
+        "ss-theme-preset",
+        String(site.themePreset ?? DEFAULT_SITE_THEME_PRESET),
+    );
     setVal("ss-start-date", String(site.siteStartDate ?? ""));
 }
 
@@ -210,7 +214,8 @@ export function collectSitePayload(current: SettingsObj): SettingsObj {
                 inputVal("ss-timezone") === SITE_TIME_ZONE_AUTO_VALUE
                     ? null
                     : inputVal("ss-timezone") || null,
-            themePreset: inputVal("ss-theme-preset") || "blue",
+            themePreset:
+                inputVal("ss-theme-preset") || DEFAULT_SITE_THEME_PRESET,
             keywords: inputVal("ss-keywords")
                 .split(",")
                 .map((x) => x.trim())

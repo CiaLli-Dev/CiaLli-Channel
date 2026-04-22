@@ -24,6 +24,7 @@ vi.mock("@/server/cache/manager", () => ({
 }));
 
 import { createOne, readMany, updateOne } from "@/server/directus/client";
+import { DEFAULT_SITE_THEME_PRESET } from "@/config/theme-presets";
 import {
     buildPublicAiSettings,
     resolveStoredAiSettings,
@@ -62,7 +63,7 @@ function createResolvedSiteSettings(
                 subtitle: "内容社区",
                 lang: language,
                 timeZone: null,
-                themePreset: "blue",
+                themePreset: DEFAULT_SITE_THEME_PRESET,
                 keywords: [],
                 siteStartDate: "2026-02-01",
                 favicon: [],

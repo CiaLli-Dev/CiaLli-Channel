@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { defaultSiteSettings } from "@/config";
+import { DEFAULT_SITE_THEME_PRESET } from "@/config/theme-presets";
 
 const { cacheGetMock, cacheSetMock, cacheInvalidateMock, readManyMock } =
     vi.hoisted(() => ({
@@ -45,7 +46,7 @@ function siteSettingsRow(
         settings_home: sections.settings_home ?? {},
         settings_article: sections.settings_article ?? {},
         settings_other: sections.settings_other ?? {},
-        theme_preset: sections.theme_preset ?? "blue",
+        theme_preset: sections.theme_preset ?? DEFAULT_SITE_THEME_PRESET,
         date_updated: "2026-03-11T00:00:00.000Z",
         date_created: "2026-03-10T00:00:00.000Z",
     };
@@ -196,24 +197,24 @@ function createLegacyResolvedSiteSettings(): {
 }
 
 describe("resolveSiteSettingsPayload", () => {
-    it("缺失主题预设时回退为蓝色默认主题", () => {
+    it("缺失主题预设时回退为紫色默认主题", () => {
         const result = resolveSiteSettingsPayload({
             site: {
                 title: "No Theme",
             },
         });
 
-        expect(result.site.themePreset).toBe("blue");
+        expect(result.site.themePreset).toBe(DEFAULT_SITE_THEME_PRESET);
     });
 
-    it("非法主题预设会回退为蓝色默认主题", () => {
+    it("非法主题预设会回退为紫色默认主题", () => {
         const result = resolveSiteSettingsPayload({
             site: {
                 themePreset: "pink",
             },
         });
 
-        expect(result.site.themePreset).toBe("blue");
+        expect(result.site.themePreset).toBe(DEFAULT_SITE_THEME_PRESET);
     });
 
     it("合法主题预设会被保留", () => {

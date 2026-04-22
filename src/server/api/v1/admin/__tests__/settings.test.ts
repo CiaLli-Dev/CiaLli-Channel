@@ -253,7 +253,7 @@ describe("handleAdminSettings /site", () => {
                     subtitle: "内容社区",
                     lang: "zh_CN",
                     timeZone: "Asia/Shanghai",
-                    themePreset: "blue",
+                    themePreset: "purple",
                     keywords: ["文章"],
                     siteStartDate: "2026-02-01",
                     favicon: [],

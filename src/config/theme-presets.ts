@@ -6,7 +6,7 @@ export type SiteThemePresetOption = {
     hue: number;
 };
 
-export const DEFAULT_SITE_THEME_PRESET: SiteThemePreset = "blue";
+export const DEFAULT_SITE_THEME_PRESET: SiteThemePreset = "purple";
 
 const SITE_THEME_PRESET_SEED_HEX: Record<SiteThemePreset, string> = {
     blue: "#0061A4",
