@@ -338,9 +338,6 @@ describe("handleAdminSettings /site", () => {
             announcement: {
                 title: "前端误传公告",
             },
-            sakura: {
-                enable: true,
-            },
         });
         const response = await handleAdminSettings(
             ctx as unknown as APIContext,
@@ -353,12 +350,12 @@ describe("handleAdminSettings /site", () => {
                     timeZone: "UTC",
                     themePreset: "teal",
                 }),
-                sakura: {
-                    enable: true,
-                },
             }),
             expect.anything(),
         );
+        expect(
+            mockedResolveSiteSettingsPayload.mock.calls[0]?.[0],
+        ).not.toHaveProperty("announcement");
         const updatePayload = mockedUpdateOne.mock.calls[0]?.[2] as
             | Record<string, unknown>
             | undefined;
@@ -477,6 +474,218 @@ describe("handleAdminSettings /site", () => {
         expect(body.ok).toBe(true);
         expect(body.settings.banner.waves?.enable).toBe(false);
     });
+});
+
+describe("handleAdminSettings /site full payload", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockedRequireAdmin.mockResolvedValue({
+            access: {
+                isAdmin: true,
+                user: {
+                    id: "admin-1",
+                },
+            },
+            accessToken: "test-access-token",
+        } as never);
+    });
+
+    it("PATCH /admin/settings/site 接受当前后台整包配置结构", async () => {
+        mockedGetResolvedSiteSettings.mockResolvedValue({
+            system: {
+                timeZone: "Asia/Shanghai",
+            },
+            settings: defaultSiteSettings,
+        } as never);
+        mockedResolveSiteSettingsPayload.mockReturnValue({
+            ...defaultSiteSettings,
+            site: {
+                ...defaultSiteSettings.site,
+                title: "整包标题",
+                themePreset: "orange",
+            },
+        } as never);
+        mockedReadMany.mockResolvedValue([
+            {
+                id: "row-1",
+                date_updated: "2026-02-15T12:00:00.000Z",
+                date_created: "2026-02-10T12:00:00.000Z",
+            },
+        ] as never);
+        mockedUpdateOne.mockResolvedValue({
+            date_updated: "2026-02-16T00:00:00.000Z",
+            date_created: "2026-02-10T12:00:00.000Z",
+        } as never);
+
+        const ctx = makeCtx("admin/settings/site", "PATCH", {
+            ...defaultSiteSettings,
+            site: {
+                ...defaultSiteSettings.site,
+                title: "整包标题",
+                themePreset: "orange",
+            },
+            announcement: {
+                title: "前端整包误传公告",
+            },
+        });
+        const response = await handleAdminSettings(
+            ctx as unknown as APIContext,
+            ["settings", "site"],
+        );
+        expect(response.status).toBe(200);
+        expect(mockedResolveSiteSettingsPayload).toHaveBeenCalledWith(
+            expect.objectContaining({
+                site: expect.objectContaining({
+                    title: "整包标题",
+                    themePreset: "orange",
+                }),
+                banner: expect.objectContaining({
+                    carousel: expect.objectContaining({
+                        interval: 5,
+                    }),
+                }),
+                navBar: expect.objectContaining({
+                    links: expect.any(Array),
+                }),
+            }),
+            expect.anything(),
+        );
+        expect(
+            mockedResolveSiteSettingsPayload.mock.calls[0]?.[0],
+        ).not.toHaveProperty("announcement");
+        expect(mockedUpdateOne.mock.calls[0]?.[2]).toEqual(
+            expect.objectContaining({
+                theme_preset: "orange",
+                settings_site: expect.objectContaining({
+                    site: expect.objectContaining({
+                        title: "整包标题",
+                    }),
+                }),
+            }),
+        );
+    });
+});
+
+describe("handleAdminSettings /site validation", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockedRequireAdmin.mockResolvedValue({
+            access: {
+                isAdmin: true,
+                user: {
+                    id: "admin-1",
+                },
+            },
+            accessToken: "test-access-token",
+        } as never);
+    });
+
+    const invalidSitePatchCases: {
+        name: string;
+        payload: Record<string, unknown>;
+    }[] = [
+        {
+            name: "未知顶层字段",
+            payload: {
+                sakura: {
+                    enable: true,
+                },
+            },
+        },
+        {
+            name: "废弃 banner.imageApi 字段",
+            payload: {
+                banner: {
+                    imageApi: "/api/banner",
+                },
+            },
+        },
+        {
+            name: "导航链接未知字段",
+            payload: {
+                navBar: {
+                    links: [
+                        {
+                            name: "首页",
+                            url: "/",
+                            badKey: true,
+                        },
+                    ],
+                },
+            },
+        },
+        {
+            name: "非法壁纸模式枚举",
+            payload: {
+                wallpaperMode: {
+                    defaultMode: "video",
+                },
+            },
+        },
+        {
+            name: "非法 TOC 模式枚举",
+            payload: {
+                toc: {
+                    mode: "dock",
+                },
+            },
+        },
+        {
+            name: "关键词不是数组",
+            payload: {
+                site: {
+                    keywords: "文章,日记",
+                },
+            },
+        },
+        {
+            name: "导航链接不是数组",
+            payload: {
+                navBar: {
+                    links: {},
+                },
+            },
+        },
+        {
+            name: "打字机速度不是数字",
+            payload: {
+                banner: {
+                    homeText: {
+                        typewriter: {
+                            speed: "fast",
+                        },
+                    },
+                },
+            },
+        },
+    ];
+
+    for (const testCase of invalidSitePatchCases) {
+        it(`PATCH /admin/settings/site 拒绝${testCase.name}`, async () => {
+            const ctx = makeCtx(
+                "admin/settings/site",
+                "PATCH",
+                testCase.payload,
+            );
+            const response = await handleAdminSettings(
+                ctx as unknown as APIContext,
+                ["settings", "site"],
+            );
+            expect(response.status).toBe(400);
+
+            const body = await parseResponseJson<{
+                ok: boolean;
+                error: {
+                    code: string;
+                    message: string;
+                };
+            }>(response);
+            expect(body.ok).toBe(false);
+            expect(body.error.code).toBe("VALIDATION_ERROR");
+            expect(mockedResolveSiteSettingsPayload).not.toHaveBeenCalled();
+            expect(mockedUpdateOne).not.toHaveBeenCalled();
+        });
+    }
 
     it("PATCH /admin/settings/site 拒绝非法站点时区", async () => {
         const ctx = makeCtx("admin/settings/site", "PATCH", {

@@ -26,11 +26,14 @@ import {
     AdminAboutUpdateSchema,
     AdminBulletinPreviewSchema,
     AdminBulletinUpdateSchema,
+    AdminSiteSettingsPatchSchema,
+    type AdminSiteSettingsPatchInput,
 } from "@/server/api/schemas";
 import {
     renderMarkdown,
     type MarkdownRenderMode,
 } from "@/server/markdown/render";
+import { AppError } from "@/server/api/errors";
 import {
     getResolvedSiteSettings,
     invalidateSiteSettingsCache,
@@ -486,6 +489,14 @@ async function handleAdminSitePatch(
     adminUserId: string,
 ): Promise<Response> {
     const body = await parseJsonBody(context.request);
+    if (
+        isObjectRecord(body) &&
+        Object.prototype.hasOwnProperty.call(body, "announcement")
+    ) {
+        // 站点设置 PATCH 支持整包提交，必须主动剔除 announcement 避免回写到 app_site_settings。
+        delete body.announcement;
+    }
+
     try {
         const normalizedTimeZone = validateSiteTimeZonePatch(body);
         if (
@@ -503,15 +514,16 @@ async function handleAdminSitePatch(
         );
     }
 
-    if (
-        isObjectRecord(body) &&
-        Object.prototype.hasOwnProperty.call(body, "announcement")
-    ) {
-        // 站点设置 PATCH 支持整包提交，必须主动剔除 announcement 避免回写到 app_site_settings。
-        delete body.announcement;
+    let patch: AdminSiteSettingsPatchInput;
+    try {
+        patch = validateBody(AdminSiteSettingsPatchSchema, body);
+    } catch (error) {
+        if (error instanceof AppError) {
+            return fail(error.message, error.status, error.code);
+        }
+        throw error;
     }
 
-    const patch = body as Partial<EditableSiteSettings>;
     const current = await getResolvedSiteSettings();
     const settings = resolveSiteSettingsPayload(patch, current.settings);
     const prevFileIds = collectSettingsFileIds(current.settings);

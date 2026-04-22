@@ -12,6 +12,98 @@ import {
     SocialLinksSchema,
 } from "./common";
 
+type AdminSiteSettingsNavLinkInput =
+    | number
+    | {
+          name: string;
+          url: string;
+          external?: boolean;
+          icon?: string;
+          children?: AdminSiteSettingsNavLinkInput[];
+      };
+
+export type AdminSiteSettingsPatchInput = {
+    site?: {
+        title?: string;
+        subtitle?: string;
+        lang?: "en" | "zh_CN" | "zh_TW" | "ja";
+        timeZone?: string | null;
+        themePreset?: "blue" | "purple" | "teal" | "orange";
+        keywords?: string[];
+        siteStartDate?: string | null;
+        favicon?: {
+            src: string;
+            theme?: "light" | "dark";
+            sizes?: string;
+        }[];
+    };
+    auth?: {
+        register_enabled?: boolean;
+    };
+    navbarTitle?: {
+        mode?: "text-icon" | "logo";
+        text?: string;
+        icon?: string;
+        logo?: string;
+    };
+    wallpaperMode?: {
+        defaultMode?: "banner" | "none";
+    };
+    banner?: {
+        src?: string | string[];
+        position?: "top" | "center" | "bottom";
+        carousel?: {
+            enable?: boolean;
+            interval?: number;
+        };
+        waves?: {
+            enable?: boolean;
+        };
+        homeText?: {
+            enable?: boolean;
+            title?: string;
+            subtitle?: string | string[];
+            typewriter?: {
+                enable?: boolean;
+                speed?: number;
+                deleteSpeed?: number;
+                pauseTime?: number;
+            };
+        };
+        navbar?: {
+            transparentMode?: "semi" | "full" | "semifull";
+        };
+    };
+    toc?: {
+        enable?: boolean;
+        mode?: "float" | "sidebar";
+        depth?: number;
+        useJapaneseBadge?: boolean;
+    };
+    navBar?: {
+        links?: AdminSiteSettingsNavLinkInput[];
+    };
+    profile?: {
+        avatar?: string;
+    };
+    musicPlayer?: {
+        enable?: boolean;
+        meting_api?: string;
+        id?: string;
+        server?: string;
+        type?: string;
+        marqueeSpeed?: number;
+    };
+    ai?: {
+        enabled?: boolean;
+        articleSummaryEnabled?: boolean;
+        baseUrl?: string;
+        model?: string;
+        apiKeyEncrypted?: string | null;
+        updatedAt?: string | null;
+    };
+};
+
 export type AdminUpdateUserInput = {
     email?: string;
     first_name?: OptionalString;
@@ -73,6 +165,167 @@ export type AdminAiSettingsUpdateInput = {
     apiKey?: OptionalString;
     clearApiKey?: boolean;
 };
+
+const StrictStringArraySchema = z.array(z.string());
+const StrictAssetListSchema = z.array(z.string());
+
+const StrictFaviconSchema = z
+    .object({
+        src: z.string(),
+        theme: z.enum(["light", "dark"]).optional(),
+        sizes: z.string().optional(),
+    })
+    .strict();
+
+const StrictNavLinkSchema: z.ZodType<AdminSiteSettingsNavLinkInput> = z.lazy(
+    () =>
+        z.union([
+            z.number().int(),
+            z
+                .object({
+                    name: z.string(),
+                    url: z.string(),
+                    external: z.boolean().optional(),
+                    icon: z.string().optional(),
+                    children: z.array(StrictNavLinkSchema).optional(),
+                })
+                .strict(),
+        ]),
+);
+
+export const AdminSiteSettingsPatchSchema: z.ZodType<AdminSiteSettingsPatchInput> =
+    z
+        .object({
+            site: z
+                .object({
+                    title: z.string(),
+                    subtitle: z.string(),
+                    lang: z.enum(["en", "zh_CN", "zh_TW", "ja"]),
+                    timeZone: z.string().nullable(),
+                    themePreset: z.enum(["blue", "purple", "teal", "orange"]),
+                    keywords: StrictStringArraySchema,
+                    siteStartDate: z.string().nullable(),
+                    favicon: z.array(StrictFaviconSchema),
+                })
+                .strict()
+                .partial(),
+            auth: z
+                .object({
+                    register_enabled: z.boolean(),
+                })
+                .strict()
+                .partial(),
+            navbarTitle: z
+                .object({
+                    mode: z.enum(["text-icon", "logo"]),
+                    text: z.string(),
+                    icon: z.string(),
+                    logo: z.string(),
+                })
+                .strict()
+                .partial(),
+            wallpaperMode: z
+                .object({
+                    defaultMode: z.enum(["banner", "none"]),
+                })
+                .strict()
+                .partial(),
+            banner: z
+                .object({
+                    src: z.union([z.string(), StrictAssetListSchema]),
+                    position: z.enum(["top", "center", "bottom"]),
+                    carousel: z
+                        .object({
+                            enable: z.boolean(),
+                            interval: z.coerce.number().int(),
+                        })
+                        .strict()
+                        .partial(),
+                    waves: z
+                        .object({
+                            enable: z.boolean(),
+                        })
+                        .strict()
+                        .partial(),
+                    homeText: z
+                        .object({
+                            enable: z.boolean(),
+                            title: z.string(),
+                            subtitle: z.union([
+                                z.string(),
+                                z.array(z.string()),
+                            ]),
+                            typewriter: z
+                                .object({
+                                    enable: z.boolean(),
+                                    speed: z.coerce.number().int(),
+                                    deleteSpeed: z.coerce.number().int(),
+                                    pauseTime: z.coerce.number().int(),
+                                })
+                                .strict()
+                                .partial(),
+                        })
+                        .strict()
+                        .partial(),
+                    navbar: z
+                        .object({
+                            transparentMode: z.enum([
+                                "semi",
+                                "full",
+                                "semifull",
+                            ]),
+                        })
+                        .strict()
+                        .partial(),
+                })
+                .strict()
+                .partial(),
+            toc: z
+                .object({
+                    enable: z.boolean(),
+                    mode: z.enum(["float", "sidebar"]),
+                    depth: z.coerce.number().int(),
+                    useJapaneseBadge: z.boolean(),
+                })
+                .strict()
+                .partial(),
+            navBar: z
+                .object({
+                    links: z.array(StrictNavLinkSchema),
+                })
+                .strict()
+                .partial(),
+            profile: z
+                .object({
+                    avatar: z.string(),
+                })
+                .strict()
+                .partial(),
+            musicPlayer: z
+                .object({
+                    enable: z.boolean(),
+                    meting_api: z.string(),
+                    id: z.string(),
+                    server: z.string(),
+                    type: z.string(),
+                    marqueeSpeed: z.coerce.number().int(),
+                })
+                .strict()
+                .partial(),
+            ai: z
+                .object({
+                    enabled: z.boolean(),
+                    articleSummaryEnabled: z.boolean(),
+                    baseUrl: z.string(),
+                    model: z.string(),
+                    apiKeyEncrypted: z.string().nullable(),
+                    updatedAt: z.string().nullable(),
+                })
+                .strict()
+                .partial(),
+        })
+        .strict()
+        .partial();
 
 // ── 管理员更新用户 ──
 
