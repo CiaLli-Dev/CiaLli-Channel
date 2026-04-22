@@ -6,6 +6,7 @@ import {
     decryptSecretValue,
     encryptSecretValue,
 } from "@/server/crypto/secret-box";
+import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 
 export type PublicAiSettings = {
     enabled: boolean;
@@ -124,12 +125,15 @@ export function serializeAiSettingsPatch(
 }
 
 async function readSiteSettingsRow(): Promise<SiteSettingsRow | null> {
-    const rows = await readMany("app_site_settings", {
-        filter: { key: { _eq: "default" } } as JsonObject,
-        limit: 1,
-        sort: ["-date_updated", "-date_created"],
-        fields: ["id", "settings_other"],
-    });
+    const rows = await withServiceRepositoryContext(
+        async () =>
+            await readMany("app_site_settings", {
+                filter: { key: { _eq: "default" } } as JsonObject,
+                limit: 1,
+                sort: ["-date_updated", "-date_created"],
+                fields: ["id", "settings_other"],
+            }),
+    );
     const row = rows[0];
     if (!row) {
         return null;
@@ -152,29 +156,31 @@ export async function loadDecryptedAiSettings(): Promise<DecryptedAiSettings> {
 export async function saveAiSettingsPatch(
     patch: AiSettingsPatch,
 ): Promise<PublicAiSettings> {
-    const row = await readSiteSettingsRow();
-    const settingsOther = isRecord(row?.settings_other)
-        ? row.settings_other
-        : {};
-    const current = resolveStoredAiSettings(settingsOther.ai);
-    const next = serializeAiSettingsPatch(patch, current);
-    const nextSettingsOther = {
-        musicPlayer: defaultSiteSettings.musicPlayer,
-        ...settingsOther,
-        ai: next,
-    };
+    return await withServiceRepositoryContext(async () => {
+        const row = await readSiteSettingsRow();
+        const settingsOther = isRecord(row?.settings_other)
+            ? row.settings_other
+            : {};
+        const current = resolveStoredAiSettings(settingsOther.ai);
+        const next = serializeAiSettingsPatch(patch, current);
+        const nextSettingsOther = {
+            musicPlayer: defaultSiteSettings.musicPlayer,
+            ...settingsOther,
+            ai: next,
+        };
 
-    if (!row) {
-        await createOne("app_site_settings", {
-            key: "default",
-            status: "published",
-            settings_other: nextSettingsOther,
-        });
-    } else {
-        await updateOne("app_site_settings", row.id, {
-            settings_other: nextSettingsOther,
-        });
-    }
+        if (!row) {
+            await createOne("app_site_settings", {
+                key: "default",
+                status: "published",
+                settings_other: nextSettingsOther,
+            });
+        } else {
+            await updateOne("app_site_settings", row.id, {
+                settings_other: nextSettingsOther,
+            });
+        }
 
-    return buildPublicAiSettings(next);
+        return buildPublicAiSettings(next);
+    });
 }

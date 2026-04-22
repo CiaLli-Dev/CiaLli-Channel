@@ -134,7 +134,11 @@ function applyArticleSummaryFields(
 
     if (!String(nextSummary || "").trim()) {
         payload.summary_source = "none";
-    } else if (previousSource === "ai" && nextSummary === previousSummary) {
+    } else if (
+        previousSource === "ai" &&
+        normalizeComparableArticleSummary(nextSummary) ===
+            normalizeComparableArticleSummary(previousSummary)
+    ) {
         payload.summary_source = "ai";
     } else {
         payload.summary_source = "manual";
@@ -144,6 +148,12 @@ function applyArticleSummaryFields(
         payload.summary_content_hash = null;
         payload.summary_error = null;
     }
+}
+
+function normalizeComparableArticleSummary(value: unknown): string {
+    return String(value ?? "")
+        .replace(/\r\n?/g, "\n")
+        .trim();
 }
 
 function normalizeRequiredArticleText(value: unknown): string {

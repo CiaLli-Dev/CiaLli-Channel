@@ -77,6 +77,7 @@ describe("AI summary prompts", () => {
 
         expect(content).toContain("自然段");
         expect(content).toContain("段落文本");
+        expect(content).toContain("第三者视角");
         expect(content).toContain("不要使用项目符号、编号或小标题");
         expect(content).toContain(
             "不使用 Markdown 标题、列表、代码块、表格、引用、链接或图片语法",
@@ -95,6 +96,7 @@ describe("AI summary prompts", () => {
             "The output language must match the site's language setting",
         );
         expect(content).toContain("80-160 word English summary");
+        expect(content).toContain("third-person overview of the article");
     });
 
     it("builds Japanese prompts when the site language is Japanese", () => {
@@ -114,9 +116,9 @@ describe("AI summary prompts", () => {
     });
 
     it("includes language in prompt version resolution", () => {
-        expect(resolveAiSummaryPromptVersion("en")).toBe("v3:en");
-        expect(resolveAiSummaryPromptVersion("zh_CN")).toBe("v3:zh_CN");
-        expect(resolveAiSummaryPromptVersion("ko")).toBe("v3:en");
+        expect(resolveAiSummaryPromptVersion("en")).toBe("v4:en");
+        expect(resolveAiSummaryPromptVersion("zh_CN")).toBe("v4:zh_CN");
+        expect(resolveAiSummaryPromptVersion("ko")).toBe("v4:en");
     });
 
     it("normalizes accidental Markdown into paragraph text", () => {

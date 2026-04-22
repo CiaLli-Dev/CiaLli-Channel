@@ -6,6 +6,7 @@ import type {
 } from "@/types/app";
 import type { JsonObject } from "@/types/json";
 import { createOne, readMany, updateOne } from "@/server/directus/client";
+import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
 
 import { buildSummaryContentHash, buildSummaryJobDedupeKey } from "./hash";
@@ -83,11 +84,14 @@ async function readArticle(articleId: string): Promise<AppArticle | null> {
 async function readExistingJob(
     dedupeKey: string,
 ): Promise<AppAiSummaryJob | null> {
-    const rows = await readMany("app_ai_summary_jobs", {
-        filter: { dedupe_key: { _eq: dedupeKey } } as JsonObject,
-        limit: 1,
-        fields: [...SUMMARY_JOB_FIELDS],
-    });
+    const rows = await withServiceRepositoryContext(
+        async () =>
+            await readMany("app_ai_summary_jobs", {
+                filter: { dedupe_key: { _eq: dedupeKey } } as JsonObject,
+                limit: 1,
+                fields: [...SUMMARY_JOB_FIELDS],
+            }),
+    );
     return rows[0] ?? null;
 }
 
@@ -172,56 +176,65 @@ export async function enqueueArticleSummaryJob(input: {
         return { jobId: existing.id, status: "pending" };
     }
 
-    const created = await createOne(
-        "app_ai_summary_jobs",
-        {
-            article_id: article.id,
-            author_id: article.author_id,
-            status: "pending",
-            kind: input.kind ?? "on_publish",
-            priority: input.kind === "manual" ? 10 : 0,
-            dedupe_key: dedupeKey,
-            content_hash: contentHash,
-            prompt_version: promptVersion,
-            provider: "openai-compatible",
-            model: input.settings.model,
-            target_length: targetLength,
-            attempts: 0,
-            max_attempts: 3,
-            scheduled_at: new Date().toISOString(),
-        },
-        { fields: ["id"] },
+    const created = await withServiceRepositoryContext(
+        async () =>
+            await createOne(
+                "app_ai_summary_jobs",
+                {
+                    article_id: article.id,
+                    author_id: article.author_id,
+                    status: "pending",
+                    kind: input.kind ?? "on_publish",
+                    priority: input.kind === "manual" ? 10 : 0,
+                    dedupe_key: dedupeKey,
+                    content_hash: contentHash,
+                    prompt_version: promptVersion,
+                    provider: "openai-compatible",
+                    model: input.settings.model,
+                    target_length: targetLength,
+                    attempts: 0,
+                    max_attempts: 3,
+                    scheduled_at: new Date().toISOString(),
+                },
+                { fields: ["id"] },
+            ),
     );
 
     return { jobId: created.id, status: "pending" };
 }
 
 export async function readPendingSummaryJobs(limit: number): Promise<string[]> {
-    const rows = await readMany("app_ai_summary_jobs", {
-        filter: { status: { _eq: "pending" } } as JsonObject,
-        sort: ["-priority", "scheduled_at"],
-        limit,
-        fields: ["id"],
-    });
+    const rows = await withServiceRepositoryContext(
+        async () =>
+            await readMany("app_ai_summary_jobs", {
+                filter: { status: { _eq: "pending" } } as JsonObject,
+                sort: ["-priority", "scheduled_at"],
+                limit,
+                fields: ["id"],
+            }),
+    );
     return rows.map((row) => row.id);
 }
 
 export async function readLatestArticleSummaryJob(
     articleId: string,
 ): Promise<ArticleAiSummaryJobSnapshot | null> {
-    const rows = await readMany("app_ai_summary_jobs", {
-        filter: { article_id: { _eq: articleId } } as JsonObject,
-        sort: ["-date_created"],
-        limit: 1,
-        fields: [
-            "id",
-            "status",
-            "error_message",
-            "date_created",
-            "started_at",
-            "finished_at",
-        ],
-    });
+    const rows = await withServiceRepositoryContext(
+        async () =>
+            await readMany("app_ai_summary_jobs", {
+                filter: { article_id: { _eq: articleId } } as JsonObject,
+                sort: ["-date_created"],
+                limit: 1,
+                fields: [
+                    "id",
+                    "status",
+                    "error_message",
+                    "date_created",
+                    "started_at",
+                    "finished_at",
+                ],
+            }),
+    );
 
     return rows[0] ?? null;
 }
@@ -229,25 +242,31 @@ export async function readLatestArticleSummaryJob(
 export async function recoverStuckSummaryJobs(
     now = new Date(),
 ): Promise<number> {
-    const rows = await readMany("app_ai_summary_jobs", {
-        filter: {
-            _and: [
-                { status: { _eq: "processing" } },
-                { leased_until: { _lt: now.toISOString() } },
-            ],
-        } as JsonObject,
-        limit: 100,
-        fields: ["id", "attempts", "max_attempts"],
-    });
-
-    await Promise.all(
-        rows.map((job) =>
-            updateOne("app_ai_summary_jobs", job.id, {
-                status: job.attempts >= job.max_attempts ? "failed" : "pending",
-                leased_until: null,
-                scheduled_at: now.toISOString(),
+    const rows = await withServiceRepositoryContext(
+        async () =>
+            await readMany("app_ai_summary_jobs", {
+                filter: {
+                    _and: [
+                        { status: { _eq: "processing" } },
+                        { leased_until: { _lt: now.toISOString() } },
+                    ],
+                } as JsonObject,
+                limit: 100,
+                fields: ["id", "attempts", "max_attempts"],
             }),
-        ),
     );
+
+    await withServiceRepositoryContext(async () => {
+        await Promise.all(
+            rows.map((job) =>
+                updateOne("app_ai_summary_jobs", job.id, {
+                    status:
+                        job.attempts >= job.max_attempts ? "failed" : "pending",
+                    leased_until: null,
+                    scheduled_at: now.toISOString(),
+                }),
+            ),
+        );
+    });
     return rows.length;
 }

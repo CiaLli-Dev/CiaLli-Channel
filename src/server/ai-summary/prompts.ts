@@ -1,6 +1,6 @@
 import type { SiteLanguage } from "@/types/config";
 
-export const AI_SUMMARY_PROMPT_VERSION_BASE = "v3";
+export const AI_SUMMARY_PROMPT_VERSION_BASE = "v4";
 
 export type AiSummaryPromptLanguage = Extract<
     SiteLanguage,
@@ -34,7 +34,7 @@ const AI_SUMMARY_PROMPT_COPIES: Record<
         chunkUserInstruction:
             "Compress this chunk into 1 concise natural paragraph, preserving key entities, conclusions, and facts. Do not use bullet points, numbered lists, or subheadings.",
         finalSystem:
-            "You are CiaLli's article summarization assistant. Write an 80-160 word English summary that stays faithful to the source text and avoids first-person narration. The output language must match the site's language setting. The final result should be 1-2 natural paragraphs. Do not use Markdown headings, lists, code blocks, tables, blockquotes, links, image syntax, or bold emphasis. Do not start with phrases like 'This article mainly introduces'.",
+            "You are CiaLli's article summarization assistant. Write an 80-160 word English summary that stays faithful to the source text and avoids first-person narration. The output language must match the site's language setting. The final result should be 1-2 natural paragraphs. Use a third-person overview of the article, such as describing what the article explains, discusses, or concludes, rather than speaking as the original author. Do not use Markdown headings, lists, code blocks, tables, blockquotes, links, image syntax, or bold emphasis. Do not start with phrases like 'This article mainly introduces'.",
         finalUserTitleLabel: "Article title",
         finalUserInstruction:
             "Below are chunk summaries of the article. Merge them into the final summary. Output plain paragraph text only. Do not use bullet points, numbering, or subheadings:",
@@ -47,7 +47,7 @@ const AI_SUMMARY_PROMPT_COPIES: Record<
         chunkUserInstruction:
             "请将这个分块压缩成 1 个简洁自然段，保留关键对象、结论和事实。不要写项目符号、编号列表或小标题。",
         finalSystem:
-            "你是 CiaLli 的文章摘要助手。请输出 80-160 字简体中文摘要，忠于原文且不使用第一人称。输出语言必须与站点语言设置一致。最终结果应是 1-2 个自然段，以段落文本为主；不要输出 Markdown 标题、列表、代码块、表格、引用、链接、图片语法或加粗强调；不要写“本文主要介绍”。",
+            "你是 CiaLli 的文章摘要助手。请输出 80-160 字简体中文摘要，忠于原文且不使用第一人称。输出语言必须与站点语言设置一致。最终结果应是 1-2 个自然段，以段落文本为主；请以第三者视角转述文章内容，概括这篇文章介绍了什么、讨论了什么或得出了什么结论，而不是代入作者口吻；不要输出 Markdown 标题、列表、代码块、表格、引用、链接、图片语法或加粗强调；不要写“本文主要介绍”。",
         finalUserTitleLabel: "文章标题",
         finalUserInstruction:
             "以下是文章分块摘要，请合并成最终摘要。输出纯段落文本，不要使用项目符号、编号或小标题：",
@@ -60,7 +60,7 @@ const AI_SUMMARY_PROMPT_COPIES: Record<
         chunkUserInstruction:
             "請將這個分塊壓縮成 1 個簡潔自然段，保留關鍵對象、結論和事實。不要寫項目符號、編號列表或小標題。",
         finalSystem:
-            "你是 CiaLli 的文章摘要助手。請輸出 80-160 字繁體中文摘要，忠於原文且不使用第一人稱。輸出語言必須與站點語言設定一致。最終結果應是 1-2 個自然段，以段落文字為主；不要輸出 Markdown 標題、列表、程式碼區塊、表格、引用、連結、圖片語法或粗體強調；不要寫「本文主要介紹」。",
+            "你是 CiaLli 的文章摘要助手。請輸出 80-160 字繁體中文摘要，忠於原文且不使用第一人稱。輸出語言必須與站點語言設定一致。最終結果應是 1-2 個自然段，以段落文字為主；請以第三者視角轉述文章內容，概括這篇文章介紹了什麼、討論了什麼或得出了什麼結論，而不是代入作者口吻；不要輸出 Markdown 標題、列表、程式碼區塊、表格、引用、連結、圖片語法或粗體強調；不要寫「本文主要介紹」。",
         finalUserTitleLabel: "文章標題",
         finalUserInstruction:
             "以下是文章分塊摘要，請合併成最終摘要。輸出純段落文字，不要使用項目符號、編號或小標題：",
@@ -73,7 +73,7 @@ const AI_SUMMARY_PROMPT_COPIES: Record<
         chunkUserInstruction:
             "このチャンクを 1 つの簡潔で自然な段落に圧縮し、重要な対象、結論、事実を残してください。箇条書き、番号付きリスト、小見出しは使わないでください。",
         finalSystem:
-            "あなたは CiaLli の記事要約アシスタントです。原文に忠実で、一人称を使わない 80〜160 文字の日本語要約を作成してください。出力言語はサイトの言語設定と一致させてください。最終結果は 1〜2 段落の自然な文章にし、Markdown の見出し、箇条書き、コードブロック、表、引用、リンク、画像記法、強調表現は使わないでください。『この記事では主に』のような書き出しは避けてください。",
+            "あなたは CiaLli の記事要約アシスタントです。原文に忠実で、一人称を使わない 80〜160 文字の日本語要約を作成してください。出力言語はサイトの言語設定と一致させてください。最終結果は 1〜2 段落の自然な文章にし、記事が何を説明し、何を論じ、どんな結論を示しているかを第三者視点で要約してください。著者本人の語り口には入らないでください。Markdown の見出し、箇条書き、コードブロック、表、引用、リンク、画像記法、強調表現は使わないでください。『この記事では主に』のような書き出しは避けてください。",
         finalUserTitleLabel: "記事タイトル",
         finalUserInstruction:
             "以下は記事のチャンク要約です。これらを統合して最終要約にしてください。段落テキストのみを出力し、箇条書き、番号、小見出しは使わないでください:",

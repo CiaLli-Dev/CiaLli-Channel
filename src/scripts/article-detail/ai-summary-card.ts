@@ -104,6 +104,10 @@ function setGeneratingState(root: HTMLElement, status: AiSummaryStatus): void {
 
     root.dataset.aiSummaryStatus = status;
     elements.skeletonCard.removeAttribute("data-ai-summary-terminal");
+    elements.skeletonCard.classList.remove("hidden");
+    elements.skeletonCard.hidden = false;
+    elements.finalCard.classList.add("hidden");
+    elements.finalCard.hidden = true;
     elements.hint.textContent =
         status === "processing"
             ? root.dataset.aiSummaryGeneratingHint || ""
@@ -139,6 +143,10 @@ function showTerminalFailure(
 
     root.dataset.aiSummaryStatus = reason;
     elements.skeletonCard.setAttribute("data-ai-summary-terminal", reason);
+    elements.skeletonCard.classList.remove("hidden");
+    elements.skeletonCard.hidden = false;
+    elements.finalCard.classList.add("hidden");
+    elements.finalCard.hidden = true;
     elements.hint.textContent = root.dataset.aiSummaryFailedHint || "";
     elements.pillLabel.textContent = root.dataset.aiSummaryFailedLabel || "";
 }
@@ -167,21 +175,21 @@ async function pollSummary(root: HTMLElement): Promise<"done" | "continue"> {
         return "continue";
     }
 
-    const summary = String(item.summary || "").trim();
-    const summarySource = String(item.summary_source || "");
-    if (summary && summarySource === "ai") {
-        showFinalSummary(root, summary);
-        return "done";
-    }
-
     const status = normalizeStatus(item.ai_summary_status);
+    if (status === "pending" || status === "processing") {
+        setGeneratingState(root, status);
+        return "continue";
+    }
     if (status && TERMINAL_FAILURE_STATUSES.has(status)) {
         showTerminalFailure(root, "failed");
         return "done";
     }
 
-    if (status === "pending" || status === "processing") {
-        setGeneratingState(root, status);
+    const summary = String(item.summary || "").trim();
+    const summarySource = String(item.summary_source || "");
+    if (summary && summarySource === "ai") {
+        showFinalSummary(root, summary);
+        return "done";
     }
 
     return "continue";

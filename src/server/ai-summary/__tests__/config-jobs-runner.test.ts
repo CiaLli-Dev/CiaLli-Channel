@@ -23,17 +23,27 @@ vi.mock("@/server/cache/manager", () => ({
     },
 }));
 
+vi.mock("@/server/repositories/directus/scope", () => ({
+    withServiceRepositoryContext: vi.fn(
+        async (task: () => Promise<unknown>) => await task(),
+    ),
+}));
+
 import { createOne, readMany, updateOne } from "@/server/directus/client";
 import { DEFAULT_SITE_THEME_PRESET } from "@/config/theme-presets";
 import {
     buildPublicAiSettings,
+    loadDecryptedAiSettings,
+    loadStoredAiSettings,
     resolveStoredAiSettings,
+    saveAiSettingsPatch,
     serializeAiSettingsPatch,
 } from "@/server/ai-summary/config";
 import { buildSummaryContentHash } from "@/server/ai-summary/hash";
 import { enqueueArticleSummaryJob } from "@/server/ai-summary/jobs";
 import { resolveAiSummaryPromptVersion } from "@/server/ai-summary/prompts";
 import { runAiSummaryJob } from "@/server/ai-summary/runner";
+import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
 import type { ResolvedSiteSettings } from "@/types/site-settings";
 
@@ -41,6 +51,9 @@ const mockedCreateOne = vi.mocked(createOne);
 const mockedReadMany = vi.mocked(readMany);
 const mockedUpdateOne = vi.mocked(updateOne);
 const mockedGetResolvedSiteSettings = vi.mocked(getResolvedSiteSettings);
+const mockedWithServiceRepositoryContext = vi.mocked(
+    withServiceRepositoryContext,
+);
 
 function createResolvedSiteSettings(
     language: "en" | "zh_CN" | "zh_TW" | "ja",
@@ -152,6 +165,98 @@ describe("AI summary config", () => {
             updatedAt: expect.any(String),
         });
     });
+
+    it("loads stored settings through service repository context", async () => {
+        mockedReadMany.mockResolvedValue([
+            {
+                id: "settings-1",
+                settings_other: {
+                    ai: {
+                        enabled: true,
+                        articleSummaryEnabled: true,
+                        baseUrl: "https://api.example.com/v1",
+                        model: "test-model",
+                    },
+                },
+            },
+        ] as never);
+
+        const result = await loadStoredAiSettings();
+
+        expect(result).toMatchObject({
+            enabled: true,
+            articleSummaryEnabled: true,
+            baseUrl: "https://api.example.com/v1",
+            model: "test-model",
+        });
+        expect(mockedWithServiceRepositoryContext).toHaveBeenCalled();
+    });
+
+    it("loads decrypted settings through service repository context", async () => {
+        const stored = serializeAiSettingsPatch(
+            { apiKey: "sk-secret" },
+            resolveStoredAiSettings(null),
+        );
+        mockedReadMany.mockResolvedValue([
+            {
+                id: "settings-1",
+                settings_other: {
+                    ai: stored,
+                },
+            },
+        ] as never);
+
+        const result = await loadDecryptedAiSettings();
+
+        expect(result.apiKey).toBe("sk-secret");
+        expect(mockedWithServiceRepositoryContext).toHaveBeenCalled();
+    });
+
+    it("saves settings through service repository context", async () => {
+        mockedReadMany.mockResolvedValue([
+            {
+                id: "settings-1",
+                settings_other: {
+                    ai: {
+                        enabled: false,
+                        articleSummaryEnabled: false,
+                        baseUrl: "",
+                        model: "",
+                        apiKeyEncrypted: null,
+                        updatedAt: null,
+                    },
+                },
+            },
+        ] as never);
+        mockedUpdateOne.mockResolvedValue({ id: "settings-1" } as never);
+
+        const result = await saveAiSettingsPatch({
+            enabled: true,
+            articleSummaryEnabled: true,
+            baseUrl: "https://api.example.com/v1",
+            model: "test-model",
+        });
+
+        expect(result).toMatchObject({
+            enabled: true,
+            articleSummaryEnabled: true,
+            baseUrl: "https://api.example.com/v1",
+            model: "test-model",
+        });
+        expect(mockedWithServiceRepositoryContext).toHaveBeenCalled();
+        expect(mockedUpdateOne).toHaveBeenCalledWith(
+            "app_site_settings",
+            "settings-1",
+            expect.objectContaining({
+                settings_other: expect.objectContaining({
+                    ai: expect.objectContaining({
+                        enabled: true,
+                        articleSummaryEnabled: true,
+                    }),
+                }),
+            }),
+        );
+    });
 });
 
 describe("enqueueArticleSummaryJob", () => {
@@ -232,6 +337,30 @@ describe("enqueueArticleSummaryJob", () => {
             }),
             expect.any(Object),
         );
+        expect(mockedWithServiceRepositoryContext).toHaveBeenCalled();
+    });
+
+    it("reads latest summary job through service repository context", async () => {
+        mockedReadMany.mockResolvedValue([
+            {
+                id: "job-1",
+                status: "pending",
+                error_message: null,
+                date_created: "2026-04-22T00:00:00.000Z",
+                started_at: null,
+                finished_at: null,
+            },
+        ] as never);
+
+        const { readLatestArticleSummaryJob } =
+            await import("@/server/ai-summary/jobs");
+        const result = await readLatestArticleSummaryJob("article-1");
+
+        expect(result).toMatchObject({
+            id: "job-1",
+            status: "pending",
+        });
+        expect(mockedWithServiceRepositoryContext).toHaveBeenCalled();
     });
 
     it("uses the current site language when creating a job", async () => {

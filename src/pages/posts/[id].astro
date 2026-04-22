@@ -304,6 +304,9 @@ const articleSharePayload: SharePosterPayload | undefined =
 const hasReadyAiSummary = Boolean(
   article?.summary && article.summary_source === "ai",
 );
+const isAiSummaryGenerating =
+  articleAiSummaryJobStatus === "pending" ||
+  articleAiSummaryJobStatus === "processing";
 const shouldRenderAiSummaryCard =
   showPendingAiSummarySkeleton || hasReadyAiSummary;
 const articleAiSummaryInitialStatus =
@@ -531,7 +534,7 @@ const articleAiSummaryPollUrl = article
                       class:list={[
                         "article-ai-summary-card article-ai-summary-card--ready rounded-2xl p-[1px]",
                         {
-                          hidden: !hasReadyAiSummary,
+                          hidden: !hasReadyAiSummary || isAiSummaryGenerating,
                         },
                       ]}
                       data-ai-summary-final-card

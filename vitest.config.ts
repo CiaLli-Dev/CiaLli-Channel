@@ -28,6 +28,7 @@ const clientTests = [
     "src/scripts/__tests__/publish-editor-monaco-styles.test.ts",
     "src/scripts/__tests__/publish-save-redirect.test.ts",
     "src/scripts/__tests__/static-overlay-dialog-portal.test.ts",
+    "src/scripts/article-detail/__tests__/ai-summary-card.test.ts",
     "src/scripts/layout/__tests__/enter-skeleton.test.ts",
     "src/scripts/layout/__tests__/sidebar-profile-sync.test.ts",
     "src/scripts/layout/__tests__/transition-hooks.test.ts",

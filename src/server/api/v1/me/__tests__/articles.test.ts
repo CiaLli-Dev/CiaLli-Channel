@@ -29,6 +29,12 @@ vi.mock("@/server/utils/short-id", () => ({
     createWithShortId: vi.fn(),
 }));
 
+vi.mock("@/server/ai-summary/dispatch", () => ({
+    enqueueAndTriggerArticleSummaryJob: vi
+        .fn()
+        .mockResolvedValue({ jobId: "job-1", status: "pending" }),
+}));
+
 vi.mock("@/server/markdown/render", () => ({
     renderMarkdown: vi.fn().mockResolvedValue("<p>preview</p>"),
 }));
@@ -59,6 +65,7 @@ vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
 }));
 
 import { readMany, updateOne } from "@/server/directus/client";
+import { enqueueAndTriggerArticleSummaryJob } from "@/server/ai-summary/dispatch";
 import { cacheManager } from "@/server/cache/manager";
 import {
     cleanupOwnedOrphanDirectusFiles,
@@ -70,6 +77,9 @@ import { handleMeArticles } from "@/server/api/v1/me/articles";
 
 const mockedReadMany = vi.mocked(readMany);
 const mockedUpdateOne = vi.mocked(updateOne);
+const mockedEnqueueAndTriggerArticleSummaryJob = vi.mocked(
+    enqueueAndTriggerArticleSummaryJob,
+);
 const mockedCacheInvalidate = vi.mocked(cacheManager.invalidate);
 const mockedCreateWithShortId = vi.mocked(createWithShortId);
 const mockedCleanupOwnedOrphanDirectusFiles = vi.mocked(
@@ -78,6 +88,15 @@ const mockedCleanupOwnedOrphanDirectusFiles = vi.mocked(
 const mockedExtractDirectusAssetIdsFromMarkdown = vi.mocked(
     extractDirectusAssetIdsFromMarkdown,
 );
+
+function readLastArticleUpdatePayload(): Record<string, unknown> {
+    const latestCall = mockedUpdateOne.mock.calls.at(-1);
+    if (!latestCall) {
+        throw new Error("updateOne was not called");
+    }
+
+    return latestCall[2] as Record<string, unknown>;
+}
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -422,6 +441,186 @@ describe("PATCH /me/articles/:id", () => {
 
         expect(res.status).toBe(200);
         expect(mockedUpdateOne).toHaveBeenCalledTimes(1);
+    });
+
+    it("编辑已发布文章并开启 AI 总结时会尝试排队", async () => {
+        mockedReadMany.mockResolvedValue([
+            mockArticle({
+                id: "article-1",
+                author_id: "user-1",
+                short_id: "post-short",
+                status: "published",
+                title: "Published Title",
+                body_markdown: "# Body",
+                ai_summary_enabled: false,
+            }),
+        ]);
+        mockedUpdateOne.mockResolvedValue(
+            mockArticle({
+                id: "article-1",
+                author_id: "user-1",
+                short_id: "post-short",
+                status: "published",
+                title: "Published Title",
+                body_markdown: "# Body",
+                ai_summary_enabled: true,
+            }),
+        );
+
+        const ctx = createMockAPIContext({
+            method: "PATCH",
+            url: "http://localhost:4321/api/v1/me/articles/article-1",
+            body: {
+                ai_summary_enabled: true,
+            },
+        });
+        const access = createMemberAccess();
+
+        const res = await handleMeArticles(
+            ctx as unknown as APIContext,
+            access,
+            ["articles", "article-1"],
+        );
+
+        expect(res.status).toBe(200);
+        expect(mockedEnqueueAndTriggerArticleSummaryJob).toHaveBeenCalledWith({
+            articleId: "article-1",
+            kind: "on_publish",
+        });
+    });
+
+    it("保存未改写的 AI 摘要时会保留 ai 来源", async () => {
+        mockedReadMany.mockResolvedValue([
+            mockArticle({
+                id: "article-1",
+                author_id: "user-1",
+                short_id: "post-short",
+                status: "published",
+                summary: "这篇文章介绍了嵌入式系统。",
+                summary_source: "ai",
+                ai_summary_enabled: true,
+            }),
+        ]);
+        mockedUpdateOne.mockResolvedValue(
+            mockArticle({
+                id: "article-1",
+                author_id: "user-1",
+                short_id: "post-short",
+                status: "published",
+                summary: "这篇文章介绍了嵌入式系统。",
+                summary_source: "ai",
+                ai_summary_enabled: true,
+            }),
+        );
+
+        const ctx = createMockAPIContext({
+            method: "PATCH",
+            url: "http://localhost:4321/api/v1/me/articles/article-1",
+            body: {
+                summary: "这篇文章介绍了嵌入式系统。",
+                ai_summary_enabled: true,
+            },
+        });
+        const access = createMemberAccess();
+
+        const res = await handleMeArticles(
+            ctx as unknown as APIContext,
+            access,
+            ["articles", "article-1"],
+        );
+
+        expect(res.status).toBe(200);
+        expect(readLastArticleUpdatePayload().summary_source).toBe("ai");
+    });
+
+    it("保存仅有空白差异的 AI 摘要时仍会保留 ai 来源", async () => {
+        mockedReadMany.mockResolvedValue([
+            mockArticle({
+                id: "article-1",
+                author_id: "user-1",
+                short_id: "post-short",
+                status: "published",
+                summary: "这篇文章介绍了嵌入式系统。\n并梳理了常见平台。",
+                summary_source: "ai",
+                ai_summary_enabled: true,
+            }),
+        ]);
+        mockedUpdateOne.mockResolvedValue(
+            mockArticle({
+                id: "article-1",
+                author_id: "user-1",
+                short_id: "post-short",
+                status: "published",
+                summary: "这篇文章介绍了嵌入式系统。\n并梳理了常见平台。",
+                summary_source: "ai",
+                ai_summary_enabled: true,
+            }),
+        );
+
+        const ctx = createMockAPIContext({
+            method: "PATCH",
+            url: "http://localhost:4321/api/v1/me/articles/article-1",
+            body: {
+                summary: "  这篇文章介绍了嵌入式系统。\r\n并梳理了常见平台。  ",
+                ai_summary_enabled: true,
+            },
+        });
+        const access = createMemberAccess();
+
+        const res = await handleMeArticles(
+            ctx as unknown as APIContext,
+            access,
+            ["articles", "article-1"],
+        );
+
+        expect(res.status).toBe(200);
+        expect(readLastArticleUpdatePayload().summary_source).toBe("ai");
+    });
+
+    it("用户手动改写 AI 摘要时会切回 manual 来源", async () => {
+        mockedReadMany.mockResolvedValue([
+            mockArticle({
+                id: "article-1",
+                author_id: "user-1",
+                short_id: "post-short",
+                status: "published",
+                summary: "这篇文章介绍了嵌入式系统。",
+                summary_source: "ai",
+                ai_summary_enabled: true,
+            }),
+        ]);
+        mockedUpdateOne.mockResolvedValue(
+            mockArticle({
+                id: "article-1",
+                author_id: "user-1",
+                short_id: "post-short",
+                status: "published",
+                summary: "我自己改写过的摘要。",
+                summary_source: "manual",
+                ai_summary_enabled: true,
+            }),
+        );
+
+        const ctx = createMockAPIContext({
+            method: "PATCH",
+            url: "http://localhost:4321/api/v1/me/articles/article-1",
+            body: {
+                summary: "我自己改写过的摘要。",
+                ai_summary_enabled: true,
+            },
+        });
+        const access = createMemberAccess();
+
+        const res = await handleMeArticles(
+            ctx as unknown as APIContext,
+            access,
+            ["articles", "article-1"],
+        );
+
+        expect(res.status).toBe(200);
+        const payload = readLastArticleUpdatePayload();
+        expect(payload.summary_source).toBe("manual");
+        expect(payload.summary_generated_at).toBeNull();
     });
 
     it("draft 发布时若标题正文不完整则失败", async () => {

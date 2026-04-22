@@ -149,14 +149,9 @@ function resolvePendingAiSummarySkeletonState(input: {
     isEncryptedBody: boolean;
     latestAiSummaryJob: { status: AiSummaryJobStatus } | null;
 }): boolean {
-    const hasRenderedSummary = Boolean(
-        String(input.article.summary || "").trim(),
-    );
-
     return (
         !input.isEncryptedBody &&
         input.article.ai_summary_enabled &&
-        !hasRenderedSummary &&
         (input.latestAiSummaryJob?.status === "pending" ||
             input.latestAiSummaryJob?.status === "processing")
     );

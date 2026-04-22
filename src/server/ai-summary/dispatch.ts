@@ -20,9 +20,22 @@ function resolveAiSummaryWorkerOrigin(): string {
                 import.meta.env.AI_SUMMARY_WORKER_PORT ||
                 DEFAULT_AI_SUMMARY_WORKER_PORT,
         ).trim() || DEFAULT_AI_SUMMARY_WORKER_PORT;
+    const directusUrl = String(
+        process.env.DIRECTUS_URL || import.meta.env.DIRECTUS_URL || "",
+    ).trim();
+    const directusHostname = (() => {
+        try {
+            return new URL(directusUrl).hostname.toLowerCase();
+        } catch {
+            return "";
+        }
+    })();
 
-    // Docker Compose 部署下直接走 worker 服务名；本机联调时回退到 localhost 端口。
-    if (process.env.NODE_ENV === "production") {
+    // Docker Compose 内部互联时直接走 worker 服务名；本机联调才回退到 localhost。
+    if (
+        process.env.NODE_ENV === "production" ||
+        directusHostname === "directus"
+    ) {
         return `http://worker:${port}`;
     }
     return `http://127.0.0.1:${port}`;
