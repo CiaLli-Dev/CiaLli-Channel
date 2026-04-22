@@ -32,6 +32,11 @@ export default defineConfig({
     },
 
     security: {
+        // Astro's built-in form-origin middleware compares Origin with
+        // Astro.url.origin before our BFF guard can account for reverse-proxy
+        // headers. Keep the project-level same-origin + CSRF + rate-limit guard
+        // as the write boundary so multipart uploads work behind Docker Caddy.
+        checkOrigin: false,
         allowedDomains: [{ hostname: _siteHostname }],
     },
 
