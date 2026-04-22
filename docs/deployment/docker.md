@@ -122,10 +122,68 @@ docker compose -f docker-compose.yml up -d
 
 ## 升级顺序
 
-1. 备份 PostgreSQL 与 MinIO 数据
+1. 使用统一 Docker 数据包备份 PostgreSQL、Directus schema 与 MinIO 数据
 2. 应用 Directus schema 变更
 3. 重建镜像并滚动 `web` / `worker`
 4. 回归验证主站、资源代理、AI worker 与后台健康状态
+
+## Docker 数据包备份与恢复
+
+当前 Docker Compose 环境的数据备份使用统一 zip 包，不再分开手动处理 PostgreSQL 与 MinIO。
+
+导出当前环境：
+
+```bash
+pnpm docker:data:export
+```
+
+也可以指定输出路径：
+
+```bash
+pnpm docker:data:export --output backups/docker-data-20260422-153000.zip
+```
+
+zip 包固定包含：
+
+- `manifest.json`：格式版本、生成时间、源信息与强校验摘要
+- `postgres/directus.dump`：完整 PostgreSQL 自定义格式 dump
+- `directus/schema.json`：当前 Directus schema 快照
+- `minio/objects/**`：当前 `MINIO_BUCKET` 中的全部对象
+- `minio/objects-manifest.json`：每个对象的 key、大小与 SHA-256
+
+导入前可只做离线校验，不触碰当前 Docker 环境：
+
+```bash
+pnpm docker:data:verify backups/docker-data-20260422-153000.zip
+```
+
+导入 zip 包会先自动导出当前环境作为备份，然后停止 `web`、`worker`、`directus`，覆盖恢复 PostgreSQL 与 MinIO，最后重启服务并做轻量校验：
+
+```bash
+pnpm docker:data:import backups/docker-data-20260422-153000.zip
+```
+
+如需固定导入前备份路径：
+
+```bash
+pnpm docker:data:import backups/docker-data-20260422-153000.zip --backup-output backups/before-import-20260422-153500.zip
+```
+
+如果当前环境已有外部备份，或该环境可直接丢弃，可跳过导入前自动备份并直接覆盖：
+
+```bash
+pnpm docker:data:import backups/docker-data-20260422-153000.zip --no-backup
+```
+
+`--no-backup` 只跳过当前环境备份，仍会先校验 zip 包内的 manifest、PostgreSQL dump、Directus schema 与每个 MinIO 对象 SHA-256。
+
+导入采用覆盖策略：
+
+- PostgreSQL 会先重建 `public` schema，再恢复 zip 内 dump
+- MinIO 会先清空目标 bucket，再恢复 zip 内对象
+- 导入前备份默认写入 `backups/before-docker-data-import-<timestamp>.zip`
+- `--no-backup` 会直接覆盖当前数据，不会生成导入前备份，无法由脚本提供回滚包
+- 如果覆盖过程中失败，脚本会输出导入前备份路径；确认原因后可用该备份 zip 手动回滚
 
 ## 历史文件迁移
 
@@ -146,20 +204,17 @@ pnpm files:migrate:local-to-s3
 
 迁移完成并验证无误后，运行时配置应收敛为仅 `s3`。
 
-## 刷新仓库种子
+## 校验仓库种子
 
-维护演示环境时，可直接基于当前本地 Docker 环境刷新仓库内 seed：
+仓库内置演示 seed 可用以下命令校验：
 
 ```bash
-pnpm seed:refresh
 pnpm seed:verify
 ```
 
-`pnpm seed:refresh` 会：
+`pnpm seed:verify` 会检查：
 
-- 复制当前 PostgreSQL 到临时数据库副本，避免直接改动源库
-- 清空 `app_site_settings` 中的 AI 站点配置
-- 把 Directus 管理员重置为固定演示账号
-- 刷新 `seed/postgres/demo.dump`
-- 刷新 `seed/minio/demo-bucket/**`
-- 同步刷新 `directus/schema/app-schema.json`
+- `seed/postgres/demo.dump` 存在且不是 Git LFS pointer
+- `seed/minio/demo-bucket/**` 中的对象不是 Git LFS pointer
+- `seed/metadata.json` 中记录的 dump 大小与对象数量与实际文件一致
+- `directus/schema/app-schema.json` 是有效的 Directus schema 快照

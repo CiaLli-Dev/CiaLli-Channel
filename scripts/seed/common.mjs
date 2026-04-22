@@ -7,7 +7,7 @@ import path from "node:path";
 
 import { config as loadDotenv } from "dotenv";
 
-loadDotenv();
+loadDotenv({ quiet: true });
 
 export const ROOT_DIR = path.resolve(
     path.dirname(new URL(import.meta.url).pathname),

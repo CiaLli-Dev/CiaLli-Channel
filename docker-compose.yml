@@ -142,9 +142,51 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-directus}
       POSTGRES_USER: ${POSTGRES_USER:-directus}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-directus}
-    entrypoint: ["/bin/sh", "/seed-scripts/restore-postgres.sh"]
+    entrypoint:
+      - /bin/sh
+      - -ceu
+      - |
+        SEED_FILE="/seed/postgres/demo.dump"
+        if [ ! -f "$$SEED_FILE" ]; then
+          echo "[seed-postgres-restore] seed dump not found: $$SEED_FILE" >&2
+          exit 1
+        fi
+        if head -n 1 "$$SEED_FILE" 2>/dev/null | grep -q "version https://git-lfs.github.com/spec/v1"; then
+          echo "[seed-postgres-restore] seed dump is still a Git LFS pointer; run git lfs pull first." >&2
+          exit 1
+        fi
+        HAS_SITE_SETTINGS_TABLE="$$(PGPASSWORD="$$POSTGRES_PASSWORD" psql -h postgres -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -At -c "
+        select case
+          when exists (
+            select 1
+            from pg_tables
+            where schemaname = 'public' and tablename = 'app_site_settings'
+          ) then 'yes'
+          else 'no'
+        end;
+        ")"
+        if [ "$$HAS_SITE_SETTINGS_TABLE" = "yes" ]; then
+          RESTORE_REQUIRED="$$(PGPASSWORD="$$POSTGRES_PASSWORD" psql -h postgres -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -At -c "
+        select case
+          when exists (select 1 from app_site_settings where key = 'default') then 'no'
+          else 'yes'
+        end;
+        ")"
+        else
+          RESTORE_REQUIRED="yes"
+        fi
+        if [ "$$RESTORE_REQUIRED" != "yes" ]; then
+          echo "[seed-postgres-restore] existing business data detected; skip restore."
+          exit 0
+        fi
+        echo "[seed-postgres-restore] restoring demo PostgreSQL seed into $$POSTGRES_DB."
+        PGPASSWORD="$$POSTGRES_PASSWORD" psql -h postgres -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -v ON_ERROR_STOP=1 -c "
+        drop schema if exists public cascade;
+        create schema public;
+        "
+        PGPASSWORD="$$POSTGRES_PASSWORD" pg_restore -h postgres -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" --clean --if-exists "$$SEED_FILE"
+        echo "[seed-postgres-restore] done"
     volumes:
-      - ./scripts/seed:/seed-scripts:ro
       - ./seed:/seed:ro
     restart: "no"
 
@@ -159,9 +201,34 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
       MINIO_BUCKET: ${MINIO_BUCKET:-cialli-assets}
-    entrypoint: ["/bin/sh", "/seed-scripts/restore-minio.sh"]
+    entrypoint:
+      - /bin/sh
+      - -ceu
+      - |
+        SEED_DIR="/seed/minio/demo-bucket"
+        if [ ! -d "$$SEED_DIR" ]; then
+          echo "[seed-minio-restore] seed directory not found: $$SEED_DIR" >&2
+          exit 1
+        fi
+        if grep -R -m 1 -l "version https://git-lfs.github.com/spec/v1" "$$SEED_DIR" >/dev/null 2>&1; then
+          echo "[seed-minio-restore] seed objects are still Git LFS pointers; run git lfs pull first." >&2
+          exit 1
+        fi
+        set -- "$$SEED_DIR"/*
+        if [ "$$1" = "$$SEED_DIR/*" ]; then
+          echo "[seed-minio-restore] seed directory is empty; skip restore."
+          exit 0
+        fi
+        mc alias set target http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" >/dev/null 2>&1
+        mc mb --ignore-existing "target/$$MINIO_BUCKET" >/dev/null 2>&1
+        OBJECT_COUNT="$$(mc ls --recursive "target/$$MINIO_BUCKET" | wc -l | tr -d ' ')"
+        if [ "$${OBJECT_COUNT:-0}" != "0" ]; then
+          echo "[seed-minio-restore] bucket already has objects; skip restore."
+          exit 0
+        fi
+        mc mirror --overwrite "$$SEED_DIR" "target/$$MINIO_BUCKET"
+        echo "[seed-minio-restore] done"
     volumes:
-      - ./scripts/seed:/seed-scripts:ro
       - ./seed:/seed:ro
     restart: "no"
 

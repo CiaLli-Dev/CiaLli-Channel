@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-04-22T00:39:53.881Z",
+  "generatedAt": "2026-04-22T07:37:00.000Z",
   "source": "local-docker-compose",
   "postgres": {
     "service": "postgres",
     "database": "directus",
     "dumpFile": "seed/postgres/demo.dump",
-    "dumpBytes": 330381
+    "dumpBytes": 330351
   },
   "minio": {
     "service": "minio",
