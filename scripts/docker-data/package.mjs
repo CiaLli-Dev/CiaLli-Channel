@@ -28,15 +28,12 @@ const MINIO_OBJECTS_ROOT_ENTRY = "minio/objects";
 const MINIO_OBJECTS_MANIFEST_ENTRY = "minio/objects-manifest.json";
 const MANIFEST_ENTRY = "manifest.json";
 const WRITABLE_SERVICES = ["web", "worker", "directus"];
+const POSTGRES_DATABASE = "directus";
+const POSTGRES_USER = "directus";
+const MINIO_ROOT_USER = "minioadmin";
+const MINIO_BUCKET = "cialli-assets";
 
-const REQUIRED_ENV_NAMES = [
-    "POSTGRES_DB",
-    "POSTGRES_USER",
-    "POSTGRES_PASSWORD",
-    "MINIO_ROOT_USER",
-    "MINIO_ROOT_PASSWORD",
-    "MINIO_BUCKET",
-];
+const REQUIRED_ENV_NAMES = ["POSTGRES_PASSWORD", "MINIO_ROOT_PASSWORD"];
 
 function nowStamp() {
     const date = new Date();
@@ -150,7 +147,11 @@ function minioShell(script, options = {}) {
             "exec",
             "-T",
             "-e",
-            `MINIO_BUCKET=${readEnv("MINIO_BUCKET")}`,
+            `MINIO_BUCKET=${MINIO_BUCKET}`,
+            "-e",
+            `MINIO_ROOT_USER=${MINIO_ROOT_USER}`,
+            "-e",
+            `MINIO_ROOT_PASSWORD=${readEnv("MINIO_ROOT_PASSWORD")}`,
             "minio",
             "sh",
             "-lc",
@@ -506,14 +507,7 @@ function ensureDockerServices() {
 async function exportPostgresDump(dumpPath) {
     console.info("[docker:data:export] 导出 PostgreSQL dump。");
     const dumpBuffer = runPostgresExec(
-        [
-            "pg_dump",
-            "-U",
-            readEnv("POSTGRES_USER"),
-            "-d",
-            readEnv("POSTGRES_DB"),
-            "-Fc",
-        ],
+        ["pg_dump", "-U", POSTGRES_USER, "-d", POSTGRES_DATABASE, "-Fc"],
         { encoding: null },
     );
     await fs.writeFile(dumpPath, dumpBuffer);
@@ -588,7 +582,7 @@ async function createManifest(stagingDir) {
         },
         postgres: {
             service: "postgres",
-            database: readEnv("POSTGRES_DB"),
+            database: POSTGRES_DATABASE,
             dumpFile: POSTGRES_DUMP_ENTRY,
             dumpBytes: dumpStats.bytes,
             dumpSha256: dumpStats.sha256,
@@ -601,7 +595,7 @@ async function createManifest(stagingDir) {
         },
         minio: {
             service: "minio",
-            bucket: readEnv("MINIO_BUCKET"),
+            bucket: MINIO_BUCKET,
             objectsRoot: MINIO_OBJECTS_ROOT_ENTRY,
             objectsManifestFile: MINIO_OBJECTS_MANIFEST_ENTRY,
             objectsManifestSha256: objectsManifestStats.sha256,
@@ -668,9 +662,9 @@ async function restorePostgres(packageDir) {
         runPostgresExec([
             "psql",
             "-U",
-            readEnv("POSTGRES_USER"),
+            POSTGRES_USER,
             "-d",
-            readEnv("POSTGRES_DB"),
+            POSTGRES_DATABASE,
             "-v",
             "ON_ERROR_STOP=1",
             "-c",
@@ -679,9 +673,9 @@ async function restorePostgres(packageDir) {
         runPostgresExec([
             "pg_restore",
             "-U",
-            readEnv("POSTGRES_USER"),
+            POSTGRES_USER,
             "-d",
-            readEnv("POSTGRES_DB"),
+            POSTGRES_DATABASE,
             "--clean",
             "--if-exists",
             containerDumpPath,
@@ -757,9 +751,9 @@ function runPostImportChecks(manifest) {
     runPostgresExec([
         "psql",
         "-U",
-        readEnv("POSTGRES_USER"),
+        POSTGRES_USER,
         "-d",
-        readEnv("POSTGRES_DB"),
+        POSTGRES_DATABASE,
         "-At",
         "-c",
         "select 1;",

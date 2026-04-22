@@ -9,7 +9,6 @@ vi.mock("@/server/redis/client", () => ({
 }));
 
 const originalNodeEnv = process.env.NODE_ENV;
-const originalRedisNamespace = process.env.REDIS_NAMESPACE;
 
 beforeEach(() => {
     vi.resetModules();
@@ -17,7 +16,6 @@ beforeEach(() => {
     getRedisClientMock.mockReset();
     getRedisConfigMock.mockReset();
     process.env.NODE_ENV = "development";
-    process.env.REDIS_NAMESPACE = "test-rate-limit";
 });
 
 describe("security/rate-limit", () => {
@@ -70,14 +68,14 @@ describe("security/rate-limit", () => {
             resetAt: expect.any(Number),
         });
         expect(redis.incr).toHaveBeenCalledWith(
-            "cialli:test-rate-limit:rl:auth:ip:127.0.0.1",
+            "cialli:dev:local:rl:auth:ip:127.0.0.1",
         );
         expect(redis.expire).toHaveBeenCalledWith(
-            "cialli:test-rate-limit:rl:auth:ip:127.0.0.1",
+            "cialli:dev:local:rl:auth:ip:127.0.0.1",
             300,
         );
         expect(redis.ttl).toHaveBeenCalledWith(
-            "cialli:test-rate-limit:rl:auth:ip:127.0.0.1",
+            "cialli:dev:local:rl:auth:ip:127.0.0.1",
         );
     });
 
@@ -108,11 +106,5 @@ afterEach(() => {
         delete process.env.NODE_ENV;
     } else {
         process.env.NODE_ENV = originalNodeEnv;
-    }
-
-    if (originalRedisNamespace === undefined) {
-        delete process.env.REDIS_NAMESPACE;
-    } else {
-        process.env.REDIS_NAMESPACE = originalRedisNamespace;
     }
 });

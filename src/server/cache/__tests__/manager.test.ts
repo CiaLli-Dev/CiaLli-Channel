@@ -8,7 +8,7 @@ type MockRedisClient = {
 };
 
 const getRedisClientMock = vi.fn();
-const originalRedisNamespace = process.env.REDIS_NAMESPACE;
+const originalNodeEnv = process.env.NODE_ENV;
 
 vi.mock("@/server/redis/client", () => ({
     getRedisClient: getRedisClientMock,
@@ -27,14 +27,14 @@ beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
     getRedisClientMock.mockReset();
-    process.env.REDIS_NAMESPACE = "test-cache";
+    process.env.NODE_ENV = "development";
 });
 
 afterEach(() => {
-    if (originalRedisNamespace === undefined) {
-        delete process.env.REDIS_NAMESPACE;
+    if (originalNodeEnv === undefined) {
+        delete process.env.NODE_ENV;
     } else {
-        process.env.REDIS_NAMESPACE = originalRedisNamespace;
+        process.env.NODE_ENV = originalNodeEnv;
     }
 });
 
@@ -61,10 +61,10 @@ describe("cache/manager", () => {
         expect(second).toEqual({ title: "hello" });
         expect(redis.get).toHaveBeenCalledTimes(2);
         expect(redis.get.mock.calls[0]?.[0]).toBe(
-            "cialli:test-cache:cache:v1:article-list:__ver__",
+            "cialli:dev:local:cache:v1:article-list:__ver__",
         );
         expect(redis.get.mock.calls[1]?.[0]).toBe(
-            "cialli:test-cache:cache:v1:article-list:v0:article-1",
+            "cialli:dev:local:cache:v1:article-list:v0:article-1",
         );
         expect(getRedisClientMock).toHaveBeenCalledWith({
             automaticDeserialization: false,
@@ -84,7 +84,7 @@ describe("cache/manager", () => {
         });
 
         expect(redis.set).toHaveBeenCalledWith(
-            "cialli:test-cache:cache:v1:article-list:v0:list-key",
+            "cialli:dev:local:cache:v1:article-list:v0:list-key",
             JSON.stringify({ items: [1, 2, 3] }),
             { ex: 900 },
         );
@@ -100,7 +100,7 @@ describe("cache/manager", () => {
         await cacheManager.invalidateByDomain("mixed-feed");
 
         expect(redis.incr.mock.calls.map(([key]) => key)).toEqual([
-            "cialli:test-cache:cache:v1:mixed-feed:__ver__",
+            "cialli:dev:local:cache:v1:mixed-feed:__ver__",
         ]);
     });
 
@@ -116,7 +116,7 @@ describe("cache/manager", () => {
         await cacheManager.set("article-list", "list-key", { ok: true });
 
         expect(redis.set).toHaveBeenCalledWith(
-            "cialli:test-cache:cache:v1:article-list:v1:list-key",
+            "cialli:dev:local:cache:v1:article-list:v1:list-key",
             JSON.stringify({ ok: true }),
             { ex: 900 },
         );

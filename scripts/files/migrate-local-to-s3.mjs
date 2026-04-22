@@ -37,16 +37,13 @@ const ROLLBACK_SQL_PATH = path.join(
     BACKUP_DIR,
     `local-to-s3-rollback-${TIMESTAMP}.sql`,
 );
+const POSTGRES_USER = "directus";
+const POSTGRES_DB = "directus";
+const MINIO_ROOT_USER = "minioadmin";
+const MINIO_BUCKET = "cialli-assets";
+const STORAGE_S3_ENDPOINT = "http://minio:9000";
 
-const REQUIRED_ENV_NAMES = [
-    "POSTGRES_USER",
-    "POSTGRES_DB",
-    "POSTGRES_PASSWORD",
-    "MINIO_ROOT_USER",
-    "MINIO_ROOT_PASSWORD",
-    "MINIO_BUCKET",
-    "STORAGE_S3_ENDPOINT",
-];
+const REQUIRED_ENV_NAMES = ["POSTGRES_PASSWORD", "MINIO_ROOT_PASSWORD"];
 
 const dryRun = process.argv.includes("--dry-run");
 
@@ -104,9 +101,9 @@ async function createLocalBackups() {
             POSTGRES_CONTAINER_NAME,
             "pg_dump",
             "-U",
-            readEnv("POSTGRES_USER"),
+            POSTGRES_USER,
             "-d",
-            readEnv("POSTGRES_DB"),
+            POSTGRES_DB,
             "-Fc",
         ],
         {
@@ -141,9 +138,9 @@ function readLocalRows() {
         POSTGRES_CONTAINER_NAME,
         "psql",
         "-U",
-        readEnv("POSTGRES_USER"),
+        POSTGRES_USER,
         "-d",
-        readEnv("POSTGRES_DB"),
+        POSTGRES_DB,
         "-v",
         "ON_ERROR_STOP=1",
         "-At",
@@ -190,13 +187,13 @@ function buildMcShellCommand(action) {
         "--entrypoint",
         "/bin/sh",
         "-e",
-        `MINIO_ROOT_USER=${readEnv("MINIO_ROOT_USER")}`,
+        `MINIO_ROOT_USER=${MINIO_ROOT_USER}`,
         "-e",
         `MINIO_ROOT_PASSWORD=${readEnv("MINIO_ROOT_PASSWORD")}`,
         "-e",
-        `MINIO_BUCKET=${readEnv("MINIO_BUCKET")}`,
+        `MINIO_BUCKET=${MINIO_BUCKET}`,
         "-e",
-        `STORAGE_S3_ENDPOINT=${readEnv("STORAGE_S3_ENDPOINT")}`,
+        `STORAGE_S3_ENDPOINT=${STORAGE_S3_ENDPOINT}`,
         "-e",
         action.objectKey ? `OBJECT_KEY=${action.objectKey}` : "OBJECT_KEY=",
         action.sourcePath ? "-v" : "",
@@ -245,9 +242,9 @@ function updateRowStorageToS3(id) {
         POSTGRES_CONTAINER_NAME,
         "psql",
         "-U",
-        readEnv("POSTGRES_USER"),
+        POSTGRES_USER,
         "-d",
-        readEnv("POSTGRES_DB"),
+        POSTGRES_DB,
         "-v",
         "ON_ERROR_STOP=1",
         "-c",
@@ -263,9 +260,9 @@ function readStorageCounts() {
         POSTGRES_CONTAINER_NAME,
         "psql",
         "-U",
-        readEnv("POSTGRES_USER"),
+        POSTGRES_USER,
         "-d",
-        readEnv("POSTGRES_DB"),
+        POSTGRES_DB,
         "-At",
         "-F",
         "\t",

@@ -52,8 +52,8 @@
 - Worker 进程启动命令：`pnpm ai-summary:worker`
 - Directus 后台默认仅绑定 `127.0.0.1:8055`，不要改为公网直出；如需访问，优先走 SSH 隧道或宿主机本地访问
 - 容器内服务发现优先使用内部地址：
-  `DIRECTUS_INTERNAL_URL`
-  `REDIS_INTERNAL_URL`
+  Directus 固定为 `http://directus:8055`
+  Redis 固定为 `redis://redis:6379/0`
 - 主机侧/本机脚本使用外部地址：
   `DIRECTUS_URL`
   `REDIS_URL`

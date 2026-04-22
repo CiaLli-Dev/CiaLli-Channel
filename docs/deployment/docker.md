@@ -25,21 +25,21 @@ Directus 后台默认只绑定到 `127.0.0.1:8055`，不直接暴露公网。
 2. 同一份 `.env` 同时服务于：
    本机脚本 / 开发调试
    Docker Compose
-3. 容器内互联地址通过以下变量和主机侧地址区分，但仍都写在同一个 `.env` 中：
-   `DIRECTUS_URL` / `DIRECTUS_INTERNAL_URL`
-   `REDIS_URL` / `REDIS_INTERNAL_URL`
-4. 生产环境至少需要显式配置：
+3. 容器内互联地址、PostgreSQL/MinIO 默认账号、对象存储 bucket、Directus `s3` 存储参数与 AI worker 端口都已固定在仓库配置中，不再通过 `.env` 覆写。
+4. 当前建议显式配置的环境变量为：
    `APP_PUBLIC_BASE_URL`
+   `DIRECTUS_URL`
    `DIRECTUS_STATIC_TOKEN`
    `BANGUMI_TOKEN_ENCRYPTION_KEY`
-   `REDIS_NAMESPACE`
    `AI_SUMMARY_INTERNAL_SECRET`
    `DIRECTUS_SECRET`
-   `DIRECTUS_KEY`
    `DIRECTUS_ADMIN_EMAIL`
    `DIRECTUS_ADMIN_PASSWORD`
    `POSTGRES_PASSWORD`
    `MINIO_ROOT_PASSWORD`
+   `STORAGE_S3_KEY`
+   `STORAGE_S3_SECRET`
+5. `PUBLIC_ASSET_BASE_URL` 是唯一保留的可选环境变量；留空时继续统一走站内 BFF 代理资源地址。
 
 建议在启动前先执行：
 
@@ -148,7 +148,7 @@ zip 包固定包含：
 - `manifest.json`：格式版本、生成时间、源信息与强校验摘要
 - `postgres/directus.dump`：完整 PostgreSQL 自定义格式 dump
 - `directus/schema.json`：当前 Directus schema 快照
-- `minio/objects/**`：当前 `MINIO_BUCKET` 中的全部对象
+- `minio/objects/**`：当前固定 bucket `cialli-assets` 中的全部对象
 - `minio/objects-manifest.json`：每个对象的 key、大小与 SHA-256
 
 导入前可只做离线校验，不触碰当前 Docker 环境：

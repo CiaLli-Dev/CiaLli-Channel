@@ -1,8 +1,8 @@
 {
-	email {$ACME_EMAIL:ops@example.com}
+	email ops@ciallichannel.com
 }
 
-{$APP_PUBLIC_HOSTNAME:localhost} {
+localhost {
 	encode gzip zstd
 	reverse_proxy web:4321
 }

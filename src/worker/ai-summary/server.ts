@@ -18,18 +18,6 @@ import { runWithDirectusServiceAccess } from "@/server/directus/client";
 
 const DEFAULT_PORT = 4322;
 
-function configureWorkerDirectusToken(): void {
-    const workerToken = String(
-        process.env.AI_SUMMARY_DIRECTUS_TOKEN || "",
-    ).trim();
-    if (
-        workerToken &&
-        !String(process.env.DIRECTUS_STATIC_TOKEN || "").trim()
-    ) {
-        process.env.DIRECTUS_STATIC_TOKEN = workerToken;
-    }
-}
-
 function sendJson(
     response: ServerResponse,
     status: number,
@@ -161,9 +149,7 @@ async function handleRequest(
     sendJson(response, 404, { ok: false, message: "not found" });
 }
 
-configureWorkerDirectusToken();
-
-const port = readNumber(process.env.AI_SUMMARY_WORKER_PORT, DEFAULT_PORT);
+const port = DEFAULT_PORT;
 createServer((request, response) => {
     handleRequest(request, response).catch((error: unknown) => {
         console.error("[ai-summary-worker] request failed", error);

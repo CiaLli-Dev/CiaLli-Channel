@@ -4,9 +4,6 @@ services:
     depends_on:
       web:
         condition: service_started
-    environment:
-      ACME_EMAIL: ${ACME_EMAIL:-ops@example.com}
-      APP_PUBLIC_HOSTNAME: ${APP_PUBLIC_HOSTNAME:-localhost}
     ports:
       - "80:80"
       - "443:443"
@@ -31,16 +28,12 @@ services:
       HOST: 0.0.0.0
       PORT: 4321
       APP_PUBLIC_BASE_URL: ${APP_PUBLIC_BASE_URL:-https://localhost}
-      DIRECTUS_URL: ${DIRECTUS_INTERNAL_URL:-http://directus:8055}
-      DIRECTUS_PUBLIC_URL: ${DIRECTUS_PUBLIC_URL:-http://127.0.0.1:8055}
-      DIRECTUS_STATIC_TOKEN: ${DIRECTUS_STATIC_TOKEN:-}
+      DIRECTUS_URL: http://directus:8055
+      DIRECTUS_STATIC_TOKEN: ${DIRECTUS_STATIC_TOKEN}
       PUBLIC_ASSET_BASE_URL: ${PUBLIC_ASSET_BASE_URL:-}
       BANGUMI_TOKEN_ENCRYPTION_KEY: ${BANGUMI_TOKEN_ENCRYPTION_KEY:-}
-      REDIS_URL: ${REDIS_INTERNAL_URL:-redis://redis:6379/0}
-      REDIS_NAMESPACE: ${REDIS_NAMESPACE:-prod}
+      REDIS_URL: redis://redis:6379/0
       AI_SUMMARY_INTERNAL_SECRET: ${AI_SUMMARY_INTERNAL_SECRET:-change-me}
-      AI_SUMMARY_DIRECTUS_TOKEN: ${AI_SUMMARY_DIRECTUS_TOKEN:-}
-      AI_SUMMARY_WORKER_PORT: ${AI_SUMMARY_WORKER_PORT:-4322}
     restart: unless-stopped
 
   worker:
@@ -55,13 +48,10 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
-      DIRECTUS_URL: ${DIRECTUS_INTERNAL_URL:-http://directus:8055}
-      DIRECTUS_STATIC_TOKEN: ${DIRECTUS_STATIC_TOKEN:-}
-      AI_SUMMARY_DIRECTUS_TOKEN: ${AI_SUMMARY_DIRECTUS_TOKEN:-}
+      DIRECTUS_URL: http://directus:8055
+      DIRECTUS_STATIC_TOKEN: ${DIRECTUS_STATIC_TOKEN}
       AI_SUMMARY_INTERNAL_SECRET: ${AI_SUMMARY_INTERNAL_SECRET:-change-me}
-      AI_SUMMARY_WORKER_PORT: ${AI_SUMMARY_WORKER_PORT:-4322}
-      REDIS_URL: ${REDIS_INTERNAL_URL:-redis://redis:6379/0}
-      REDIS_NAMESPACE: ${REDIS_NAMESPACE:-prod}
+      REDIS_URL: redis://redis:6379/0
       BANGUMI_TOKEN_ENCRYPTION_KEY: ${BANGUMI_TOKEN_ENCRYPTION_KEY:-}
     restart: unless-stopped
 
@@ -69,14 +59,14 @@ services:
     image: postgis/postgis:18-3.6
     platform: linux/amd64
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-directus}
-      POSTGRES_USER: ${POSTGRES_USER:-directus}
+      POSTGRES_DB: directus
+      POSTGRES_USER: directus
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-directus}
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "pg_isready --host=127.0.0.1 --username=$$POSTGRES_USER --dbname=$$POSTGRES_DB",
+          "pg_isready --host=127.0.0.1 --username=directus --dbname=directus",
         ]
       interval: 10s
       timeout: 5s
@@ -105,7 +95,7 @@ services:
     image: minio/minio:RELEASE.2025-02-28T09-55-16Z
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     healthcheck:
       test: ["CMD-SHELL", "test -f /proc/1/cmdline"]
@@ -128,8 +118,8 @@ services:
       - /bin/sh
       - -c
       - >
-        until mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin}; do sleep 2; done &&
-        mc mb --ignore-existing local/${MINIO_BUCKET:-cialli-assets}
+        until mc alias set local http://minio:9000 minioadmin ${MINIO_ROOT_PASSWORD:-minioadmin}; do sleep 2; done &&
+        mc mb --ignore-existing local/cialli-assets
     restart: "no"
 
   seed-postgres-restore:
@@ -139,8 +129,8 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-directus}
-      POSTGRES_USER: ${POSTGRES_USER:-directus}
+      POSTGRES_DB: directus
+      POSTGRES_USER: directus
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-directus}
     entrypoint:
       - /bin/sh
@@ -198,9 +188,9 @@ services:
       minio-init:
         condition: service_completed_successfully
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-      MINIO_BUCKET: ${MINIO_BUCKET:-cialli-assets}
+      MINIO_BUCKET: cialli-assets
     entrypoint:
       - /bin/sh
       - -ceu
@@ -245,34 +235,33 @@ services:
         condition: service_completed_successfully
     environment:
       SECRET: ${DIRECTUS_SECRET:-change-me}
-      KEY: ${DIRECTUS_KEY:-change-me-too}
-      PUBLIC_URL: ${DIRECTUS_PUBLIC_URL:-http://127.0.0.1:8055}
+      PUBLIC_URL: http://127.0.0.1:8055
 
       DB_CLIENT: pg
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_DATABASE: ${POSTGRES_DB:-directus}
-      DB_USER: ${POSTGRES_USER:-directus}
+      DB_DATABASE: directus
+      DB_USER: directus
       DB_PASSWORD: ${POSTGRES_PASSWORD:-directus}
 
       CACHE_ENABLED: "true"
       CACHE_AUTO_PURGE: "true"
       CACHE_STORE: redis
-      REDIS: ${DIRECTUS_REDIS_URL:-redis://redis:6379}
+      REDIS: redis://redis:6379
 
       WEBSOCKETS_ENABLED: "true"
 
       ADMIN_EMAIL: ${DIRECTUS_ADMIN_EMAIL:-demo-admin@example.com}
       ADMIN_PASSWORD: ${DIRECTUS_ADMIN_PASSWORD:-CiaLli-demo-admin-2026!}
 
-      STORAGE_LOCATIONS: ${STORAGE_LOCATIONS:-s3}
-      STORAGE_S3_DRIVER: ${STORAGE_S3_DRIVER:-s3}
+      STORAGE_LOCATIONS: s3
+      STORAGE_S3_DRIVER: s3
       STORAGE_S3_KEY: ${STORAGE_S3_KEY:-minioadmin}
       STORAGE_S3_SECRET: ${STORAGE_S3_SECRET:-minioadmin}
-      STORAGE_S3_BUCKET: ${STORAGE_S3_BUCKET:-cialli-assets}
-      STORAGE_S3_REGION: ${STORAGE_S3_REGION:-us-east-1}
-      STORAGE_S3_ENDPOINT: ${STORAGE_S3_ENDPOINT:-http://minio:9000}
-      STORAGE_S3_FORCE_PATH_STYLE: ${STORAGE_S3_FORCE_PATH_STYLE:-true}
+      STORAGE_S3_BUCKET: cialli-assets
+      STORAGE_S3_REGION: us-east-1
+      STORAGE_S3_ENDPOINT: http://minio:9000
+      STORAGE_S3_FORCE_PATH_STYLE: "true"
     healthcheck:
       test:
         [

@@ -23,14 +23,12 @@ const originalEnv = {
     nodeEnv: process.env.NODE_ENV,
     directusUrl: process.env.DIRECTUS_URL,
     internalSecret: process.env.AI_SUMMARY_INTERNAL_SECRET,
-    workerPort: process.env.AI_SUMMARY_WORKER_PORT,
 };
 
 afterEach(() => {
     process.env.NODE_ENV = originalEnv.nodeEnv;
     process.env.DIRECTUS_URL = originalEnv.directusUrl;
     process.env.AI_SUMMARY_INTERNAL_SECRET = originalEnv.internalSecret;
-    process.env.AI_SUMMARY_WORKER_PORT = originalEnv.workerPort;
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
 });
@@ -40,7 +38,6 @@ describe("enqueueAndTriggerArticleSummaryJob", () => {
         process.env.NODE_ENV = "development";
         process.env.DIRECTUS_URL = "http://directus:8055";
         process.env.AI_SUMMARY_INTERNAL_SECRET = "local-secret";
-        process.env.AI_SUMMARY_WORKER_PORT = "4322";
 
         const fetchMock = vi
             .fn()

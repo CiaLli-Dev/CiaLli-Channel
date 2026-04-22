@@ -6,42 +6,23 @@ loadDotenv();
 
 const REQUIRED_KEYS = [
     "APP_PUBLIC_BASE_URL",
-    "APP_PUBLIC_HOSTNAME",
     "DIRECTUS_URL",
-    "DIRECTUS_INTERNAL_URL",
-    "DIRECTUS_PUBLIC_URL",
     "DIRECTUS_STATIC_TOKEN",
     "DIRECTUS_SECRET",
-    "DIRECTUS_KEY",
     "DIRECTUS_ADMIN_EMAIL",
     "DIRECTUS_ADMIN_PASSWORD",
-    "POSTGRES_DB",
-    "POSTGRES_USER",
     "POSTGRES_PASSWORD",
     "REDIS_URL",
-    "REDIS_INTERNAL_URL",
-    "DIRECTUS_REDIS_URL",
-    "REDIS_NAMESPACE",
-    "MINIO_ROOT_USER",
     "MINIO_ROOT_PASSWORD",
-    "MINIO_BUCKET",
-    "STORAGE_LOCATIONS",
-    "STORAGE_S3_DRIVER",
     "STORAGE_S3_KEY",
     "STORAGE_S3_SECRET",
-    "STORAGE_S3_BUCKET",
-    "STORAGE_S3_REGION",
-    "STORAGE_S3_ENDPOINT",
-    "STORAGE_S3_FORCE_PATH_STYLE",
     "BANGUMI_TOKEN_ENCRYPTION_KEY",
     "AI_SUMMARY_INTERNAL_SECRET",
-    "AI_SUMMARY_WORKER_PORT",
 ];
 
 const PRODUCTION_SENSITIVE_KEYS = [
     "DIRECTUS_STATIC_TOKEN",
     "DIRECTUS_SECRET",
-    "DIRECTUS_KEY",
     "DIRECTUS_ADMIN_PASSWORD",
     "POSTGRES_PASSWORD",
     "MINIO_ROOT_PASSWORD",
@@ -53,7 +34,6 @@ const PRODUCTION_SENSITIVE_KEYS = [
 const DANGEROUS_DEFAULTS = new Set([
     "",
     "change-me",
-    "change-me-too",
     "directus",
     "minioadmin",
     "admin@example.com",
@@ -91,8 +71,7 @@ const missing = REQUIRED_KEYS.filter((key) => !readEnv(key));
 
 const strictMode =
     process.env.CHECK_ENV_STRICT === "1" ||
-    (!isLocalHostname(readEnv("APP_PUBLIC_HOSTNAME")) &&
-        !isLocalBaseUrl(readEnv("APP_PUBLIC_BASE_URL")));
+    !isLocalBaseUrl(readEnv("APP_PUBLIC_BASE_URL"));
 
 const unsafe = strictMode
     ? PRODUCTION_SENSITIVE_KEYS.filter((key) =>

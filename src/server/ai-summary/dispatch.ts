@@ -4,7 +4,7 @@ import { AI_SUMMARY_INTERNAL_SECRET_HEADER } from "@/server/ai-summary/internal-
 
 import { enqueueArticleSummaryJob, type EnqueueSummaryJobResult } from "./jobs";
 
-const DEFAULT_AI_SUMMARY_WORKER_PORT = "4322";
+const WORKER_PORT = "4322";
 
 function readAiSummaryInternalSecret(): string {
     return (
@@ -14,12 +14,6 @@ function readAiSummaryInternalSecret(): string {
 }
 
 function resolveAiSummaryWorkerOrigin(): string {
-    const port =
-        String(
-            process.env.AI_SUMMARY_WORKER_PORT ||
-                import.meta.env.AI_SUMMARY_WORKER_PORT ||
-                DEFAULT_AI_SUMMARY_WORKER_PORT,
-        ).trim() || DEFAULT_AI_SUMMARY_WORKER_PORT;
     const directusUrl = String(
         process.env.DIRECTUS_URL || import.meta.env.DIRECTUS_URL || "",
     ).trim();
@@ -36,9 +30,9 @@ function resolveAiSummaryWorkerOrigin(): string {
         process.env.NODE_ENV === "production" ||
         directusHostname === "directus"
     ) {
-        return `http://worker:${port}`;
+        return `http://worker:${WORKER_PORT}`;
     }
-    return `http://127.0.0.1:${port}`;
+    return `http://127.0.0.1:${WORKER_PORT}`;
 }
 
 async function requestAiSummaryJobProcessing(jobId: string): Promise<void> {
