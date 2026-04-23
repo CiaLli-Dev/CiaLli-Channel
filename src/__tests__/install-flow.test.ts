@@ -187,14 +187,14 @@ describe("installer flow", () => {
         expect(
             commands.some((command) =>
                 command.includes(
-                    "npx directus users create --email admin@local.invalid --password ",
+                    "npx directus users create --email admin@example.com --password ",
                 ),
             ),
         ).toBe(true);
         expect(writes).toHaveLength(2);
         expect(writes.at(-1)?.contents).toContain("DIRECTUS_STATIC_TOKEN=");
         expect(writes.at(-1)?.contents).toContain("DIRECTUS_ADMIN_PASSWORD=");
-        expect(writes.at(-1)?.contents).toContain("POSTGRES_USER=pg_");
+        expect(writes.at(-1)?.contents).toContain("POSTGRES_USER=dbu_");
         expect(writes.at(-1)?.contents).toContain("MINIO_ROOT_USER=minio_");
         expect(writes.at(-1)?.contents).toContain("STORAGE_S3_KEY=s3_");
 
@@ -224,7 +224,7 @@ describe("installer flow", () => {
         ).toBe(true);
         expect(
             logs.some((message) =>
-                message.includes("DIRECTUS_ADMIN_EMAIL=admin@local.invalid"),
+                message.includes("DIRECTUS_ADMIN_EMAIL=admin@example.com"),
             ),
         ).toBe(true);
         expect(

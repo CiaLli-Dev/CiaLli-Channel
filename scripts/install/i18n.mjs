@@ -45,6 +45,8 @@ const MESSAGES = {
         buildImages: "[install] Building web / worker images.",
         startInfra:
             "[install] Starting infrastructure, seed restore jobs, and Directus.",
+        provisionStorage:
+            "[install] Provisioning the MinIO service account used by Directus storage.",
         createRole: "[install] Creating Directus administrator role.",
         createAdminUser: "[install] Creating Directus administrator user.",
         generateStaticToken:
@@ -115,6 +117,8 @@ const MESSAGES = {
         resetCleanup: "[install] 检测到 --reset，正在清理现有 Compose 资源。",
         buildImages: "[install] 构建 web / worker 镜像。",
         startInfra: "[install] 启动基础设施、seed 恢复与 Directus。",
+        provisionStorage:
+            "[install] 为 Directus 存储创建 MinIO service account。",
         createRole: "[install] 创建 Directus 管理员角色。",
         createAdminUser: "[install] 创建 Directus 管理员账户。",
         generateStaticToken: "[install] 登录 Directus 并生成服务端静态 token。",
@@ -179,6 +183,8 @@ const MESSAGES = {
         resetCleanup: "[install] 偵測到 --reset，正在清理既有 Compose 資源。",
         buildImages: "[install] 建置 web / worker 映像。",
         startInfra: "[install] 啟動基礎設施、seed 還原與 Directus。",
+        provisionStorage:
+            "[install] 為 Directus 儲存建立 MinIO service account。",
         createRole: "[install] 建立 Directus 管理員角色。",
         createAdminUser: "[install] 建立 Directus 管理員帳號。",
         generateStaticToken:
@@ -247,6 +253,8 @@ const MESSAGES = {
         buildImages: "[install] web / worker イメージをビルドします。",
         startInfra:
             "[install] 基盤サービス、seed 復元ジョブ、Directus を起動します。",
+        provisionStorage:
+            "[install] Directus ストレージ用の MinIO service account を作成します。",
         createRole: "[install] Directus 管理者ロールを作成します。",
         createAdminUser: "[install] Directus 管理者ユーザーを作成します。",
         generateStaticToken:

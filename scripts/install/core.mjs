@@ -135,8 +135,6 @@ export async function runInstallFlow(args, deps) {
     const composeProjectName = deriveComposeProjectName(projectRoot);
 
     await ensureDockerPreflight(hostPlatform, projectRoot, deps, t);
-    await ensurePortsAvailable(deps, t);
-    await ensureSeedAssets(projectRoot, deps);
 
     const existingIssues = await detectExistingInstall({
         composeProjectName,
@@ -166,6 +164,9 @@ export async function runInstallFlow(args, deps) {
         );
         await deps.removeFile(envFilePath);
     }
+
+    await ensurePortsAvailable(deps, t);
+    await ensureSeedAssets(projectRoot, deps);
 
     const generatedSecrets = generateInstallerSecrets();
     const envValues = buildEnvValues({
@@ -211,11 +212,14 @@ export async function runInstallFlow(args, deps) {
             "minio-init",
             "seed-postgres-restore",
             "seed-minio-restore",
-            "directus",
         ],
         deps,
     );
 
+    deps.log(t("provisionStorage"));
+    await createMinioStorageAccount(projectRoot, envFilePath, envValues, deps);
+
+    await runCompose(projectRoot, envFilePath, ["up", "-d", "directus"], deps);
     await waitForHttpOk(`${directusUrl}${DIRECTUS_HEALTH_PATH}`, deps, t);
 
     deps.log(t("createRole"));
@@ -246,7 +250,7 @@ export async function runInstallFlow(args, deps) {
                 "-lc",
                 [
                     'PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -c',
-                    `"select id from directus_roles where name = '${INSTALL_DIRECTUS_ADMIN_ROLE.replace(/'/g, "''")}' order by date_created desc limit 1"`,
+                    `"select id from directus_roles where name = '${INSTALL_DIRECTUS_ADMIN_ROLE.replace(/'/g, "''")}' limit 1"`,
                 ].join(" "),
             ],
             deps,
@@ -525,6 +529,10 @@ async function ensureSeedAssets(projectRoot, deps) {
     await deps.runCommand("git", ["lfs", "version"], { cwd: projectRoot });
     await deps.runCommand("node", ["scripts/seed/verify.mjs"], {
         cwd: projectRoot,
+        env: {
+            ...process.env,
+            SEED_VERIFY_SKIP_RESTORE: "1",
+        },
     });
 }
 
@@ -681,6 +689,47 @@ async function upsertSiteLanguage(params) {
             }),
         );
     }
+}
+
+/**
+ * @param {string} projectRoot
+ * @param {string} envFilePath
+ * @param {Record<string, string>} envValues
+ * @param {InstallerDeps} deps
+ */
+async function createMinioStorageAccount(
+    projectRoot,
+    envFilePath,
+    envValues,
+    deps,
+) {
+    const script = [
+        'mc alias set local http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1',
+        'if mc admin user svcacct info local "$STORAGE_S3_KEY" >/dev/null 2>&1; then exit 0; fi',
+        'mc admin user svcacct add local "$MINIO_ROOT_USER" --access-key "$STORAGE_S3_KEY" --secret-key "$STORAGE_S3_SECRET" >/dev/null',
+    ].join(" && ");
+
+    await deps.runCommand(
+        "docker",
+        [
+            "compose",
+            "--env-file",
+            envFilePath,
+            "-f",
+            "docker-compose.yml",
+            "exec",
+            "-T",
+            "-e",
+            `STORAGE_S3_KEY=${envValues.STORAGE_S3_KEY}`,
+            "-e",
+            `STORAGE_S3_SECRET=${envValues.STORAGE_S3_SECRET}`,
+            "minio",
+            "sh",
+            "-lc",
+            script,
+        ],
+        { cwd: projectRoot },
+    );
 }
 
 /**

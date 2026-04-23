@@ -106,6 +106,8 @@ async function verifyRestoredSeedDatabase() {
             "run",
             "-d",
             "--rm",
+            "--platform",
+            "linux/amd64",
             "--name",
             containerName,
             "-e",
@@ -181,6 +183,9 @@ async function verifyRestoredSeedDatabase() {
 }
 
 async function main() {
+    const skipRestoreVerification =
+        process.env.SEED_VERIFY_SKIP_RESTORE === "1";
+
     await assertFileExists(SEED_POSTGRES_DUMP_PATH, "PostgreSQL seed dump");
     await assertFileExists(SEED_METADATA_PATH, "seed 元数据");
     await assertFileExists(DIRECTUS_SCHEMA_PATH, "Directus schema 快照");
@@ -233,19 +238,27 @@ async function main() {
         );
     }
 
-    await verifyRestoredSeedDatabase();
+    if (!skipRestoreVerification) {
+        await verifyRestoredSeedDatabase();
+    }
 
     console.info("[seed:verify] 演示 seed 校验通过。");
-    console.info(
-        `[seed:verify] 已确认 seed dump 不包含 legacy demo admin 或可复用认证状态: ${LEGACY_DEMO_ADMIN_EMAIL}`,
-    );
+    if (skipRestoreVerification) {
+        console.info(
+            "[seed:verify] 已跳过临时数据库 restore 验证（SEED_VERIFY_SKIP_RESTORE=1）。",
+        );
+    } else {
+        console.info(
+            `[seed:verify] 已确认 seed dump 不包含 legacy demo admin 或可复用认证状态: ${LEGACY_DEMO_ADMIN_EMAIL}`,
+        );
+    }
     console.info(
         JSON.stringify(
             {
                 seedRoot: ROOT_DIR,
                 postgresDumpBytes: dumpStat.size,
                 minioObjectCount: minioFiles.length,
-                restoredSeedVerified: true,
+                restoredSeedVerified: !skipRestoreVerification,
             },
             null,
             2,

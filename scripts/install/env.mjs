@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 
 export const INSTALL_DIRECTUS_ADMIN_ROLE = "CiaLli Administrator";
 export const DEFAULT_INSTALL_POSTGRES_DB = "directus";
-export const DEFAULT_INSTALL_ADMIN_EMAIL = "admin@local.invalid";
+export const DEFAULT_INSTALL_ADMIN_EMAIL = "admin@example.com";
 
 export const INSTALL_ENV_KEYS = [
     "APP_PUBLIC_BASE_URL",
@@ -46,7 +46,7 @@ export function generateInstallerSecrets(random = randomBytes) {
     const suffix = random(4).toString("hex");
     return {
         DIRECTUS_SECRET: random(32).toString("hex"),
-        POSTGRES_USER: `pg_${suffix}`,
+        POSTGRES_USER: `dbu_${suffix}`,
         POSTGRES_DB: DEFAULT_INSTALL_POSTGRES_DB,
         POSTGRES_PASSWORD: random(18).toString("base64url"),
         MINIO_ROOT_USER: `minio_${suffix}`,

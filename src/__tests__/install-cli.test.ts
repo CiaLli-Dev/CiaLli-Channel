@@ -60,11 +60,11 @@ describe("installer env rendering", () => {
             buildEnvValues({
                 appPublicBaseUrl: "https://example.com",
                 directusUrl: "http://127.0.0.1:8055",
-                directusAdminEmail: "admin@local.invalid",
+                directusAdminEmail: "admin@example.com",
                 directusAdminPassword: "admin-password",
                 directusSecret: "directus-secret",
                 directusStaticToken: "directus-static-token",
-                postgresUser: "pg_deadbeef",
+                postgresUser: "dbu_deadbeef",
                 postgresDb: "directus",
                 postgresPassword: "postgres-password",
                 minioRootUser: "minio_deadbeef",
@@ -79,10 +79,10 @@ describe("installer env rendering", () => {
         expect(envText).toContain(
             "DIRECTUS_STATIC_TOKEN=directus-static-token",
         );
-        expect(envText).toContain("POSTGRES_USER=pg_deadbeef");
+        expect(envText).toContain("POSTGRES_USER=dbu_deadbeef");
         expect(envText).toContain("POSTGRES_DB=directus");
         expect(envText).toContain("MINIO_ROOT_USER=minio_deadbeef");
-        expect(envText).toContain("DIRECTUS_ADMIN_EMAIL=admin@local.invalid");
+        expect(envText).toContain("DIRECTUS_ADMIN_EMAIL=admin@example.com");
         expect(envText).toContain("DIRECTUS_ADMIN_PASSWORD=admin-password");
         expect(envText).toContain("STORAGE_S3_KEY=s3_deadbeef");
     });
@@ -92,10 +92,10 @@ describe("installer env rendering", () => {
         const secrets = generateInstallerSecrets(fakeRandom);
 
         expect(secrets.DIRECTUS_SECRET).toHaveLength(64);
-        expect(secrets.POSTGRES_USER).toBe("pg_07070707");
+        expect(secrets.POSTGRES_USER).toBe("dbu_07070707");
         expect(secrets.POSTGRES_DB).toBe("directus");
         expect(secrets.MINIO_ROOT_USER).toBe("minio_07070707");
-        expect(secrets.DIRECTUS_ADMIN_EMAIL).toBe("admin@local.invalid");
+        expect(secrets.DIRECTUS_ADMIN_EMAIL).toBe("admin@example.com");
         expect(secrets.DIRECTUS_ADMIN_PASSWORD).toBe(
             Buffer.alloc(24, 7).toString("base64url"),
         );

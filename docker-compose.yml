@@ -174,7 +174,7 @@ services:
         drop schema if exists public cascade;
         create schema public;
         "
-        PGPASSWORD="$$POSTGRES_PASSWORD" pg_restore -h postgres -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" --clean --if-exists "$$SEED_FILE"
+        PGPASSWORD="$$POSTGRES_PASSWORD" pg_restore -h postgres -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" --clean --if-exists --no-owner --no-privileges "$$SEED_FILE"
         echo "[seed-postgres-restore] done"
     volumes:
       - ./seed:/seed:ro
