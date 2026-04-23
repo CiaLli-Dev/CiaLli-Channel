@@ -36,13 +36,66 @@ function toCryptoBuffer(input: unknown): ArrayBuffer {
     return buffer;
 }
 
+const DISALLOWED_URL_PROTOCOLS = new Set(["data:", "javascript:", "vbscript:"]);
+
+function normalizeUrlAttributeValue(value: string): string {
+    const trimmed = String(value || "").trim();
+    let normalized = "";
+    for (const ch of trimmed) {
+        const code = ch.charCodeAt(0);
+        if ((code >= 0x00 && code <= 0x20) || code === 0x7f) {
+            continue;
+        }
+        normalized += ch;
+    }
+    return normalized;
+}
+
+function isAllowedRelativeUrl(value: string): boolean {
+    return (
+        value.startsWith("/") ||
+        value.startsWith("./") ||
+        value.startsWith("../") ||
+        value.startsWith("#") ||
+        value.startsWith("?")
+    );
+}
+
+function isSafeUrlAttribute(attrName: string, rawValue: string): boolean {
+    const normalizedValue = normalizeUrlAttributeValue(rawValue);
+    if (!normalizedValue) {
+        return false;
+    }
+    if (isAllowedRelativeUrl(normalizedValue)) {
+        return true;
+    }
+
+    try {
+        const parsed = new URL(normalizedValue, window.location.origin);
+        if (parsed.origin === window.location.origin) {
+            return true;
+        }
+        if (DISALLOWED_URL_PROTOCOLS.has(parsed.protocol)) {
+            return false;
+        }
+        if (attrName === "href") {
+            return (
+                parsed.protocol === "http:" ||
+                parsed.protocol === "https:" ||
+                parsed.protocol === "mailto:" ||
+                parsed.protocol === "tel:"
+            );
+        }
+        return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch {
+        return false;
+    }
+}
+
 function removeUnsafeAttributes(element: Element): void {
     const attributes = Array.from(element.attributes || []);
     attributes.forEach((attribute) => {
         const attrName = attribute.name.toLowerCase();
-        const attrValue = String(attribute.value || "")
-            .trim()
-            .toLowerCase();
         if (attrName.startsWith("on")) {
             element.removeAttribute(attribute.name);
             return;
@@ -51,7 +104,7 @@ function removeUnsafeAttributes(element: Element): void {
             (attrName === "href" ||
                 attrName === "src" ||
                 attrName === "xlink:href") &&
-            attrValue.startsWith("javascript:")
+            !isSafeUrlAttribute(attrName, String(attribute.value || ""))
         ) {
             element.removeAttribute(attribute.name);
         }
