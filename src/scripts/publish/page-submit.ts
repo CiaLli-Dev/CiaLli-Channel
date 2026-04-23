@@ -14,9 +14,17 @@ import { ARTICLE_TITLE_MAX, weightedCharLength } from "@/constants/text-limits";
 import I18nKey from "@/i18n/i18nKey";
 import { requestApi as api } from "@/scripts/shared/http-client";
 import { t, tFmt } from "@/scripts/shared/i18n-runtime";
+import {
+    readCachedProtectedContentPassword,
+    readCachedProtectedContentPasswords,
+    writeCachedProtectedContentPasswords,
+} from "@/scripts/shared/protected-content-password-cache";
 import { buildArticleDetailSuccessRedirectUrl } from "@/scripts/shared/editor-save-redirect";
 import { navigateToPage } from "@/utils/navigation-utils";
-import { buildOwnerArticlePasswordStorageKeys } from "@/utils/protected-content";
+import {
+    buildArticlePathPasswordCacheKey,
+    buildOwnerArticlePasswordStorageKeys,
+} from "@/utils/protected-content";
 import {
     type PendingUpload,
     csvToArray,
@@ -95,27 +103,20 @@ export function collectSavedPasswords(item: Record<string, unknown>): string[] {
         candidatePaths.add(`/posts/${encodeURIComponent(shortId)}`);
     }
     const passwords = new Set<string>();
-    try {
-        for (const key of keys) {
-            const value = toStringValue(sessionStorage.getItem(key));
-            if (value) {
-                passwords.add(value);
-            }
+    for (const value of readCachedProtectedContentPasswords(keys)) {
+        if (value) {
+            passwords.add(value);
         }
-    } catch (error) {
-        console.warn("[publish] read owner password failed:", error);
     }
-    try {
-        for (const path of candidatePaths) {
-            const value = toStringValue(
-                sessionStorage.getItem(`page-password-${path}`),
-            );
-            if (value) {
-                passwords.add(value);
-            }
+    for (const path of candidatePaths) {
+        const value = toStringValue(
+            readCachedProtectedContentPassword(
+                buildArticlePathPasswordCacheKey(path),
+            ),
+        );
+        if (value) {
+            passwords.add(value);
         }
-    } catch (error) {
-        console.warn("[publish] read session password failed:", error);
     }
     return Array.from(passwords);
 }
@@ -310,13 +311,7 @@ export function persistOwnerPassword(
     if (keys.length === 0) {
         return;
     }
-    try {
-        for (const key of keys) {
-            sessionStorage.setItem(key, cleanPassword);
-        }
-    } catch (error) {
-        console.warn("[publish] persist owner password failed:", error);
-    }
+    writeCachedProtectedContentPasswords(keys, cleanPassword);
 }
 
 // ── Payload 构建 ──
@@ -449,10 +444,11 @@ export async function handleSubmitApiResponse(
             { fresh: true },
         );
     if (successRedirectUrl) {
-        navigateToPage(successRedirectUrl, {
-            force: true,
-            replace: true,
-        });
+        const navigateOptions =
+            options.targetStatus === "draft"
+                ? { force: true, replace: true }
+                : { replace: true };
+        navigateToPage(successRedirectUrl, navigateOptions);
     }
 }
 

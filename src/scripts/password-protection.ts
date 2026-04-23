@@ -1,4 +1,13 @@
 import { bindPasswordProtectionOwnerSync } from "@/scripts/password-protection-owner";
+import {
+    clearCachedProtectedContentPassword,
+    clearCachedProtectedContentPasswords,
+    readCachedProtectedContentPassword,
+    readCachedProtectedContentPasswords,
+    writeCachedProtectedContentPassword,
+    writeCachedProtectedContentPasswords,
+} from "@/scripts/shared/protected-content-password-cache";
+import { buildArticlePathPasswordCacheKey } from "@/utils/protected-content";
 
 type PasswordProtectionElements = {
     protectionDiv: HTMLElement;
@@ -89,30 +98,23 @@ function isPasswordInvalidError(error: unknown): boolean {
     return error.message === "PASSWORD_INVALID";
 }
 
-function readOwnerStoredPassword(
+function readOwnerCachedPassword(
     keys: string[],
     isViewerOwner: boolean,
 ): string {
     if (!isViewerOwner || keys.length === 0) {
         return "";
     }
-    try {
-        for (const key of keys) {
-            const normalized = String(sessionStorage.getItem(key) || "").trim();
-            if (normalized) {
-                return normalized;
-            }
+    const passwords = readCachedProtectedContentPasswords(keys);
+    for (const password of passwords) {
+        if (password) {
+            return password;
         }
-    } catch (error) {
-        console.warn(
-            "[password-protection] read owner password failed:",
-            error,
-        );
     }
     return "";
 }
 
-function persistOwnerStoredPassword(
+function persistOwnerCachedPassword(
     keys: string[],
     password: string,
     isViewerOwner: boolean,
@@ -124,46 +126,27 @@ function persistOwnerStoredPassword(
     if (!normalized) {
         return;
     }
-    try {
-        for (const key of keys) {
-            sessionStorage.setItem(key, normalized);
-        }
-    } catch (error) {
-        console.warn(
-            "[password-protection] persist owner password failed:",
-            error,
-        );
-    }
+    writeCachedProtectedContentPasswords(keys, normalized);
 }
 
-function clearOwnerStoredPassword(
+function clearOwnerCachedPassword(
     keys: string[],
     isViewerOwner: boolean,
 ): void {
     if (!isViewerOwner || keys.length === 0) {
         return;
     }
-    try {
-        for (const key of keys) {
-            sessionStorage.removeItem(key);
-        }
-    } catch (error) {
-        console.warn(
-            "[password-protection] clear owner password failed:",
-            error,
-        );
-    }
+    clearCachedProtectedContentPasswords(keys);
 }
 
 function resolveStoredPassword(
     ownerStorageKeys: string[],
     isViewerOwner: boolean,
 ): string {
-    const pathPassword = String(
-        sessionStorage.getItem(`page-password-${window.location.pathname}`) ||
-            "",
-    ).trim();
-    const ownerPassword = readOwnerStoredPassword(
+    const pathPassword = readCachedProtectedContentPassword(
+        buildArticlePathPasswordCacheKey(window.location.pathname),
+    );
+    const ownerPassword = readOwnerCachedPassword(
         ownerStorageKeys,
         isViewerOwner,
     );
@@ -206,8 +189,10 @@ function rollbackAutoUnlockState(input: {
     if (!input.attemptedPassword) {
         return;
     }
-    sessionStorage.removeItem(`page-password-${window.location.pathname}`);
-    clearOwnerStoredPassword(input.ownerStorageKeys, input.isViewerOwner);
+    clearCachedProtectedContentPassword(
+        buildArticlePathPasswordCacheKey(window.location.pathname),
+    );
+    clearOwnerCachedPassword(input.ownerStorageKeys, input.isViewerOwner);
     const inputGroup = input.protectionDiv.querySelector<HTMLElement>(
         ".password-input-group",
     );
@@ -406,11 +391,11 @@ function initPasswordProtection(): void {
                 .forEach((shareEl) => {
                     shareEl.classList.remove("encrypted-hidden");
                 });
-            sessionStorage.setItem(
-                `page-password-${window.location.pathname}`,
+            writeCachedProtectedContentPassword(
+                buildArticlePathPasswordCacheKey(window.location.pathname),
                 inputPassword,
             );
-            persistOwnerStoredPassword(
+            persistOwnerCachedPassword(
                 config.ownerPasswordStorageKeys,
                 inputPassword,
                 isViewerOwner,

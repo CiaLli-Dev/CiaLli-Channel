@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+    readCachedProtectedContentPassword,
+    resetProtectedContentPasswordCache,
+} from "@/scripts/shared/protected-content-password-cache";
+import { buildArticlePathPasswordCacheKey } from "@/utils/protected-content";
+
 const { bindPasswordProtectionOwnerSyncMock } = vi.hoisted(() => ({
     bindPasswordProtectionOwnerSyncMock: vi.fn(),
 }));
@@ -154,24 +160,6 @@ type PasswordProtectionTestWindow = FakeWindow &
         ) => Promise<void>;
     };
 
-function createFakeSessionStorage(): Storage {
-    const store = new Map<string, string>();
-    return {
-        length: 0,
-        clear: () => {
-            store.clear();
-        },
-        getItem: (key) => store.get(key) ?? null,
-        key: (index) => Array.from(store.keys())[index] ?? null,
-        removeItem: (key) => {
-            store.delete(key);
-        },
-        setItem: (key, value) => {
-            store.set(key, value);
-        },
-    };
-}
-
 function createPasswordProtectionDom(): {
     protectionDiv: FakeHTMLElement;
     passwordInput: FakeHTMLInputElement;
@@ -229,6 +217,7 @@ describe("password-protection", () => {
     });
 
     afterEach(() => {
+        resetProtectedContentPasswordCache();
         vi.unstubAllGlobals();
     });
 
@@ -251,7 +240,6 @@ describe("password-protection", () => {
             "window",
             fakeWindow as unknown as Window & typeof globalThis,
         );
-        vi.stubGlobal("sessionStorage", createFakeSessionStorage());
         vi.stubGlobal("HTMLElement", FakeHTMLElement);
         vi.stubGlobal("HTMLInputElement", FakeHTMLInputElement);
         vi.stubGlobal("HTMLButtonElement", FakeHTMLButtonElement);
@@ -303,7 +291,6 @@ describe("password-protection", () => {
             "window",
             fakeWindow as unknown as Window & typeof globalThis,
         );
-        vi.stubGlobal("sessionStorage", createFakeSessionStorage());
         vi.stubGlobal("HTMLElement", FakeHTMLElement);
         vi.stubGlobal("HTMLInputElement", FakeHTMLInputElement);
         vi.stubGlobal("HTMLButtonElement", FakeHTMLButtonElement);
@@ -316,5 +303,63 @@ describe("password-protection", () => {
 
         expect(stopOwnerSync).toHaveBeenCalledTimes(1);
         expect(dom.protectionDiv.isConnected).toBe(false);
+        expect(
+            readCachedProtectedContentPassword(
+                buildArticlePathPasswordCacheKey("/posts/encrypted"),
+            ),
+        ).toBe("secret");
+    });
+
+    it("解锁过程中不会把密码写入 sessionStorage", async () => {
+        const dom = createPasswordProtectionDom();
+        const fakeDocument = new FakeDocument({
+            "password-protection": dom.protectionDiv,
+            "password-input": dom.passwordInput,
+            "unlock-btn": dom.unlockBtn,
+            "error-message": dom.errorMessage,
+            "decrypted-content": dom.contentDiv,
+            "decrypted-content-body": dom.contentBodyDiv,
+        });
+        const fakeWindow = new FakeWindow() as PasswordProtectionTestWindow;
+        const fakeSessionStorage = {
+            getItem: vi.fn(),
+            setItem: vi.fn(),
+            removeItem: vi.fn(),
+        };
+        fakeWindow.__ppDecryptPayloadV2 = vi
+            .fn()
+            .mockResolvedValue("<p>decrypted</p>");
+        fakeWindow.__ppSanitizeDecryptedHtml = vi.fn((rawHtml: unknown) =>
+            String(rawHtml),
+        );
+        fakeWindow.__ppResolveProtectedHtml = vi.fn((rawContent: unknown) =>
+            String(rawContent),
+        );
+        fakeWindow.__ppDispatchPostDecryptTasks = vi
+            .fn()
+            .mockResolvedValue(undefined);
+
+        vi.stubGlobal("document", fakeDocument as unknown as Document);
+        vi.stubGlobal(
+            "window",
+            fakeWindow as unknown as Window & typeof globalThis,
+        );
+        vi.stubGlobal(
+            "sessionStorage",
+            fakeSessionStorage as unknown as Storage,
+        );
+        vi.stubGlobal("HTMLElement", FakeHTMLElement);
+        vi.stubGlobal("HTMLInputElement", FakeHTMLInputElement);
+        vi.stubGlobal("HTMLButtonElement", FakeHTMLButtonElement);
+
+        await import("@/scripts/password-protection");
+
+        dom.passwordInput.value = "secret";
+        dom.unlockBtn.dispatch("click");
+        await Promise.resolve();
+
+        expect(fakeSessionStorage.getItem).not.toHaveBeenCalled();
+        expect(fakeSessionStorage.setItem).not.toHaveBeenCalled();
+        expect(fakeSessionStorage.removeItem).not.toHaveBeenCalled();
     });
 });

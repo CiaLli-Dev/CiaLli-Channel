@@ -28,3 +28,8 @@ export function buildOwnerArticlePasswordStorageKeys(
 
     return Array.from(keys);
 }
+
+export function buildArticlePathPasswordCacheKey(pathname: string): string {
+    const normalizedPath = normalizeStorageFragment(pathname);
+    return normalizedPath ? `article-password:path:${normalizedPath}` : "";
+}

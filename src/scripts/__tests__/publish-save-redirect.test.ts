@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+    readCachedProtectedContentPasswords,
+    resetProtectedContentPasswordCache,
+} from "@/scripts/shared/protected-content-password-cache";
+import {
     ARTICLE_SAVE_SUCCESS_REDIRECT_URL,
     buildArticleDetailSuccessRedirectUrl,
     buildDiarySaveSuccessRedirectUrl,
@@ -22,6 +26,7 @@ describe("publish save redirect", () => {
     beforeEach(() => {
         navigateToPage.mockClear();
         requestApi.mockReset();
+        resetProtectedContentPasswordCache();
     });
 
     it("文章草稿保存成功后返回文章列表", async () => {
@@ -84,7 +89,6 @@ describe("publish save redirect", () => {
                 ),
             ),
             {
-                force: true,
                 replace: true,
             },
         );
@@ -96,10 +100,51 @@ describe("publish save redirect", () => {
                 ),
             ),
             {
-                force: true,
                 replace: true,
             },
         );
+    });
+
+    it("文章发布成功后仅把 owner 密码写入内存缓存", async () => {
+        const fakeSessionStorage = {
+            getItem: vi.fn(),
+            setItem: vi.fn(),
+            removeItem: vi.fn(),
+        };
+        vi.stubGlobal(
+            "sessionStorage",
+            fakeSessionStorage as unknown as Storage,
+        );
+        const { handleSubmitApiResponse } =
+            await import("@/scripts/publish/page-submit");
+
+        await handleSubmitApiResponse(
+            makePublishState(),
+            makeUiHelpers(),
+            async () => true,
+            "secret",
+            {
+                item: {
+                    id: "post-1",
+                    short_id: "post-short",
+                    slug: "published-post",
+                },
+            },
+            {
+                targetStatus: "published",
+            },
+        );
+
+        expect(fakeSessionStorage.getItem).not.toHaveBeenCalled();
+        expect(fakeSessionStorage.setItem).not.toHaveBeenCalled();
+        expect(fakeSessionStorage.removeItem).not.toHaveBeenCalled();
+        expect(
+            readCachedProtectedContentPasswords([
+                "owner-article-password:id:post-1",
+                "owner-article-password:short:post-short",
+                "owner-article-password:slug:published-post",
+            ]),
+        ).toEqual(["secret"]);
     });
 
     it("文章未保存守卫保存路径不触发列表跳转", async () => {
