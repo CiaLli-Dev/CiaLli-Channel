@@ -36,7 +36,10 @@ type MockCookies = {
     set(name: string, value: string, options?: Record<string, unknown>): void;
 };
 
-function createContext(pathname: string): APIContext {
+function createContext(
+    pathname: string,
+    origin = "https://example.com",
+): APIContext {
     const context: {
         isPrerendered: boolean;
         request: Request;
@@ -45,8 +48,8 @@ function createContext(pathname: string): APIContext {
         cookies: MockCookies;
     } = {
         isPrerendered: false,
-        request: new Request(`http://localhost:4321${pathname}`),
-        url: new URL(`http://localhost:4321${pathname}`),
+        request: new Request(new URL(pathname, origin)),
+        url: new URL(pathname, origin),
         locals: {},
         cookies: {
             get(): undefined {
@@ -94,7 +97,7 @@ describe("middleware frame protection", () => {
 
         const response = assertResponse(
             await onRequest(
-                createContext("/auth/login"),
+                createContext("/auth/login", "https://example.com"),
                 next as unknown as MiddlewareNext,
             ),
         );
@@ -103,6 +106,28 @@ describe("middleware frame protection", () => {
         expect(response.headers.get("Content-Security-Policy")).toBe(
             "frame-ancestors 'none'",
         );
+        expect(response.headers.get("X-Request-ID")).toBeTruthy();
+    });
+
+    it("localhost HTML 响应跳过防嵌入头", async () => {
+        const { onRequest } = await import("@/middleware");
+        const next = vi.fn().mockResolvedValue(
+            new Response("<html>login</html>", {
+                headers: {
+                    "content-type": "text/html; charset=utf-8",
+                },
+            }),
+        );
+
+        const response = assertResponse(
+            await onRequest(
+                createContext("/auth/login", "https://localhost"),
+                next as unknown as MiddlewareNext,
+            ),
+        );
+
+        expect(response.headers.get("X-Frame-Options")).toBeNull();
+        expect(response.headers.get("Content-Security-Policy")).toBeNull();
         expect(response.headers.get("X-Request-ID")).toBeTruthy();
     });
 
@@ -118,7 +143,10 @@ describe("middleware frame protection", () => {
 
         const response = assertResponse(
             await onRequest(
-                createContext("/api/v1/public/site-settings"),
+                createContext(
+                    "/api/v1/public/site-settings",
+                    "https://example.com",
+                ),
                 next as unknown as MiddlewareNext,
             ),
         );

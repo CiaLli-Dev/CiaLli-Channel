@@ -1,4 +1,5 @@
 const HTML_CONTENT_TYPE_RE = /^\s*text\/html(?:\s*(?:;|$))/i;
+const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 export const FRAME_ANCESTORS_POLICY = "frame-ancestors 'none'";
 export const X_FRAME_OPTIONS_DENY = "DENY";
@@ -41,8 +42,19 @@ export function mergeFrameAncestorsDirective(
     return nextDirectives.join("; ");
 }
 
-export function applyFrameProtectionHeaders(response: Response): void {
+export function shouldApplyFrameProtection(requestUrl: URL): boolean {
+    return !LOOPBACK_HOSTNAMES.has(requestUrl.hostname);
+}
+
+export function applyFrameProtectionHeaders(
+    response: Response,
+    requestUrl?: URL,
+): void {
     if (!isHtmlResponse(response)) {
+        return;
+    }
+
+    if (requestUrl && !shouldApplyFrameProtection(requestUrl)) {
         return;
     }
 

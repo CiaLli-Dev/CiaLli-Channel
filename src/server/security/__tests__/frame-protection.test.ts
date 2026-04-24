@@ -5,6 +5,7 @@ import {
     FRAME_ANCESTORS_POLICY,
     isHtmlResponse,
     mergeFrameAncestorsDirective,
+    shouldApplyFrameProtection,
     X_FRAME_OPTIONS_DENY,
 } from "@/server/security/frame-protection";
 
@@ -54,6 +55,21 @@ describe("security/frame-protection", () => {
         ).toBe("default-src 'self'; frame-ancestors 'none'; object-src 'none'");
     });
 
+    it("本机地址不启用防嵌入头", () => {
+        expect(shouldApplyFrameProtection(new URL("https://localhost/"))).toBe(
+            false,
+        );
+        expect(shouldApplyFrameProtection(new URL("https://127.0.0.1/"))).toBe(
+            false,
+        );
+        expect(shouldApplyFrameProtection(new URL("https://[::1]/"))).toBe(
+            false,
+        );
+        expect(
+            shouldApplyFrameProtection(new URL("https://example.com/")),
+        ).toBe(true);
+    });
+
     it("仅对 HTML 响应注入防嵌入头", () => {
         const htmlResponse = new Response("<html></html>", {
             headers: {
@@ -67,7 +83,10 @@ describe("security/frame-protection", () => {
             },
         });
 
-        applyFrameProtectionHeaders(htmlResponse);
+        applyFrameProtectionHeaders(
+            htmlResponse,
+            new URL("https://example.com/"),
+        );
         applyFrameProtectionHeaders(jsonResponse);
 
         expect(htmlResponse.headers.get("X-Frame-Options")).toBe(
@@ -78,5 +97,21 @@ describe("security/frame-protection", () => {
         );
         expect(jsonResponse.headers.get("X-Frame-Options")).toBeNull();
         expect(jsonResponse.headers.get("Content-Security-Policy")).toBeNull();
+    });
+
+    it("本机 HTML 响应跳过防嵌入头", () => {
+        const response = new Response("<html></html>", {
+            headers: {
+                "content-type": "text/html; charset=utf-8",
+                "content-security-policy": "default-src 'self'",
+            },
+        });
+
+        applyFrameProtectionHeaders(response, new URL("https://localhost/"));
+
+        expect(response.headers.get("X-Frame-Options")).toBeNull();
+        expect(response.headers.get("Content-Security-Policy")).toBe(
+            "default-src 'self'",
+        );
     });
 });

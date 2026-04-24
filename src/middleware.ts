@@ -66,7 +66,7 @@ export const onRequest: MiddlewareHandler = defineMiddleware(
                 async () => await next(),
             );
 
-            applyFrameProtectionHeaders(response);
+            applyFrameProtectionHeaders(response, context.url);
             return response;
         }
 
@@ -112,7 +112,7 @@ export const onRequest: MiddlewareHandler = defineMiddleware(
         );
 
         // 6. 响应头附加 requestId
-        applyFrameProtectionHeaders(response);
+        applyFrameProtectionHeaders(response, context.url);
         response.headers.set("X-Request-ID", requestId);
         return response;
     },
