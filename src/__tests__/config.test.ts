@@ -8,6 +8,10 @@ import {
 import { DEFAULT_SITE_THEME_PRESET } from "@/config/theme-presets";
 
 describe("config runtime site config", () => {
+    it("systemSiteConfig 会从 APP_PUBLIC_BASE_URL 解析站点 URL", () => {
+        expect(systemSiteConfig.siteURL).toBe("https://example.com/");
+    });
+
     it("buildRuntimeSiteConfig 会把站点设置投影为布局运行时配置", () => {
         const runtimeSiteConfig = buildRuntimeSiteConfig(
             systemSiteConfig,

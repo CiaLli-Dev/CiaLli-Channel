@@ -60,7 +60,7 @@ function createResolvedSiteSettings(
 ): ResolvedSiteSettings {
     return {
         system: {
-            siteURL: "https://www.ciallichannel.com/",
+            siteURL: "https://example.com/",
             lang: language,
             timeZone: "UTC",
             themeColor: { hue: 200 },

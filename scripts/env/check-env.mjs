@@ -2,6 +2,8 @@
 
 import { config as loadDotenv } from "dotenv";
 
+import { resolvePublicBaseUrl } from "../../src/config/public-base-url.mjs";
+
 loadDotenv();
 
 const REQUIRED_KEYS = [
@@ -63,6 +65,18 @@ function isLocalBaseUrl(urlValue) {
 }
 
 const missing = REQUIRED_KEYS.filter((key) => !readEnv(key));
+let publicBaseUrlError = null;
+
+if (!missing.includes("APP_PUBLIC_BASE_URL")) {
+    try {
+        resolvePublicBaseUrl({
+            APP_PUBLIC_BASE_URL: readEnv("APP_PUBLIC_BASE_URL"),
+        });
+    } catch (error) {
+        publicBaseUrlError =
+            error instanceof Error ? error.message : String(error);
+    }
+}
 
 const strictMode =
     process.env.CHECK_ENV_STRICT === "1" ||
@@ -86,13 +100,19 @@ if (missing.length > 0) {
     );
 }
 
+if (publicBaseUrlError) {
+    console.error(
+        `[check:env] APP_PUBLIC_BASE_URL 非法: ${publicBaseUrlError}`,
+    );
+}
+
 if (unsafe.length > 0) {
     console.error(
         `[check:env] 生产模式下存在危险默认值，请替换: ${unsafe.map((key) => `\`${key}\``).join(", ")}`,
     );
 }
 
-if (missing.length > 0 || unsafe.length > 0) {
+if (missing.length > 0 || unsafe.length > 0 || publicBaseUrlError) {
     process.exit(1);
 }
 

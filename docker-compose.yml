@@ -4,6 +4,8 @@ services:
     depends_on:
       web:
         condition: service_started
+    environment:
+      APP_PUBLIC_BASE_URL: ${APP_PUBLIC_BASE_URL:-https://localhost}
     ports:
       - "80:80"
       - "443:443"

@@ -2,7 +2,7 @@
 	email ops@ciallichannel.com
 }
 
-localhost {
+{$APP_PUBLIC_BASE_URL} {
 	encode gzip zstd
 	reverse_proxy web:4321
 }

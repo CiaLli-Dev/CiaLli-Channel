@@ -44,14 +44,14 @@ Directus 后台默认只绑定到 `127.0.0.1:8055`，不直接暴露公网。
 6. 安装器还会把 `DIRECTUS_ADMIN_EMAIL` 与 `DIRECTUS_ADMIN_PASSWORD` 一并写入 `.env`，用于首次安装后的后台登录与运维排障；运行时服务本身不依赖这两项。
 7. `PUBLIC_ASSET_BASE_URL` 是唯一保留的可选环境变量；留空时继续统一走站内 BFF 代理资源地址。
 8. `pnpm check:env` 只负责校验已存在的 `.env`；首次安装所需密钥、账号名与静态 token 都由安装器生成并写入。
+9. `APP_PUBLIC_BASE_URL` 是站点唯一公网入口真源，同时驱动 Astro `site`、sitemap、RSS、canonical 与 Caddy 反向代理入口；它必须是站点根 URL，不支持子路径部署。
 
 ## 全局安装器
 
 首次部署推荐使用全局安装器：
 
 ```bash
-pnpm install -g .
-cialli-install install
+pnpm install -g . && cialli-install install --site-url https://example.com
 ```
 
 安装器会自动完成：
@@ -97,31 +97,11 @@ pnpm docker:build
 pnpm docker:up
 ```
 
-仓库提供 [docker-compose.override.yml](/Users/uednd/code/CiaLli-Channel/docker-compose.override.yml) 作为本地开发覆盖配置。使用默认 `docker compose up` 时，`web` 会以 `pnpm dev` 运行并挂载源码，`worker` 会以 `tsx watch` 运行，代码改动会自动热更新或重启。
+仓库提供 [docker-compose.override.yml](/Users/uednd/code/CiaLli-Channel/docker-compose.override.yml) 作为本地开发覆盖配置。使用默认 `docker compose up` 时，`web` 会以 `pnpm dev` 运行并挂载源码，`worker` 会以 `tsx watch` 运行，代码改动会自动热更新或重启。该入口仅用于本地开发，不作为正式生产部署流程。
 
-## 生产启动
+## 生产部署约定
 
-生产环境需要显式绕过本地 override，只加载主 [docker-compose.yml](/Users/uednd/code/CiaLli-Channel/docker-compose.yml)：
-
-```bash
-pnpm docker:build
-pnpm docker:up:prod
-```
-
-等价的原生命令是：
-
-```bash
-docker compose -f docker-compose.yml up -d
-```
-
-首次启动会自动完成：
-
-- PostgreSQL 初始化
-- Redis 启动
-- MinIO bucket 创建
-- 演示 seed 恢复（仅空卷首次启动）
-- Directus 数据库迁移
-- 安装器通过 CLI 创建管理员账户并写入服务端静态 token
+正式部署流程统一使用安装器。安装器内部仍基于主 [docker-compose.yml](/Users/uednd/code/CiaLli-Channel/docker-compose.yml) 启动生产服务，并自动绕过本地开发用 override 配置。
 
 ## 演示种子与后台账号
 

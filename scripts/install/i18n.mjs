@@ -37,7 +37,8 @@ const MESSAGES = {
             "Select installer language [1-4 or code] (1. English / 2. 简体中文 / 3. 繁體中文 / 4. 日本語): ",
         selectLanguageRetry:
             "Invalid language choice. Enter 1-4 or one of: {supported}.",
-        promptSiteUrl: "Public site URL (for example https://example.com): ",
+        promptSiteUrl:
+            "Public site root URL (for example https://example.com): ",
         unsupportedPlatform:
             "Unsupported host platform: {platform}. Only Linux / macOS / WSL are supported.",
         resetCleanup:
@@ -61,7 +62,8 @@ const MESSAGES = {
             "[install] All generated values are shown above and persisted in .env for later review or backup.",
         siteEntry: "[install] Site entry: {url}",
         directusEntry: "[install] Directus: {url}",
-        unsupportedSiteUrl: "The site URL is invalid: {siteUrl}",
+        unsupportedSiteUrl:
+            "The site URL is invalid. Use an http(s) root URL without path, query, or hash: {siteUrl}",
         siteUrlRequired:
             "The installer requires the public site URL. Provide it interactively or via --site-url.",
         projectRootNotFound:
@@ -111,7 +113,7 @@ const MESSAGES = {
             "请选择安装器语言 [1-4 或语言代码]（1. English / 2. 简体中文 / 3. 繁體中文 / 4. 日本語）：",
         selectLanguageRetry:
             "语言选择无效，请输入 1-4 或以下语言代码之一：{supported}。",
-        promptSiteUrl: "站点公开 URL（例如 https://example.com）：",
+        promptSiteUrl: "站点公开根 URL（例如 https://example.com）：",
         unsupportedPlatform:
             "当前宿主机不受支持：{platform}。仅支持 Linux / macOS / WSL。",
         resetCleanup: "[install] 检测到 --reset，正在清理现有 Compose 资源。",
@@ -132,7 +134,8 @@ const MESSAGES = {
             "[install] 上述所有生成值均已写入 .env，后续可直接在 .env 中查看或备份。",
         siteEntry: "[install] 主站入口：{url}",
         directusEntry: "[install] Directus：{url}",
-        unsupportedSiteUrl: "站点 URL 非法：{siteUrl}",
+        unsupportedSiteUrl:
+            "站点 URL 非法：请使用不带 path / query / hash 的 http(s) 根 URL：{siteUrl}",
         siteUrlRequired:
             "安装器需要站点公开 URL。可交互输入，也可通过 --site-url 提供。",
         projectRootNotFound:
@@ -177,7 +180,7 @@ const MESSAGES = {
             "請選擇安裝器語言 [1-4 或語言代碼]（1. English / 2. 简体中文 / 3. 繁體中文 / 4. 日本語）：",
         selectLanguageRetry:
             "語言選擇無效，請輸入 1-4 或以下語言代碼之一：{supported}。",
-        promptSiteUrl: "站點公開 URL（例如 https://example.com）：",
+        promptSiteUrl: "站點公開根 URL（例如 https://example.com）：",
         unsupportedPlatform:
             "目前宿主機不受支援：{platform}。僅支援 Linux / macOS / WSL。",
         resetCleanup: "[install] 偵測到 --reset，正在清理既有 Compose 資源。",
@@ -199,7 +202,8 @@ const MESSAGES = {
             "[install] 上述所有產生值均已寫入 .env，後續可直接在 .env 中檢視或備份。",
         siteEntry: "[install] 主站入口：{url}",
         directusEntry: "[install] Directus：{url}",
-        unsupportedSiteUrl: "站點 URL 非法：{siteUrl}",
+        unsupportedSiteUrl:
+            "站點 URL 非法：請使用不帶 path / query / hash 的 http(s) 根 URL：{siteUrl}",
         siteUrlRequired:
             "安裝器需要站點公開 URL。可互動輸入，也可透過 --site-url 提供。",
         projectRootNotFound:
@@ -245,7 +249,7 @@ const MESSAGES = {
         selectLanguageRetry:
             "言語の選択が無効です。1-4 または次の言語コードを入力してください: {supported}。",
         promptSiteUrl:
-            "公開サイト URL を入力してください（例 https://example.com）: ",
+            "公開サイトのルート URL を入力してください（例 https://example.com）: ",
         unsupportedPlatform:
             "現在のホストプラットフォームは未対応です: {platform}。Linux / macOS / WSL のみ対応しています。",
         resetCleanup:
@@ -269,7 +273,8 @@ const MESSAGES = {
             "[install] 上記の生成値はすべて .env に保存されています。後から .env で確認・バックアップできます。",
         siteEntry: "[install] サイト入口: {url}",
         directusEntry: "[install] Directus: {url}",
-        unsupportedSiteUrl: "サイト URL が不正です: {siteUrl}",
+        unsupportedSiteUrl:
+            "サイト URL が不正です。path / query / hash を含まない http(s) のルート URL を指定してください: {siteUrl}",
         siteUrlRequired:
             "インストーラーには公開サイト URL が必要です。対話入力または --site-url で指定してください。",
         projectRootNotFound:

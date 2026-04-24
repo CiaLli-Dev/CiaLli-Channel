@@ -8,9 +8,23 @@ import {
     resolveSiteThemePreset,
     resolveThemeColorFromPreset,
 } from "./theme-presets";
+import { resolvePublicBaseUrl } from "./public-base-url.mjs";
+
+const resolvedPublicBaseUrl = resolvePublicBaseUrl(
+    {
+        APP_PUBLIC_BASE_URL:
+            typeof process !== "undefined"
+                ? process.env.APP_PUBLIC_BASE_URL
+                : undefined,
+        SITE: import.meta.env.SITE,
+    },
+    {
+        fallbackKeys: ["SITE"],
+    },
+);
 
 export const systemSiteConfig: SystemSiteConfig = {
-    siteURL: "https://www.ciallichannel.com/",
+    siteURL: resolvedPublicBaseUrl.siteURL,
     lang: "zh_CN",
     timeZone: "UTC",
     themeColor: resolveThemeColorFromPreset(DEFAULT_SITE_THEME_PRESET),

@@ -7,10 +7,11 @@ import { pluginCollapsibleSections } from "@expressive-code/plugin-collapsible-s
 import { pluginLineNumbers } from "@expressive-code/plugin-line-numbers";
 
 import tailwindcss from "@tailwindcss/vite";
+import { config as loadDotenv } from "dotenv";
 import { defineConfig } from "astro/config";
 import expressiveCode from "astro-expressive-code";
 import icon from "astro-icon";
-import { systemSiteConfig } from "./src/config/index.ts";
+import { resolvePublicBaseUrl } from "./src/config/public-base-url.mjs";
 import { pluginCustomCopyButton } from "./src/plugins/expressive-code/custom-copy-button.js";
 import { pluginLanguageBadge } from "./src/plugins/expressive-code/language-badge.ts";
 import { shouldIgnoreBuildWarning } from "./src/utils/vite-build-warning-filter.ts";
@@ -19,12 +20,14 @@ import {
     remarkPlugins,
 } from "./src/server/markdown/pipeline.ts";
 
-const _siteHostname = new URL(systemSiteConfig.siteURL).hostname;
+loadDotenv();
+
+const resolvedPublicBaseUrl = resolvePublicBaseUrl(process.env);
 const projectRootDir = fileURLToPath(new URL(".", import.meta.url));
 
 // https://astro.build/config
 export default defineConfig({
-    site: systemSiteConfig.siteURL,
+    site: resolvedPublicBaseUrl.siteURL,
     base: "/",
     trailingSlash: "never",
     devToolbar: {
@@ -37,7 +40,7 @@ export default defineConfig({
         // headers. Keep the project-level same-origin + CSRF + rate-limit guard
         // as the write boundary so multipart uploads work behind Docker Caddy.
         checkOrigin: false,
-        allowedDomains: [{ hostname: _siteHostname }],
+        allowedDomains: [{ hostname: resolvedPublicBaseUrl.hostname }],
     },
 
     // server 模式只改变默认渲染策略；静态例外继续由显式 prerender 控制。

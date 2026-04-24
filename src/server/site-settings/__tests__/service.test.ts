@@ -156,7 +156,7 @@ function createLegacyResolvedSiteSettings(): {
 } {
     return {
         system: {
-            siteURL: "https://www.ciallichannel.com/",
+            siteURL: "https://example.com/",
             lang: "zh_CN",
             timeZone: "Asia/Shanghai",
             themeColor: {
@@ -583,7 +583,7 @@ describe("site-settings/service cache", () => {
     it("请求上下文命中 legacy site settings 时会回源当前规范化配置", async () => {
         const freshResolved = {
             system: {
-                siteURL: "https://www.ciallichannel.com/",
+                siteURL: "https://example.com/",
                 lang: "zh_CN" as const,
                 timeZone: "Asia/Shanghai",
                 themeColor: {
@@ -629,7 +629,7 @@ describe("site-settings/service cache", () => {
     it("请求上下文命中当前 schema 的 site settings 时直接复用", async () => {
         const freshResolved = {
             system: {
-                siteURL: "https://www.ciallichannel.com/",
+                siteURL: "https://example.com/",
                 lang: "zh_CN" as const,
                 timeZone: "Asia/Shanghai",
                 themeColor: {

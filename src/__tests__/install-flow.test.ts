@@ -254,7 +254,25 @@ describe("installer flow", () => {
 
         expect(prompts).toHaveLength(2);
         expect(prompts[0]).toContain("1. English");
-        expect(prompts[1]).toContain("Public site URL");
+        expect(prompts[1]).toContain("Public site root URL");
+    });
+
+    it("rejects site URLs that are not root public URLs", async () => {
+        const { deps } = createFakeDeps();
+
+        await expect(
+            runInstallFlow(
+                {
+                    command: "install",
+                    lang: "en",
+                    siteUrl: "https://example.com/demo",
+                    envFile: null,
+                    interactive: false,
+                    reset: false,
+                },
+                deps,
+            ),
+        ).rejects.toThrow("The site URL is invalid");
     });
 
     it("refuses existing installations without reset", async () => {

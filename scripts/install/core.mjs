@@ -19,6 +19,7 @@ import {
     isPortAvailable,
     REQUIRED_HOST_PORTS,
 } from "./host.mjs";
+import { resolvePublicBaseUrl } from "../../src/config/public-base-url.mjs";
 
 const execFileAsync = promisify(execFile);
 const DIRECTUS_HEALTH_PATH = "/server/health";
@@ -454,9 +455,13 @@ async function resolveInstallInput(args, deps, t) {
         throw new Error(t("siteUrlRequired"));
     }
 
-    let parsedSiteUrl;
     try {
-        parsedSiteUrl = new URL(siteUrl);
+        const resolved = resolvePublicBaseUrl({
+            APP_PUBLIC_BASE_URL: siteUrl,
+        });
+        return {
+            siteUrl: resolved.origin,
+        };
     } catch {
         throw new Error(
             t("unsupportedSiteUrl", {
@@ -464,10 +469,6 @@ async function resolveInstallInput(args, deps, t) {
             }),
         );
     }
-
-    return {
-        siteUrl: parsedSiteUrl.toString().replace(/\/$/, ""),
-    };
 }
 
 /**
