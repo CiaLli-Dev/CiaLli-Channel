@@ -4,7 +4,6 @@ import {
     deleteOrphanFileFromRepository,
     readStaleFileGcCandidatesFromRepository,
 } from "@/server/repositories/files/file-cleanup.repository";
-import { reconcileManagedFileLifecycle } from "@/server/files/file-lifecycle-reconciliation";
 import { readManagedFilesByIds } from "@/server/repositories/files/file-lifecycle.repository";
 
 const DEFAULT_FILE_GC_RETENTION_HOURS = 24;
@@ -62,25 +61,38 @@ function buildDetachedBeforeIso(now: Date): string {
     ).toISOString();
 }
 
-let lifecycleReconciled = false;
+type ManagedFileGcState = {
+    id?: string | null;
+    date_created?: string | null;
+    app_lifecycle?: "temporary" | "attached" | "detached" | "protected" | null;
+    app_detached_at?: string | null;
+};
 
-async function ensureManagedFileLifecycleReconciled(now: Date): Promise<void> {
-    if (lifecycleReconciled) {
-        return;
+function isGcEligibleLifecycle(
+    row: ManagedFileGcState | undefined,
+    detachedBefore: string,
+): boolean {
+    if (!row) {
+        return false;
     }
-    const detachedBefore = buildDetachedBeforeIso(now);
-    const result = await reconcileManagedFileLifecycle(detachedBefore);
-    lifecycleReconciled = true;
-    console.info("[file-gc-worker] lifecycle reconciled", result);
+    if (row.app_lifecycle === "detached") {
+        return Boolean(
+            row.app_detached_at && row.app_detached_at <= detachedBefore,
+        );
+    }
+    if (row.app_lifecycle === "temporary") {
+        return Boolean(row.date_created && row.date_created <= detachedBefore);
+    }
+    return false;
 }
 
 export async function runFileGcBatch(
     now: Date = new Date(),
 ): Promise<FileGcResult> {
     return await withServiceRepositoryContext(async () => {
-        await ensureManagedFileLifecycleReconciled(now);
+        const detachedBefore = buildDetachedBeforeIso(now);
         const candidates = await readStaleFileGcCandidatesFromRepository({
-            detachedBefore: buildDetachedBeforeIso(now),
+            detachedBefore,
             limit: readFileGcBatchSize(),
         });
         const candidateFileIds = candidates
@@ -105,13 +117,14 @@ export async function runFileGcBatch(
             collectReferencedDirectusFileIds(candidateFileIds),
             readManagedFilesByIds(candidateFileIds),
         ]);
-        const detachedStateIds = new Set(
-            currentLifecycleRows
-                .filter((row) => row.app_lifecycle === "detached")
-                .map((row) => row.id),
+        const currentLifecycleById = new Map(
+            currentLifecycleRows.map((row) => [row.id, row]),
         );
         const activeCandidateFileIds = candidateFileIds.filter((fileId) =>
-            detachedStateIds.has(fileId),
+            isGcEligibleLifecycle(
+                currentLifecycleById.get(fileId),
+                detachedBefore,
+            ),
         );
         const referencedActiveFileIds = new Set(
             activeCandidateFileIds.filter((fileId) =>
@@ -125,8 +138,21 @@ export async function runFileGcBatch(
         let deleted = 0;
         let notFound = 0;
         let failed = 0;
+        let finalSkippedState = 0;
+        let finalSkippedReferenced = 0;
         const deletedFileIds: string[] = [];
         for (const fileId of orphanFileIds) {
+            const finalReferencedFileIds =
+                await collectReferencedDirectusFileIds([fileId]);
+            if (finalReferencedFileIds.has(fileId)) {
+                finalSkippedReferenced += 1;
+                continue;
+            }
+            const [finalLifecycleRow] = await readManagedFilesByIds([fileId]);
+            if (!isGcEligibleLifecycle(finalLifecycleRow, detachedBefore)) {
+                finalSkippedState += 1;
+                continue;
+            }
             const result = await deleteOrphanFileFromRepository(fileId);
             if (result.ok) {
                 deleted += 1;
@@ -140,16 +166,23 @@ export async function runFileGcBatch(
             failed += 1;
         }
 
+        const skippedState =
+            candidateFileIds.length -
+            activeCandidateFileIds.length +
+            finalSkippedState;
+        const skippedReferenced =
+            activeCandidateFileIds.length -
+            orphanFileIds.length +
+            finalSkippedReferenced;
+
         return {
             scanned: candidateFileIds.length,
             referenced: referencedFileIds.size,
             deleted,
             notFound,
             failed,
-            skippedState:
-                candidateFileIds.length - activeCandidateFileIds.length,
-            skippedReferenced:
-                activeCandidateFileIds.length - orphanFileIds.length,
+            skippedState: skippedState,
+            skippedReferenced,
             candidateFileIds,
             deletedFileIds,
         };

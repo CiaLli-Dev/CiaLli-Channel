@@ -17,13 +17,13 @@ describe("file-cleanup.repository", () => {
         mocks.readMany.mockResolvedValue([]);
     });
 
-    it("builds the GC candidate filter for expired detached files", async () => {
+    it("builds the GC candidate filters for expired detached and temporary files", async () => {
         await readStaleFileGcCandidatesFromRepository({
             detachedBefore: "2026-04-23T00:00:00.000Z",
             limit: 200,
         });
 
-        expect(mocks.readMany).toHaveBeenCalledWith("directus_files", {
+        expect(mocks.readMany).toHaveBeenNthCalledWith(1, "directus_files", {
             filter: {
                 _and: [
                     { app_lifecycle: { _eq: "detached" } },
@@ -33,6 +33,18 @@ describe("file-cleanup.repository", () => {
             },
             fields: ["id", "date_created", "app_lifecycle", "app_detached_at"],
             sort: ["app_detached_at", "id"],
+            limit: 200,
+        });
+        expect(mocks.readMany).toHaveBeenNthCalledWith(2, "directus_files", {
+            filter: {
+                _and: [
+                    { app_lifecycle: { _eq: "temporary" } },
+                    { date_created: { _nnull: true } },
+                    { date_created: { _lte: "2026-04-23T00:00:00.000Z" } },
+                ],
+            },
+            fields: ["id", "date_created", "app_lifecycle", "app_detached_at"],
+            sort: ["date_created", "id"],
             limit: 200,
         });
     });

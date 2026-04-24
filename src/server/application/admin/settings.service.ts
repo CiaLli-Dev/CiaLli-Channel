@@ -275,9 +275,11 @@ function extractDirectusFileIdFromAssetValue(value: unknown): string | null {
         const parsed = new URL(raw, "http://localhost");
         const path = parsed.pathname;
         const directPattern = /^\/api\/v1\/public\/assets\/([^/?#]+)\/?$/;
+        const privatePattern = /^\/api\/v1\/assets\/([^/?#]+)\/?$/;
         const assetPattern = /^\/assets\/([^/?#]+)\/?$/;
         const matched =
             path.match(directPattern)?.[1] ||
+            path.match(privatePattern)?.[1] ||
             path.match(assetPattern)?.[1] ||
             "";
         if (!matched) {

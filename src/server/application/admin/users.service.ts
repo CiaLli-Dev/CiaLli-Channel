@@ -66,6 +66,7 @@ import {
 import { invalidateAuthorCache } from "@/server/api/v1/shared/author-cache";
 import {
     bindFileOwnerToUser,
+    detachManagedFiles,
     syncManagedFileBinding,
 } from "@/server/api/v1/me/_helpers";
 import {
@@ -783,7 +784,7 @@ async function handleUserDelete(
             readMany("app_user_profiles", {
                 filter: { user_id: { _eq: userId } } as JsonObject,
                 limit: 10,
-                fields: ["id"],
+                fields: ["id", "header_file"],
             }),
             readMany("app_user_registration_requests", {
                 filter: {
@@ -798,6 +799,13 @@ async function handleUserDelete(
         ]);
 
         for (const profile of profiles) {
+            await detachManagedFiles([profile.header_file]).catch((error) => {
+                console.warn(
+                    "[admin/users] 标记 profile header 文件为 detached 失败, profileId:",
+                    profile.id,
+                    error,
+                );
+            });
             await deleteOne("app_user_profiles", profile.id).catch((error) => {
                 console.warn(
                     "[admin/users] 删除 profile 失败, profileId:",
@@ -818,6 +826,13 @@ async function handleUserDelete(
         const remainingFiles = await loadReferencedFilesByUser(userId);
         await nullifyReferencedFileOwnership(remainingFiles, userId);
         await clearBlockingUserReferences(userId);
+        await detachManagedFiles([targetUser.avatar]).catch((error) => {
+            console.warn(
+                "[admin/users] 标记用户头像文件为 detached 失败, userId:",
+                userId,
+                error,
+            );
+        });
         await deleteDirectusUser(userId);
         invalidateAuthorCache(userId);
         invalidateOfficialSidebarCache();

@@ -89,6 +89,7 @@ import {
 import { enqueueAndTriggerArticleSummaryJob } from "@/server/ai-summary/dispatch";
 import { cacheManager } from "@/server/cache/manager";
 import { extractDirectusAssetIdsFromMarkdown } from "@/server/api/v1/shared/file-cleanup";
+import { syncManagedFileBinding } from "@/server/api/v1/me/_helpers";
 import { createWithShortId } from "@/server/utils/short-id";
 
 import { handleMeArticles } from "@/server/api/v1/me/articles";
@@ -104,6 +105,7 @@ const mockedDeleteDirectusFile = vi.mocked(deleteDirectusFile);
 const mockedExtractDirectusAssetIdsFromMarkdown = vi.mocked(
     extractDirectusAssetIdsFromMarkdown,
 );
+const mockedSyncManagedFileBinding = vi.mocked(syncManagedFileBinding);
 
 function readLastArticleUpdatePayload(): Record<string, unknown> {
     const latestCall = mockedUpdateOne.mock.calls.at(-1);
@@ -352,6 +354,58 @@ describe("PUT /me/articles/working-draft", () => {
         expect(res.status).toBe(200);
         expect(mockedUpdateOne).toHaveBeenCalledTimes(1);
     });
+
+    it("清空工作草稿封面时 detach 旧封面", async () => {
+        mockedReadMany.mockResolvedValue([
+            mockArticle({
+                id: "draft-1",
+                short_id: "draft-1",
+                status: "draft",
+                title: "Draft",
+                body_markdown: "",
+                cover_file: "file-old",
+            }),
+        ]);
+        mockedUpdateOne.mockResolvedValue(
+            mockArticle({
+                id: "draft-1",
+                short_id: "draft-1",
+                status: "draft",
+                title: "Draft",
+                body_markdown: "",
+                cover_file: null,
+            }),
+        );
+
+        const ctx = createMockAPIContext({
+            method: "PUT",
+            url: "http://localhost:4321/api/v1/me/articles/working-draft",
+            body: {
+                title: "Draft",
+                body_markdown: "",
+                cover_file: null,
+                tags: [],
+            },
+        });
+        const access = createMemberAccess();
+
+        const res = await handleMeArticles(
+            ctx as unknown as APIContext,
+            access,
+            ["articles", "working-draft"],
+        );
+
+        expect(res.status).toBe(200);
+        expect(readLastArticleUpdatePayload()).toMatchObject({
+            cover_file: null,
+        });
+        expect(mockedSyncManagedFileBinding).toHaveBeenCalledWith(
+            expect.objectContaining({
+                previousFileValue: "file-old",
+                nextFileValue: null,
+            }),
+        );
+    });
 });
 
 // ── PATCH /me/articles/:id ──
@@ -457,6 +511,48 @@ describe("PATCH /me/articles/:id", () => {
 
         expect(res.status).toBe(200);
         expect(mockedUpdateOne).toHaveBeenCalledTimes(1);
+    });
+
+    it("清空文章封面时 detach 旧封面", async () => {
+        mockedReadMany.mockResolvedValue([
+            mockArticle({
+                id: "article-1",
+                author_id: "user-1",
+                short_id: "post-short",
+                cover_file: "file-old",
+            }),
+        ]);
+        mockedUpdateOne.mockResolvedValue(
+            mockArticle({
+                id: "article-1",
+                short_id: "post-short",
+                cover_file: null,
+            }),
+        );
+
+        const ctx = createMockAPIContext({
+            method: "PATCH",
+            url: "http://localhost:4321/api/v1/me/articles/article-1",
+            body: { cover_file: null },
+        });
+        const access = createMemberAccess();
+
+        const res = await handleMeArticles(
+            ctx as unknown as APIContext,
+            access,
+            ["articles", "article-1"],
+        );
+
+        expect(res.status).toBe(200);
+        expect(readLastArticleUpdatePayload()).toMatchObject({
+            cover_file: null,
+        });
+        expect(mockedSyncManagedFileBinding).toHaveBeenCalledWith(
+            expect.objectContaining({
+                previousFileValue: "file-old",
+                nextFileValue: null,
+            }),
+        );
     });
 });
 

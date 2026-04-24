@@ -379,9 +379,9 @@ function applyArticleBaseFields(
     input: UpdateArticleInput,
     body: JsonObject,
     target?: OwnedArticleRecord,
-): string | null {
+): { coverFileTouched: boolean; nextCoverFile: string | null } {
+    let coverFileTouched = false;
     let nextCoverFile: string | null = null;
-
     if (input.title !== undefined) {
         payload.title = input.title;
     }
@@ -396,6 +396,7 @@ function applyArticleBaseFields(
         payload.ai_summary_enabled = input.ai_summary_enabled;
     }
     if (hasOwn(body, "cover_file")) {
+        coverFileTouched = true;
         nextCoverFile = normalizeDirectusFileId(input.cover_file);
         payload.cover_file = input.cover_file ?? null;
     }
@@ -414,7 +415,7 @@ function applyArticleBaseFields(
     if (input.is_public !== undefined) {
         payload.is_public = input.is_public;
     }
-    return nextCoverFile;
+    return { coverFileTouched, nextCoverFile };
 }
 
 function applyArticleStatusFields(
@@ -441,8 +442,15 @@ function buildArticlePatchPayload(
     const prevCoverFile = normalizeDirectusFileId(target.cover_file);
     const payload: JsonObject = {};
 
-    const newCoverFile = applyArticleBaseFields(payload, input, body, target);
-    const nextCoverFile = newCoverFile ?? prevCoverFile;
+    const coverFileResult = applyArticleBaseFields(
+        payload,
+        input,
+        body,
+        target,
+    );
+    const nextCoverFile = coverFileResult.coverFileTouched
+        ? coverFileResult.nextCoverFile
+        : prevCoverFile;
     const currentStatus = normalizeArticleStatus(target.status);
     const nextStatus =
         input.status !== undefined
@@ -613,13 +621,15 @@ function buildWorkingDraftUpdatePayload(
 ): { payload: JsonObject; nextCoverFile: string | null } {
     const payload: JsonObject = {};
     const prevCoverFile = normalizeDirectusFileId(target.cover_file);
-    const newCoverFile = applyArticleBaseFields(
+    const coverFileResult = applyArticleBaseFields(
         payload,
         input as UpdateArticleInput,
         body,
         target,
     );
-    const nextCoverFile = newCoverFile ?? prevCoverFile;
+    const nextCoverFile = coverFileResult.coverFileTouched
+        ? coverFileResult.nextCoverFile
+        : prevCoverFile;
     payload.status = "draft";
     return { payload, nextCoverFile };
 }

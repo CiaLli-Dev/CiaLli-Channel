@@ -83,8 +83,18 @@ describe("file-gc", () => {
             },
         ]);
         mocks.readManagedFilesByIds.mockResolvedValue([
-            { id: "file-orphan", app_lifecycle: "detached" },
-            { id: "file-referenced", app_lifecycle: "detached" },
+            {
+                id: "file-orphan",
+                date_created: "2026-04-20T00:00:00.000Z",
+                app_lifecycle: "detached",
+                app_detached_at: "2026-04-20T00:00:00.000Z",
+            },
+            {
+                id: "file-referenced",
+                date_created: "2026-04-20T00:00:00.000Z",
+                app_lifecycle: "detached",
+                app_detached_at: "2026-04-20T00:00:00.000Z",
+            },
         ]);
         mocks.collectReferencedDirectusFileIds.mockResolvedValue(
             new Set(["file-referenced"]),
@@ -115,5 +125,189 @@ describe("file-gc", () => {
             candidateFileIds: ["file-orphan", "file-referenced"],
             deletedFileIds: ["file-orphan"],
         });
+    });
+
+    it("deletes unreferenced stale temporary files", async () => {
+        mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([
+            {
+                id: "file-temporary",
+                date_created: "2026-04-20T00:00:00.000Z",
+                app_lifecycle: "temporary",
+                app_detached_at: null,
+            },
+        ]);
+        mocks.readManagedFilesByIds.mockResolvedValue([
+            {
+                id: "file-temporary",
+                date_created: "2026-04-20T00:00:00.000Z",
+                app_lifecycle: "temporary",
+                app_detached_at: null,
+            },
+        ]);
+
+        const result = await runFileGcBatch(
+            new Date("2026-04-24T00:00:00.000Z"),
+        );
+
+        expect(mocks.deleteOrphanFileFromRepository).toHaveBeenCalledWith(
+            "file-temporary",
+        );
+        expect(result.deleted).toBe(1);
+        expect(result.skippedReferenced).toBe(0);
+        expect(result.skippedState).toBe(0);
+    });
+
+    it("skips stale temporary files that are referenced", async () => {
+        mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([
+            {
+                id: "file-temporary",
+                date_created: "2026-04-20T00:00:00.000Z",
+                app_lifecycle: "temporary",
+                app_detached_at: null,
+            },
+        ]);
+        mocks.readManagedFilesByIds.mockResolvedValue([
+            {
+                id: "file-temporary",
+                date_created: "2026-04-20T00:00:00.000Z",
+                app_lifecycle: "temporary",
+                app_detached_at: null,
+            },
+        ]);
+        mocks.collectReferencedDirectusFileIds.mockResolvedValue(
+            new Set(["file-temporary"]),
+        );
+
+        const result = await runFileGcBatch(
+            new Date("2026-04-24T00:00:00.000Z"),
+        );
+
+        expect(mocks.deleteOrphanFileFromRepository).not.toHaveBeenCalled();
+        expect(result.deleted).toBe(0);
+        expect(result.skippedReferenced).toBe(1);
+    });
+
+    it("rechecks references before deleting each orphan", async () => {
+        mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([
+            {
+                id: "file-raced",
+                date_created: "2026-04-20T00:00:00.000Z",
+                app_lifecycle: "detached",
+                app_detached_at: "2026-04-20T00:00:00.000Z",
+            },
+        ]);
+        mocks.readManagedFilesByIds.mockResolvedValue([
+            {
+                id: "file-raced",
+                date_created: "2026-04-20T00:00:00.000Z",
+                app_lifecycle: "detached",
+                app_detached_at: "2026-04-20T00:00:00.000Z",
+            },
+        ]);
+        mocks.collectReferencedDirectusFileIds
+            .mockResolvedValueOnce(new Set())
+            .mockResolvedValueOnce(new Set(["file-raced"]));
+
+        const result = await runFileGcBatch(
+            new Date("2026-04-24T00:00:00.000Z"),
+        );
+
+        expect(mocks.collectReferencedDirectusFileIds).toHaveBeenCalledTimes(2);
+        expect(mocks.deleteOrphanFileFromRepository).not.toHaveBeenCalled();
+        expect(result.deleted).toBe(0);
+        expect(result.skippedReferenced).toBe(1);
+    });
+
+    it("rechecks lifecycle state before deleting each orphan", async () => {
+        mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([
+            {
+                id: "file-raced",
+                date_created: "2026-04-20T00:00:00.000Z",
+                app_lifecycle: "detached",
+                app_detached_at: "2026-04-20T00:00:00.000Z",
+            },
+        ]);
+        mocks.readManagedFilesByIds
+            .mockResolvedValueOnce([
+                {
+                    id: "file-raced",
+                    date_created: "2026-04-20T00:00:00.000Z",
+                    app_lifecycle: "detached",
+                    app_detached_at: "2026-04-20T00:00:00.000Z",
+                },
+            ])
+            .mockResolvedValueOnce([
+                {
+                    id: "file-raced",
+                    date_created: "2026-04-20T00:00:00.000Z",
+                    app_lifecycle: "attached",
+                    app_detached_at: null,
+                },
+            ]);
+
+        const result = await runFileGcBatch(
+            new Date("2026-04-24T00:00:00.000Z"),
+        );
+
+        expect(mocks.deleteOrphanFileFromRepository).not.toHaveBeenCalled();
+        expect(result.deleted).toBe(0);
+        expect(result.skippedState).toBe(1);
+    });
+
+    it("skips current lifecycle rows that are not GC eligible", async () => {
+        mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([
+            {
+                id: "file-attached",
+                date_created: "2026-04-20T00:00:00.000Z",
+                app_lifecycle: "detached",
+                app_detached_at: "2026-04-20T00:00:00.000Z",
+            },
+            {
+                id: "file-protected",
+                date_created: "2026-04-20T00:00:00.000Z",
+                app_lifecycle: "detached",
+                app_detached_at: "2026-04-20T00:00:00.000Z",
+            },
+            {
+                id: "file-fresh-temporary",
+                date_created: "2026-04-24T00:00:00.000Z",
+                app_lifecycle: "temporary",
+                app_detached_at: null,
+            },
+        ]);
+        mocks.readManagedFilesByIds.mockResolvedValue([
+            {
+                id: "file-attached",
+                date_created: "2026-04-20T00:00:00.000Z",
+                app_lifecycle: "attached",
+                app_detached_at: null,
+            },
+            {
+                id: "file-protected",
+                date_created: "2026-04-20T00:00:00.000Z",
+                app_lifecycle: "protected",
+                app_detached_at: null,
+            },
+            {
+                id: "file-fresh-temporary",
+                date_created: "2026-04-24T00:00:00.000Z",
+                app_lifecycle: "temporary",
+                app_detached_at: null,
+            },
+        ]);
+
+        const result = await runFileGcBatch(
+            new Date("2026-04-24T00:00:00.000Z"),
+        );
+
+        expect(mocks.deleteOrphanFileFromRepository).not.toHaveBeenCalled();
+        expect(result.skippedState).toBe(3);
+        expect(result.skippedReferenced).toBe(0);
+    });
+
+    it("does not run full lifecycle reconciliation before a GC batch", async () => {
+        await runFileGcBatch(new Date("2026-04-24T00:00:00.000Z"));
+
+        expect(mocks.reconcileManagedFileLifecycle).not.toHaveBeenCalled();
     });
 });

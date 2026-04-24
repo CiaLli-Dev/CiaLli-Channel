@@ -468,7 +468,7 @@ function normalizeBannerSrc(
         const entries = value
             .map((entry) => normalizeAssetPath(String(entry || ""), "", true))
             .filter(Boolean);
-        return entries.length > 0 ? entries : "";
+        return entries;
     }
     return fallback;
 }

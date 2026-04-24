@@ -75,6 +75,16 @@ vi.mock("@/server/api/v1/admin/users-helpers", () => ({
     nullifyRegistrationRequestAvatars: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("@/server/api/v1/me/_helpers", () => ({
+    bindFileOwnerToUser: vi.fn().mockResolvedValue(undefined),
+    detachManagedFiles: vi.fn().mockResolvedValue([]),
+    syncManagedFileBinding: vi.fn().mockResolvedValue({
+        attachedFileIds: [],
+        detachedFileIds: [],
+        nextFileIds: [],
+    }),
+}));
+
 import { requireAdmin } from "@/server/api/v1/shared";
 import { loadDirectusAccessRegistry } from "@/server/auth/directus-registry";
 import {
@@ -91,6 +101,7 @@ import {
     loadReferencedFilesByUser,
     nullifyReferencedFileOwnership,
 } from "@/server/api/v1/admin/users-helpers";
+import { detachManagedFiles } from "@/server/api/v1/me/_helpers";
 
 const mockedRequireAdmin = vi.mocked(requireAdmin);
 const mockedLoadDirectusAccessRegistry = vi.mocked(loadDirectusAccessRegistry);
@@ -107,6 +118,7 @@ const mockedNullifyReferencedFileOwnership = vi.mocked(
     nullifyReferencedFileOwnership,
 );
 const mockedNormalizeDirectusFileId = vi.mocked(normalizeDirectusFileId);
+const mockedDetachManagedFiles = vi.mocked(detachManagedFiles);
 
 function createDirectusUser(overrides: Partial<AppUser> = {}): AppUser {
     return {
@@ -461,7 +473,7 @@ describe("DELETE /admin/users/:id", () => {
         ]);
     });
 
-    it("先清空文件归属与阻塞引用，再删除用户", async () => {
+    it("先 detach 用户资料文件、清空文件归属与阻塞引用，再删除用户", async () => {
         const actingAdmin = createDirectusUser({
             id: "admin-1",
             email: "admin@example.com",
@@ -470,13 +482,15 @@ describe("DELETE /admin/users/:id", () => {
                 name: DIRECTUS_ROLE_NAME.siteAdmin,
             },
         });
-        const targetUser = createDirectusUser();
+        const targetUser = createDirectusUser({ avatar: "file-avatar" });
 
         mockedReadOneById
             .mockResolvedValueOnce(actingAdmin as never)
             .mockResolvedValueOnce(targetUser as never);
         mockedReadMany
-            .mockResolvedValueOnce([{ id: "profile-2" }] as never)
+            .mockResolvedValueOnce([
+                { id: "profile-2", header_file: "file-header" },
+            ] as never)
             .mockResolvedValueOnce([
                 { id: "request-2", avatar_file: "file-referenced" },
             ] as never);
@@ -495,6 +509,13 @@ describe("DELETE /admin/users/:id", () => {
         ]);
 
         expect(response.status).toBe(200);
+        expect(mockedReadMany).toHaveBeenCalledWith("app_user_profiles", {
+            filter: { user_id: { _eq: "user-2" } },
+            limit: 10,
+            fields: ["id", "header_file"],
+        });
+        expect(mockedDetachManagedFiles).toHaveBeenCalledWith(["file-header"]);
+        expect(mockedDetachManagedFiles).toHaveBeenCalledWith(["file-avatar"]);
         expect(mockedNullifyReferencedFileOwnership).toHaveBeenCalledWith(
             [
                 {
@@ -517,6 +538,9 @@ describe("DELETE /admin/users/:id", () => {
         );
         expect(
             mockedClearBlockingUserReferences.mock.invocationCallOrder[0],
+        ).toBeLessThan(mockedDeleteDirectusUser.mock.invocationCallOrder[0]);
+        expect(
+            mockedDetachManagedFiles.mock.invocationCallOrder.at(-1) ?? 0,
         ).toBeLessThan(mockedDeleteDirectusUser.mock.invocationCallOrder[0]);
     });
 });

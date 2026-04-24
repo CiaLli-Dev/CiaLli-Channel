@@ -32,6 +32,15 @@ vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
     cleanupOwnedOrphanDirectusFiles: vi.fn(),
 }));
 
+vi.mock("@/server/api/v1/me/_helpers", () => ({
+    detachManagedFiles: vi.fn().mockResolvedValue([]),
+    syncMarkdownFileLifecycle: vi.fn().mockResolvedValue({
+        attachedFileIds: [],
+        detachedFileIds: [],
+        nextFileIds: [],
+    }),
+}));
+
 vi.mock("@/server/markdown/render", () => ({
     renderMarkdown: vi.fn(),
 }));
@@ -49,9 +58,15 @@ import {
     invalidateSiteSettingsCache,
     resolveSiteSettingsPayload,
 } from "@/server/site-settings/service";
-import { createOne, readMany, updateOne } from "@/server/directus/client";
+import {
+    createOne,
+    readMany,
+    updateDirectusFileMetadata,
+    updateOne,
+} from "@/server/directus/client";
 import { renderMarkdown } from "@/server/markdown/render";
 import { handleAdminSettings } from "@/server/api/v1/admin/settings";
+import { detachManagedFiles } from "@/server/api/v1/me/_helpers";
 
 const mockedRequireAdmin = vi.mocked(requireAdmin);
 const mockedGetResolvedSiteSettings = vi.mocked(getResolvedSiteSettings);
@@ -62,7 +77,9 @@ const mockedResolveSiteSettingsPayload = vi.mocked(resolveSiteSettingsPayload);
 const mockedCreateOne = vi.mocked(createOne);
 const mockedReadMany = vi.mocked(readMany);
 const mockedUpdateOne = vi.mocked(updateOne);
+const mockedUpdateDirectusFileMetadata = vi.mocked(updateDirectusFileMetadata);
 const mockedRenderMarkdown = vi.mocked(renderMarkdown);
+const mockedDetachManagedFiles = vi.mocked(detachManagedFiles);
 
 function makeCtx(
     path: string,
@@ -473,6 +490,122 @@ describe("handleAdminSettings /site", () => {
         }>(response);
         expect(body.ok).toBe(true);
         expect(body.settings.banner.waves?.enable).toBe(false);
+    });
+});
+
+describe("handleAdminSettings /site wallpaper lifecycle", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockedRequireAdmin.mockResolvedValue({
+            access: {
+                isAdmin: true,
+                user: {
+                    id: "admin-1",
+                },
+            },
+            accessToken: "test-access-token",
+        } as never);
+    });
+
+    it("PATCH /admin/settings/site 删除最后一张首页壁纸时 detach 旧文件", async () => {
+        const oldWallpaperFileId = "a1b2c3d4-e5f6-1234-9abc-def012345678";
+        mockedGetResolvedSiteSettings.mockResolvedValue({
+            system: {
+                timeZone: "Asia/Shanghai",
+            },
+            settings: {
+                ...defaultSiteSettings,
+                banner: {
+                    ...defaultSiteSettings.banner,
+                    src: `/api/v1/assets/${oldWallpaperFileId}`,
+                },
+            },
+        } as never);
+        mockedResolveSiteSettingsPayload.mockReturnValue({
+            ...defaultSiteSettings,
+            banner: {
+                ...defaultSiteSettings.banner,
+                src: [],
+            },
+        } as never);
+        mockedReadMany.mockResolvedValue([
+            {
+                id: "row-1",
+                date_updated: "2026-02-15T12:00:00.000Z",
+                date_created: "2026-02-10T12:00:00.000Z",
+            },
+        ] as never);
+        mockedUpdateOne.mockResolvedValue({
+            date_updated: "2026-02-16T00:00:00.000Z",
+            date_created: "2026-02-10T12:00:00.000Z",
+        } as never);
+
+        const ctx = makeCtx("admin/settings/site", "PATCH", {
+            banner: {
+                src: [],
+            },
+        });
+        const response = await handleAdminSettings(
+            ctx as unknown as APIContext,
+            ["settings", "site"],
+        );
+
+        expect(response.status).toBe(200);
+        expect(mockedUpdateDirectusFileMetadata).not.toHaveBeenCalled();
+        expect(mockedDetachManagedFiles).toHaveBeenCalledWith([
+            oldWallpaperFileId,
+        ]);
+    });
+
+    it("PATCH /admin/settings/site 保存新首页壁纸时识别私有资源路径并标记 attached", async () => {
+        const newWallpaperFileId = "f1e2d3c4-b5a6-4234-8abc-fedcba987654";
+        mockedGetResolvedSiteSettings.mockResolvedValue({
+            system: {
+                timeZone: "Asia/Shanghai",
+            },
+            settings: defaultSiteSettings,
+        } as never);
+        mockedResolveSiteSettingsPayload.mockReturnValue({
+            ...defaultSiteSettings,
+            banner: {
+                ...defaultSiteSettings.banner,
+                src: `/api/v1/assets/${newWallpaperFileId}`,
+            },
+        } as never);
+        mockedReadMany.mockResolvedValue([
+            {
+                id: "row-1",
+                date_updated: "2026-02-15T12:00:00.000Z",
+                date_created: "2026-02-10T12:00:00.000Z",
+            },
+        ] as never);
+        mockedUpdateOne.mockResolvedValue({
+            date_updated: "2026-02-16T00:00:00.000Z",
+            date_created: "2026-02-10T12:00:00.000Z",
+        } as never);
+
+        const ctx = makeCtx("admin/settings/site", "PATCH", {
+            banner: {
+                src: [newWallpaperFileId],
+            },
+        });
+        const response = await handleAdminSettings(
+            ctx as unknown as APIContext,
+            ["settings", "site"],
+        );
+
+        expect(response.status).toBe(200);
+        expect(mockedUpdateDirectusFileMetadata).toHaveBeenCalledWith(
+            newWallpaperFileId,
+            expect.objectContaining({
+                uploaded_by: "admin-1",
+                app_owner_user_id: "admin-1",
+                app_visibility: "public",
+                app_lifecycle: "attached",
+                app_detached_at: null,
+            }),
+        );
+        expect(mockedDetachManagedFiles).toHaveBeenCalledWith([]);
     });
 });
 
