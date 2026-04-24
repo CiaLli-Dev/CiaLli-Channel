@@ -37,13 +37,7 @@ import {
     safeCsv,
     toSpecialArticleSlug,
 } from "@/server/api/v1/shared";
-import {
-    cleanupOwnedOrphanDirectusFiles,
-    collectArticleCommentCleanupCandidates,
-    extractDirectusAssetIdsFromMarkdown,
-    mergeDirectusFileCleanupCandidates,
-    normalizeDirectusFileId,
-} from "@/server/api/v1/shared/file-cleanup";
+import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
 import {
     bindFileOwnerToUser,
     renderMeMarkdownPreview,
@@ -465,12 +459,6 @@ async function cleanupPatchedArticleFiles(
     access: AppAccess,
 ): Promise<void> {
     const prevCoverFile = normalizeDirectusFileId(target.cover_file);
-    const prevBodyFileIds =
-        input.body_markdown !== undefined
-            ? extractDirectusAssetIdsFromMarkdown(
-                  String(target.body_markdown ?? ""),
-              )
-            : [];
     const nextVisibility = resolveArticleAssetVisibility(
         nextStatus,
         nextIsPublic,
@@ -481,12 +469,6 @@ async function cleanupPatchedArticleFiles(
         target,
         nextCoverFile,
         nextVisibility,
-        access,
-    });
-    await cleanupRemovedArticleBodyFiles({
-        input,
-        target,
-        prevBodyFileIds,
         access,
     });
     await syncArticleBodyVisibility({
@@ -512,7 +494,6 @@ async function syncArticleCoverBinding(params: {
     nextVisibility: "private" | "public";
     access: AppAccess;
 }): Promise<void> {
-    const prevCoverFile = normalizeDirectusFileId(params.target.cover_file);
     if (hasOwn(params.body, "cover_file") && params.nextCoverFile) {
         const coverTitle = params.target.short_id
             ? `Cover ${params.target.short_id}`
@@ -523,41 +504,6 @@ async function syncArticleCoverBinding(params: {
             coverTitle,
             params.nextVisibility,
         );
-    }
-    if (
-        hasOwn(params.body, "cover_file") &&
-        prevCoverFile &&
-        prevCoverFile !== params.nextCoverFile
-    ) {
-        await cleanupOwnedOrphanDirectusFiles({
-            candidateFileIds: [prevCoverFile],
-            ownerUserIds: [params.access.user.id],
-        });
-    }
-}
-
-async function cleanupRemovedArticleBodyFiles(params: {
-    input: UpdateArticleInput;
-    target: OwnedArticleRecord;
-    prevBodyFileIds: string[];
-    access: AppAccess;
-}): Promise<void> {
-    if (
-        params.input.body_markdown !== undefined &&
-        params.prevBodyFileIds.length > 0
-    ) {
-        const nextBodyFileIds = new Set(
-            extractDirectusAssetIdsFromMarkdown(params.input.body_markdown),
-        );
-        const removedBodyFileIds = params.prevBodyFileIds.filter(
-            (id) => !nextBodyFileIds.has(id),
-        );
-        if (removedBodyFileIds.length > 0) {
-            await cleanupOwnedOrphanDirectusFiles({
-                candidateFileIds: removedBodyFileIds,
-                ownerUserIds: [params.access.user.id],
-            });
-        }
     }
 }
 
@@ -837,26 +783,7 @@ async function handleArticleDelete(
     target: OwnedArticleRecord,
 ): Promise<Response> {
     const id = target.id;
-    const coverFile = normalizeDirectusFileId(target.cover_file);
-    const bodyFileIds = extractDirectusAssetIdsFromMarkdown(
-        String(target.body_markdown ?? ""),
-    );
-    const relatedCommentCandidates =
-        await collectArticleCommentCleanupCandidates(id);
     await deleteOne("app_articles", id);
-    const cleanupCandidates = mergeDirectusFileCleanupCandidates(
-        {
-            candidateFileIds: [
-                ...(coverFile ? [coverFile] : []),
-                ...bodyFileIds,
-            ],
-            ownerUserIds: [target.author_id],
-        },
-        relatedCommentCandidates,
-    );
-    if (cleanupCandidates.candidateFileIds.length > 0) {
-        await cleanupOwnedOrphanDirectusFiles(cleanupCandidates);
-    }
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("article-list"),

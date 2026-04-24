@@ -25,6 +25,9 @@ interface ImportMetaEnv {
     readonly AI_SUMMARY_JOB_LEASE_SECONDS?: string;
     readonly AI_SUMMARY_MAX_CONCURRENCY?: string;
     readonly AI_SUMMARY_JOB_BATCH_SIZE?: string;
+    readonly FILE_GC_INTERVAL_MS?: string;
+    readonly FILE_GC_RETENTION_HOURS?: string;
+    readonly FILE_GC_BATCH_SIZE?: string;
     readonly REDIS_URL?: string;
     readonly STORAGE_S3_KEY?: string;
     readonly STORAGE_S3_SECRET?: string;

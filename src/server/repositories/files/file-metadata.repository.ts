@@ -46,16 +46,22 @@ export async function updateRegistrationRequestAvatar(
 export async function loadReferencedFilesByUserFromRepository(
     userId: string,
 ): Promise<
-    Array<{ id: string; uploaded_by?: unknown; modified_by?: unknown }>
+    Array<{
+        id: string;
+        uploaded_by?: unknown;
+        modified_by?: unknown;
+        app_owner_user_id?: unknown;
+    }>
 > {
     return await readMany("directus_files", {
         filter: {
             _or: [
                 { uploaded_by: { _eq: userId } },
                 { modified_by: { _eq: userId } },
+                { app_owner_user_id: { _eq: userId } },
             ],
         } as JsonObject,
         limit: 5000,
-        fields: ["id", "uploaded_by", "modified_by"],
+        fields: ["id", "uploaded_by", "modified_by", "app_owner_user_id"],
     });
 }

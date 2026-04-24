@@ -18,6 +18,7 @@ vi.mock("@/server/api/v1/shared", async (importOriginal) => {
 
 vi.mock("@/server/directus/client", () => ({
     createOne: vi.fn(),
+    deleteDirectusFile: vi.fn(),
     readOneById: vi.fn(),
     runWithDirectusPublicAccess: vi.fn(
         async (task: () => Promise<unknown>) => await task(),
@@ -40,7 +41,6 @@ vi.mock("@/server/markdown/render", () => ({
 }));
 
 vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
-    cleanupOwnedOrphanDirectusFiles: vi.fn().mockResolvedValue([]),
     extractDirectusAssetIdsFromMarkdown: vi
         .fn()
         .mockReturnValueOnce(["removed-file"])
@@ -52,17 +52,18 @@ vi.mock("@/server/api/v1/me/_helpers", () => ({
 }));
 
 import { requireAccess } from "@/server/api/v1/shared";
-import { readOneById, updateOne } from "@/server/directus/client";
-import { cleanupOwnedOrphanDirectusFiles } from "@/server/api/v1/shared/file-cleanup";
+import {
+    deleteDirectusFile,
+    readOneById,
+    updateOne,
+} from "@/server/directus/client";
 import { syncMarkdownFilesToVisibility } from "@/server/api/v1/me/_helpers";
 import { handleArticleComments } from "@/server/api/v1/comments-article";
 
 const mockedRequireAccess = vi.mocked(requireAccess);
+const mockedDeleteDirectusFile = vi.mocked(deleteDirectusFile);
 const mockedReadOneById = vi.mocked(readOneById);
 const mockedUpdateOne = vi.mocked(updateOne);
-const mockedCleanupOwnedOrphanDirectusFiles = vi.mocked(
-    cleanupOwnedOrphanDirectusFiles,
-);
 const mockedSyncMarkdownFilesToVisibility = vi.mocked(
     syncMarkdownFilesToVisibility,
 );
@@ -111,9 +112,6 @@ describe("handleArticleComments PATCH", () => {
             "comment-author",
             "public",
         );
-        expect(mockedCleanupOwnedOrphanDirectusFiles).toHaveBeenCalledWith({
-            candidateFileIds: ["removed-file"],
-            ownerUserIds: ["comment-author"],
-        });
+        expect(mockedDeleteDirectusFile).not.toHaveBeenCalled();
     });
 });

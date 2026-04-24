@@ -1,3 +1,4 @@
+import type { UploadPurpose } from "@/constants/upload-limits";
 import type { JsonObject } from "@/types/json";
 import { deleteDirectusFile, readMany } from "@/server/directus/client";
 import {
@@ -12,6 +13,7 @@ type SupportedReferenceCollection =
     | "app_user_profiles"
     | "app_articles"
     | "app_albums"
+    | "app_anime_entries"
     | "app_friends"
     | "app_album_photos"
     | "app_diary_images"
@@ -36,6 +38,7 @@ export const STRUCTURED_REFERENCE_TARGETS: StructuredReferenceTarget[] = [
     { collection: "app_user_profiles", field: "header_file" },
     { collection: "app_articles", field: "cover_file" },
     { collection: "app_albums", field: "cover_file" },
+    { collection: "app_anime_entries", field: "cover_file" },
     { collection: "app_friends", field: "avatar_file" },
     { collection: "app_album_photos", field: "file_id" },
     { collection: "app_diary_images", field: "file_id" },
@@ -322,6 +325,52 @@ export async function readDeletableOwnedFilesFromRepository(
     }
 
     return candidateFileIds.filter((fileId) => deletable.has(fileId));
+}
+
+export async function readStaleFileGcCandidatesFromRepository(params: {
+    createdBefore: string;
+    temporaryPurposes: UploadPurpose[];
+    limit: number;
+}): Promise<
+    Array<{
+        id: string;
+        date_created: string | null;
+        app_owner_user_id?: unknown;
+        app_upload_purpose?: unknown;
+    }>
+> {
+    const rows = await readMany("directus_files", {
+        filter: {
+            _and: [
+                { date_created: { _lte: params.createdBefore } },
+                {
+                    _or: [
+                        { app_owner_user_id: { _null: true } },
+                        {
+                            app_upload_purpose: {
+                                _in: params.temporaryPurposes,
+                            },
+                        },
+                    ],
+                },
+            ],
+        } as JsonObject,
+        fields: [
+            "id",
+            "date_created",
+            "app_owner_user_id",
+            "app_upload_purpose",
+        ],
+        sort: ["date_created", "id"],
+        limit: params.limit,
+    });
+
+    return rows as Array<{
+        id: string;
+        date_created: string | null;
+        app_owner_user_id?: unknown;
+        app_upload_purpose?: unknown;
+    }>;
 }
 
 function normalizeOwnerIds(values: unknown[]): string[] {

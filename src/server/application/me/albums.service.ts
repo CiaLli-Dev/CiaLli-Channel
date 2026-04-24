@@ -42,11 +42,7 @@ import {
     safeCsv,
     sanitizeSlug,
 } from "@/server/api/v1/shared";
-import {
-    cleanupOwnedOrphanDirectusFiles,
-    collectAlbumFileIds,
-    normalizeDirectusFileId,
-} from "@/server/api/v1/shared/file-cleanup";
+import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
 import {
     bindFileOwnerToUser,
     isSlugUniqueConflict,
@@ -313,16 +309,6 @@ async function syncAlbumCoverVisibility(params: {
         );
     }
     if (
-        hasOwn(params.body, "cover_file") &&
-        params.prevCoverFile &&
-        params.prevCoverFile !== params.nextCoverFile
-    ) {
-        await cleanupOwnedOrphanDirectusFiles({
-            candidateFileIds: [params.prevCoverFile],
-            ownerUserIds: [params.target.author_id],
-        });
-    }
-    if (
         params.input.is_public !== undefined &&
         params.prevCoverFile &&
         !hasOwn(params.body, "cover_file")
@@ -369,14 +355,9 @@ async function syncAlbumPhotoVisibility(
 
 async function handleAlbumDelete(
     id: string,
-    target: AppAlbum,
+    _target: AppAlbum,
 ): Promise<Response> {
-    const fileIds = await collectAlbumFileIds(id, target.cover_file);
     await deleteOne("app_albums", id);
-    await cleanupOwnedOrphanDirectusFiles({
-        candidateFileIds: fileIds,
-        ownerUserIds: [target.author_id],
-    });
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("album-list"),
@@ -552,16 +533,6 @@ async function handlePhotoPatch(
                 : "private",
         );
     }
-    if (
-        hasOwn(body as JsonObject, "file_id") &&
-        prevFileId &&
-        prevFileId !== nextFileId
-    ) {
-        await cleanupOwnedOrphanDirectusFiles({
-            candidateFileIds: [prevFileId],
-            ownerUserIds: [album?.author_id ?? access.user.id],
-        });
-    }
     await awaitCacheInvalidations(
         [cacheManager.invalidate("album-detail", photo.album_id)],
         { label: "me/album-photos#patch" },
@@ -572,16 +543,9 @@ async function handlePhotoPatch(
 async function handlePhotoDelete(
     photoId: string,
     photo: AppAlbumPhoto,
-    ownerUserId: string,
+    _ownerUserId: string,
 ): Promise<Response> {
-    const fileId = normalizeDirectusFileId(photo.file_id);
     await deleteOne("app_album_photos", photoId);
-    if (fileId) {
-        await cleanupOwnedOrphanDirectusFiles({
-            candidateFileIds: [fileId],
-            ownerUserIds: [ownerUserId],
-        });
-    }
     await awaitCacheInvalidations(
         [cacheManager.invalidate("album-detail", photo.album_id)],
         { label: "me/album-photos#delete" },

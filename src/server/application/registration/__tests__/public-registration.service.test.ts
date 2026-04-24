@@ -157,7 +157,7 @@ describe("public-registration.service", () => {
         });
     });
 
-    it("cleans up request, avatar and pending user when avatar attach fails", async () => {
+    it("cleans up request and pending user when avatar attach fails", async () => {
         mocks.setRegistrationRequestAvatar.mockRejectedValue(
             new Error("attach failed"),
         );
@@ -180,15 +180,13 @@ describe("public-registration.service", () => {
         expect(mocks.deleteRegistrationRequest).toHaveBeenCalledWith(
             "request-1",
         );
-        expect(mocks.deleteRegistrationAvatarFile).toHaveBeenCalledWith(
-            "file-1",
-        );
+        expect(mocks.deleteRegistrationAvatarFile).not.toHaveBeenCalled();
         expect(mocks.deletePendingRegistrationUser).toHaveBeenCalledWith(
             "pending-user-1",
         );
     });
 
-    it("cancels registration and deletes the bound avatar file", async () => {
+    it("cancels registration without deleting the bound avatar file inline", async () => {
         await cancelPublicRegistration({
             requestId: "request-1",
             cookieRequestId: "request-1",
@@ -198,9 +196,7 @@ describe("public-registration.service", () => {
             requestId: "request-1",
             reviewedAt: expect.any(String),
         });
-        expect(mocks.deleteRegistrationAvatarFile).toHaveBeenCalledWith(
-            "file-old",
-        );
+        expect(mocks.deleteRegistrationAvatarFile).not.toHaveBeenCalled();
     });
 
     it("rejects avatar replace when request is not pending or rejected", async () => {

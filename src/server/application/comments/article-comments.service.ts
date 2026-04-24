@@ -21,10 +21,6 @@ import {
     renderCommentItem,
     validateReplyParent,
 } from "@/server/api/v1/comments-shared";
-import {
-    cleanupOwnedOrphanDirectusFiles,
-    extractDirectusAssetIdsFromMarkdown,
-} from "@/server/api/v1/shared/file-cleanup";
 import { syncMarkdownFilesToVisibility } from "@/server/api/v1/me/_helpers";
 
 async function getArticleCommentList(
@@ -142,9 +138,6 @@ async function patchArticleComment(
 
     const body = await parseJsonBody(context.request);
     const input = validateBody(UpdateCommentSchema, body);
-    const prevBodyFileIds = extractDirectusAssetIdsFromMarkdown(
-        String(comment.body ?? ""),
-    );
     const payload = buildCommentUpdatePayload(input);
     const updated = await updateOne("app_article_comments", commentId, payload);
     if (input.body !== undefined || input.is_public !== undefined) {
@@ -153,20 +146,6 @@ async function patchArticleComment(
             comment.author_id,
             (input.is_public ?? updated.is_public) ? "public" : "private",
         );
-    }
-    if (input.body !== undefined && prevBodyFileIds.length > 0) {
-        const nextBodyFileIds = new Set(
-            extractDirectusAssetIdsFromMarkdown(input.body),
-        );
-        const removedBodyFileIds = prevBodyFileIds.filter(
-            (id) => !nextBodyFileIds.has(id),
-        );
-        if (removedBodyFileIds.length > 0) {
-            await cleanupOwnedOrphanDirectusFiles({
-                candidateFileIds: removedBodyFileIds,
-                ownerUserIds: [comment.author_id],
-            });
-        }
     }
     await awaitCacheInvalidations(
         [

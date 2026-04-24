@@ -23,7 +23,6 @@ import {
     cancelPendingRegistration,
     createPendingRegistrationUser,
     createRegistrationRequestItem,
-    deleteRegistrationAvatarFile,
     deleteRegistrationRequest,
     deletePendingRegistrationUser,
     findPendingRegistrationById,
@@ -294,7 +293,6 @@ export async function createPublicRegistration(
     });
 
     let createdRequest: AppUserRegistrationRequest | null = null;
-    let uploadedAvatarFileId: string | null = null;
     try {
         createdRequest = await createRegistrationRequestItem({
             email,
@@ -306,7 +304,7 @@ export async function createPublicRegistration(
         });
 
         if (command.avatar) {
-            uploadedAvatarFileId = await uploadRegistrationAvatar(
+            const uploadedAvatarFileId = await uploadRegistrationAvatar(
                 command.avatar,
             );
             createdRequest = await setRegistrationRequestAvatar({
@@ -323,17 +321,6 @@ export async function createPublicRegistration(
                     console.error(
                         "[registration] 补偿删除申请失败, requestId:",
                         createdRequest?.id,
-                        cleanupError,
-                    );
-                },
-            );
-        }
-        if (uploadedAvatarFileId) {
-            await deleteRegistrationAvatarFile(uploadedAvatarFileId).catch(
-                (cleanupError) => {
-                    console.error(
-                        "[registration] 补偿删除头像失败, fileId:",
-                        uploadedAvatarFileId,
                         cleanupError,
                     );
                 },
@@ -386,9 +373,6 @@ export async function cancelPublicRegistration(params: {
         requestId: params.requestId,
         reviewedAt: new Date().toISOString(),
     });
-    await deleteRegistrationAvatarFile(
-        normalizeDirectusFileId(target.avatar_file),
-    );
     return updated;
 }
 
@@ -416,28 +400,11 @@ export async function replacePublicRegistrationAvatar(params: {
         String(target.request_status || "").trim(),
     );
 
-    const previousAvatarFileId = normalizeDirectusFileId(target.avatar_file);
     const nextAvatarFileId = await uploadRegistrationAvatar(params.avatar);
-
-    try {
-        const updated = await setRegistrationRequestAvatar({
-            requestId: params.requestId,
-            avatarFileId: nextAvatarFileId,
-        });
-        await deleteRegistrationAvatarFile(previousAvatarFileId);
-        return updated;
-    } catch (error) {
-        await deleteRegistrationAvatarFile(nextAvatarFileId).catch(
-            (cleanupError) => {
-                console.error(
-                    "[registration] 补偿删除替换头像失败, fileId:",
-                    nextAvatarFileId,
-                    cleanupError,
-                );
-            },
-        );
-        throw error;
-    }
+    return await setRegistrationRequestAvatar({
+        requestId: params.requestId,
+        avatarFileId: nextAvatarFileId,
+    });
 }
 
 export async function loadAuthorizedRegistrationAvatar(params: {

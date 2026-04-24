@@ -1,6 +1,7 @@
 import type {
     AppAlbum,
     AppAlbumPhoto,
+    AppAnimeEntry,
     AppAiSummaryJob,
     AppArticle,
     AppArticleComment,
@@ -36,6 +37,7 @@ export type DirectusSchema = {
     app_diary_likes: AppDiaryLike[];
     app_albums: AppAlbum[];
     app_album_photos: AppAlbumPhoto[];
+    app_anime_entries: AppAnimeEntry[];
     app_friends: AppFriend[];
     app_user_registration_requests: AppUserRegistrationRequest[];
     app_site_settings: AppSiteSettings[];

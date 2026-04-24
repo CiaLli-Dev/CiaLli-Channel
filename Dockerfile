@@ -34,6 +34,7 @@ ENV PORT=4321
 WORKDIR /app
 
 COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=build /app/dist/client ./dist/client
 COPY --from=build /app/dist/server ./dist/server
 COPY --from=build /app/public ./public
 

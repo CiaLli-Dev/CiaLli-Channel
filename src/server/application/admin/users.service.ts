@@ -53,12 +53,7 @@ import {
     AdminUpdateUserSchema,
 } from "@/server/api/schemas";
 import { invalidateOfficialSidebarCache } from "@/server/api/v1/public-data";
-import {
-    cleanupOwnedOrphanDirectusFiles,
-    collectReferencedDirectusFileIds,
-    collectUserOwnedFileIds,
-    normalizeDirectusFileId,
-} from "@/server/api/v1/shared/file-cleanup";
+import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
 
 import {
     DEFAULT_LIST_LIMIT,
@@ -231,7 +226,7 @@ function buildProfilePayload(
 async function applyAvatarFileChange(
     body: JsonObject,
     userId: string,
-    prevAvatarFile: string | null,
+    _prevAvatarFile: string | null,
     nextAvatarFile: string | null,
     nextProfilePublic: boolean,
 ): Promise<void> {
@@ -244,12 +239,6 @@ async function applyAvatarFileChange(
             uploaded_by: userId,
             app_owner_user_id: userId,
             app_visibility: nextProfilePublic ? "public" : "private",
-        });
-    }
-    if (hasAvatarPatch && prevAvatarFile && prevAvatarFile !== nextAvatarFile) {
-        await cleanupOwnedOrphanDirectusFiles({
-            candidateFileIds: [prevAvatarFile],
-            ownerUserIds: [userId],
         });
     }
 }
@@ -753,22 +742,6 @@ async function handleUserPatch(
     });
 }
 
-async function collectCandidateFileIds(userId: string): Promise<string[]> {
-    try {
-        return await collectUserOwnedFileIds(userId);
-    } catch (error) {
-        const message = String(error);
-        if (/forbidden|permission/i.test(message)) {
-            console.warn(
-                "[admin/users] skip collectUserOwnedFileIds due to permission:",
-                message,
-            );
-            return [];
-        }
-        throw error;
-    }
-}
-
 async function handleUserDelete(
     userId: string,
     actingAdminUser: AppUser,
@@ -792,13 +765,6 @@ async function handleUserDelete(
             actingIsPlatformAdmin: actingSnapshot.isPlatformAdmin,
             targetIsPlatformAdmin: targetSnapshot.isPlatformAdmin,
         });
-
-        const candidateFileIds = await collectCandidateFileIds(userId);
-        const referencedFileIds =
-            await collectReferencedDirectusFileIds(candidateFileIds);
-        const removableFileIds = candidateFileIds.filter(
-            (fileId) => !referencedFileIds.has(fileId),
-        );
 
         const [profiles, registrationRequests] = await Promise.all([
             readMany("app_user_profiles", {
@@ -836,32 +802,10 @@ async function handleUserDelete(
                 );
             },
         );
-        // 先删明确孤立的文件，再清空剩余文件归属，避免 directus_files 外键阻塞用户删除。
-        await cleanupOwnedOrphanDirectusFiles({
-            candidateFileIds: removableFileIds,
-            ownerUserIds: [userId],
-        }).catch((error) => {
-            console.warn(
-                "[admin/users] 预清理孤立文件失败, userId:",
-                userId,
-                error,
-            );
-        });
-
         const remainingFiles = await loadReferencedFilesByUser(userId);
         await nullifyReferencedFileOwnership(remainingFiles, userId);
         await clearBlockingUserReferences(userId);
         await deleteDirectusUser(userId);
-        await cleanupOwnedOrphanDirectusFiles({
-            candidateFileIds,
-            ownerUserIds: [userId],
-        }).catch((error) => {
-            console.warn(
-                "[admin/users] 清理孤立文件失败, userId:",
-                userId,
-                error,
-            );
-        });
         invalidateAuthorCache(userId);
         invalidateOfficialSidebarCache();
         invalidateDirectusAccessRegistry();

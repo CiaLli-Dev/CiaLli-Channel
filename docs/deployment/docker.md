@@ -6,7 +6,7 @@
 
 - `proxy`：统一处理站点入口与 HTTPS 终止
 - `web`：Astro Node 服务
-- `worker`：AI Summary Worker
+- `worker`：AI Summary Worker + File GC
 - `directus`：CMS 与 API
 - `postgres`：Directus 主数据库
 - `redis`：缓存、限流与分布式刷新协调
@@ -35,6 +35,9 @@ Directus 后台默认只绑定到 `127.0.0.1:8055`，不直接暴露公网。
    `APP_SECRET_ENCRYPTION_KEY`
    `AI_SUMMARY_INTERNAL_SECRET`
    `AI_SUMMARY_PROVIDER_TIMEOUT_MS`（可选，默认 `90000`）
+   `FILE_GC_INTERVAL_MS`（可选，默认 `900000`）
+   `FILE_GC_RETENTION_HOURS`（可选，默认 `24`）
+   `FILE_GC_BATCH_SIZE`（可选，默认 `200`）
    `DIRECTUS_SECRET`
    `POSTGRES_USER`
    `POSTGRES_DB`

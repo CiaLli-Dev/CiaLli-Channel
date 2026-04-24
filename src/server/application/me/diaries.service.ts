@@ -30,14 +30,7 @@ import {
 import { createWithShortId } from "@/server/utils/short-id";
 import type { AppAccess } from "@/server/api/v1/shared";
 import { DIARY_FIELDS, hasOwn, parseRouteId } from "@/server/api/v1/shared";
-import {
-    cleanupOwnedOrphanDirectusFiles,
-    collectDiaryCommentCleanupCandidates,
-    collectDiaryFileIds,
-    extractDirectusAssetIdsFromMarkdown,
-    mergeDirectusFileCleanupCandidates,
-    normalizeDirectusFileId,
-} from "@/server/api/v1/shared/file-cleanup";
+import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
 import {
     bindFileOwnerToUser,
     renderMeMarkdownPreview,
@@ -533,22 +526,7 @@ async function handleDiaryDelete(
     diaryId: string,
     target: OwnedDiaryRecord,
 ): Promise<Response> {
-    const imageFileIds = await collectDiaryFileIds(diaryId);
-    const contentFileIds = extractDirectusAssetIdsFromMarkdown(
-        String(target.content ?? ""),
-    );
-    const relatedCommentCandidates =
-        await collectDiaryCommentCleanupCandidates(diaryId);
     await deleteOne("app_diaries", diaryId);
-    await cleanupOwnedOrphanDirectusFiles(
-        mergeDirectusFileCleanupCandidates(
-            {
-                candidateFileIds: [...imageFileIds, ...contentFileIds],
-                ownerUserIds: [target.author_id],
-            },
-            relatedCommentCandidates,
-        ),
-    );
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("diary-list"),
@@ -709,7 +687,7 @@ async function handleDiaryImagePatch(
     image: JsonObject,
     diary: JsonObject,
 ): Promise<Response> {
-    const { payload, body, prevFileId, nextFileId } =
+    const { payload, body, nextFileId } =
         await buildDiaryImagePatchPayload(context);
     const updated = await updateOne("app_diary_images", imageId, payload);
     if (hasOwn(body, "file_id") && nextFileId) {
@@ -723,12 +701,6 @@ async function handleDiaryImagePatch(
                 ? "public"
                 : "private",
         );
-    }
-    if (hasOwn(body, "file_id") && prevFileId && prevFileId !== nextFileId) {
-        await cleanupOwnedOrphanDirectusFiles({
-            candidateFileIds: [prevFileId],
-            ownerUserIds: [String(diary.author_id ?? access.user.id)],
-        });
     }
     await awaitCacheInvalidations(
         [
@@ -748,14 +720,7 @@ async function handleDiaryImageDelete(
     image: JsonObject,
     diary: JsonObject,
 ): Promise<Response> {
-    const fileId = normalizeDirectusFileId(image.file_id);
     await deleteOne("app_diary_images", imageId);
-    if (fileId) {
-        await cleanupOwnedOrphanDirectusFiles({
-            candidateFileIds: [fileId],
-            ownerUserIds: [String(diary.author_id ?? "")],
-        });
-    }
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("mixed-feed"),

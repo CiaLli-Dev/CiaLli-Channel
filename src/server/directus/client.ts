@@ -24,6 +24,7 @@ import {
 } from "@directus/sdk";
 
 import type { AppUser } from "@/types/app";
+import type { UploadPurpose } from "@/constants/upload-limits";
 import type { JsonObject } from "@/types/json";
 import { internal } from "@/server/api/errors";
 import { getDirectusUrl } from "@/server/directus-auth";
@@ -703,6 +704,7 @@ export async function updateDirectusFileMetadata(
         uploaded_by?: string | null;
         modified_by?: string | null;
         app_owner_user_id?: string | null;
+        app_upload_purpose?: UploadPurpose | null;
         app_visibility?: "private" | "public" | null;
     },
 ): Promise<void> {

@@ -15,6 +15,7 @@ vi.mock("@/server/directus/client", () => ({
     createOne: vi.fn(),
     updateOne: vi.fn(),
     deleteOne: vi.fn(),
+    deleteDirectusFile: vi.fn(),
     updateDirectusFileMetadata: vi.fn(),
 }));
 
@@ -61,16 +62,16 @@ vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
             ownerUserIds: groups.flatMap((group) => group.ownerUserIds),
         }),
     ),
-    cleanupOwnedOrphanDirectusFiles: vi.fn().mockResolvedValue([]),
 }));
 
-import { readMany, updateOne } from "@/server/directus/client";
+import {
+    deleteDirectusFile,
+    readMany,
+    updateOne,
+} from "@/server/directus/client";
 import { enqueueAndTriggerArticleSummaryJob } from "@/server/ai-summary/dispatch";
 import { cacheManager } from "@/server/cache/manager";
-import {
-    cleanupOwnedOrphanDirectusFiles,
-    extractDirectusAssetIdsFromMarkdown,
-} from "@/server/api/v1/shared/file-cleanup";
+import { extractDirectusAssetIdsFromMarkdown } from "@/server/api/v1/shared/file-cleanup";
 import { createWithShortId } from "@/server/utils/short-id";
 
 import { handleMeArticles } from "@/server/api/v1/me/articles";
@@ -82,9 +83,7 @@ const mockedEnqueueAndTriggerArticleSummaryJob = vi.mocked(
 );
 const mockedCacheInvalidate = vi.mocked(cacheManager.invalidate);
 const mockedCreateWithShortId = vi.mocked(createWithShortId);
-const mockedCleanupOwnedOrphanDirectusFiles = vi.mocked(
-    cleanupOwnedOrphanDirectusFiles,
-);
+const mockedDeleteDirectusFile = vi.mocked(deleteDirectusFile);
 const mockedExtractDirectusAssetIdsFromMarkdown = vi.mocked(
     extractDirectusAssetIdsFromMarkdown,
 );
@@ -735,10 +734,10 @@ describe("PATCH /me/articles/:id publish validation and file cleanup", () => {
         );
 
         expect(res.status).toBe(200);
-        expect(mockedCleanupOwnedOrphanDirectusFiles).not.toHaveBeenCalled();
+        expect(mockedDeleteDirectusFile).not.toHaveBeenCalled();
     });
 
-    it("正文合法资源 URL 被移除时会进入回收候选", async () => {
+    it("正文合法资源 URL 被移除时不会同步触发物理清理", async () => {
         const fileId = "a1b2c3d4-e5f6-1234-9abc-def012345678";
         mockedReadMany.mockResolvedValue([
             mockArticle({
@@ -768,9 +767,6 @@ describe("PATCH /me/articles/:id publish validation and file cleanup", () => {
         );
 
         expect(res.status).toBe(200);
-        expect(mockedCleanupOwnedOrphanDirectusFiles).toHaveBeenCalledWith({
-            candidateFileIds: [fileId],
-            ownerUserIds: [access.user.id],
-        });
+        expect(mockedDeleteDirectusFile).not.toHaveBeenCalled();
     });
 });

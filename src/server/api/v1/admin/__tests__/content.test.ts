@@ -68,7 +68,6 @@ vi.mock("@/server/api/v1/comments-shared", () => ({
 
 import { requireAdmin } from "@/server/api/v1/shared";
 import { deleteOne, readMany, updateOne } from "@/server/directus/client";
-import { collectDiaryFileIds } from "@/server/api/v1/shared/file-cleanup";
 import { deleteCommentWithDescendants } from "@/server/api/v1/comments-shared";
 import { handleAdminContent } from "@/server/api/v1/admin/content";
 
@@ -76,7 +75,6 @@ const mockedRequireAdmin = vi.mocked(requireAdmin);
 const mockedReadMany = vi.mocked(readMany);
 const mockedUpdateOne = vi.mocked(updateOne);
 const mockedDeleteOne = vi.mocked(deleteOne);
-const mockedCollectDiaryFileIds = vi.mocked(collectDiaryFileIds);
 const mockedDeleteCommentWithDescendants = vi.mocked(
     deleteCommentWithDescendants,
 );
@@ -170,7 +168,6 @@ describe("handleAdminContent diaries 权限收敛", () => {
 
         expect(response.status).toBe(404);
         expect(mockedDeleteOne).not.toHaveBeenCalled();
-        expect(mockedCollectDiaryFileIds).not.toHaveBeenCalled();
     });
 
     it("PATCH 公开日记可正常更新", async () => {

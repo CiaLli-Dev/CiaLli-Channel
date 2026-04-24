@@ -1,3 +1,5 @@
+import type { UploadPurpose } from "@/constants/upload-limits";
+
 export type AppStatus = "draft" | "published" | "archived";
 export type ArticleSummarySource = "none" | "manual" | "ai";
 export type AiSummaryJobStatus =
@@ -174,6 +176,14 @@ export type AppFriend = {
     date_updated: string | null;
 };
 
+export type AppAnimeEntry = {
+    id: string;
+    author_id: string;
+    cover_file: string | null;
+    date_created: string | null;
+    date_updated: string | null;
+};
+
 export type AppAlbum = {
     id: string;
     short_id: string | null;
@@ -321,7 +331,9 @@ export type AppFile = {
     title: string | null;
     type: string | null;
     filename_download: string | null;
+    date_created: string | null;
     app_owner_user_id?: string | { id?: string } | null;
+    app_upload_purpose?: UploadPurpose | null;
     app_visibility?: "private" | "public" | null;
     uploaded_by?: string | { id?: string } | null;
     modified_by?: string | { id?: string } | null;

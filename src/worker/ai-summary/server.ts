@@ -6,6 +6,7 @@ import {
     type ServerResponse,
 } from "node:http";
 
+import { readFileGcIntervalMs, runFileGcBatch } from "@/server/files/file-gc";
 import { loadDecryptedAiSettings } from "@/server/ai-summary/config";
 import {
     recoverStuckSummaryJobs,
@@ -16,13 +17,13 @@ import { verifyInternalSecretHeader } from "@/server/ai-summary/internal-auth";
 import { runAiSummaryJob } from "@/server/ai-summary/runner";
 import type { RunAiSummaryJobResult } from "@/server/ai-summary/runner";
 import { runWithDirectusServiceAccess } from "@/server/directus/client";
+import { createNonOverlappingScheduler } from "@/worker/task-scheduler";
 
 const DEFAULT_PORT = 4322;
 const CONSUMER_INTERVAL_MS = 5_000;
 
 let activeExecutions = 0;
 const executionWaiters: Array<() => void> = [];
-let schedulerRunning = false;
 
 function readMaxConcurrency(): number {
     const raw = String(
@@ -120,15 +121,8 @@ async function processDueJobs(limit: number): Promise<Record<string, unknown>> {
     });
 }
 
-async function runSchedulerTick(
-    trigger: "startup" | "interval",
-): Promise<void> {
-    if (schedulerRunning) {
-        return;
-    }
-
-    schedulerRunning = true;
-    try {
+const aiSummaryScheduler = createNonOverlappingScheduler({
+    task: async (trigger) => {
         const now = new Date();
         const recovered = await runWithDirectusServiceAccess(
             async () => await recoverStuckSummaryJobs(now),
@@ -139,10 +133,38 @@ async function runSchedulerTick(
             recovered,
             processed: processed.processed,
         });
+    },
+});
+
+const fileGcScheduler = createNonOverlappingScheduler({
+    task: async (trigger) => {
+        const result = await runFileGcBatch();
+        console.info("[file-gc-worker] scheduler tick", {
+            trigger,
+            scanned: result.scanned,
+            referenced: result.referenced,
+            deleted: result.deleted,
+        });
+    },
+});
+
+async function runAiSummarySchedulerTick(
+    trigger: "startup" | "interval",
+): Promise<void> {
+    try {
+        await aiSummaryScheduler.run(trigger);
     } catch (error) {
         console.error("[ai-summary-worker] scheduler tick failed", error);
-    } finally {
-        schedulerRunning = false;
+    }
+}
+
+async function runFileGcSchedulerTick(
+    trigger: "startup" | "interval",
+): Promise<void> {
+    try {
+        await fileGcScheduler.run(trigger);
+    } catch (error) {
+        console.error("[file-gc-worker] scheduler tick failed", error);
     }
 }
 
@@ -232,8 +254,12 @@ createServer((request, response) => {
     });
 }).listen(port, () => {
     console.info(`[ai-summary-worker] listening on ${port}`);
-    void runSchedulerTick("startup");
+    void runAiSummarySchedulerTick("startup");
+    void runFileGcSchedulerTick("startup");
     setInterval(() => {
-        void runSchedulerTick("interval");
+        void runAiSummarySchedulerTick("interval");
     }, CONSUMER_INTERVAL_MS);
+    setInterval(() => {
+        void runFileGcSchedulerTick("interval");
+    }, readFileGcIntervalMs());
 });

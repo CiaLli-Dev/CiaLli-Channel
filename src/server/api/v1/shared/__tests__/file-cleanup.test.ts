@@ -4,12 +4,11 @@ vi.mock("@/server/repositories/files/file-cleanup.repository", () => ({
     readReferencedIdsInSiteSettingsFromRepository: vi.fn(),
     readReferencedIdsInStructuredTargetFromRepository: vi.fn(),
     readReferencedIdsInMarkdownTargetFromRepository: vi.fn(),
-    readDeletableOwnedFilesFromRepository: vi.fn(),
-    deleteOrphanFileFromRepository: vi.fn().mockResolvedValue(undefined),
     STRUCTURED_REFERENCE_TARGETS: [
         { collection: "app_user_profiles", field: "header_file" },
         { collection: "app_articles", field: "cover_file" },
         { collection: "app_albums", field: "cover_file" },
+        { collection: "app_anime_entries", field: "cover_file" },
         { collection: "app_friends", field: "avatar_file" },
         { collection: "app_album_photos", field: "file_id" },
         { collection: "app_diary_images", field: "file_id" },
@@ -39,7 +38,6 @@ vi.mock("@/server/repositories/directus/scope", () => ({
 }));
 
 import {
-    cleanupOwnedOrphanDirectusFiles,
     collectReferencedDirectusFileIds,
     extractDirectusAssetIdsFromMarkdown,
     normalizeDirectusFileId,
@@ -48,8 +46,6 @@ import {
     readReferencedIdsInSiteSettingsFromRepository,
     readReferencedIdsInStructuredTargetFromRepository,
     readReferencedIdsInMarkdownTargetFromRepository,
-    readDeletableOwnedFilesFromRepository,
-    deleteOrphanFileFromRepository,
 } from "@/server/repositories/files/file-cleanup.repository";
 import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 
@@ -62,10 +58,6 @@ const mockedReadReferencedIdsInStructuredTarget = vi.mocked(
 const mockedReadReferencedIdsInMarkdownTarget = vi.mocked(
     readReferencedIdsInMarkdownTargetFromRepository,
 );
-const mockedReadDeletableOwnedFiles = vi.mocked(
-    readDeletableOwnedFilesFromRepository,
-);
-const mockedDeleteOrphanFile = vi.mocked(deleteOrphanFileFromRepository);
 const mockedWithServiceRepositoryContext = vi.mocked(
     withServiceRepositoryContext,
 );
@@ -148,66 +140,38 @@ describe("collectReferencedDirectusFileIds", () => {
         expect(referenced.has(UUID_A)).toBe(true);
         expect(referenced.has(UUID_B)).toBe(false);
     });
-});
 
-describe("cleanupOwnedOrphanDirectusFiles", () => {
-    it("不会删除不属于当前用户的候选文件", async () => {
-        mockedReadDeletableOwnedFiles.mockResolvedValue([]);
+    it("会把 anime 条目的 cover_file 计入结构化引用", async () => {
+        mockedReadReferencedIdsInSiteSettings.mockResolvedValue(new Set());
+        mockedReadReferencedIdsInStructuredTarget.mockImplementation(
+            async (target) => {
+                if (
+                    target.collection === "app_anime_entries" &&
+                    target.field === "cover_file"
+                ) {
+                    return new Set([UUID_B]);
+                }
+                return new Set();
+            },
+        );
+        mockedReadReferencedIdsInMarkdownTarget.mockResolvedValue(new Set());
 
-        const deleted = await cleanupOwnedOrphanDirectusFiles({
-            candidateFileIds: [UUID_A],
-            ownerUserIds: ["current-user"],
-        });
+        const referenced = await collectReferencedDirectusFileIds([
+            UUID_A,
+            UUID_B,
+        ]);
 
-        expect(deleted).toEqual([]);
-        expect(mockedDeleteOrphanFile).not.toHaveBeenCalled();
+        expect(referenced.has(UUID_A)).toBe(false);
+        expect(referenced.has(UUID_B)).toBe(true);
     });
 
-    it("只删除当前用户拥有且未被引用的文件", async () => {
-        mockedReadDeletableOwnedFiles.mockResolvedValue([UUID_A]);
+    it("在 service 作用域中执行引用扫描", async () => {
         mockedReadReferencedIdsInSiteSettings.mockResolvedValue(new Set());
         mockedReadReferencedIdsInStructuredTarget.mockResolvedValue(new Set());
         mockedReadReferencedIdsInMarkdownTarget.mockResolvedValue(new Set());
 
-        const deleted = await cleanupOwnedOrphanDirectusFiles({
-            candidateFileIds: [UUID_A],
-            ownerUserIds: ["user-1"],
-        });
+        await collectReferencedDirectusFileIds([UUID_A]);
 
-        expect(deleted).toEqual([UUID_A]);
-        expect(mockedDeleteOrphanFile).toHaveBeenCalledWith(UUID_A);
         expect(mockedWithServiceRepositoryContext).toHaveBeenCalled();
-    });
-
-    it("支持多 owner 候选并在 service 作用域中执行扫描", async () => {
-        mockedReadDeletableOwnedFiles.mockResolvedValue([UUID_A, UUID_B]);
-        mockedReadReferencedIdsInSiteSettings.mockResolvedValue(new Set());
-        mockedReadReferencedIdsInStructuredTarget.mockResolvedValue(new Set());
-        mockedReadReferencedIdsInMarkdownTarget.mockResolvedValue(new Set());
-
-        const deleted = await cleanupOwnedOrphanDirectusFiles({
-            candidateFileIds: [UUID_A, UUID_B],
-            ownerUserIds: ["user-1", "user-2"],
-        });
-
-        expect(deleted).toEqual([UUID_A, UUID_B]);
-        expect(mockedDeleteOrphanFile).toHaveBeenNthCalledWith(1, UUID_A);
-        expect(mockedDeleteOrphanFile).toHaveBeenNthCalledWith(2, UUID_B);
-        expect(mockedWithServiceRepositoryContext).toHaveBeenCalled();
-    });
-
-    it("仅以当前生效站点设置判断引用，忽略历史记录中的旧引用", async () => {
-        mockedReadDeletableOwnedFiles.mockResolvedValue([UUID_A]);
-        mockedReadReferencedIdsInSiteSettings.mockResolvedValue(new Set());
-        mockedReadReferencedIdsInStructuredTarget.mockResolvedValue(new Set());
-        mockedReadReferencedIdsInMarkdownTarget.mockResolvedValue(new Set());
-
-        const deleted = await cleanupOwnedOrphanDirectusFiles({
-            candidateFileIds: [UUID_A],
-            ownerUserIds: ["admin-1"],
-        });
-
-        expect(deleted).toEqual([UUID_A]);
-        expect(mockedDeleteOrphanFile).toHaveBeenCalledWith(UUID_A);
     });
 });

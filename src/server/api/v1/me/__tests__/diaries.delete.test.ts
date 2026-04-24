@@ -7,6 +7,7 @@ import { createMockAPIContext } from "@/__tests__/helpers/mock-api-context";
 vi.mock("@/server/directus/client", () => ({
     createOne: vi.fn(),
     deleteOne: vi.fn(),
+    deleteDirectusFile: vi.fn(),
     readMany: vi.fn(),
     readOneById: vi.fn(),
     updateOne: vi.fn(),
@@ -28,7 +29,6 @@ vi.mock("@/server/markdown/render", () => ({
 }));
 
 vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
-    cleanupOwnedOrphanDirectusFiles: vi.fn().mockResolvedValue([]),
     collectDiaryCommentCleanupCandidates: vi.fn().mockResolvedValue({
         candidateFileIds: ["comment-file"],
         ownerUserIds: ["comment-user"],
@@ -51,15 +51,16 @@ vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
     ),
 }));
 
-import { deleteOne, readMany } from "@/server/directus/client";
-import { cleanupOwnedOrphanDirectusFiles } from "@/server/api/v1/shared/file-cleanup";
+import {
+    deleteDirectusFile,
+    deleteOne,
+    readMany,
+} from "@/server/directus/client";
 import { handleMeDiaries } from "@/server/api/v1/me/diaries";
 
+const mockedDeleteDirectusFile = vi.mocked(deleteDirectusFile);
 const mockedDeleteOne = vi.mocked(deleteOne);
 const mockedReadMany = vi.mocked(readMany);
-const mockedCleanupOwnedOrphanDirectusFiles = vi.mocked(
-    cleanupOwnedOrphanDirectusFiles,
-);
 
 function makeDiary(overrides: Record<string, unknown> = {}) {
     return {
@@ -98,9 +99,6 @@ describe("DELETE /me/diaries/:id", () => {
         );
 
         expect(response.status).toBe(200);
-        expect(mockedCleanupOwnedOrphanDirectusFiles).toHaveBeenCalledWith({
-            candidateFileIds: ["image-file", "content-file", "comment-file"],
-            ownerUserIds: ["user-1", "comment-user"],
-        });
+        expect(mockedDeleteDirectusFile).not.toHaveBeenCalled();
     });
 });

@@ -13956,6 +13956,61 @@
       }
     },
     {
+      "collection": "directus_files",
+      "field": "app_upload_purpose",
+      "type": "string",
+      "meta": {
+        "collection": "directus_files",
+        "conditions": null,
+        "display": null,
+        "display_options": null,
+        "field": "app_upload_purpose",
+        "group": null,
+        "hidden": true,
+        "interface": "select-dropdown",
+        "note": "上传用途；用于延迟垃圾回收筛选临时文件",
+        "options": {
+          "choices": [
+            { "text": "Avatar", "value": "avatar" },
+            { "text": "Registration Avatar", "value": "registration-avatar" },
+            { "text": "Favicon", "value": "favicon" },
+            { "text": "Banner", "value": "banner" },
+            { "text": "Diary Image", "value": "diary-image" },
+            { "text": "Album Photo", "value": "album-photo" },
+            { "text": "Article Cover", "value": "article-cover" },
+            { "text": "General", "value": "general" }
+          ]
+        },
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 3,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "app_upload_purpose",
+        "table": "directus_files",
+        "data_type": "character varying",
+        "default_value": null,
+        "max_length": 64,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": false,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
       "collection": "directus_users",
       "field": "test",
       "type": "string",

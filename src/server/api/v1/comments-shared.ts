@@ -26,10 +26,6 @@ import {
 import { buildCommentTree, requireAccess } from "./shared";
 import type { CommentRecord, CommentTreeNode } from "./shared";
 import { getAuthorBundle } from "./shared/author-cache";
-import {
-    cleanupOwnedOrphanDirectusFiles,
-    extractDirectusAssetIdsFromMarkdown,
-} from "./shared/file-cleanup";
 
 export type { CommentRecord, CommentTreeNode };
 
@@ -407,44 +403,10 @@ export async function deleteCommentWithDescendants(
         collection,
         commentId,
     );
-    const rootComment = await readCommentById(collection, commentId, [
-        "id",
-        "body",
-        "author_id",
-    ]);
-    const candidateFileIds = new Set<string>();
-    const ownerUserIds = new Set<string>();
-    if (rootComment) {
-        const rootAuthorId = String(rootComment.author_id ?? "").trim();
-        if (rootAuthorId) {
-            ownerUserIds.add(rootAuthorId);
-        }
-        for (const fileId of extractDirectusAssetIdsFromMarkdown(
-            String(rootComment.body ?? ""),
-        )) {
-            candidateFileIds.add(fileId);
-        }
-    }
-    for (const descendant of descendants) {
-        const ownerUserId = String(descendant.author_id ?? "").trim();
-        if (ownerUserId) {
-            ownerUserIds.add(ownerUserId);
-        }
-        for (const fileId of extractDirectusAssetIdsFromMarkdown(
-            String(descendant.body ?? ""),
-        )) {
-            candidateFileIds.add(fileId);
-        }
-    }
-
     for (const descendant of descendants.reverse()) {
         await deleteCommentById(collection, descendant.id);
     }
     await deleteCommentById(collection, commentId);
-    await cleanupOwnedOrphanDirectusFiles({
-        candidateFileIds: [...candidateFileIds],
-        ownerUserIds: [...ownerUserIds],
-    });
 }
 
 export async function handleCommentPreview(

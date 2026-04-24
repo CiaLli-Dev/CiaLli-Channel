@@ -63,6 +63,7 @@ type ReferencedFile = {
     id: string;
     uploaded_by?: unknown;
     modified_by?: unknown;
+    app_owner_user_id?: unknown;
 };
 
 export async function nullifyReferencedFileOwnership(
@@ -70,12 +71,19 @@ export async function nullifyReferencedFileOwnership(
     userId: string,
 ): Promise<void> {
     for (const file of referencedFiles) {
-        const payload: { uploaded_by?: null; modified_by?: null } = {};
+        const payload: {
+            uploaded_by?: null;
+            modified_by?: null;
+            app_owner_user_id?: null;
+        } = {};
         if (String(file.uploaded_by || "").trim() === userId) {
             payload.uploaded_by = null;
         }
         if (String(file.modified_by || "").trim() === userId) {
             payload.modified_by = null;
+        }
+        if (String(file.app_owner_user_id || "").trim() === userId) {
+            payload.app_owner_user_id = null;
         }
         if (Object.keys(payload).length === 0) {
             continue;

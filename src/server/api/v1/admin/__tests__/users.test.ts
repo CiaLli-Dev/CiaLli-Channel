@@ -63,9 +63,6 @@ vi.mock("@/server/api/v1/public-data", () => ({
 }));
 
 vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
-    cleanupOwnedOrphanDirectusFiles: vi.fn().mockResolvedValue([]),
-    collectReferencedDirectusFileIds: vi.fn().mockResolvedValue([]),
-    collectUserOwnedFileIds: vi.fn().mockResolvedValue([]),
     normalizeDirectusFileId: vi.fn((value: unknown) =>
         typeof value === "string" ? value : null,
     ),
@@ -88,11 +85,7 @@ import {
     updateOne,
 } from "@/server/directus/client";
 import { handleAdminUsers } from "@/server/api/v1/admin/users";
-import {
-    cleanupOwnedOrphanDirectusFiles,
-    collectReferencedDirectusFileIds,
-    collectUserOwnedFileIds,
-} from "@/server/api/v1/shared/file-cleanup";
+import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
 import {
     clearBlockingUserReferences,
     loadReferencedFilesByUser,
@@ -106,13 +99,6 @@ const mockedListDirectusUsers = vi.mocked(listDirectusUsers);
 const mockedReadMany = vi.mocked(readMany);
 const mockedReadOneById = vi.mocked(readOneById);
 const mockedUpdateOne = vi.mocked(updateOne);
-const mockedCleanupOwnedOrphanDirectusFiles = vi.mocked(
-    cleanupOwnedOrphanDirectusFiles,
-);
-const mockedCollectReferencedDirectusFileIds = vi.mocked(
-    collectReferencedDirectusFileIds,
-);
-const mockedCollectUserOwnedFileIds = vi.mocked(collectUserOwnedFileIds);
 const mockedClearBlockingUserReferences = vi.mocked(
     clearBlockingUserReferences,
 );
@@ -120,6 +106,7 @@ const mockedLoadReferencedFilesByUser = vi.mocked(loadReferencedFilesByUser);
 const mockedNullifyReferencedFileOwnership = vi.mocked(
     nullifyReferencedFileOwnership,
 );
+const mockedNormalizeDirectusFileId = vi.mocked(normalizeDirectusFileId);
 
 function createDirectusUser(overrides: Partial<AppUser> = {}): AppUser {
     return {
@@ -461,26 +448,20 @@ describe("DELETE /admin/users/:id", () => {
             policyIdByName: new Map<string, string>(),
             roleIdByName: new Map<string, string>(),
         } as never);
-        mockedCleanupOwnedOrphanDirectusFiles
-            .mockResolvedValueOnce(["file-orphan"])
-            .mockResolvedValueOnce(["file-referenced"]);
-        mockedCollectReferencedDirectusFileIds.mockResolvedValue(
-            new Set(["file-referenced"]),
+        mockedNormalizeDirectusFileId.mockImplementation((value: unknown) =>
+            typeof value === "string" ? value : null,
         );
-        mockedCollectUserOwnedFileIds.mockResolvedValue([
-            "file-orphan",
-            "file-referenced",
-        ]);
         mockedLoadReferencedFilesByUser.mockResolvedValue([
             {
                 id: "file-referenced",
                 uploaded_by: "user-2",
                 modified_by: null,
+                app_owner_user_id: "user-2",
             },
         ]);
     });
 
-    it("先清理文件与阻塞引用，再删除用户", async () => {
+    it("先清空文件归属与阻塞引用，再删除用户", async () => {
         const actingAdmin = createDirectusUser({
             id: "admin-1",
             email: "admin@example.com",
@@ -514,19 +495,13 @@ describe("DELETE /admin/users/:id", () => {
         ]);
 
         expect(response.status).toBe(200);
-        expect(mockedCleanupOwnedOrphanDirectusFiles).toHaveBeenNthCalledWith(
-            1,
-            {
-                candidateFileIds: ["file-orphan"],
-                ownerUserIds: ["user-2"],
-            },
-        );
         expect(mockedNullifyReferencedFileOwnership).toHaveBeenCalledWith(
             [
                 {
                     id: "file-referenced",
                     uploaded_by: "user-2",
                     modified_by: null,
+                    app_owner_user_id: "user-2",
                 },
             ],
             "user-2",
@@ -535,19 +510,6 @@ describe("DELETE /admin/users/:id", () => {
             "user-2",
         );
         expect(mockedDeleteDirectusUser).toHaveBeenCalledWith("user-2");
-        expect(mockedCleanupOwnedOrphanDirectusFiles).toHaveBeenNthCalledWith(
-            2,
-            {
-                candidateFileIds: ["file-orphan", "file-referenced"],
-                ownerUserIds: ["user-2"],
-            },
-        );
-
-        expect(
-            mockedCleanupOwnedOrphanDirectusFiles.mock.invocationCallOrder[0],
-        ).toBeLessThan(
-            mockedNullifyReferencedFileOwnership.mock.invocationCallOrder[0],
-        );
         expect(
             mockedNullifyReferencedFileOwnership.mock.invocationCallOrder[0],
         ).toBeLessThan(

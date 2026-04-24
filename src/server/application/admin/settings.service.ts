@@ -40,7 +40,6 @@ import {
     resolveSiteSettingsPayload,
 } from "@/server/site-settings/service";
 import { splitSiteSettingsForStorage } from "@/server/site-settings/storage-sections";
-import { cleanupOwnedOrphanDirectusFiles } from "@/server/api/v1/shared/file-cleanup";
 
 import { requireAdmin } from "@/server/api/v1/shared";
 
@@ -526,11 +525,7 @@ async function handleAdminSitePatch(
 
     const current = await getResolvedSiteSettings();
     const settings = resolveSiteSettingsPayload(patch, current.settings);
-    const prevFileIds = collectSettingsFileIds(current.settings);
     const nextFileIds = collectSettingsFileIds(settings);
-    const removedFileIds = [...prevFileIds].filter(
-        (fileId) => !nextFileIds.has(fileId),
-    );
     const { updatedAt } = await upsertSiteSettings(settings);
     for (const fileId of nextFileIds) {
         await updateDirectusFileMetadata(fileId, {
@@ -540,9 +535,6 @@ async function handleAdminSitePatch(
         });
     }
     await invalidateSiteSettingsCache();
-    await cleanupOwnedOrphanDirectusFiles({
-        candidateFileIds: removedFileIds,
-    });
     return ok({
         settings,
         updated_at: updatedAt,
