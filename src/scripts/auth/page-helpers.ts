@@ -27,8 +27,6 @@ export type ReapplyDraftPayload = {
     username: string;
     displayName: string;
     reason: string;
-    avatarFileId: string;
-    avatarUrl: string;
 };
 
 export type ReapplyDraftInput =
@@ -37,8 +35,6 @@ export type ReapplyDraftInput =
           username?: string | null;
           displayName?: string | null;
           reason?: string | null;
-          avatarFileId?: string | null;
-          avatarUrl?: string | null;
       }
     | null
     | undefined;
@@ -100,8 +96,6 @@ export function persistReapplyDraft(
             username: String(draft?.username || "").trim(),
             displayName: String(draft?.displayName || "").trim(),
             reason: String(draft?.reason || "").trim(),
-            avatarFileId: String(draft?.avatarFileId || "").trim(),
-            avatarUrl: String(draft?.avatarUrl || "").trim(),
         };
         if (hasDraftContent(payload)) {
             window.sessionStorage.setItem(storageKey, JSON.stringify(payload));
@@ -116,8 +110,7 @@ function hasDraftContent(payload: ReapplyDraftPayload): boolean {
         payload.email ||
         payload.username ||
         payload.displayName ||
-        payload.reason ||
-        payload.avatarFileId,
+        payload.reason,
     );
 }
 
@@ -140,8 +133,6 @@ export function consumeReapplyDraft(
             username: String(d["username"] || "").trim(),
             displayName: String(d["displayName"] || "").trim(),
             reason: String(d["reason"] || "").trim(),
-            avatarFileId: String(d["avatarFileId"] || "").trim(),
-            avatarUrl: String(d["avatarUrl"] || "").trim(),
         };
     } catch {
         return null;
@@ -212,19 +203,23 @@ export function setFieldHint(
 import { getCsrfToken } from "@/utils/csrf";
 export { getCsrfToken };
 
-export function buildAssetUrl(fileId: string): string {
-    const normalized = String(fileId || "").trim();
+export function buildRegistrationAvatarUrl(
+    requestId: string,
+    cacheBust?: string | number,
+): string {
+    const normalized = String(requestId || "").trim();
     if (!normalized) {
         return "";
     }
-    return `/api/v1/public/assets/${encodeURIComponent(normalized)}?width=160&height=160&fit=cover`;
-}
-
-export function toSafeFileLabel(value: string): string {
-    return String(value || "")
-        .trim()
-        .replace(/[\\/:*?"<>|]/g, "-")
-        .replace(/\s+/g, " ");
+    const search = new URLSearchParams({
+        width: "160",
+        height: "160",
+        fit: "cover",
+    });
+    if (cacheBust !== undefined && cacheBust !== null && cacheBust !== "") {
+        search.set("t", String(cacheBust));
+    }
+    return `/api/v1/public/registration-requests/${encodeURIComponent(normalized)}/avatar?${search.toString()}`;
 }
 
 // ── 状态页类型 ──
@@ -300,6 +295,38 @@ export async function sendCancelRequest(
     }
 }
 
+export async function sendReplaceAvatarRequest(
+    requestId: string,
+    blob: Blob,
+    i18n: Record<string, string>,
+): Promise<void> {
+    const formData = new FormData();
+    formData.append("avatar", blob, "registration-avatar.jpg");
+    const response = await fetch(
+        `${API_STATUS_BASE}/${encodeURIComponent(requestId)}/avatar`,
+        {
+            method: "PATCH",
+            credentials: "include",
+            headers: {
+                Accept: "application/json",
+                "x-csrf-token": getCsrfToken(),
+            },
+            body: formData,
+        },
+    );
+    const data = (await response.json().catch(() => null)) as
+        | (RegisterErrorPayload & { ok?: boolean })
+        | null;
+    if (!response.ok || !data?.ok) {
+        throw new Error(
+            resolveRegisterError(
+                data,
+                i18n as Parameters<typeof resolveRegisterError>[1],
+            ),
+        );
+    }
+}
+
 // ── 状态页：重新申请点击处理 ──
 
 export async function handleReapplyClick(
@@ -313,8 +340,6 @@ export async function handleReapplyClick(
             username: retryButton.getAttribute("data-reapply-username"),
             displayName: retryButton.getAttribute("data-reapply-display-name"),
             reason: retryButton.getAttribute("data-reapply-reason"),
-            avatarFileId: retryButton.getAttribute("data-reapply-avatar-file"),
-            avatarUrl: retryButton.getAttribute("data-reapply-avatar-url"),
         },
         REAPPLY_DRAFT_STORAGE_KEY,
     );

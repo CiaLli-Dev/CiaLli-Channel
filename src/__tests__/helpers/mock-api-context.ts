@@ -8,6 +8,7 @@ type MockAPIContextOptions = {
     method?: string;
     url?: string;
     body?: unknown;
+    formData?: FormData;
     params?: Record<string, string | undefined>;
     cookies?: Record<string, string>;
     headers?: Record<string, string>;
@@ -32,6 +33,7 @@ export function createMockAPIContext(
         method = "GET",
         url = "http://localhost:4321/api/v1/test",
         body,
+        formData,
         params = {},
         cookies = {},
         headers = {},
@@ -46,7 +48,10 @@ export function createMockAPIContext(
         },
     };
 
-    if (body !== undefined && method !== "GET") {
+    if (formData && method !== "GET") {
+        delete (requestInit.headers as Record<string, string>)["Content-Type"];
+        requestInit.body = formData;
+    } else if (body !== undefined && method !== "GET") {
         requestInit.body = JSON.stringify(body);
     }
 

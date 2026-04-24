@@ -3,7 +3,10 @@ import type { JsonObject } from "@/types/json";
 import {
     createDirectusUser,
     createOne,
+    deleteDirectusFile,
+    deleteOne,
     deleteDirectusUser,
+    readDirectusAssetResponse,
     readMany,
     updateOne,
 } from "@/server/directus/client";
@@ -26,7 +29,7 @@ export type RegistrationRequestSnapshot = Pick<
 
 type RegistrationPendingRecord = Pick<
     AppUserRegistrationRequest,
-    "id" | "request_status" | "pending_user_id"
+    "id" | "request_status" | "pending_user_id" | "avatar_file"
 >;
 
 export async function registrationEmailExists(email: string): Promise<boolean> {
@@ -138,10 +141,26 @@ export async function findPendingRegistrationById(
         const rows = await readMany("app_user_registration_requests", {
             filter: { id: { _eq: requestId } } as JsonObject,
             limit: 1,
-            fields: ["id", "request_status", "pending_user_id"],
+            fields: ["id", "request_status", "pending_user_id", "avatar_file"],
         });
         return (rows[0] as RegistrationPendingRecord | undefined) ?? null;
     });
+}
+
+export async function setRegistrationRequestAvatar(params: {
+    requestId: string;
+    avatarFileId: string | null;
+}): Promise<AppUserRegistrationRequest> {
+    return await withServiceRepositoryContext(
+        async () =>
+            await updateOne(
+                "app_user_registration_requests",
+                params.requestId,
+                {
+                    avatar_file: params.avatarFileId,
+                },
+            ),
+    );
 }
 
 export async function cancelPendingRegistration(params: {
@@ -155,6 +174,7 @@ export async function cancelPendingRegistration(params: {
                 params.requestId,
                 {
                     request_status: "cancelled",
+                    avatar_file: null,
                     reviewed_by: null,
                     reviewed_at: params.reviewedAt,
                     pending_user_id: null,
@@ -174,6 +194,40 @@ export async function deletePendingRegistrationUser(
             "[registration/repository] delete pending user failed:",
             error,
         );
+    });
+}
+
+export async function deleteRegistrationRequest(
+    requestId: string,
+): Promise<void> {
+    await withServiceRepositoryContext(async () => {
+        await deleteOne("app_user_registration_requests", requestId);
+    });
+}
+
+export async function deleteRegistrationAvatarFile(
+    fileId: string | null | undefined,
+): Promise<void> {
+    const normalized = String(fileId || "").trim();
+    if (!normalized) {
+        return;
+    }
+    await withServiceRepositoryContext(async () => {
+        await deleteDirectusFile(normalized);
+    });
+}
+
+export async function readRegistrationAvatarAssetResponse(params: {
+    fileId: string;
+    query?: Partial<
+        Record<"width" | "height" | "fit" | "quality" | "format", string>
+    >;
+}): Promise<Response> {
+    return await withServiceRepositoryContext(async () => {
+        return await readDirectusAssetResponse({
+            fileId: params.fileId,
+            query: params.query,
+        });
     });
 }
 

@@ -4,7 +4,6 @@ import {
     createManagedUpload,
     resolveUploadPurpose,
 } from "@/server/application/uploads/upload.service";
-import { getSessionUser } from "@/server/auth/session";
 import { fail, ok } from "@/server/api/response";
 
 import { requireAccess } from "./shared";
@@ -28,38 +27,28 @@ export async function handleUploads(context: APIContext): Promise<Response> {
     const titleRaw = formData.get("title");
     const folderRaw = formData.get("folder");
     const requestedTitle = typeof titleRaw === "string" ? titleRaw.trim() : "";
+    if (purpose === "registration-avatar") {
+        return fail("不支持的上传用途", 400);
+    }
 
-    const result =
-        purpose === "registration-avatar"
-            ? await createManagedUpload({
-                  authorization: {
-                      purpose,
-                      ownerUserId: (await getSessionUser(context))?.id || null,
-                  },
-                  file,
-                  targetFormat,
-                  requestedTitle,
-                  folder: typeof folderRaw === "string" ? folderRaw : undefined,
-              })
-            : await (async () => {
-                  const required = await requireAccess(context);
-                  if ("response" in required) {
-                      return required.response;
-                  }
-                  return await createManagedUpload({
-                      authorization: {
-                          purpose,
-                          ownerUserId: required.access.user.id,
-                          access: required.access,
-                          accessToken: required.accessToken,
-                      },
-                      file,
-                      targetFormat,
-                      requestedTitle,
-                      folder:
-                          typeof folderRaw === "string" ? folderRaw : undefined,
-                  });
-              })();
+    const result = await (async () => {
+        const required = await requireAccess(context);
+        if ("response" in required) {
+            return required.response;
+        }
+        return await createManagedUpload({
+            authorization: {
+                purpose,
+                ownerUserId: required.access.user.id,
+                access: required.access,
+                accessToken: required.accessToken,
+            },
+            file,
+            targetFormat,
+            requestedTitle,
+            folder: typeof folderRaw === "string" ? folderRaw : undefined,
+        });
+    })();
     if (result instanceof Response) {
         return result;
     }

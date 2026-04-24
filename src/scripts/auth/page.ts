@@ -7,16 +7,16 @@
 
 import { setupPageInit } from "@/utils/page-init";
 import {
-    type ProgressTaskHandle,
     type RegisterErrorPayload,
     type CialliWindow,
     type StatusPageDialogs,
     REAPPLY_DRAFT_STORAGE_KEY,
+    buildRegistrationAvatarUrl,
     resolveRegisterError,
     consumeReapplyDraft,
     setPageMessage,
     getCsrfToken,
-    buildAssetUrl,
+    sendReplaceAvatarRequest,
     startOverlayTask,
     updateOverlayTask,
     finishOverlayTask,
@@ -83,11 +83,9 @@ type SubmitHandlerOptions = {
     reasonEl: HTMLTextAreaElement;
     submitBtn: HTMLButtonElement;
     submitText: HTMLElement;
-    avatarPreviewEl: HTMLImageElement;
     validators: FieldValidators;
     passwordCheckPassedRef: { value: boolean };
     ctx: AvatarCropContext;
-    uploadCroppedAvatar: (blob: Blob) => Promise<string>;
 };
 
 function collectFormValues(opts: SubmitHandlerOptions): {
@@ -134,49 +132,27 @@ function validateFormBasic(
     return null;
 }
 
-async function uploadPendingAvatarIfNeeded(
-    opts: SubmitHandlerOptions,
-    overlayHandle: ProgressTaskHandle | null,
-): Promise<void> {
-    const { ctx, avatarPreviewEl, submitText, uploadCroppedAvatar } = opts;
-    if (!ctx.pendingAvatarBlob) {
-        return;
-    }
-    submitText.textContent = registerI18n["uploadAvatarButtonText"] ?? "";
-    updateOverlayTask(overlayHandle, {
-        text: registerI18n["uploadAvatarOverlayText"] ?? "",
-    });
-    ctx.avatarFileId = await uploadCroppedAvatar(ctx.pendingAvatarBlob);
-    ctx.pendingAvatarBlob = null;
-    if (ctx.pendingAvatarPreviewUrl) {
-        URL.revokeObjectURL(ctx.pendingAvatarPreviewUrl);
-        ctx.pendingAvatarPreviewUrl = "";
-    }
-    avatarPreviewEl.src = buildAssetUrl(ctx.avatarFileId);
-    submitText.textContent = registerI18n["submitting"] ?? "";
-}
-
 async function postRegistrationRequest(
     values: ReturnType<typeof collectFormValues>,
-    avatarFileId: string,
+    avatarBlob: Blob | null,
 ): Promise<RegisterErrorPayload & { ok?: boolean }> {
-    const payload = {
-        email: values.email,
-        username: values.username,
-        display_name: values.displayName,
-        password: values.password,
-        registration_reason: values.registrationReason,
-        avatar_file: avatarFileId || null,
-    };
+    const formData = new FormData();
+    formData.append("email", values.email);
+    formData.append("username", values.username);
+    formData.append("display_name", values.displayName);
+    formData.append("password", values.password);
+    formData.append("registration_reason", values.registrationReason);
+    if (avatarBlob) {
+        formData.append("avatar", avatarBlob, "registration-avatar.jpg");
+    }
     const response = await fetch(API_REGISTER, {
         method: "POST",
         credentials: "include",
         headers: {
-            "Content-Type": "application/json",
             Accept: "application/json",
             "x-csrf-token": getCsrfToken(),
         },
-        body: JSON.stringify(payload),
+        body: formData,
     });
     const data = (await response.json().catch(() => null)) as
         | (RegisterErrorPayload & { ok?: boolean })
@@ -221,11 +197,10 @@ async function handleFormSubmit(opts: SubmitHandlerOptions): Promise<void> {
         text: registerI18n["submitOverlayText"] ?? "",
     });
     try {
-        await uploadPendingAvatarIfNeeded(opts, overlayHandle);
         updateOverlayTask(overlayHandle, {
             text: registerI18n["submitRequestOverlayText"] ?? "",
         });
-        await postRegistrationRequest(values, opts.ctx.avatarFileId);
+        await postRegistrationRequest(values, opts.ctx.pendingAvatarBlob);
         updateOverlayTask(overlayHandle, {
             text: registerI18n["submitSuccessRedirecting"] ?? "",
         });
@@ -462,26 +437,13 @@ function setupAvatarPreview(
 function applyReapplyDraft(
     draft: ReturnType<typeof consumeReapplyDraft>,
     els: RegisterPageElements,
-    ctx: AvatarCropContext,
     validators: FieldValidators,
-    setAvatarPreviewSrc: (src: string) => void,
 ): void {
     if (!draft) return;
     if (draft.email) els.emailEl.value = draft.email;
     if (draft.username) els.usernameEl.value = draft.username;
     if (draft.displayName) els.displayNameEl.value = draft.displayName;
     if (draft.reason) els.reasonEl.value = draft.reason;
-    if (draft.avatarFileId) {
-        ctx.avatarFileId = draft.avatarFileId;
-        ctx.pendingAvatarBlob = null;
-        if (ctx.pendingAvatarPreviewUrl) {
-            URL.revokeObjectURL(ctx.pendingAvatarPreviewUrl);
-            ctx.pendingAvatarPreviewUrl = "";
-        }
-        setAvatarPreviewSrc(
-            draft.avatarUrl || buildAssetUrl(draft.avatarFileId),
-        );
-    }
     void validators.validateEmailField(false);
     void validators.validateUsernameField(false);
     setPageMessage(registerI18n["reapplyDraftLoaded"] ?? "", "success");
@@ -489,7 +451,6 @@ function applyReapplyDraft(
 
 function createInitialCropContext(): AvatarCropContext {
     return {
-        avatarFileId: "",
         pendingAvatarBlob: null,
         pendingAvatarPreviewUrl: "",
         avatarUploading: false,
@@ -549,14 +510,12 @@ async function initRegisterPage(): Promise<void> {
     const cropResult = buildCropSetupResult(
         els.cropEls,
         ctx,
-        els.emailEl,
         setAvatarPreviewSrc,
         registerI18n,
     );
 
     els.avatarUploadBtn.addEventListener("click", cropResult.openCropModal);
     els.avatarClearBtn.addEventListener("click", () => {
-        ctx.avatarFileId = "";
         ctx.pendingAvatarBlob = null;
         if (ctx.pendingAvatarPreviewUrl) {
             URL.revokeObjectURL(ctx.pendingAvatarPreviewUrl);
@@ -566,7 +525,7 @@ async function initRegisterPage(): Promise<void> {
     });
 
     const reapplyDraft = consumeReapplyDraft(REAPPLY_DRAFT_STORAGE_KEY);
-    applyReapplyDraft(reapplyDraft, els, ctx, validators, setAvatarPreviewSrc);
+    applyReapplyDraft(reapplyDraft, els, validators);
 
     els.form.addEventListener("submit", (event) => {
         event.preventDefault();
@@ -579,13 +538,89 @@ async function initRegisterPage(): Promise<void> {
             reasonEl: els.reasonEl,
             submitBtn: els.submitBtn,
             submitText: els.submitText,
-            avatarPreviewEl: els.avatarPreviewEl,
             validators,
             passwordCheckPassedRef,
             ctx,
-            uploadCroppedAvatar: cropResult.uploadCroppedAvatar,
         });
     });
+}
+
+function initStatusAvatarReplace(dialogs: StatusPageDialogs): void {
+    const statusAvatarButton = document.getElementById(
+        "register-status-avatar-upload-btn",
+    );
+    const currentAvatarEl = document.getElementById(
+        "register-current-avatar",
+    ) as HTMLImageElement | null;
+    const cropEls = queryCropElements();
+    if (!statusAvatarButton || !currentAvatarEl || !cropEls) {
+        return;
+    }
+    if (statusAvatarButton.hasAttribute(DATA_BOUND)) {
+        return;
+    }
+
+    const requestId = String(
+        statusAvatarButton.getAttribute("data-request-id") || "",
+    ).trim();
+    if (!requestId) {
+        return;
+    }
+
+    statusAvatarButton.setAttribute(DATA_BOUND, "1");
+    const ctx = createInitialCropContext();
+    const setAvatarPreviewSrc = (src: string): void => {
+        currentAvatarEl.dataset["fallbackApplied"] = "0";
+        currentAvatarEl.src = src || DEFAULT_AVATAR_SRC;
+    };
+
+    const cropResult = buildCropSetupResult(
+        cropEls,
+        ctx,
+        setAvatarPreviewSrc,
+        registerI18n,
+        async (blob) => {
+            const originalText =
+                statusAvatarButton.textContent ||
+                registerI18n["uploadAvatarButtonText"] ||
+                "";
+            statusAvatarButton.setAttribute("disabled", "true");
+            statusAvatarButton.textContent =
+                registerI18n["processing"] ?? originalText;
+            const overlayHandle = startOverlayTask({
+                title: registerI18n["uploadAvatarButtonText"] ?? "",
+                mode: "indeterminate",
+                text: registerI18n["uploadAvatarOverlayText"] ?? "",
+            });
+            try {
+                await sendReplaceAvatarRequest(requestId, blob, registerI18n);
+                updateOverlayTask(overlayHandle, {
+                    text: registerI18n["processedRedirecting"] ?? "",
+                });
+                return {
+                    previewSrc: buildRegistrationAvatarUrl(
+                        requestId,
+                        Date.now(),
+                    ),
+                    clearPendingBlob: true,
+                };
+            } catch (error) {
+                await dialogs.showNoticeDialog({
+                    message:
+                        error instanceof Error
+                            ? error.message
+                            : (registerI18n["avatarUploadFailed"] ?? ""),
+                });
+                throw error;
+            } finally {
+                statusAvatarButton.removeAttribute("disabled");
+                statusAvatarButton.textContent = originalText;
+                finishOverlayTask(overlayHandle);
+            }
+        },
+    );
+
+    statusAvatarButton.addEventListener("click", cropResult.openCropModal);
 }
 
 // ── 页面入口 ──
@@ -614,6 +649,7 @@ function initPage(): void {
 
     bindCurrentAvatarFallback();
     void initRegisterPage();
+    initStatusAvatarReplace(dialogs);
     initRegistrationStatusPage(registerI18n, dialogs);
 }
 

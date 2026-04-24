@@ -6,6 +6,8 @@ import { getRedisClient, getRedisConfig } from "@/server/redis/client";
 export type RateLimitCategory =
     | "auth"
     | "registration-check"
+    | "registration-submit"
+    | "registration-avatar"
     | "write"
     | "upload"
     | "comment"
@@ -30,6 +32,16 @@ const CATEGORY_CONFIG: Record<RateLimitCategory, CategoryConfig> = {
         limit: 20,
         windowSeconds: 60,
         prefix: "rl:registration-check",
+    },
+    "registration-submit": {
+        limit: 5,
+        windowSeconds: 60 * 60,
+        prefix: "rl:registration-submit",
+    },
+    "registration-avatar": {
+        limit: 10,
+        windowSeconds: 60 * 60,
+        prefix: "rl:registration-avatar",
     },
     write: { limit: 60, windowSeconds: 60, prefix: "rl:write" },
     upload: { limit: 60, windowSeconds: 60, prefix: "rl:upload" },

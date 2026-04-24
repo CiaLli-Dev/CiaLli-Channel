@@ -95,6 +95,60 @@ describe("security/rate-limit", () => {
         });
         expect(redis.incrementFixedWindow).toHaveBeenCalledTimes(1);
     });
+
+    it("registration-submit uses the hourly registration bucket", async () => {
+        const redis = {
+            incrementFixedWindow: vi.fn().mockResolvedValue({
+                current: 1,
+                ttlSeconds: 3600,
+            }),
+        };
+        getRedisConfigMock.mockReturnValue({
+            url: "redis://redis.test:6379/0",
+        });
+        getRedisClientMock.mockReturnValue(redis);
+
+        const { applyRateLimit } = await import("@/server/security/rate-limit");
+
+        await expect(
+            applyRateLimit("127.0.0.1", "registration-submit"),
+        ).resolves.toEqual({
+            ok: true,
+            remaining: 4,
+            resetAt: expect.any(Number),
+        });
+        expect(redis.incrementFixedWindow).toHaveBeenCalledWith(
+            "cialli:dev:local:rl:registration-submit:ip:127.0.0.1",
+            3600,
+        );
+    });
+
+    it("registration-avatar uses the hourly avatar replace bucket", async () => {
+        const redis = {
+            incrementFixedWindow: vi.fn().mockResolvedValue({
+                current: 1,
+                ttlSeconds: 3600,
+            }),
+        };
+        getRedisConfigMock.mockReturnValue({
+            url: "redis://redis.test:6379/0",
+        });
+        getRedisClientMock.mockReturnValue(redis);
+
+        const { applyRateLimit } = await import("@/server/security/rate-limit");
+
+        await expect(
+            applyRateLimit("127.0.0.1", "registration-avatar"),
+        ).resolves.toEqual({
+            ok: true,
+            remaining: 9,
+            resetAt: expect.any(Number),
+        });
+        expect(redis.incrementFixedWindow).toHaveBeenCalledWith(
+            "cialli:dev:local:rl:registration-avatar:ip:127.0.0.1",
+            3600,
+        );
+    });
 });
 
 afterEach(() => {

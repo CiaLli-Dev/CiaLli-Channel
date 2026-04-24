@@ -4,19 +4,11 @@
  * 包含头像裁剪弹窗的所有状态管理、渲染与事件绑定逻辑。
  */
 
-import {
-    type RegisterErrorPayload,
-    resolveRegisterError,
-    getCsrfToken,
-    toSafeFileLabel,
-} from "@/scripts/auth/page-helpers";
-
 // ── 常量 ──
 
 const AVATAR_OUTPUT_SIZE = 512;
 const AVATAR_ZOOM_MIN = 100;
 const AVATAR_ZOOM_MAX = 300;
-const API_UPLOAD = "/api/v1/uploads";
 
 // ── 类型 ──
 
@@ -34,7 +26,6 @@ export type AvatarCropElements = {
 };
 
 export type AvatarCropContext = {
-    avatarFileId: string;
     pendingAvatarBlob: Blob | null;
     pendingAvatarPreviewUrl: string;
     avatarUploading: boolean;
@@ -56,8 +47,16 @@ export type AvatarPreviewSetter = (src: string) => void;
 
 export type CropSetupResult = {
     openCropModal: () => void;
-    uploadCroppedAvatar: (blob: Blob) => Promise<string>;
 };
+
+export type AvatarCropResult = {
+    previewSrc?: string;
+    clearPendingBlob?: boolean;
+};
+
+export type AvatarCropHandler = (
+    blob: Blob,
+) => Promise<AvatarCropResult | void> | AvatarCropResult | void;
 
 // ── 工具函数 ──
 
@@ -304,38 +303,6 @@ async function buildCropBlob(
     });
 }
 
-// ── 上传 ──
-
-async function uploadCroppedAvatarFn(
-    blob: Blob,
-    emailEl: HTMLInputElement,
-    i18n: Record<string, string>,
-): Promise<string> {
-    const avatarTitleBase = `Avatar-${toSafeFileLabel(String(emailEl.value || "").trim() || "unknown")}`;
-    const formData = new FormData();
-    formData.append("file", blob, `${avatarTitleBase}.jpg`);
-    formData.append("title", avatarTitleBase);
-    formData.append("purpose", "registration-avatar");
-    const response = await fetch(API_UPLOAD, {
-        method: "POST",
-        credentials: "include",
-        headers: { "x-csrf-token": getCsrfToken() },
-        body: formData,
-    });
-    const data = (await response.json().catch(() => null)) as
-        | (RegisterErrorPayload & { file?: { id?: string }; ok?: boolean })
-        | null;
-    if (!response.ok || !data?.ok || !data?.file?.id) {
-        throw new Error(
-            resolveRegisterError(
-                data,
-                i18n as Parameters<typeof resolveRegisterError>[1],
-            ),
-        );
-    }
-    return String(data.file.id);
-}
-
 // ── 应用裁剪 ──
 
 async function applyCrop(
@@ -343,6 +310,7 @@ async function applyCrop(
     ctx: AvatarCropContext,
     setAvatarPreviewSrc: AvatarPreviewSetter,
     i18n: Record<string, string>,
+    onAvatarCropped?: AvatarCropHandler,
 ): Promise<void> {
     if (!ctx.cropLoaded || ctx.avatarUploading) {
         return;
@@ -355,14 +323,23 @@ async function applyCrop(
             setCropMessage(cropEls.cropMsg, i18n["cropFailedRetry"] ?? "");
             return;
         }
-        ctx.pendingAvatarBlob = blob;
-        ctx.avatarFileId = "";
+        let nextPreviewSrc = "";
+        let clearPendingBlob = false;
+        if (onAvatarCropped) {
+            const result = await onAvatarCropped(blob);
+            nextPreviewSrc = String(result?.previewSrc || "").trim();
+            clearPendingBlob = result?.clearPendingBlob === true;
+        }
         if (ctx.pendingAvatarPreviewUrl) {
             URL.revokeObjectURL(ctx.pendingAvatarPreviewUrl);
             ctx.pendingAvatarPreviewUrl = "";
         }
-        ctx.pendingAvatarPreviewUrl = URL.createObjectURL(blob);
-        setAvatarPreviewSrc(ctx.pendingAvatarPreviewUrl);
+        if (!nextPreviewSrc) {
+            ctx.pendingAvatarPreviewUrl = URL.createObjectURL(blob);
+            nextPreviewSrc = ctx.pendingAvatarPreviewUrl;
+        }
+        ctx.pendingAvatarBlob = clearPendingBlob ? null : blob;
+        setAvatarPreviewSrc(nextPreviewSrc);
         closeCropModalFn(cropEls, ctx, i18n);
     } catch (error) {
         setCropMessage(
@@ -425,16 +402,12 @@ function bindPointerEvents(
 export function buildCropSetupResult(
     cropEls: AvatarCropElements,
     ctx: AvatarCropContext,
-    emailEl: HTMLInputElement,
     setAvatarPreviewSrc: AvatarPreviewSetter,
     i18n: Record<string, string>,
+    onAvatarCropped?: AvatarCropHandler,
 ): CropSetupResult {
     const openCropModal = (): void => {
         openCropModalFn(cropEls, ctx, i18n);
-    };
-
-    const uploadCroppedAvatar = (blob: Blob): Promise<string> => {
-        return uploadCroppedAvatarFn(blob, emailEl, i18n);
     };
 
     cropEls.cropSelectBtn.addEventListener("click", () =>
@@ -461,7 +434,14 @@ export function buildCropSetupResult(
 
     cropEls.cropApplyBtn.addEventListener(
         "click",
-        () => void applyCrop(cropEls, ctx, setAvatarPreviewSrc, i18n),
+        () =>
+            void applyCrop(
+                cropEls,
+                ctx,
+                setAvatarPreviewSrc,
+                i18n,
+                onAvatarCropped,
+            ),
     );
 
     cropEls.cropCancelBtn.addEventListener("click", () => {
@@ -484,5 +464,5 @@ export function buildCropSetupResult(
 
     bindPointerEvents(cropEls, ctx);
 
-    return { openCropModal, uploadCroppedAvatar };
+    return { openCropModal };
 }

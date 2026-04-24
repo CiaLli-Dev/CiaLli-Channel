@@ -77,14 +77,31 @@ cialli-install install \
   --site-url https://example.com
 ```
 
+若通过仓库脚本调用本地安装器，可直接写：
+
+```bash
+pnpm install:host --reset --lang zh_CN --site-url https://example.com
+```
+
+当前安装器也兼容部分 shell / 包管理器习惯性的参数分隔写法：
+
+```bash
+pnpm install:host -- --reset --lang zh_CN --site-url https://example.com
+```
+
 如果当前目录已有 `.env`、Compose volumes 或历史容器记录，安装器默认拒绝覆盖；显式传入 `--reset` 才会清空当前 Compose 资源并重装。
 
 建议在启动前先执行：
 
 ```bash
-git lfs install
 git lfs pull
 ```
+
+说明：
+
+- 安装器本身会检查 Git LFS 是否可用，并在 seed 仍是 pointer 时直接报错
+- 某些已有 Git hooks 的仓库中，`git lfs install` 可能因为 `pre-push` hook 已存在而返回非零；这不影响继续执行 `git lfs pull`
+- 如确实需要补装 Git LFS hooks，请按 `git lfs update --manual` 的提示合并，或在确认会覆盖现有 hook 时显式使用 `git lfs update --force`
 
 已有 `.env` 的环境可继续手动运行校验；本地环境默认会放宽对占位值的检查。如需在 CI 或正式发版前强制按生产标准校验，可使用：
 
@@ -130,7 +147,7 @@ pnpm docker:up
 - PostgreSQL seed 保留 `admin@example.com` 这条管理员记录以承接业务外键；安装器会在 restore 后确保该管理员存在并重置为新的随机密码
 - AI 运行时密钥、基础设施账号名与内部调用密钥都由安装器写入 `.env`
 - `APP_SECRET_ENCRYPTION_KEY` 是运行时唯一生效的通用加密密钥变量，必须提供 base64 编码的 32-byte key
-- PostgreSQL seed dump 仍通过 Git LFS 分发，部署前依然应执行 `git lfs install && git lfs pull`
+- PostgreSQL seed dump 仍通过 Git LFS 分发，部署前应先执行 `git lfs pull`
 - 如果需要重新触发演示恢复，请先删除 `postgres_data` 与 `minio_data` 对应的 Docker volume，或使用 `cialli-install install --reset`
 
 ## 访问

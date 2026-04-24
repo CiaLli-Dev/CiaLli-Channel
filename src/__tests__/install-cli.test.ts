@@ -31,6 +31,23 @@ describe("install cli args", () => {
         expect(args.interactive).toBe(false);
     });
 
+    it("ignores pnpm's standalone argument separator", () => {
+        const args = parseInstallArgs([
+            "install",
+            "--",
+            "--lang",
+            "zh_CN",
+            "--site-url",
+            "https://example.com",
+            "--reset",
+        ]);
+
+        expect(args.lang).toBe("zh_CN");
+        expect(args.siteUrl).toBe("https://example.com");
+        expect(args.reset).toBe(true);
+        expect(args.interactive).toBe(false);
+    });
+
     it("stays interactive when language or site url is missing", () => {
         expect(
             parseInstallArgs(["install", "--site-url", "https://example.com"])

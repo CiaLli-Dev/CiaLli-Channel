@@ -46,11 +46,13 @@ const currentRegistrationStatus = currentRegistration
   : null;
 const currentRegistrationAvatarFile = currentRegistration?.avatar_file;
 const currentRegistrationAvatar = currentRegistrationAvatarFile
-  ? buildPublicAssetUrl(currentRegistrationAvatarFile, {
-      width: 160,
-      height: 160,
-      fit: "cover",
-    })
+  ? currentRegistration?.request_status === "approved"
+    ? buildPublicAssetUrl(currentRegistrationAvatarFile, {
+        width: 160,
+        height: 160,
+        fit: "cover",
+      })
+    : `/api/v1/public/registration-requests/${encodeURIComponent(currentRegistration.id)}/avatar?width=160&height=160&fit=cover`
   : "";
 const currentRegistrationRejectReason = currentRegistration?.reject_reason;
 const currentRegistrationCreatedAt = formatSiteDateTime(
@@ -205,6 +207,17 @@ const registerI18n = buildRegisterI18n();
                 ) : null}
               </div>
               <div class="flex items-center gap-3 pt-2">
+                {currentRegistration.request_status === "pending" ||
+                currentRegistration.request_status === "rejected" ? (
+                  <button
+                    id="register-status-avatar-upload-btn"
+                    type="button"
+                    data-request-id={currentRegistration.id}
+                    class="px-4 h-9 rounded-lg text-sm font-medium border border-(--line-divider) text-75 hover:bg-(--btn-plain-bg-hover) transition"
+                  >
+                    {i18n(I18nKey.authRegisterUploadAvatar)}
+                  </button>
+                ) : null}
                 <a
                   href="/auth/login"
                   class="px-4 h-9 rounded-lg text-sm font-medium bg-(--btn-regular-bg) text-(--btn-content) inline-flex items-center"
@@ -230,10 +243,6 @@ const registerI18n = buildRegisterI18n();
                     data-reapply-username={currentRegistration.username}
                     data-reapply-display-name={currentRegistration.display_name}
                     data-reapply-reason={currentRegistrationReason}
-                    data-reapply-avatar-file={
-                      currentRegistration.avatar_file || ""
-                    }
-                    data-reapply-avatar-url={currentRegistrationAvatar}
                     class="px-4 h-9 rounded-lg text-sm font-medium border border-(--line-divider) text-75 hover:bg-(--btn-plain-bg-hover) transition"
                   >
                     {i18n(I18nKey.authRegisterReapply)}

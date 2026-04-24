@@ -38,6 +38,9 @@ export function parseInstallArgs(argv) {
 
     for (let index = 0; index < rest.length; index += 1) {
         const token = rest[index];
+        if (token === "--") {
+            continue;
+        }
         if (token === "--reset") {
             args.reset = true;
             continue;

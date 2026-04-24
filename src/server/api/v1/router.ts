@@ -28,11 +28,24 @@ import { handleUploads } from "./uploads";
 /** 根据路由前缀和方法映射限流分类 */
 function resolveRateLimitCategory(
     segments: string[],
-    _method: string,
+    method: string,
 ): RateLimitCategory {
     const first = segments[0] ?? "";
 
     if (first === "uploads") return "upload";
+
+    if (first === "public" && segments[1] === "registration-requests") {
+        if (method === "POST" && segments.length === 2) {
+            return "registration-submit";
+        }
+        if (
+            method === "PATCH" &&
+            segments.length === 4 &&
+            segments[3] === "avatar"
+        ) {
+            return "registration-avatar";
+        }
+    }
 
     if (first === "articles" || first === "diaries") {
         const last = segments[segments.length - 1] ?? "";

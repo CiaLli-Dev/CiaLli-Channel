@@ -4,8 +4,10 @@ import {
     cancelPublicRegistration,
     checkPublicRegistrationAvailability,
     createPublicRegistration,
+    loadAuthorizedRegistrationAvatar,
+    replacePublicRegistrationAvatar,
 } from "@/server/application/registration/public-registration.service";
-import { badRequest, notFound } from "@/server/api/errors";
+import { AppError, badRequest, notFound } from "@/server/api/errors";
 import { fail, ok } from "@/server/api/response";
 import { parseJsonBody } from "@/server/api/utils";
 import {
@@ -20,7 +22,7 @@ import {
     rateLimitResponse,
 } from "@/server/security/rate-limit";
 
-import { parseRouteId } from "../shared";
+import { parseRouteId, toDirectusAssetQuery } from "../shared";
 
 function assertRegisterEnabled(context: APIContext): void {
     const enabled = Boolean(
@@ -35,14 +37,15 @@ async function handleRegistrationCreate(
     context: APIContext,
 ): Promise<Response> {
     assertRegisterEnabled(context);
-    const body = await parseJsonBody(context.request);
+    const formData = await context.request.formData();
+    const avatarRaw = formData.get("avatar");
     const created = await createPublicRegistration({
-        email: body.email,
-        username: body.username,
-        displayName: body.display_name,
-        password: body.password,
-        registrationReason: body.registration_reason,
-        avatarFile: parseRouteId(String(body.avatar_file || "").trim()),
+        email: formData.get("email"),
+        username: formData.get("username"),
+        displayName: formData.get("display_name"),
+        password: formData.get("password"),
+        registrationReason: formData.get("registration_reason"),
+        avatar: avatarRaw instanceof File ? avatarRaw : null,
     });
 
     if (created?.id) {
@@ -80,6 +83,100 @@ async function handleRegistrationCancel(
     return ok({ item: updated });
 }
 
+function buildAvatarResponseHeaders(upstreamResponse: Response): Headers {
+    const headers = new Headers();
+    const contentType = upstreamResponse.headers.get("content-type");
+    const contentLength = upstreamResponse.headers.get("content-length");
+    const etag = upstreamResponse.headers.get("etag");
+    const lastModified = upstreamResponse.headers.get("last-modified");
+
+    if (contentType) {
+        headers.set("content-type", contentType);
+    }
+    if (contentLength) {
+        headers.set("content-length", contentLength);
+    }
+    if (etag) {
+        headers.set("etag", etag);
+    }
+    if (lastModified) {
+        headers.set("last-modified", lastModified);
+    }
+    headers.set("cache-control", "private, no-store");
+    return headers;
+}
+
+async function handleRegistrationAvatarReplace(
+    context: APIContext,
+    segments: string[],
+): Promise<Response> {
+    assertRegisterEnabled(context);
+
+    const requestId = parseRouteId(segments[2]);
+    if (!requestId) {
+        return fail("缺少申请 ID", 400);
+    }
+
+    const cookieRequestId = normalizeRegistrationRequestId(
+        context.cookies.get(REGISTRATION_REQUEST_COOKIE_NAME)?.value,
+    );
+    const formData = await context.request.formData();
+    const avatar = formData.get("avatar");
+    if (!(avatar instanceof File)) {
+        return fail("缺少头像文件", 400);
+    }
+
+    const updated = await replacePublicRegistrationAvatar({
+        requestId,
+        cookieRequestId,
+        avatar,
+    });
+
+    return ok({ item: updated });
+}
+
+async function handleRegistrationAvatarPreview(
+    context: APIContext,
+    segments: string[],
+): Promise<Response> {
+    assertRegisterEnabled(context);
+
+    const requestId = parseRouteId(segments[2]);
+    if (!requestId) {
+        return fail("缺少申请 ID", 400);
+    }
+
+    const cookieRequestId = normalizeRegistrationRequestId(
+        context.cookies.get(REGISTRATION_REQUEST_COOKIE_NAME)?.value,
+    );
+
+    try {
+        const response = await loadAuthorizedRegistrationAvatar({
+            requestId,
+            cookieRequestId,
+            query: toDirectusAssetQuery(context.url.searchParams),
+        });
+        if (!response.ok) {
+            if (response.status === 403 || response.status === 404) {
+                return fail("资源不存在", 404);
+            }
+            return fail("资源获取失败", response.status);
+        }
+        return new Response(response.body, {
+            status: 200,
+            headers: buildAvatarResponseHeaders(response),
+        });
+    } catch (error) {
+        if (
+            error instanceof AppError &&
+            (error.status === 403 || error.status === 404)
+        ) {
+            return fail("资源不存在", 404);
+        }
+        throw error;
+    }
+}
+
 export async function handlePublicRegistrationRequests(
     context: APIContext,
     segments: string[],
@@ -96,6 +193,16 @@ export async function handlePublicRegistrationRequests(
             return fail("方法不允许", 405);
         }
         return handleRegistrationCancel(context, segments);
+    }
+
+    if (segments.length === 4 && segments[3] === "avatar") {
+        if (context.request.method === "GET") {
+            return handleRegistrationAvatarPreview(context, segments);
+        }
+        if (context.request.method !== "PATCH") {
+            return fail("方法不允许", 405);
+        }
+        return handleRegistrationAvatarReplace(context, segments);
     }
 
     return fail("未找到接口", 404);

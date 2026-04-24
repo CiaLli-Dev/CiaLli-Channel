@@ -23,6 +23,7 @@ import {
 } from "@/server/auth/username";
 import {
     countItems,
+    deleteDirectusFile,
     deleteDirectusUser,
     readMany,
     syncDirectusUserPolicies,
@@ -385,17 +386,27 @@ async function handleRegistrationRejectOrCancel(
             );
         });
     }
+    const avatarFileId = normalizeDirectusFileId(target.avatar_file);
     const updated = await updateOne(
         "app_user_registration_requests",
         target.id,
         {
             request_status: action === "reject" ? "rejected" : "cancelled",
+            avatar_file: null,
             reviewed_by: reviewedBy,
             reviewed_at: reviewedAt,
             pending_user_id: null,
             reject_reason: action === "reject" ? reason : null,
         },
     );
+    if (avatarFileId) {
+        await deleteDirectusFile(avatarFileId).catch((error) => {
+            console.warn(
+                "[admin/registration-requests] delete avatar file failed:",
+                error,
+            );
+        });
+    }
     return ok({ item: updated });
 }
 

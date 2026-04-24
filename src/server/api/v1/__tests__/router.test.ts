@@ -75,6 +75,7 @@ import {
     handleDiaryComments,
 } from "@/server/api/v1/comments";
 import { handleUploads } from "@/server/api/v1/uploads";
+import { applyRateLimit } from "@/server/security/rate-limit";
 import {
     handleAdminUsers,
     handleAdminRegistrationRequests,
@@ -90,6 +91,7 @@ const mockedHandleMe = vi.mocked(handleMe);
 const mockedHandleArticleComments = vi.mocked(handleArticleComments);
 const mockedHandleDiaryComments = vi.mocked(handleDiaryComments);
 const mockedHandleUploads = vi.mocked(handleUploads);
+const mockedApplyRateLimit = vi.mocked(applyRateLimit);
 const mockedHandleAdminUsers = vi.mocked(handleAdminUsers);
 const mockedHandleAdminRegistrationRequests = vi.mocked(
     handleAdminRegistrationRequests,
@@ -190,5 +192,26 @@ describe("handleV1 路由分发", () => {
         const ctx = makeCtx("admin/settings");
         await handleV1(ctx as unknown as APIContext);
         expect(mockedHandleAdminSettings).toHaveBeenCalled();
+    });
+
+    it("public registration create uses dedicated registration-submit rate limit", async () => {
+        const ctx = makeCtx("public/registration-requests", "POST");
+        await handleV1(ctx as unknown as APIContext);
+        expect(mockedApplyRateLimit).toHaveBeenCalledWith(
+            "127.0.0.1",
+            "registration-submit",
+        );
+    });
+
+    it("public registration avatar replace uses dedicated registration-avatar rate limit", async () => {
+        const ctx = makeCtx(
+            "public/registration-requests/request-1/avatar",
+            "PATCH",
+        );
+        await handleV1(ctx as unknown as APIContext);
+        expect(mockedApplyRateLimit).toHaveBeenCalledWith(
+            "127.0.0.1",
+            "registration-avatar",
+        );
     });
 });

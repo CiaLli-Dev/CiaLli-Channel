@@ -17,7 +17,7 @@ type UploadedFilePayload = {
 function resolveInitialFileVisibility(
     purpose: UploadPurpose,
 ): "private" | "public" {
-    if (purpose === "avatar") {
+    if (purpose === "avatar" || purpose === "registration-avatar") {
         return "private";
     }
     return "public";
@@ -46,7 +46,12 @@ export async function uploadManagedFile(params: {
                   uploadTask,
               );
 
-    if (uploaded.id && (params.title || params.ownerUserId)) {
+    if (
+        uploaded.id &&
+        (params.purpose === "registration-avatar" ||
+            params.title ||
+            params.ownerUserId)
+    ) {
         const metadataTask = async (): Promise<void> => {
             await updateDirectusFileMetadata(uploaded.id, {
                 title: params.title,
