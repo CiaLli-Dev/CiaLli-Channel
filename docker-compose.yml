@@ -19,7 +19,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["pnpm", "start:prod"]
+      target: web-runtime
+    command: ["node", "./dist/server/entry.mjs"]
     depends_on:
       directus:
         condition: service_healthy
@@ -31,7 +32,7 @@ services:
       PORT: 4321
       APP_PUBLIC_BASE_URL: ${APP_PUBLIC_BASE_URL:-https://localhost}
       DIRECTUS_URL: http://directus:8055
-      DIRECTUS_STATIC_TOKEN: ${DIRECTUS_STATIC_TOKEN}
+      DIRECTUS_WEB_STATIC_TOKEN: ${DIRECTUS_WEB_STATIC_TOKEN}
       PUBLIC_ASSET_BASE_URL: ${PUBLIC_ASSET_BASE_URL:-}
       BANGUMI_TOKEN_ENCRYPTION_KEY: ${BANGUMI_TOKEN_ENCRYPTION_KEY:-}
       REDIS_URL: redis://redis:6379/0
@@ -42,7 +43,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["pnpm", "ai-summary:worker"]
+      target: worker-runtime
+    command: ["node", "./dist/worker/entry.mjs"]
     depends_on:
       directus:
         condition: service_healthy
@@ -51,7 +53,7 @@ services:
     environment:
       NODE_ENV: production
       DIRECTUS_URL: http://directus:8055
-      DIRECTUS_STATIC_TOKEN: ${DIRECTUS_STATIC_TOKEN}
+      DIRECTUS_WORKER_STATIC_TOKEN: ${DIRECTUS_WORKER_STATIC_TOKEN}
       AI_SUMMARY_INTERNAL_SECRET: ${AI_SUMMARY_INTERNAL_SECRET:-change-me}
       REDIS_URL: redis://redis:6379/0
       BANGUMI_TOKEN_ENCRYPTION_KEY: ${BANGUMI_TOKEN_ENCRYPTION_KEY:-}

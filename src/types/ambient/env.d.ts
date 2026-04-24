@@ -15,7 +15,8 @@ declare namespace App {
 
 interface ImportMetaEnv {
     readonly DIRECTUS_URL?: string;
-    readonly DIRECTUS_STATIC_TOKEN?: string;
+    readonly DIRECTUS_WEB_STATIC_TOKEN?: string;
+    readonly DIRECTUS_WORKER_STATIC_TOKEN?: string;
     readonly PUBLIC_ASSET_BASE_URL?: string;
     readonly APP_PUBLIC_BASE_URL?: string;
     readonly BANGUMI_TOKEN_ENCRYPTION_KEY?: string;

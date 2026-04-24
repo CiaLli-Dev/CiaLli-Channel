@@ -41,7 +41,8 @@ beforeEach(() => {
     vi.clearAllMocks();
     requestMock.mockReset();
     process.env.DIRECTUS_URL = "http://directus.test";
-    process.env.DIRECTUS_STATIC_TOKEN = "directus-static-token";
+    process.env.DIRECTUS_WEB_STATIC_TOKEN = "directus-web-static-token";
+    process.env.DIRECTUS_WORKER_STATIC_TOKEN = "";
 });
 
 describe("updateManyItemsByFilter", () => {

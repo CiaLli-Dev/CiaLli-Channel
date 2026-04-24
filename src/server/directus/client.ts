@@ -100,10 +100,14 @@ const directusScopeStorage = new AsyncLocalStorage<DirectusRequestScope>();
 
 function getStaticToken(): string {
     const token =
-        process.env.DIRECTUS_STATIC_TOKEN ||
-        import.meta.env.DIRECTUS_STATIC_TOKEN;
+        process.env.DIRECTUS_WEB_STATIC_TOKEN ||
+        process.env.DIRECTUS_WORKER_STATIC_TOKEN ||
+        import.meta.env.DIRECTUS_WEB_STATIC_TOKEN ||
+        import.meta.env.DIRECTUS_WORKER_STATIC_TOKEN;
     if (!token || !token.trim()) {
-        throw internal("DIRECTUS_STATIC_TOKEN 未配置");
+        throw internal(
+            "DIRECTUS_WEB_STATIC_TOKEN / DIRECTUS_WORKER_STATIC_TOKEN 未配置",
+        );
     }
     return token.trim();
 }

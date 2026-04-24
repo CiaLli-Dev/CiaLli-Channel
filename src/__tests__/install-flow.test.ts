@@ -74,6 +74,8 @@ function createFakeDeps() {
             }
             return existingPaths.has(targetPath);
         },
+        // Test installer flow by matching the handful of Directus bootstrap endpoints it calls.
+        // eslint-disable-next-line complexity
         fetch: vi.fn(async (url: string, init?: RequestInit) => {
             if (url === "http://127.0.0.1:8055/server/health") {
                 return new Response(JSON.stringify({ ok: true }), {
@@ -90,22 +92,47 @@ function createFakeDeps() {
                     { status: 200 },
                 );
             }
-            if (url === "http://127.0.0.1:8055/users/me?fields=id") {
+            if (
+                url === "http://127.0.0.1:8055/policies" &&
+                init?.method === "POST"
+            ) {
                 return new Response(
                     JSON.stringify({
                         data: {
-                            id: "admin-user-id",
+                            id: `policy-${writes.length}`,
                         },
                     }),
                     { status: 200 },
                 );
             }
             if (
-                url === "http://127.0.0.1:8055/users/admin-user-id" &&
+                url === "http://127.0.0.1:8055/permissions" &&
+                init?.method === "POST"
+            ) {
+                return new Response(
+                    JSON.stringify({ data: { id: "permission-id" } }),
+                    {
+                        status: 200,
+                    },
+                );
+            }
+            if (
+                url === "http://127.0.0.1:8055/users" &&
+                init?.method === "POST"
+            ) {
+                return new Response(
+                    JSON.stringify({ data: { id: "service-user-id" } }),
+                    {
+                        status: 200,
+                    },
+                );
+            }
+            if (
+                url === "http://127.0.0.1:8055/users/service-user-id" &&
                 init?.method === "PATCH"
             ) {
                 return new Response(
-                    JSON.stringify({ data: { id: "admin-user-id" } }),
+                    JSON.stringify({ data: { id: "service-user-id" } }),
                     {
                         status: 200,
                     },
@@ -192,7 +219,10 @@ describe("installer flow", () => {
             ),
         ).toBe(true);
         expect(writes).toHaveLength(2);
-        expect(writes.at(-1)?.contents).toContain("DIRECTUS_STATIC_TOKEN=");
+        expect(writes.at(-1)?.contents).toContain("DIRECTUS_WEB_STATIC_TOKEN=");
+        expect(writes.at(-1)?.contents).toContain(
+            "DIRECTUS_WORKER_STATIC_TOKEN=",
+        );
         expect(writes.at(-1)?.contents).toContain("DIRECTUS_ADMIN_PASSWORD=");
         expect(writes.at(-1)?.contents).toContain("POSTGRES_USER=dbu_");
         expect(writes.at(-1)?.contents).toContain("MINIO_ROOT_USER=minio_");
@@ -337,7 +367,7 @@ describe("installer flow", () => {
         ).toBe(true);
     });
 
-    it("fails when static token persistence request fails", async () => {
+    it("fails when Directus service credential provisioning fails", async () => {
         const { deps } = createFakeDeps();
         deps.fetch = vi.fn(async (url, init) => {
             if (url === "http://127.0.0.1:8055/server/health") {
@@ -355,19 +385,9 @@ describe("installer flow", () => {
                     { status: 200 },
                 );
             }
-            if (url === "http://127.0.0.1:8055/users/me?fields=id") {
-                return new Response(
-                    JSON.stringify({
-                        data: {
-                            id: "admin-user-id",
-                        },
-                    }),
-                    { status: 200 },
-                );
-            }
             if (
-                url === "http://127.0.0.1:8055/users/admin-user-id" &&
-                init?.method === "PATCH"
+                url === "http://127.0.0.1:8055/policies" &&
+                init?.method === "POST"
             ) {
                 return new Response("boom", { status: 500 });
             }
@@ -386,6 +406,6 @@ describe("installer flow", () => {
                 },
                 deps,
             ),
-        ).rejects.toThrow("Failed to persist Directus static token");
+        ).rejects.toThrow("Failed to provision Directus service credentials");
     });
 });

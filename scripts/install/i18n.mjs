@@ -51,7 +51,7 @@ const MESSAGES = {
         createRole: "[install] Creating Directus administrator role.",
         createAdminUser: "[install] Creating Directus administrator user.",
         generateStaticToken:
-            "[install] Logging into Directus and generating server static token.",
+            "[install] Logging into Directus and provisioning web / worker service tokens.",
         updateSiteLanguage:
             "[install] Writing the selected site default language into Directus.",
         startApp: "[install] Starting web / worker / proxy.",
@@ -83,7 +83,7 @@ const MESSAGES = {
             "Failed to read administrator account information: HTTP {status}",
         directusAdminUserIdMissing: "Directus administrator user ID is empty.",
         directusStaticTokenPersistFailed:
-            "Failed to persist Directus static token: HTTP {status}",
+            "Failed to provision Directus service credentials: HTTP {status}",
         waitForHealthTimeout:
             "Timed out while waiting for service health check: {url}",
         siteLanguageReadFailed:
@@ -123,7 +123,8 @@ const MESSAGES = {
             "[install] 为 Directus 存储创建 MinIO service account。",
         createRole: "[install] 创建 Directus 管理员角色。",
         createAdminUser: "[install] 创建 Directus 管理员账户。",
-        generateStaticToken: "[install] 登录 Directus 并生成服务端静态 token。",
+        generateStaticToken:
+            "[install] 登录 Directus 并为 web / worker 创建服务端静态 token。",
         updateSiteLanguage:
             "[install] 将所选站点默认语言写入 Directus 站点设置。",
         startApp: "[install] 启动 web / worker / proxy。",
@@ -152,7 +153,7 @@ const MESSAGES = {
         directusReadAdminFailed: "读取管理员信息失败：HTTP {status}",
         directusAdminUserIdMissing: "Directus 管理员用户 ID 为空。",
         directusStaticTokenPersistFailed:
-            "写入 Directus 静态 token 失败：HTTP {status}",
+            "创建 Directus 服务凭据失败：HTTP {status}",
         waitForHealthTimeout: "等待服务健康检查超时：{url}",
         siteLanguageReadFailed:
             "写入所选站点语言前，读取当前站点设置失败：HTTP {status}",
@@ -191,7 +192,7 @@ const MESSAGES = {
         createRole: "[install] 建立 Directus 管理員角色。",
         createAdminUser: "[install] 建立 Directus 管理員帳號。",
         generateStaticToken:
-            "[install] 登入 Directus 並產生伺服器端靜態 token。",
+            "[install] 登入 Directus 並為 web / worker 建立伺服器端靜態 token。",
         updateSiteLanguage:
             "[install] 將所選站點預設語言寫入 Directus 站點設定。",
         startApp: "[install] 啟動 web / worker / proxy。",
@@ -220,7 +221,7 @@ const MESSAGES = {
         directusReadAdminFailed: "讀取管理員資訊失敗：HTTP {status}",
         directusAdminUserIdMissing: "Directus 管理員使用者 ID 為空。",
         directusStaticTokenPersistFailed:
-            "寫入 Directus 靜態 token 失敗：HTTP {status}",
+            "建立 Directus 服務憑證失敗：HTTP {status}",
         waitForHealthTimeout: "等待服務健康檢查逾時：{url}",
         siteLanguageReadFailed:
             "寫入所選站點語言前，讀取目前站點設定失敗：HTTP {status}",
@@ -262,7 +263,7 @@ const MESSAGES = {
         createRole: "[install] Directus 管理者ロールを作成します。",
         createAdminUser: "[install] Directus 管理者ユーザーを作成します。",
         generateStaticToken:
-            "[install] Directus にログインし、サーバー静的 token を生成します。",
+            "[install] Directus にログインし、web / worker 用のサービス token を作成します。",
         updateSiteLanguage:
             "[install] 選択したサイト既定言語を Directus に保存します。",
         startApp: "[install] web / worker / proxy を起動します。",
@@ -294,7 +295,7 @@ const MESSAGES = {
             "管理者情報の取得に失敗しました: HTTP {status}",
         directusAdminUserIdMissing: "Directus 管理者ユーザー ID が空です。",
         directusStaticTokenPersistFailed:
-            "Directus 静的 token の保存に失敗しました: HTTP {status}",
+            "Directus サービス資格情報の作成に失敗しました: HTTP {status}",
         waitForHealthTimeout:
             "サービスのヘルスチェック待機がタイムアウトしました: {url}",
         siteLanguageReadFailed:

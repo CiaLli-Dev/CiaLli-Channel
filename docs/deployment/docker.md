@@ -30,7 +30,8 @@ Directus 后台默认只绑定到 `127.0.0.1:8055`，不直接暴露公网。
 5. 当前运行时要求的环境变量为：
    `APP_PUBLIC_BASE_URL`
    `DIRECTUS_URL`
-   `DIRECTUS_STATIC_TOKEN`
+   `DIRECTUS_WEB_STATIC_TOKEN`
+   `DIRECTUS_WORKER_STATIC_TOKEN`
    `BANGUMI_TOKEN_ENCRYPTION_KEY`
    `AI_SUMMARY_INTERNAL_SECRET`
    `DIRECTUS_SECRET`
@@ -43,7 +44,7 @@ Directus 后台默认只绑定到 `127.0.0.1:8055`，不直接暴露公网。
    `STORAGE_S3_SECRET`
 6. 安装器还会把 `DIRECTUS_ADMIN_EMAIL` 与 `DIRECTUS_ADMIN_PASSWORD` 一并写入 `.env`，用于首次安装后的后台登录与运维排障；运行时服务本身不依赖这两项。
 7. `PUBLIC_ASSET_BASE_URL` 是唯一保留的可选环境变量；留空时继续统一走站内 BFF 代理资源地址。
-8. `pnpm check:env` 只负责校验已存在的 `.env`；首次安装所需密钥、账号名与静态 token 都由安装器生成并写入。
+8. `pnpm check:env` 只负责校验已存在的 `.env`；首次安装所需密钥、账号名与 web / worker 静态 token 都由安装器生成并写入。
 9. `APP_PUBLIC_BASE_URL` 是站点唯一公网入口真源，同时驱动 Astro `site`、sitemap、RSS、canonical 与 Caddy 反向代理入口；它必须是站点根 URL，不支持子路径部署。
 
 ## 全局安装器
@@ -62,7 +63,7 @@ pnpm install -g . && cialli-install install --site-url https://example.com
 - 构建 `web` / `worker`
 - 启动基础设施与 Directus
 - 使用生成的管理员账户完成 Directus 初始化
-- 自动生成并回填 `DIRECTUS_STATIC_TOKEN`
+- 自动生成并回填 `DIRECTUS_WEB_STATIC_TOKEN` 与 `DIRECTUS_WORKER_STATIC_TOKEN`
 - 将所选语言写入站点默认语言设置
 - 启动 `web`、`worker`、`proxy`
 - 在 CLI 中按分组展示所有生成值，并提示可随时在 `.env` 查看

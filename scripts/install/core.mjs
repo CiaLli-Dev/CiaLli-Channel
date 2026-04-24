@@ -23,6 +23,60 @@ import { resolvePublicBaseUrl } from "../../src/config/public-base-url.mjs";
 
 const execFileAsync = promisify(execFile);
 const DIRECTUS_HEALTH_PATH = "/server/health";
+const DIRECTUS_WEB_SERVICE_POLICY_NAME = "CiaLli Web Service";
+const DIRECTUS_WORKER_SERVICE_POLICY_NAME = "CiaLli Worker Service";
+
+const WEB_SERVICE_PERMISSION_SPECS = [
+    ...[
+        "app_user_profiles",
+        "app_ai_summary_jobs",
+        "app_articles",
+        "app_article_comments",
+        "app_article_comment_likes",
+        "app_article_likes",
+        "app_diaries",
+        "app_diary_images",
+        "app_diary_comments",
+        "app_diary_comment_likes",
+        "app_diary_likes",
+        "app_albums",
+        "app_album_photos",
+        "app_friends",
+        "app_user_registration_requests",
+        "app_site_settings",
+        "app_site_announcements",
+    ].flatMap((collection) => [
+        { collection, actions: ["read", "create", "update", "delete"] },
+    ]),
+    {
+        collection: "directus_users",
+        actions: ["read", "create", "update", "delete"],
+    },
+    {
+        collection: "directus_files",
+        actions: ["read", "create", "update", "delete"],
+    },
+    {
+        collection: "directus_comments",
+        actions: ["read", "update", "delete"],
+    },
+    {
+        collection: "directus_notifications",
+        actions: ["read", "update", "delete"],
+    },
+    {
+        collection: "directus_versions",
+        actions: ["read", "update", "delete"],
+    },
+    { collection: "directus_roles", actions: ["read"] },
+    { collection: "directus_policies", actions: ["read"] },
+];
+
+const WORKER_SERVICE_PERMISSION_SPECS = [
+    { collection: "app_ai_summary_jobs", actions: ["read", "update"] },
+    { collection: "app_articles", actions: ["read", "update"] },
+    { collection: "app_site_settings", actions: ["read"] },
+];
 
 /**
  * @typedef {ReturnType<typeof createInstallerI18n>} InstallTranslator
@@ -174,7 +228,8 @@ export async function runInstallFlow(args, deps) {
         appPublicBaseUrl: installInput.siteUrl,
         directusUrl,
         publicAssetBaseUrl: "",
-        directusStaticToken: "",
+        directusWebStaticToken: "",
+        directusWorkerStaticToken: "",
         directusAdminEmail: generatedSecrets.DIRECTUS_ADMIN_EMAIL,
         directusAdminPassword: generatedSecrets.DIRECTUS_ADMIN_PASSWORD,
         directusSecret: generatedSecrets.DIRECTUS_SECRET,
@@ -285,7 +340,6 @@ export async function runInstallFlow(args, deps) {
         deps,
     );
 
-    deps.log(t("generateStaticToken"));
     const loginResponse = await deps.fetch(`${directusUrl}/auth/login`, {
         method: "POST",
         headers: {
@@ -311,46 +365,51 @@ export async function runInstallFlow(args, deps) {
         throw new Error(t("directusAccessTokenMissing"));
     }
 
-    const meResponse = await deps.fetch(`${directusUrl}/users/me?fields=id`, {
-        headers: {
-            authorization: `Bearer ${accessToken}`,
-        },
+    deps.log(t("generateStaticToken"));
+    const webPolicyId = await createDirectusPolicy({
+        accessToken,
+        deps,
+        directusUrl,
+        name: DIRECTUS_WEB_SERVICE_POLICY_NAME,
+        permissionSpecs: WEB_SERVICE_PERMISSION_SPECS,
+        t,
     });
-    if (!meResponse.ok) {
-        throw new Error(
-            t("directusReadAdminFailed", {
-                status: meResponse.status,
-            }),
-        );
-    }
-    const mePayload = await meResponse.json();
-    const adminUserId = String(mePayload?.data?.id || "").trim();
-    if (!adminUserId) {
-        throw new Error(t("directusAdminUserIdMissing"));
-    }
+    const workerPolicyId = await createDirectusPolicy({
+        accessToken,
+        deps,
+        directusUrl,
+        name: DIRECTUS_WORKER_SERVICE_POLICY_NAME,
+        permissionSpecs: WORKER_SERVICE_PERMISSION_SPECS,
+        t,
+    });
 
-    const tokenResponse = await deps.fetch(
-        `${directusUrl}/users/${adminUserId}`,
-        {
-            method: "PATCH",
-            headers: {
-                authorization: `Bearer ${accessToken}`,
-                "content-type": "application/json",
-            },
-            body: JSON.stringify({
-                token: generatedSecrets.DIRECTUS_STATIC_TOKEN,
-            }),
-        },
-    );
-    if (!tokenResponse.ok) {
-        throw new Error(
-            t("directusStaticTokenPersistFailed", {
-                status: tokenResponse.status,
-            }),
-        );
-    }
+    await createDirectusServiceUser({
+        accessToken,
+        deps,
+        directusUrl,
+        email: generatedSecrets.DIRECTUS_WEB_SERVICE_EMAIL,
+        password: generatedSecrets.DIRECTUS_WEB_SERVICE_PASSWORD,
+        policyId: webPolicyId,
+        staticToken: generatedSecrets.DIRECTUS_WEB_STATIC_TOKEN,
+        t,
+        userName: "CiaLli Web Service",
+    });
+    await createDirectusServiceUser({
+        accessToken,
+        deps,
+        directusUrl,
+        email: generatedSecrets.DIRECTUS_WORKER_SERVICE_EMAIL,
+        password: generatedSecrets.DIRECTUS_WORKER_SERVICE_PASSWORD,
+        policyId: workerPolicyId,
+        staticToken: generatedSecrets.DIRECTUS_WORKER_STATIC_TOKEN,
+        t,
+        userName: "CiaLli Worker Service",
+    });
 
-    envValues.DIRECTUS_STATIC_TOKEN = generatedSecrets.DIRECTUS_STATIC_TOKEN;
+    envValues.DIRECTUS_WEB_STATIC_TOKEN =
+        generatedSecrets.DIRECTUS_WEB_STATIC_TOKEN;
+    envValues.DIRECTUS_WORKER_STATIC_TOKEN =
+        generatedSecrets.DIRECTUS_WORKER_STATIC_TOKEN;
     await deps.writeFile(envFilePath, renderEnvFile(envValues));
 
     deps.log(t("updateSiteLanguage"));
@@ -774,7 +833,12 @@ function buildInstallSummary(params) {
         },
         {
             title: params.t("sectionDirectus"),
-            keys: ["DIRECTUS_URL", "DIRECTUS_STATIC_TOKEN", "DIRECTUS_SECRET"],
+            keys: [
+                "DIRECTUS_URL",
+                "DIRECTUS_WEB_STATIC_TOKEN",
+                "DIRECTUS_WORKER_STATIC_TOKEN",
+                "DIRECTUS_SECRET",
+            ],
         },
         {
             title: params.t("sectionDataServices"),
@@ -829,6 +893,150 @@ function buildInstallSummary(params) {
     );
     lines.push(params.t("envViewHint"));
     return lines;
+}
+
+/**
+ * @param {{
+ *   accessToken: string;
+ *   deps: InstallerDeps;
+ *   directusUrl: string;
+ *   name: string;
+ *   permissionSpecs: Array<{ collection: string; actions: string[] }>;
+ *   t: InstallTranslator;
+ * }} params
+ * @returns {Promise<string>}
+ */
+async function createDirectusPolicy(params) {
+    const policyResponse = await params.deps.fetch(
+        `${params.directusUrl}/policies`,
+        {
+            method: "POST",
+            headers: {
+                authorization: `Bearer ${params.accessToken}`,
+                "content-type": "application/json",
+            },
+            body: JSON.stringify({
+                name: params.name,
+                description: `${params.name} service access policy`,
+                admin_access: false,
+                app_access: false,
+            }),
+        },
+    );
+    if (!policyResponse.ok) {
+        throw new Error(
+            params.t("directusStaticTokenPersistFailed", {
+                status: policyResponse.status,
+            }),
+        );
+    }
+    const policyPayload = await policyResponse.json();
+    const policyId = String(policyPayload?.data?.id || "").trim();
+    if (!policyId) {
+        throw new Error(params.t("directusAdminUserIdMissing"));
+    }
+
+    for (const spec of params.permissionSpecs) {
+        for (const action of spec.actions) {
+            const permissionResponse = await params.deps.fetch(
+                `${params.directusUrl}/permissions`,
+                {
+                    method: "POST",
+                    headers: {
+                        authorization: `Bearer ${params.accessToken}`,
+                        "content-type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        policy: policyId,
+                        collection: spec.collection,
+                        action,
+                        permissions: {},
+                        validation: {},
+                        presets: {},
+                        fields: ["*"],
+                    }),
+                },
+            );
+            if (!permissionResponse.ok) {
+                throw new Error(
+                    params.t("directusStaticTokenPersistFailed", {
+                        status: permissionResponse.status,
+                    }),
+                );
+            }
+        }
+    }
+
+    return policyId;
+}
+
+/**
+ * @param {{
+ *   accessToken: string;
+ *   deps: InstallerDeps;
+ *   directusUrl: string;
+ *   email: string;
+ *   password: string;
+ *   policyId: string;
+ *   staticToken: string;
+ *   t: InstallTranslator;
+ *   userName: string;
+ * }} params
+ * @returns {Promise<void>}
+ */
+async function createDirectusServiceUser(params) {
+    const createResponse = await params.deps.fetch(
+        `${params.directusUrl}/users`,
+        {
+            method: "POST",
+            headers: {
+                authorization: `Bearer ${params.accessToken}`,
+                "content-type": "application/json",
+            },
+            body: JSON.stringify({
+                email: params.email,
+                password: params.password,
+                status: "active",
+                first_name: params.userName,
+            }),
+        },
+    );
+    if (!createResponse.ok) {
+        throw new Error(
+            params.t("directusStaticTokenPersistFailed", {
+                status: createResponse.status,
+            }),
+        );
+    }
+    const createPayload = await createResponse.json();
+    const userId = String(createPayload?.data?.id || "").trim();
+    if (!userId) {
+        throw new Error(params.t("directusAdminUserIdMissing"));
+    }
+
+    const updateResponse = await params.deps.fetch(
+        `${params.directusUrl}/users/${encodeURIComponent(userId)}`,
+        {
+            method: "PATCH",
+            headers: {
+                authorization: `Bearer ${params.accessToken}`,
+                "content-type": "application/json",
+            },
+            body: JSON.stringify({
+                token: params.staticToken,
+                policies: {
+                    create: [{ policy: params.policyId }],
+                },
+            }),
+        },
+    );
+    if (!updateResponse.ok) {
+        throw new Error(
+            params.t("directusStaticTokenPersistFailed", {
+                status: updateResponse.status,
+            }),
+        );
+    }
 }
 
 /**

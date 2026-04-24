@@ -8,7 +8,8 @@ export const INSTALL_ENV_KEYS = [
     "APP_PUBLIC_BASE_URL",
     "PUBLIC_ASSET_BASE_URL",
     "DIRECTUS_URL",
-    "DIRECTUS_STATIC_TOKEN",
+    "DIRECTUS_WEB_STATIC_TOKEN",
+    "DIRECTUS_WORKER_STATIC_TOKEN",
     "DIRECTUS_SECRET",
     "POSTGRES_USER",
     "POSTGRES_DB",
@@ -39,7 +40,12 @@ export const INSTALL_ENV_KEYS = [
  *   STORAGE_S3_SECRET: string;
  *   AI_SUMMARY_INTERNAL_SECRET: string;
  *   BANGUMI_TOKEN_ENCRYPTION_KEY: string;
- *   DIRECTUS_STATIC_TOKEN: string;
+ *   DIRECTUS_WEB_STATIC_TOKEN: string;
+ *   DIRECTUS_WORKER_STATIC_TOKEN: string;
+ *   DIRECTUS_WEB_SERVICE_EMAIL: string;
+ *   DIRECTUS_WEB_SERVICE_PASSWORD: string;
+ *   DIRECTUS_WORKER_SERVICE_EMAIL: string;
+ *   DIRECTUS_WORKER_SERVICE_PASSWORD: string;
  * }}
  */
 export function generateInstallerSecrets(random = randomBytes) {
@@ -57,7 +63,12 @@ export function generateInstallerSecrets(random = randomBytes) {
         STORAGE_S3_SECRET: random(24).toString("base64url"),
         AI_SUMMARY_INTERNAL_SECRET: random(24).toString("hex"),
         BANGUMI_TOKEN_ENCRYPTION_KEY: random(32).toString("base64"),
-        DIRECTUS_STATIC_TOKEN: random(24).toString("hex"),
+        DIRECTUS_WEB_STATIC_TOKEN: random(24).toString("hex"),
+        DIRECTUS_WORKER_STATIC_TOKEN: random(24).toString("hex"),
+        DIRECTUS_WEB_SERVICE_EMAIL: `svc-web-${suffix}@cialli.internal`,
+        DIRECTUS_WEB_SERVICE_PASSWORD: random(24).toString("base64url"),
+        DIRECTUS_WORKER_SERVICE_EMAIL: `svc-worker-${suffix}@cialli.internal`,
+        DIRECTUS_WORKER_SERVICE_PASSWORD: random(24).toString("base64url"),
     };
 }
 
@@ -67,7 +78,8 @@ export function generateInstallerSecrets(random = randomBytes) {
  *   directusUrl: string;
  *   publicAssetBaseUrl?: string;
  *   redisUrl?: string;
- *   directusStaticToken?: string;
+ *   directusWebStaticToken?: string;
+ *   directusWorkerStaticToken?: string;
  *   directusAdminEmail: string;
  *   directusAdminPassword: string;
  *   directusSecret: string;
@@ -88,7 +100,8 @@ export function buildEnvValues(params) {
         APP_PUBLIC_BASE_URL: params.appPublicBaseUrl,
         PUBLIC_ASSET_BASE_URL: params.publicAssetBaseUrl || "",
         DIRECTUS_URL: params.directusUrl,
-        DIRECTUS_STATIC_TOKEN: params.directusStaticToken || "",
+        DIRECTUS_WEB_STATIC_TOKEN: params.directusWebStaticToken || "",
+        DIRECTUS_WORKER_STATIC_TOKEN: params.directusWorkerStaticToken || "",
         DIRECTUS_ADMIN_EMAIL: params.directusAdminEmail,
         DIRECTUS_ADMIN_PASSWORD: params.directusAdminPassword,
         DIRECTUS_SECRET: params.directusSecret,
@@ -125,10 +138,11 @@ export function renderEnvFile(values) {
         "",
         "# ============================================",
         "# Directus",
-        "# DIRECTUS_STATIC_TOKEN 由安装器在管理员创建后自动回填",
+        "# web / worker 独立使用 Directus 静态 token，安装器会在服务账号创建后自动回填",
         "# ============================================",
         `DIRECTUS_URL=${values.DIRECTUS_URL}`,
-        `DIRECTUS_STATIC_TOKEN=${values.DIRECTUS_STATIC_TOKEN}`,
+        `DIRECTUS_WEB_STATIC_TOKEN=${values.DIRECTUS_WEB_STATIC_TOKEN}`,
+        `DIRECTUS_WORKER_STATIC_TOKEN=${values.DIRECTUS_WORKER_STATIC_TOKEN}`,
         `DIRECTUS_SECRET=${values.DIRECTUS_SECRET}`,
         "",
         "# ============================================",

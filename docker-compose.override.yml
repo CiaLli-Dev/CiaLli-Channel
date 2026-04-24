@@ -1,5 +1,7 @@
 services:
   web:
+    build:
+      target: deps
     command:
       ["pnpm", "exec", "astro", "dev", "--host", "0.0.0.0", "--port", "4321"]
     environment:
@@ -11,6 +13,8 @@ services:
       - web_node_modules:/app/node_modules
 
   worker:
+    build:
+      target: deps
     command: ["pnpm", "exec", "tsx", "watch", "src/worker/ai-summary/server.ts"]
     environment:
       NODE_ENV: development

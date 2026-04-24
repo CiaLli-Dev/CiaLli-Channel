@@ -63,7 +63,8 @@ describe("installer env rendering", () => {
                 directusAdminEmail: "admin@example.com",
                 directusAdminPassword: "admin-password",
                 directusSecret: "directus-secret",
-                directusStaticToken: "directus-static-token",
+                directusWebStaticToken: "directus-web-static-token",
+                directusWorkerStaticToken: "directus-worker-static-token",
                 postgresUser: "dbu_deadbeef",
                 postgresDb: "directus",
                 postgresPassword: "postgres-password",
@@ -77,7 +78,10 @@ describe("installer env rendering", () => {
         );
 
         expect(envText).toContain(
-            "DIRECTUS_STATIC_TOKEN=directus-static-token",
+            "DIRECTUS_WEB_STATIC_TOKEN=directus-web-static-token",
+        );
+        expect(envText).toContain(
+            "DIRECTUS_WORKER_STATIC_TOKEN=directus-worker-static-token",
         );
         expect(envText).toContain("POSTGRES_USER=dbu_deadbeef");
         expect(envText).toContain("POSTGRES_DB=directus");
@@ -103,7 +107,8 @@ describe("installer env rendering", () => {
         expect(secrets.BANGUMI_TOKEN_ENCRYPTION_KEY).toBe(
             Buffer.alloc(32, 7).toString("base64"),
         );
-        expect(secrets.DIRECTUS_STATIC_TOKEN).toHaveLength(48);
+        expect(secrets.DIRECTUS_WEB_STATIC_TOKEN).toHaveLength(48);
+        expect(secrets.DIRECTUS_WORKER_STATIC_TOKEN).toHaveLength(48);
     });
 });
 
