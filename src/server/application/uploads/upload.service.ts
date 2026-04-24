@@ -28,6 +28,19 @@ type ProcessedUpload =
           response: Response;
       };
 
+function failWhenProcessedFileTooLarge(
+    buffer: Buffer,
+    purpose: UploadPurpose,
+): Response | null {
+    const maxSize = UPLOAD_LIMITS[purpose];
+    if (buffer.length <= maxSize) {
+        return null;
+    }
+
+    const label = UPLOAD_LIMIT_LABELS[purpose];
+    return fail(`处理后的文件过大，最大允许 ${label}`, 413);
+}
+
 function toIcoBufferFromPngBuffer(pngBuffer: Buffer): Buffer {
     const header = Buffer.alloc(6);
     header.writeUInt16LE(0, 0);
@@ -83,9 +96,6 @@ async function processUploadBuffer(params: {
     purpose: UploadPurpose;
     targetFormat: string;
 }): Promise<ProcessedUpload> {
-    const maxSize = UPLOAD_LIMITS[params.purpose];
-    const label = UPLOAD_LIMIT_LABELS[params.purpose];
-
     const magic = validateFileMagicBytes(params.initialBuffer, params.purpose);
     if (!magic.valid) {
         return {
@@ -127,10 +137,14 @@ async function processUploadBuffer(params: {
             const converted = Buffer.from(await convertBufferToIco(sanitized));
             const baseName =
                 params.file.name.replace(/\.[^/.]+$/u, "") || "favicon";
-            if (converted.length > maxSize) {
+            const sizeError = failWhenProcessedFileTooLarge(
+                converted,
+                params.purpose,
+            );
+            if (sizeError) {
                 return {
                     ok: false,
-                    response: fail(`站点图标过大，最大允许 ${label}`, 413),
+                    response: sizeError,
                 };
             }
             return {
@@ -151,6 +165,14 @@ async function processUploadBuffer(params: {
                 response: fail("站点图标转换失败", 400),
             };
         }
+    }
+
+    const sizeError = failWhenProcessedFileTooLarge(sanitized, params.purpose);
+    if (sizeError) {
+        return {
+            ok: false,
+            response: sizeError,
+        };
     }
 
     return {
