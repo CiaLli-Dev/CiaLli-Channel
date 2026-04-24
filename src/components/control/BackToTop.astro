@@ -60,10 +60,17 @@ import { Icon } from "astro-icon/components";
       width: var(--mobile-float-size, 3.2rem)
       height: var(--mobile-float-size, 3.2rem)
 
-    .back-to-top-btn-inner
+    .back-to-top-btn-inner.btn-card
       width: var(--mobile-float-size, 3.2rem)
       height: var(--mobile-float-size, 3.2rem)
-      background: unquote("color-mix(in oklch, var(--card-bg) 82%, var(--btn-plain-bg-hover) 18%)")
+      color: var(--mobile-float-control-content)
+      background: var(--mobile-float-control-bg)
+
+      &:hover
+        background: var(--mobile-float-control-bg-hover)
+
+      &:active
+        background: var(--mobile-float-control-bg-active)
 
     .back-to-top-btn
       font-size: 2rem

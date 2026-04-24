@@ -154,7 +154,7 @@
     z-index: var(--z-float-rail, 70);
   }
 
-  .mobile-edge-launcher {
+  .mobile-edge-launcher.btn-card {
     position: fixed;
     right: var(--mobile-float-rail-right);
     bottom: calc(var(--mobile-float-rail-bottom) + (var(--mobile-float-size) + var(--mobile-float-gap)) * var(--mobile-float-index, 0));
@@ -164,11 +164,20 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: var(--primary);
+    color: var(--mobile-float-control-content);
     z-index: var(--z-float-rail, 70);
     pointer-events: auto;
-    background: color-mix(in oklch, var(--card-bg) 82%, var(--btn-plain-bg-hover) 18%);
+    background: var(--mobile-float-control-bg);
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  }
+
+  .mobile-edge-launcher.btn-card:hover {
+    background: var(--mobile-float-control-bg-hover);
+  }
+
+  .mobile-edge-launcher.btn-card:active,
+  .mobile-edge-launcher.btn-card[aria-expanded="true"] {
+    background: var(--mobile-float-control-bg-active);
   }
 
   .mobile-edge-launcher-icon {
