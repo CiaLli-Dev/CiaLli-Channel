@@ -21,6 +21,10 @@ import { validateBody } from "@/server/api/validate";
 import { awaitCacheInvalidations } from "@/server/cache/invalidation";
 import { cacheManager } from "@/server/cache/manager";
 import {
+    enqueueFileDetachJob,
+    runFileDetachJobBestEffort,
+} from "@/server/files/file-detach-jobs";
+import {
     createOne,
     deleteOne,
     readMany,
@@ -38,7 +42,6 @@ import {
 } from "@/server/api/v1/shared/file-cleanup";
 import {
     bindFileOwnerToUser,
-    detachManagedFiles,
     renderMeMarkdownPreview,
     syncManagedFileBinding,
     syncMarkdownFileLifecycle,
@@ -545,12 +548,20 @@ async function handleDiaryDelete(
     const markdownFileIds = extractDirectusAssetIdsFromMarkdown(
         String(target.content ?? ""),
     );
+    const detachJob = await enqueueFileDetachJob({
+        sourceType: "me.diary.delete",
+        sourceId: diaryId,
+        fileValues: [
+            ...markdownFileIds,
+            ...diaryImageFileIds,
+            ...commentCleanup.candidateFileIds,
+        ],
+    });
     await deleteOne("app_diaries", diaryId);
-    await detachManagedFiles([
-        ...markdownFileIds,
-        ...diaryImageFileIds,
-        ...commentCleanup.candidateFileIds,
-    ]);
+    await runFileDetachJobBestEffort({
+        jobId: detachJob.jobId,
+        label: "me/diaries#delete",
+    });
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("diary-list"),
@@ -754,8 +765,16 @@ async function handleDiaryImageDelete(
     image: JsonObject,
     diary: JsonObject,
 ): Promise<Response> {
+    const detachJob = await enqueueFileDetachJob({
+        sourceType: "me.diary-image.delete",
+        sourceId: imageId,
+        fileValues: [image.file_id],
+    });
     await deleteOne("app_diary_images", imageId);
-    await detachManagedFiles([image.file_id]);
+    await runFileDetachJobBestEffort({
+        jobId: detachJob.jobId,
+        label: "me/diary-images#delete",
+    });
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("mixed-feed"),

@@ -63,6 +63,14 @@ export const MARKDOWN_REFERENCE_TARGETS: MarkdownReferenceTarget[] = [
     { collection: "app_site_announcements", field: "body_markdown" },
 ];
 
+const SITE_SETTINGS_REFERENCE_FIELDS = [
+    "settings_site",
+    "settings_nav",
+    "settings_home",
+    "settings_article",
+    "settings_other",
+] as const;
+
 function shouldStopCollecting(
     candidates: Set<string> | null,
     output: Set<string>,
@@ -223,16 +231,21 @@ export async function readReferencedIdsInSiteSettingsFromRepository(
                 { status: { _eq: "published" } },
             ],
         } as JsonObject,
-        fields: ["settings"],
+        fields: [...SITE_SETTINGS_REFERENCE_FIELDS],
         sort: ["-date_updated", "-date_created"],
         limit: 1,
     });
     for (const row of rows as Array<Record<string, unknown>>) {
-        collectReferencedAssetIdsFromUnknown(
-            row.settings,
-            candidateSet,
-            referenced,
-        );
+        for (const field of SITE_SETTINGS_REFERENCE_FIELDS) {
+            collectReferencedAssetIdsFromUnknown(
+                row[field],
+                candidateSet,
+                referenced,
+            );
+            if (referenced.size >= candidateSet.size) {
+                break;
+            }
+        }
         if (referenced.size >= candidateSet.size) {
             break;
         }
@@ -251,12 +264,14 @@ export async function readAllReferencedIdsInSiteSettingsFromRepository(): Promis
                 { status: { _eq: "published" } },
             ],
         } as JsonObject,
-        fields: ["settings"],
+        fields: [...SITE_SETTINGS_REFERENCE_FIELDS],
         sort: ["-date_updated", "-date_created"],
         limit: 1,
     });
     for (const row of rows as Array<Record<string, unknown>>) {
-        collectReferencedAssetIdsFromUnknown(row.settings, null, referenced);
+        for (const field of SITE_SETTINGS_REFERENCE_FIELDS) {
+            collectReferencedAssetIdsFromUnknown(row[field], null, referenced);
+        }
     }
     return referenced;
 }

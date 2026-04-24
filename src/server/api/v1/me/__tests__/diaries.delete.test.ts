@@ -51,16 +51,27 @@ vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
     ),
 }));
 
+vi.mock("@/server/files/file-detach-jobs", () => ({
+    enqueueFileDetachJob: vi.fn().mockResolvedValue({
+        jobId: "detach-job-1",
+        status: "pending",
+        candidateFileIds: [],
+    }),
+    runFileDetachJobBestEffort: vi.fn().mockResolvedValue(undefined),
+}));
+
 import {
     deleteDirectusFile,
     deleteOne,
     readMany,
 } from "@/server/directus/client";
+import { enqueueFileDetachJob } from "@/server/files/file-detach-jobs";
 import { handleMeDiaries } from "@/server/api/v1/me/diaries";
 
 const mockedDeleteDirectusFile = vi.mocked(deleteDirectusFile);
 const mockedDeleteOne = vi.mocked(deleteOne);
 const mockedReadMany = vi.mocked(readMany);
+const mockedEnqueueFileDetachJob = vi.mocked(enqueueFileDetachJob);
 
 function makeDiary(overrides: Record<string, unknown> = {}) {
     return {
@@ -99,6 +110,14 @@ describe("DELETE /me/diaries/:id", () => {
         );
 
         expect(response.status).toBe(200);
+        expect(mockedEnqueueFileDetachJob).toHaveBeenCalledWith(
+            expect.objectContaining({
+                fileValues: ["content-file", "image-file", "comment-file"],
+            }),
+        );
+        expect(
+            mockedEnqueueFileDetachJob.mock.invocationCallOrder[0],
+        ).toBeLessThan(mockedDeleteOne.mock.invocationCallOrder[0] ?? 0);
         expect(mockedDeleteDirectusFile).not.toHaveBeenCalled();
     });
 });

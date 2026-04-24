@@ -30,6 +30,7 @@ const WEB_SERVICE_PERMISSION_SPECS = [
     ...[
         "app_user_profiles",
         "app_ai_summary_jobs",
+        "app_file_detach_jobs",
         "app_articles",
         "app_article_comments",
         "app_article_comment_likes",
@@ -74,8 +75,25 @@ const WEB_SERVICE_PERMISSION_SPECS = [
 
 const WORKER_SERVICE_PERMISSION_SPECS = [
     { collection: "app_ai_summary_jobs", actions: ["read", "update"] },
+    {
+        collection: "app_file_detach_jobs",
+        actions: ["read", "create", "update"],
+    },
     { collection: "app_articles", actions: ["read", "update"] },
+    { collection: "app_article_comments", actions: ["read"] },
+    { collection: "app_diaries", actions: ["read"] },
+    { collection: "app_diary_comments", actions: ["read"] },
+    { collection: "app_albums", actions: ["read"] },
+    { collection: "app_album_photos", actions: ["read"] },
+    { collection: "app_diary_images", actions: ["read"] },
+    { collection: "app_user_profiles", actions: ["read"] },
+    { collection: "app_anime_entries", actions: ["read"] },
+    { collection: "app_friends", actions: ["read"] },
+    { collection: "app_user_registration_requests", actions: ["read"] },
     { collection: "app_site_settings", actions: ["read"] },
+    { collection: "app_site_announcements", actions: ["read"] },
+    { collection: "directus_users", actions: ["read"] },
+    { collection: "directus_files", actions: ["read", "update", "delete"] },
 ];
 
 /**

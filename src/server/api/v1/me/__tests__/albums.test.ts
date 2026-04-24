@@ -51,6 +51,15 @@ vi.mock("@/server/api/v1/me/_helpers", () => ({
     }),
 }));
 
+vi.mock("@/server/files/file-detach-jobs", () => ({
+    enqueueFileDetachJob: vi.fn().mockResolvedValue({
+        jobId: "detach-job-1",
+        status: "pending",
+        candidateFileIds: [],
+    }),
+    runFileDetachJobBestEffort: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { readOneById, updateOne } from "@/server/directus/client";
 import { handleMeAlbumPhotos, handleMeAlbums } from "@/server/api/v1/me/albums";
 

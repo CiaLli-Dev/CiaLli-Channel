@@ -22,6 +22,10 @@ import { enqueueAndTriggerArticleSummaryJob } from "@/server/ai-summary/dispatch
 import { awaitCacheInvalidations } from "@/server/cache/invalidation";
 import { cacheManager } from "@/server/cache/manager";
 import {
+    enqueueFileDetachJob,
+    runFileDetachJobBestEffort,
+} from "@/server/files/file-detach-jobs";
+import {
     createOne,
     deleteOne,
     readMany,
@@ -44,7 +48,6 @@ import {
 } from "@/server/api/v1/shared/file-cleanup";
 import {
     bindFileOwnerToUser,
-    detachManagedFiles,
     renderMeMarkdownPreview,
     syncManagedFileBinding,
     syncMarkdownFileLifecycle,
@@ -812,11 +815,16 @@ async function handleArticleDelete(
         candidateFileIds.add(coverFileId);
     }
     const commentCleanup = await collectArticleCommentCleanupCandidates(id);
+    const detachJob = await enqueueFileDetachJob({
+        sourceType: "me.article.delete",
+        sourceId: id,
+        fileValues: [...candidateFileIds, ...commentCleanup.candidateFileIds],
+    });
     await deleteOne("app_articles", id);
-    await detachManagedFiles([
-        ...candidateFileIds,
-        ...commentCleanup.candidateFileIds,
-    ]);
+    await runFileDetachJobBestEffort({
+        jobId: detachJob.jobId,
+        label: "me/articles#delete",
+    });
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("article-list"),

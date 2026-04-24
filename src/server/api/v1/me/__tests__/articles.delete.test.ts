@@ -74,12 +74,22 @@ vi.mock("@/server/api/v1/me/_helpers", () => ({
     syncMarkdownFilesToVisibility: vi.fn().mockResolvedValue([]),
 }));
 
+vi.mock("@/server/files/file-detach-jobs", () => ({
+    enqueueFileDetachJob: vi.fn().mockResolvedValue({
+        jobId: "detach-job-1",
+        status: "pending",
+        candidateFileIds: [],
+    }),
+    runFileDetachJobBestEffort: vi.fn().mockResolvedValue(undefined),
+}));
+
 import {
     deleteDirectusFile,
     deleteOne,
     readMany,
 } from "@/server/directus/client";
 import { extractDirectusAssetIdsFromMarkdown } from "@/server/api/v1/shared/file-cleanup";
+import { enqueueFileDetachJob } from "@/server/files/file-detach-jobs";
 import { handleMeArticles } from "@/server/api/v1/me/articles";
 
 const mockedDeleteDirectusFile = vi.mocked(deleteDirectusFile);
@@ -88,6 +98,7 @@ const mockedReadMany = vi.mocked(readMany);
 const mockedExtractDirectusAssetIdsFromMarkdown = vi.mocked(
     extractDirectusAssetIdsFromMarkdown,
 );
+const mockedEnqueueFileDetachJob = vi.mocked(enqueueFileDetachJob);
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -112,6 +123,9 @@ describe("DELETE /me/articles/:id", () => {
         );
 
         expect(res.status).toBe(200);
+        expect(
+            mockedEnqueueFileDetachJob.mock.invocationCallOrder[0],
+        ).toBeLessThan(mockedDeleteOne.mock.invocationCallOrder[0] ?? 0);
         const body = await parseResponseJson<{
             ok: boolean;
             id: string;
@@ -138,6 +152,29 @@ describe("DELETE /me/articles/:id", () => {
         expect(res.status).toBe(404);
     });
 
+    it("outbox 创建失败时不删除业务记录", async () => {
+        mockedReadMany.mockResolvedValue([
+            mockArticle({ id: "article-1", author_id: "user-1" }),
+        ]);
+        mockedEnqueueFileDetachJob.mockRejectedValueOnce(
+            new Error("outbox failed"),
+        );
+
+        const ctx = createMockAPIContext({
+            method: "DELETE",
+            url: "http://localhost:4321/api/v1/me/articles/article-1",
+        });
+        const access = createMemberAccess();
+
+        await expect(
+            handleMeArticles(ctx as unknown as APIContext, access, [
+                "articles",
+                "article-1",
+            ]),
+        ).rejects.toThrow("outbox failed");
+        expect(mockedDeleteOne).not.toHaveBeenCalled();
+    });
+
     it("删除正文时忽略纯文本 UUID", async () => {
         mockedReadMany.mockResolvedValue([
             mockArticle({
@@ -162,6 +199,11 @@ describe("DELETE /me/articles/:id", () => {
         );
 
         expect(res.status).toBe(200);
+        expect(mockedEnqueueFileDetachJob).toHaveBeenCalledWith(
+            expect.objectContaining({
+                fileValues: [],
+            }),
+        );
         expect(mockedDeleteDirectusFile).not.toHaveBeenCalled();
     });
 
@@ -192,6 +234,11 @@ describe("DELETE /me/articles/:id", () => {
         );
 
         expect(res.status).toBe(200);
+        expect(mockedEnqueueFileDetachJob).toHaveBeenCalledWith(
+            expect.objectContaining({
+                fileValues: [articleFileId],
+            }),
+        );
         expect(mockedDeleteDirectusFile).not.toHaveBeenCalled();
     });
 });

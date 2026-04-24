@@ -9,6 +9,11 @@ export type AiSummaryJobStatus =
     | "failed"
     | "canceled"
     | "skipped";
+export type FileDetachJobStatus =
+    | "pending"
+    | "processing"
+    | "succeeded"
+    | "skipped";
 export type AiSummaryJobKind =
     | "on_publish"
     | "manual"
@@ -140,6 +145,28 @@ export type AppAiSummaryJob = {
     error_code: string | null;
     error_message: string | null;
     result_summary: string | null;
+};
+
+export type AppFileDetachJob = {
+    id: string;
+    status: FileDetachJobStatus;
+    source_type: string;
+    source_id: string | null;
+    candidate_file_ids: string[] | null;
+    detached_file_ids: string[] | null;
+    skipped_referenced_file_ids: string[] | null;
+    attempts: number;
+    scheduled_at: string | null;
+    leased_until: string | null;
+    started_at: string | null;
+    finished_at: string | null;
+    error_code: string | null;
+    error_message: string | null;
+    sort: number | null;
+    user_created: string | null;
+    date_created: string | null;
+    user_updated: string | null;
+    date_updated: string | null;
 };
 
 export type AppDiary = {

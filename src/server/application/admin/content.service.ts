@@ -17,7 +17,14 @@ import {
 } from "@/server/api/utils";
 import { cacheManager } from "@/server/cache/manager";
 import { awaitCacheInvalidations } from "@/server/cache/invalidation";
-import { deleteCommentWithDescendants } from "@/server/api/v1/comments-shared";
+import {
+    collectCommentDeletionTargets,
+    deleteCollectedCommentTargets,
+} from "@/server/api/v1/comments-shared";
+import {
+    enqueueFileDetachJob,
+    runFileDetachJobBestEffort,
+} from "@/server/files/file-detach-jobs";
 import {
     collectAlbumFileIds,
     collectArticleCommentCleanupCandidates,
@@ -26,10 +33,6 @@ import {
     extractDirectusAssetIdsFromMarkdown,
     normalizeDirectusFileId,
 } from "@/server/api/v1/shared/file-cleanup";
-import {
-    detachManagedFiles,
-    detachMarkdownFiles,
-} from "@/server/api/v1/me/_helpers";
 
 import {
     ADMIN_MODULE_COLLECTION,
@@ -341,16 +344,30 @@ async function handleArticleCommentDelete(
     id: string,
     relatedComment: { article_id?: string; diary_id?: string } | undefined,
 ): Promise<Response> {
-    const deletedComments = await deleteCommentWithDescendants(
+    const deletedComments = await collectCommentDeletionTargets(
         "app_article_comments",
         id,
     );
-    await detachMarkdownFiles(
-        deletedComments.map(
-            (deletedComment) =>
-                deletedComment.body as string | null | undefined,
+    const detachJob = await enqueueFileDetachJob({
+        sourceType: "admin.article-comment.delete",
+        sourceId: id,
+        fileValues: deletedComments.flatMap((deletedComment) =>
+            extractDirectusAssetIdsFromMarkdown(
+                typeof deletedComment.body === "string"
+                    ? deletedComment.body
+                    : null,
+            ),
         ),
+    });
+    await deleteCollectedCommentTargets(
+        "app_article_comments",
+        id,
+        deletedComments,
     );
+    await runFileDetachJobBestEffort({
+        jobId: detachJob.jobId,
+        label: "admin/content#delete:article-comments",
+    });
     await invalidateDeleteCache("article-comments", id, null, relatedComment);
     return ok({ id, module: "article-comments" });
 }
@@ -359,16 +376,30 @@ async function handleDiaryCommentDelete(
     id: string,
     relatedComment: { article_id?: string; diary_id?: string } | undefined,
 ): Promise<Response> {
-    const deletedComments = await deleteCommentWithDescendants(
+    const deletedComments = await collectCommentDeletionTargets(
         "app_diary_comments",
         id,
     );
-    await detachMarkdownFiles(
-        deletedComments.map(
-            (deletedComment) =>
-                deletedComment.body as string | null | undefined,
+    const detachJob = await enqueueFileDetachJob({
+        sourceType: "admin.diary-comment.delete",
+        sourceId: id,
+        fileValues: deletedComments.flatMap((deletedComment) =>
+            extractDirectusAssetIdsFromMarkdown(
+                typeof deletedComment.body === "string"
+                    ? deletedComment.body
+                    : null,
+            ),
         ),
+    });
+    await deleteCollectedCommentTargets(
+        "app_diary_comments",
+        id,
+        deletedComments,
     );
+    await runFileDetachJobBestEffort({
+        jobId: detachJob.jobId,
+        label: "admin/content#delete:diary-comments",
+    });
     await invalidateDeleteCache("diary-comments", id, null, relatedComment);
     return ok({ id, module: "diary-comments" });
 }
@@ -395,8 +426,16 @@ async function handleArticleDelete(
     if (coverFileId) {
         candidateFileIds.add(coverFileId);
     }
+    const detachJob = await enqueueFileDetachJob({
+        sourceType: "admin.article.delete",
+        sourceId: id,
+        fileValues: [...candidateFileIds],
+    });
     await deleteOne(collection, id);
-    await detachManagedFiles([...candidateFileIds]);
+    await runFileDetachJobBestEffort({
+        jobId: detachJob.jobId,
+        label: "admin/content#delete:articles",
+    });
     await invalidateDeleteCache("articles", id, null, relatedComment);
     return ok({ id, module: "articles" });
 }
@@ -417,12 +456,22 @@ async function handleDiaryDelete(
         collectDiaryCommentCleanupCandidates(id),
         collectDiaryFileIds(id),
     ]);
+    const detachJob = await enqueueFileDetachJob({
+        sourceType: "admin.diary.delete",
+        sourceId: id,
+        fileValues: [
+            ...extractDirectusAssetIdsFromMarkdown(
+                String(target.content ?? ""),
+            ),
+            ...diaryImageFileIds,
+            ...commentCleanup.candidateFileIds,
+        ],
+    });
     await deleteOne(collection, id);
-    await detachManagedFiles([
-        ...extractDirectusAssetIdsFromMarkdown(String(target.content ?? "")),
-        ...diaryImageFileIds,
-        ...commentCleanup.candidateFileIds,
-    ]);
+    await runFileDetachJobBestEffort({
+        jobId: detachJob.jobId,
+        label: "admin/content#delete:diaries",
+    });
     await invalidateDeleteCache(
         "diaries",
         id,
@@ -445,11 +494,16 @@ async function handleAlbumDelete(
     }
     const photoFileIds = await collectAlbumFileIds(id);
     const coverFileId = normalizeDirectusFileId(target.cover_file);
+    const detachJob = await enqueueFileDetachJob({
+        sourceType: "admin.album.delete",
+        sourceId: id,
+        fileValues: [...(coverFileId ? [coverFileId] : []), ...photoFileIds],
+    });
     await deleteOne(collection, id);
-    await detachManagedFiles([
-        ...(coverFileId ? [coverFileId] : []),
-        ...photoFileIds,
-    ]);
+    await runFileDetachJobBestEffort({
+        jobId: detachJob.jobId,
+        label: "admin/content#delete:albums",
+    });
     await invalidateDeleteCache("albums", id, null, relatedComment);
     return ok({ id, module: "albums" });
 }

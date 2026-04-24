@@ -3,6 +3,10 @@ import type { APIContext } from "astro";
 import { assertCan, assertOwnerOrAdmin } from "@/server/auth/acl";
 import { awaitCacheInvalidations } from "@/server/cache/invalidation";
 import { cacheManager } from "@/server/cache/manager";
+import {
+    enqueueFileDetachJob,
+    runFileDetachJobBestEffort,
+} from "@/server/files/file-detach-jobs";
 import { parseJsonBody } from "@/server/api/utils";
 import { validateBody } from "@/server/api/validate";
 import { CreateCommentSchema, UpdateCommentSchema } from "@/server/api/schemas";
@@ -16,18 +20,19 @@ import {
 import {
     buildCommentUpdatePayload,
     buildDecoratedCommentTree,
+    collectCommentDeletionTargets,
     createDiaryComment,
-    deleteCommentWithDescendants,
+    deleteCollectedCommentTargets,
     loadPaginatedComments,
     parseCommentPagination,
     renderCommentItem,
     validateReplyParent,
 } from "@/server/api/v1/comments-shared";
 import {
-    detachMarkdownFiles,
     syncMarkdownFileLifecycle,
     syncMarkdownFilesToVisibility,
 } from "@/server/api/v1/me/_helpers";
+import { extractDirectusAssetIdsFromMarkdown } from "@/server/api/v1/shared/file-cleanup";
 
 function buildDiaryDetailInvalidationTasks(
     id: string,
@@ -224,16 +229,30 @@ async function deleteDiaryComment(
     }
     assertOwnerOrAdmin(access, comment.author_id);
 
-    const deletedComments = await deleteCommentWithDescendants(
+    const deletedComments = await collectCommentDeletionTargets(
         "app_diary_comments",
         commentId,
     );
-    await detachMarkdownFiles(
-        deletedComments.map(
-            (deletedComment) =>
-                deletedComment.body as string | null | undefined,
+    const detachJob = await enqueueFileDetachJob({
+        sourceType: "comment.diary.delete",
+        sourceId: commentId,
+        fileValues: deletedComments.flatMap((deletedComment) =>
+            extractDirectusAssetIdsFromMarkdown(
+                typeof deletedComment.body === "string"
+                    ? deletedComment.body
+                    : null,
+            ),
         ),
+    });
+    await deleteCollectedCommentTargets(
+        "app_diary_comments",
+        commentId,
+        deletedComments,
     );
+    await runFileDetachJobBestEffort({
+        jobId: detachJob.jobId,
+        label: "comments-diary#delete",
+    });
     await awaitCacheInvalidations(
         [
             invalidateDiaryDetailCacheByDiaryId(comment.diary_id),

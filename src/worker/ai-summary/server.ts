@@ -7,6 +7,17 @@ import {
 } from "node:http";
 
 import { readFileGcIntervalMs, runFileGcBatch } from "@/server/files/file-gc";
+import {
+    recoverStuckFileDetachJobs,
+    readFileDetachJobBatchSize,
+    readFileDetachJobIntervalMs,
+    readPendingFileDetachJobs,
+    runFileDetachJob,
+} from "@/server/files/file-detach-jobs";
+import {
+    readFileLifecycleReconcileIntervalMs,
+    runManagedFileLifecycleReconciliation,
+} from "@/server/files/file-lifecycle-reconciliation";
 import { loadDecryptedAiSettings } from "@/server/ai-summary/config";
 import {
     recoverStuckSummaryJobs,
@@ -148,6 +159,43 @@ const fileGcScheduler = createNonOverlappingScheduler({
     },
 });
 
+const fileDetachJobScheduler = createNonOverlappingScheduler({
+    task: async (trigger) => {
+        const now = new Date();
+        const recovered = await recoverStuckFileDetachJobs(now);
+        const jobIds = await readPendingFileDetachJobs(
+            readFileDetachJobBatchSize(),
+            now,
+        );
+        const results = await Promise.all(
+            jobIds.map(async (jobId) => await runFileDetachJob(jobId, now)),
+        );
+        const detached = results.reduce(
+            (sum, result) => sum + result.detached,
+            0,
+        );
+        console.info("[file-detach-job-worker] scheduler tick", {
+            trigger,
+            recovered,
+            processed: results.length,
+            detached,
+        });
+    },
+});
+
+const fileLifecycleReconciliationScheduler = createNonOverlappingScheduler({
+    task: async (trigger) => {
+        const result = await runManagedFileLifecycleReconciliation();
+        console.info("[file-lifecycle-reconcile-worker] scheduler tick", {
+            trigger,
+            attached: result.attached,
+            detached: result.detached,
+            temporary: result.temporary,
+            protected: result.protected,
+        });
+    },
+});
+
 async function runAiSummarySchedulerTick(
     trigger: "startup" | "interval",
 ): Promise<void> {
@@ -165,6 +213,29 @@ async function runFileGcSchedulerTick(
         await fileGcScheduler.run(trigger);
     } catch (error) {
         console.error("[file-gc-worker] scheduler tick failed", error);
+    }
+}
+
+async function runFileDetachJobSchedulerTick(
+    trigger: "startup" | "interval",
+): Promise<void> {
+    try {
+        await fileDetachJobScheduler.run(trigger);
+    } catch (error) {
+        console.error("[file-detach-job-worker] scheduler tick failed", error);
+    }
+}
+
+async function runFileLifecycleReconciliationSchedulerTick(
+    trigger: "startup" | "interval",
+): Promise<void> {
+    try {
+        await fileLifecycleReconciliationScheduler.run(trigger);
+    } catch (error) {
+        console.error(
+            "[file-lifecycle-reconcile-worker] scheduler tick failed",
+            error,
+        );
     }
 }
 
@@ -255,11 +326,19 @@ createServer((request, response) => {
 }).listen(port, () => {
     console.info(`[ai-summary-worker] listening on ${port}`);
     void runAiSummarySchedulerTick("startup");
+    void runFileDetachJobSchedulerTick("startup");
     void runFileGcSchedulerTick("startup");
+    void runFileLifecycleReconciliationSchedulerTick("startup");
     setInterval(() => {
         void runAiSummarySchedulerTick("interval");
     }, CONSUMER_INTERVAL_MS);
     setInterval(() => {
+        void runFileDetachJobSchedulerTick("interval");
+    }, readFileDetachJobIntervalMs());
+    setInterval(() => {
         void runFileGcSchedulerTick("interval");
     }, readFileGcIntervalMs());
+    setInterval(() => {
+        void runFileLifecycleReconciliationSchedulerTick("interval");
+    }, readFileLifecycleReconcileIntervalMs());
 });

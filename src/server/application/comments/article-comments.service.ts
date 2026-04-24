@@ -3,6 +3,10 @@ import type { APIContext } from "astro";
 import { assertCan, assertOwnerOrAdmin } from "@/server/auth/acl";
 import { awaitCacheInvalidations } from "@/server/cache/invalidation";
 import { cacheManager } from "@/server/cache/manager";
+import {
+    enqueueFileDetachJob,
+    runFileDetachJobBestEffort,
+} from "@/server/files/file-detach-jobs";
 import { parseJsonBody } from "@/server/api/utils";
 import { validateBody } from "@/server/api/validate";
 import { CreateCommentSchema, UpdateCommentSchema } from "@/server/api/schemas";
@@ -15,17 +19,18 @@ import {
 import {
     buildCommentUpdatePayload,
     buildDecoratedCommentTree,
-    deleteCommentWithDescendants,
+    collectCommentDeletionTargets,
+    deleteCollectedCommentTargets,
     loadPaginatedComments,
     parseCommentPagination,
     renderCommentItem,
     validateReplyParent,
 } from "@/server/api/v1/comments-shared";
 import {
-    detachMarkdownFiles,
     syncMarkdownFileLifecycle,
     syncMarkdownFilesToVisibility,
 } from "@/server/api/v1/me/_helpers";
+import { extractDirectusAssetIdsFromMarkdown } from "@/server/api/v1/shared/file-cleanup";
 
 async function getArticleCommentList(
     context: APIContext,
@@ -181,16 +186,30 @@ async function deleteArticleComment(
     }
     assertOwnerOrAdmin(access, comment.author_id);
 
-    const deletedComments = await deleteCommentWithDescendants(
+    const deletedComments = await collectCommentDeletionTargets(
         "app_article_comments",
         commentId,
     );
-    await detachMarkdownFiles(
-        deletedComments.map(
-            (deletedComment) =>
-                deletedComment.body as string | null | undefined,
+    const detachJob = await enqueueFileDetachJob({
+        sourceType: "comment.article.delete",
+        sourceId: commentId,
+        fileValues: deletedComments.flatMap((deletedComment) =>
+            extractDirectusAssetIdsFromMarkdown(
+                typeof deletedComment.body === "string"
+                    ? deletedComment.body
+                    : null,
+            ),
         ),
+    });
+    await deleteCollectedCommentTargets(
+        "app_article_comments",
+        commentId,
+        deletedComments,
     );
+    await runFileDetachJobBestEffort({
+        jobId: detachJob.jobId,
+        label: "comments-article#delete",
+    });
     await awaitCacheInvalidations(
         [
             cacheManager.invalidate("article-detail", comment.article_id),

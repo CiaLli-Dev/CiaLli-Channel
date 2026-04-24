@@ -5,6 +5,34 @@ import {
     markFilesTemporary,
     readAllManagedFiles,
 } from "@/server/repositories/files/file-lifecycle.repository";
+import { readFileGcRetentionHours } from "@/server/files/file-gc";
+
+const DEFAULT_FILE_LIFECYCLE_RECONCILE_INTERVAL_MS = 86_400_000;
+
+function readPositiveIntegerEnv(
+    value: string | undefined,
+    fallback: number,
+): number {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+        return fallback;
+    }
+    return Math.floor(parsed);
+}
+
+export function readFileLifecycleReconcileIntervalMs(): number {
+    return readPositiveIntegerEnv(
+        process.env.FILE_LIFECYCLE_RECONCILE_INTERVAL_MS ||
+            import.meta.env.FILE_LIFECYCLE_RECONCILE_INTERVAL_MS,
+        DEFAULT_FILE_LIFECYCLE_RECONCILE_INTERVAL_MS,
+    );
+}
+
+function buildDetachedBeforeIso(now: Date): string {
+    return new Date(
+        now.getTime() - readFileGcRetentionHours() * 60 * 60 * 1000,
+    ).toISOString();
+}
 
 function isExpired(detachedBefore: string, createdAt: string | null): boolean {
     if (!createdAt) {
@@ -108,4 +136,10 @@ export async function reconcileManagedFileLifecycle(
         temporary: temporaryFileIds.length,
         protected: protectedCount,
     };
+}
+
+export async function runManagedFileLifecycleReconciliation(
+    now: Date = new Date(),
+): ReturnType<typeof reconcileManagedFileLifecycle> {
+    return await reconcileManagedFileLifecycle(buildDetachedBeforeIso(now));
 }

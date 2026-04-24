@@ -20,11 +20,20 @@ vi.mock("@/server/repositories/files/file-lifecycle.repository", () => ({
     readAllManagedFiles: mocks.readAllManagedFiles,
 }));
 
-import { reconcileManagedFileLifecycle } from "@/server/files/file-lifecycle-reconciliation";
+vi.mock("@/server/files/file-gc", () => ({
+    readFileGcRetentionHours: vi.fn(() => 24),
+}));
+
+import {
+    reconcileManagedFileLifecycle,
+    readFileLifecycleReconcileIntervalMs,
+    runManagedFileLifecycleReconciliation,
+} from "@/server/files/file-lifecycle-reconciliation";
 
 describe("file-lifecycle-reconciliation", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        delete process.env.FILE_LIFECYCLE_RECONCILE_INTERVAL_MS;
         mocks.collectAllReferencedDirectusFileIds.mockResolvedValue(new Set());
         mocks.markFilesAttached.mockResolvedValue(undefined);
         mocks.markFilesDetached.mockResolvedValue(undefined);
@@ -87,5 +96,18 @@ describe("file-lifecycle-reconciliation", () => {
             temporary: 1,
             protected: 1,
         });
+    });
+
+    it("uses lifecycle reconciliation interval default and GC retention cutoff", async () => {
+        expect(readFileLifecycleReconcileIntervalMs()).toBe(86_400_000);
+
+        await runManagedFileLifecycleReconciliation(
+            new Date("2026-04-24T00:00:00.000Z"),
+        );
+
+        expect(mocks.markFilesAttached).toHaveBeenCalledWith({
+            fileIds: [],
+        });
+        expect(mocks.markFilesTemporary).toHaveBeenCalledWith([]);
     });
 });
