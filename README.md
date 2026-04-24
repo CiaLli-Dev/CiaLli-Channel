@@ -59,7 +59,7 @@ CiaLli 是一个现代化的轻量内容社区，基于 [Mizuki](https://github.
 
 项目现已切换为全 Docker 一体化部署，不再依赖 Vercel 运行时。
 
-仓库现内置演示 seed：首次在空的 `postgres_data` / `minio_data` volume 上执行 `docker compose up` 时，会自动恢复演示数据库和对象存储；若 volume 已有数据，则恢复流程会自动跳过，不会覆盖现有内容。由于 seed 文件通过 Git LFS 管理，拉取仓库后请确保已安装并拉取 LFS 对象。
+仓库现内置演示 seed：首次在空的 `postgres_data` / `minio_data` volume 上执行 `docker compose up` 时，会自动恢复演示数据库和对象存储；若 volume 已有数据，则恢复流程会自动跳过，不会覆盖现有内容。当前 MinIO demo seed 允许为空，`seed/minio/demo-bucket` 缺失且 `seed/metadata.json` 中 `minio.objectCount=0` 时会按空 seed 处理。PostgreSQL seed 文件仍通过 Git LFS 管理，拉取仓库后请确保已安装并拉取 LFS 对象。
 
 - Docker Compose 部署说明见 [docs/deployment/docker.md](/Users/uednd/code/CiaLli-Channel/docs/deployment/docker.md)
 - Directus Schema 迁移约定见 [docs/directus-schema-migrations.md](/Users/uednd/code/CiaLli-Channel/docs/directus-schema-migrations.md)

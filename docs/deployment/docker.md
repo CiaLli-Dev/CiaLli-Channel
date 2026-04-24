@@ -130,6 +130,11 @@ docker compose -f docker-compose.yml up -d
 - PostgreSQL 业务与 Directus 系统表
 - MinIO bucket 中的对象资源
 
+当前仓库的 MinIO demo seed 允许为空：
+
+- 当 `seed/metadata.json` 中 `minio.objectCount=0` 时，`seed/minio/demo-bucket` 缺失会被视为“空 seed”
+- 若未来 `minio.objectCount > 0`，则该目录仍必须存在并包含对应对象
+
 恢复只会在以下条件同时成立时触发：
 
 - `postgres_data` 是空库或尚未完成业务初始化
@@ -140,8 +145,10 @@ docker compose -f docker-compose.yml up -d
 请注意：
 
 - 当前仓库内的 seed 已是干净产物：不包含可直接登录的固定管理员账户，也不包含可复用的静态 token 或会话
+- 当前 `seed/metadata.json` 记录的 MinIO `objectCount` 为 `0`，因此首次部署只会创建 bucket，不会恢复任何演示对象
 - 管理员账户由安装器在 restore 后自动生成并写入 `.env`，而不是来自 seed
 - AI 运行时密钥、基础设施账号名与内部调用密钥都由安装器写入 `.env`
+- PostgreSQL seed dump 仍通过 Git LFS 分发，部署前依然应执行 `git lfs install && git lfs pull`
 - 如果需要重新触发演示恢复，请先删除 `postgres_data` 与 `minio_data` 对应的 Docker volume，或使用 `cialli-install install --reset`
 
 ## 访问
@@ -228,7 +235,7 @@ pnpm seed:verify
 `pnpm seed:verify` 会检查：
 
 - `seed/postgres/demo.dump` 存在且不是 Git LFS pointer
-- `seed/minio/demo-bucket/**` 中的对象不是 Git LFS pointer
+- `seed/minio/demo-bucket/**` 中的对象不是 Git LFS pointer；当 `minio.objectCount=0` 时允许该目录缺失并按空 seed 校验
 - `seed/metadata.json` 中记录的 dump 大小与对象数量与实际文件一致
 - `directus/schema/app-schema.json` 是有效的 Directus schema 快照
 - 临时还原 `seed/postgres/demo.dump` 后，不存在 `demo-admin@example.com`

@@ -197,8 +197,8 @@ services:
       - |
         SEED_DIR="/seed/minio/demo-bucket"
         if [ ! -d "$$SEED_DIR" ]; then
-          echo "[seed-minio-restore] seed directory not found: $$SEED_DIR" >&2
-          exit 1
+          echo "[seed-minio-restore] seed directory not found: $$SEED_DIR; treat as empty seed and skip restore."
+          exit 0
         fi
         if grep -R -m 1 -l "version https://git-lfs.github.com/spec/v1" "$$SEED_DIR" >/dev/null 2>&1; then
           echo "[seed-minio-restore] seed objects are still Git LFS pointers; run git lfs pull first." >&2
