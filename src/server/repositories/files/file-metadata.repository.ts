@@ -1,10 +1,24 @@
 import type { JsonObject } from "@/types/json";
 import {
+    readOneById,
     readMany,
     updateDirectusFileMetadata,
     updateManyItemsByFilter,
     updateOne,
 } from "@/server/directus/client";
+
+export type ManagedFileVisibilityRecord = {
+    id: string;
+    app_visibility?: "private" | "public" | null;
+};
+
+export async function readManagedFileVisibility(
+    fileId: string,
+): Promise<ManagedFileVisibilityRecord | null> {
+    return (await readOneById("directus_files", fileId, {
+        fields: ["id", "app_visibility"],
+    })) as ManagedFileVisibilityRecord | null;
+}
 
 export async function updateManagedFileMetadata(
     fileId: string,

@@ -3,6 +3,8 @@ import type { APIContext } from "astro";
 import { readDirectusAssetResponse } from "@/server/directus/client";
 import { AppError } from "@/server/api/errors";
 import { fail } from "@/server/api/response";
+import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
+import { readManagedFileVisibility } from "@/server/repositories/files/file-metadata.repository";
 import { isUuid } from "@/server/utils/short-id";
 
 import { parseRouteId, toDirectusAssetQuery } from "../shared";
@@ -64,6 +66,14 @@ function toNotFoundOnAuthError(_err: AppError): Response {
     return fail("资源不存在", 404);
 }
 
+async function isPublicAsset(fileId: string): Promise<boolean> {
+    const file = await withServiceRepositoryContext(
+        async () => await readManagedFileVisibility(fileId),
+    );
+
+    return file?.app_visibility === "public";
+}
+
 function assertUpstreamOk(response: Response): void {
     if (!response.ok) {
         if (response.status === 404 || response.status === 403) {
@@ -99,9 +109,12 @@ export async function handlePublicAsset(
         return fail("资源不存在", 404);
     }
 
-    const fetchResult = await fetchAssetResponse(
-        fileId,
-        context.url.searchParams,
+    if (!(await isPublicAsset(fileId))) {
+        return fail("资源不存在", 404);
+    }
+
+    const fetchResult = await withServiceRepositoryContext(
+        async () => await fetchAssetResponse(fileId, context.url.searchParams),
     );
 
     if (fetchResult instanceof AppError) {
