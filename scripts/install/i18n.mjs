@@ -50,6 +50,8 @@ const MESSAGES = {
             "[install] Provisioning the MinIO service account used by Directus storage.",
         createRole: "[install] Creating Directus administrator role.",
         createAdminUser: "[install] Creating Directus administrator user.",
+        resetAdminPassword:
+            "[install] Resetting the existing Directus administrator password.",
         generateStaticToken:
             "[install] Logging into Directus and provisioning web / worker service tokens.",
         updateSiteLanguage:
@@ -123,6 +125,7 @@ const MESSAGES = {
             "[install] 为 Directus 存储创建 MinIO service account。",
         createRole: "[install] 创建 Directus 管理员角色。",
         createAdminUser: "[install] 创建 Directus 管理员账户。",
+        resetAdminPassword: "[install] 重置已存在的 Directus 管理员密码。",
         generateStaticToken:
             "[install] 登录 Directus 并为 web / worker 创建服务端静态 token。",
         updateSiteLanguage:
@@ -191,6 +194,7 @@ const MESSAGES = {
             "[install] 為 Directus 儲存建立 MinIO service account。",
         createRole: "[install] 建立 Directus 管理員角色。",
         createAdminUser: "[install] 建立 Directus 管理員帳號。",
+        resetAdminPassword: "[install] 重設既有 Directus 管理員密碼。",
         generateStaticToken:
             "[install] 登入 Directus 並為 web / worker 建立伺服器端靜態 token。",
         updateSiteLanguage:
@@ -262,6 +266,8 @@ const MESSAGES = {
             "[install] Directus ストレージ用の MinIO service account を作成します。",
         createRole: "[install] Directus 管理者ロールを作成します。",
         createAdminUser: "[install] Directus 管理者ユーザーを作成します。",
+        resetAdminPassword:
+            "[install] 既存の Directus 管理者パスワードを再設定します。",
         generateStaticToken:
             "[install] Directus にログインし、web / worker 用のサービス token を作成します。",
         updateSiteLanguage:

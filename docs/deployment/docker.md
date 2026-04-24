@@ -125,9 +125,8 @@ pnpm docker:up
 
 请注意：
 
-- 当前仓库内的 seed 已是干净产物：不包含可直接登录的固定管理员账户，也不包含可复用的静态 token 或会话
-- 当前 `seed/metadata.json` 记录的 MinIO `objectCount` 为 `0`，因此首次部署只会创建 bucket，不会恢复任何演示对象
-- 管理员账户由安装器在 restore 后自动生成并写入 `.env`，而不是来自 seed
+- 当前 `seed/metadata.json` 记录的 MinIO `objectCount` 为 `1`，对应仓库中的 `seed/minio/demo-bucket/.gitkeep`
+- PostgreSQL seed 保留 `admin@example.com` 这条管理员记录以承接业务外键；安装器会在 restore 后确保该管理员存在并重置为新的随机密码
 - AI 运行时密钥、基础设施账号名与内部调用密钥都由安装器写入 `.env`
 - PostgreSQL seed dump 仍通过 Git LFS 分发，部署前依然应执行 `git lfs install && git lfs pull`
 - 如果需要重新触发演示恢复，请先删除 `postgres_data` 与 `minio_data` 对应的 Docker volume，或使用 `cialli-install install --reset`
@@ -220,6 +219,7 @@ pnpm seed:verify
 - `seed/metadata.json` 中记录的 dump 大小与对象数量与实际文件一致
 - `directus/schema/app-schema.json` 是有效的 Directus schema 快照
 - 临时还原 `seed/postgres/demo.dump` 后，不存在 `demo-admin@example.com`
+- 临时还原后不存在 `status='suspended' and email like 'disabled+%@seed.invalid'` 的占位管理员
 - 临时还原的 `directus_users.token` 全部为空
 - 临时还原的 `directus_sessions` 为空
 

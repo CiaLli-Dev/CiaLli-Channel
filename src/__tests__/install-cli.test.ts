@@ -107,6 +107,12 @@ describe("installer env rendering", () => {
         expect(secrets.BANGUMI_TOKEN_ENCRYPTION_KEY).toBe(
             Buffer.alloc(32, 7).toString("base64"),
         );
+        expect(secrets.DIRECTUS_WEB_SERVICE_EMAIL).toBe(
+            "svc-web-07070707@example.com",
+        );
+        expect(secrets.DIRECTUS_WORKER_SERVICE_EMAIL).toBe(
+            "svc-worker-07070707@example.com",
+        );
         expect(secrets.DIRECTUS_WEB_STATIC_TOKEN).toHaveLength(48);
         expect(secrets.DIRECTUS_WORKER_STATIC_TOKEN).toHaveLength(48);
     });

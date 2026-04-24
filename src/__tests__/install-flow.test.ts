@@ -18,8 +18,10 @@ function createFakeDeps() {
         async runCommand(command: string, args: string[]) {
             const key = `${command} ${args.join(" ")}`;
             commands.push(key);
-            if (responses.has(key)) {
-                return responses.get(key) || "";
+            for (const [pattern, value] of responses) {
+                if (key.includes(pattern)) {
+                    return value;
+                }
             }
             if (key.includes("docker info")) {
                 return "Server Version: 27";
@@ -46,12 +48,15 @@ function createFakeDeps() {
             ) {
                 return "";
             }
+            if (key.includes("select id from directus_roles where name =")) {
+                return "role-uuid";
+            }
             if (
                 key.includes(
-                    "docker compose --env-file /repo/.env -f docker-compose.yml exec -T postgres sh -lc",
+                    "select id from directus_users where lower(email) = lower",
                 )
             ) {
-                return "role-uuid";
+                return "";
             }
             return "";
         },
@@ -133,6 +138,17 @@ function createFakeDeps() {
             ) {
                 return new Response(
                     JSON.stringify({ data: { id: "service-user-id" } }),
+                    {
+                        status: 200,
+                    },
+                );
+            }
+            if (
+                url === "http://127.0.0.1:8055/users/seed-admin-id" &&
+                init?.method === "PATCH"
+            ) {
+                return new Response(
+                    JSON.stringify({ data: { id: "seed-admin-id" } }),
                     {
                         status: 200,
                     },
@@ -264,6 +280,42 @@ describe("installer flow", () => {
                 ),
             ),
         ).toBe(true);
+    });
+
+    it("reuses an existing seeded admin by resetting its password", async () => {
+        const { commands, deps, responses } = createFakeDeps();
+
+        responses.set(
+            "select id from directus_users where lower(email) = lower('admin@example.com') limit 1",
+            "seed-admin-id",
+        );
+
+        await runInstallFlow(
+            {
+                command: "install",
+                lang: "en",
+                siteUrl: "https://example.com",
+                envFile: null,
+                interactive: false,
+                reset: false,
+            },
+            deps,
+        );
+
+        expect(
+            commands.some((command) =>
+                command.includes(
+                    "npx directus users passwd --email admin@example.com --password ",
+                ),
+            ),
+        ).toBe(true);
+        expect(
+            commands.some((command) =>
+                command.includes(
+                    "npx directus users create --email admin@example.com --password ",
+                ),
+            ),
+        ).toBe(false);
     });
 
     it("prompts for language before site url in interactive mode", async () => {

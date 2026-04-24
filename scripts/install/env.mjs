@@ -65,9 +65,9 @@ export function generateInstallerSecrets(random = randomBytes) {
         BANGUMI_TOKEN_ENCRYPTION_KEY: random(32).toString("base64"),
         DIRECTUS_WEB_STATIC_TOKEN: random(24).toString("hex"),
         DIRECTUS_WORKER_STATIC_TOKEN: random(24).toString("hex"),
-        DIRECTUS_WEB_SERVICE_EMAIL: `svc-web-${suffix}@cialli.internal`,
+        DIRECTUS_WEB_SERVICE_EMAIL: `svc-web-${suffix}@example.com`,
         DIRECTUS_WEB_SERVICE_PASSWORD: random(24).toString("base64url"),
-        DIRECTUS_WORKER_SERVICE_EMAIL: `svc-worker-${suffix}@cialli.internal`,
+        DIRECTUS_WORKER_SERVICE_EMAIL: `svc-worker-${suffix}@example.com`,
         DIRECTUS_WORKER_SERVICE_PASSWORD: random(24).toString("base64url"),
     };
 }

@@ -167,14 +167,25 @@ async function verifyRestoredSeedDatabase() {
             containerName,
             "-e",
             `POSTGRES_PASSWORD=${postgresPassword}`,
-            "-e",
-            "POSTGRES_DB=directus",
             "-v",
             `${seedPostgresDir}:/seed/postgres:ro`,
             "postgis/postgis:18-3.6",
         ]);
 
         await waitForPostgresReady(containerName);
+        runDocker([
+            "exec",
+            "-e",
+            `PGPASSWORD=${postgresPassword}`,
+            containerName,
+            "psql",
+            "-U",
+            "postgres",
+            "-d",
+            "postgres",
+            "-c",
+            "create database directus template template0;",
+        ]);
         await waitForDatabaseCreated(
             containerName,
             postgresPassword,
@@ -207,6 +218,18 @@ async function verifyRestoredSeedDatabase() {
         if (demoAdminCount !== "0") {
             throw new Error(
                 `seed dump 仍包含 legacy demo admin: ${LEGACY_DEMO_ADMIN_EMAIL}`,
+            );
+        }
+
+        const suspendedSeedAdminCount = await queryRestoredDatabase(
+            containerName,
+            postgresPassword,
+            "select count(*) from directus_users where status = 'suspended' and email like 'disabled+%@seed.invalid';",
+        );
+
+        if (suspendedSeedAdminCount !== "0") {
+            throw new Error(
+                `seed dump 仍包含 suspended seed admin placeholder: ${suspendedSeedAdminCount}`,
             );
         }
 

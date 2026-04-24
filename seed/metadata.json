@@ -1,23 +1,25 @@
 {
-  "generatedAt": "2026-04-22T16:53:36.241Z",
+  "generatedAt": "2026-04-24T05:54:38.067Z",
   "source": "local-docker-compose",
   "postgres": {
     "service": "postgres",
     "database": "directus",
     "dumpFile": "seed/postgres/demo.dump",
-    "dumpBytes": 329793
+    "dumpBytes": 338121
   },
   "minio": {
     "service": "minio",
     "bucket": "cialli-assets",
     "objectRoot": "seed/minio/demo-bucket",
-    "objectCount": 0
+    "objectCount": 1
   },
   "directus": {
     "schemaFile": "directus/schema/app-schema.json",
     "seedContract": {
-      "installerCreatesAdmin": true,
+      "installerEnsuresAdmin": true,
+      "seedAdminEmail": "admin@example.com",
       "legacyDemoAdminEmailRemoved": "demo-admin@example.com",
+      "suspendedSeedAdminRemoved": true,
       "staticTokensCleared": true,
       "sessionsCleared": true
     }

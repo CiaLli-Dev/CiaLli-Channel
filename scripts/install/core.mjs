@@ -278,25 +278,7 @@ export async function runInstallFlow(args, deps) {
     await runCompose(projectRoot, envFilePath, ["up", "-d", "directus"], deps);
     await waitForHttpOk(`${directusUrl}${DIRECTUS_HEALTH_PATH}`, deps, t);
 
-    deps.log(t("createRole"));
-    await runComposeExec(
-        projectRoot,
-        envFilePath,
-        [
-            "directus",
-            "npx",
-            "directus",
-            "roles",
-            "create",
-            "--role",
-            INSTALL_DIRECTUS_ADMIN_ROLE,
-            "--admin",
-            "--app",
-        ],
-        deps,
-    );
-
-    const adminRoleId = (
+    let adminRoleId = (
         await runComposeExec(
             projectRoot,
             envFilePath,
@@ -317,28 +299,108 @@ export async function runInstallFlow(args, deps) {
         .at(-1)
         ?.trim();
     if (!adminRoleId) {
+        deps.log(t("createRole"));
+        await runComposeExec(
+            projectRoot,
+            envFilePath,
+            [
+                "directus",
+                "npx",
+                "directus",
+                "roles",
+                "create",
+                "--role",
+                INSTALL_DIRECTUS_ADMIN_ROLE,
+                "--admin",
+                "--app",
+            ],
+            deps,
+        );
+        adminRoleId = (
+            await runComposeExec(
+                projectRoot,
+                envFilePath,
+                [
+                    "postgres",
+                    "sh",
+                    "-lc",
+                    [
+                        'PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -c',
+                        `"select id from directus_roles where name = '${INSTALL_DIRECTUS_ADMIN_ROLE.replace(/'/g, "''")}' limit 1"`,
+                    ].join(" "),
+                ],
+                deps,
+            )
+        )
+            .trim()
+            .split("\n")
+            .at(-1)
+            ?.trim();
+    }
+    if (!adminRoleId) {
         throw new Error(t("roleIdMissing"));
     }
 
-    deps.log(t("createAdminUser"));
-    await runComposeExec(
-        projectRoot,
-        envFilePath,
-        [
-            "directus",
-            "npx",
-            "directus",
-            "users",
-            "create",
-            "--email",
-            envValues.DIRECTUS_ADMIN_EMAIL,
-            "--password",
-            envValues.DIRECTUS_ADMIN_PASSWORD,
-            "--role",
-            adminRoleId,
-        ],
-        deps,
-    );
+    const existingAdminUserId = (
+        await runComposeExec(
+            projectRoot,
+            envFilePath,
+            [
+                "postgres",
+                "sh",
+                "-lc",
+                [
+                    'PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -c',
+                    `"select id from directus_users where lower(email) = lower('${envValues.DIRECTUS_ADMIN_EMAIL.replace(/'/g, "''")}') limit 1"`,
+                ].join(" "),
+            ],
+            deps,
+        )
+    )
+        .trim()
+        .split("\n")
+        .at(-1)
+        ?.trim();
+
+    if (existingAdminUserId) {
+        deps.log(t("resetAdminPassword"));
+        await runComposeExec(
+            projectRoot,
+            envFilePath,
+            [
+                "directus",
+                "npx",
+                "directus",
+                "users",
+                "passwd",
+                "--email",
+                envValues.DIRECTUS_ADMIN_EMAIL,
+                "--password",
+                envValues.DIRECTUS_ADMIN_PASSWORD,
+            ],
+            deps,
+        );
+    } else {
+        deps.log(t("createAdminUser"));
+        await runComposeExec(
+            projectRoot,
+            envFilePath,
+            [
+                "directus",
+                "npx",
+                "directus",
+                "users",
+                "create",
+                "--email",
+                envValues.DIRECTUS_ADMIN_EMAIL,
+                "--password",
+                envValues.DIRECTUS_ADMIN_PASSWORD,
+                "--role",
+                adminRoleId,
+            ],
+            deps,
+        );
+    }
 
     const loginResponse = await deps.fetch(`${directusUrl}/auth/login`, {
         method: "POST",
@@ -363,6 +425,30 @@ export async function runInstallFlow(args, deps) {
     ).trim();
     if (!accessToken) {
         throw new Error(t("directusAccessTokenMissing"));
+    }
+
+    if (existingAdminUserId) {
+        const ensureAdminRoleResponse = await deps.fetch(
+            `${directusUrl}/users/${existingAdminUserId}`,
+            {
+                method: "PATCH",
+                headers: {
+                    authorization: `Bearer ${accessToken}`,
+                    "content-type": "application/json",
+                },
+                body: JSON.stringify({
+                    role: adminRoleId,
+                    status: "active",
+                }),
+            },
+        );
+        if (!ensureAdminRoleResponse.ok) {
+            throw new Error(
+                t("directusStaticTokenPersistFailed", {
+                    status: ensureAdminRoleResponse.status,
+                }),
+            );
+        }
     }
 
     deps.log(t("generateStaticToken"));
