@@ -20,6 +20,10 @@ import {
     normalizeRegistrationRequestId,
 } from "@/server/auth/registration-request-cookie";
 import {
+    detachManagedFiles,
+    syncManagedFileBinding,
+} from "@/server/api/v1/me/_helpers";
+import {
     cancelPendingRegistration,
     createPendingRegistrationUser,
     createRegistrationRequestItem,
@@ -311,6 +315,12 @@ export async function createPublicRegistration(
                 requestId: createdRequest.id,
                 avatarFileId: uploadedAvatarFileId,
             });
+            await syncManagedFileBinding({
+                previousFileValue: null,
+                nextFileValue: uploadedAvatarFileId,
+                userId: pendingUser.id,
+                visibility: "private",
+            });
         }
 
         return createdRequest;
@@ -373,6 +383,7 @@ export async function cancelPublicRegistration(params: {
         requestId: params.requestId,
         reviewedAt: new Date().toISOString(),
     });
+    await detachManagedFiles([target.avatar_file]);
     return updated;
 }
 
@@ -401,10 +412,17 @@ export async function replacePublicRegistrationAvatar(params: {
     );
 
     const nextAvatarFileId = await uploadRegistrationAvatar(params.avatar);
-    return await setRegistrationRequestAvatar({
+    const updated = await setRegistrationRequestAvatar({
         requestId: params.requestId,
         avatarFileId: nextAvatarFileId,
     });
+    await syncManagedFileBinding({
+        previousFileValue: target.avatar_file,
+        nextFileValue: nextAvatarFileId,
+        userId: String(target.pending_user_id ?? "").trim(),
+        visibility: "private",
+    });
+    return updated;
 }
 
 export async function loadAuthorizedRegistrationAvatar(params: {

@@ -1,24 +1,24 @@
-import type { UploadPurpose } from "@/constants/upload-limits";
 import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 import { collectReferencedDirectusFileIds } from "@/server/api/v1/shared/file-cleanup";
 import {
     deleteOrphanFileFromRepository,
     readStaleFileGcCandidatesFromRepository,
 } from "@/server/repositories/files/file-cleanup.repository";
+import { reconcileManagedFileLifecycle } from "@/server/files/file-lifecycle-reconciliation";
+import { readManagedFilesByIds } from "@/server/repositories/files/file-lifecycle.repository";
 
 const DEFAULT_FILE_GC_RETENTION_HOURS = 24;
 const DEFAULT_FILE_GC_BATCH_SIZE = 200;
 const DEFAULT_FILE_GC_INTERVAL_MS = 900_000;
 
-export const FILE_GC_TEMPORARY_PURPOSES: UploadPurpose[] = [
-    "registration-avatar",
-    "general",
-];
-
 type FileGcResult = {
     scanned: number;
     referenced: number;
     deleted: number;
+    notFound: number;
+    failed: number;
+    skippedState: number;
+    skippedReferenced: number;
     candidateFileIds: string[];
     deletedFileIds: string[];
 };
@@ -56,19 +56,31 @@ export function readFileGcIntervalMs(): number {
     );
 }
 
-function buildCreatedBeforeIso(now: Date): string {
+function buildDetachedBeforeIso(now: Date): string {
     return new Date(
         now.getTime() - readFileGcRetentionHours() * 60 * 60 * 1000,
     ).toISOString();
+}
+
+let lifecycleReconciled = false;
+
+async function ensureManagedFileLifecycleReconciled(now: Date): Promise<void> {
+    if (lifecycleReconciled) {
+        return;
+    }
+    const detachedBefore = buildDetachedBeforeIso(now);
+    const result = await reconcileManagedFileLifecycle(detachedBefore);
+    lifecycleReconciled = true;
+    console.info("[file-gc-worker] lifecycle reconciled", result);
 }
 
 export async function runFileGcBatch(
     now: Date = new Date(),
 ): Promise<FileGcResult> {
     return await withServiceRepositoryContext(async () => {
+        await ensureManagedFileLifecycleReconciled(now);
         const candidates = await readStaleFileGcCandidatesFromRepository({
-            createdBefore: buildCreatedBeforeIso(now),
-            temporaryPurposes: FILE_GC_TEMPORARY_PURPOSES,
+            detachedBefore: buildDetachedBeforeIso(now),
             limit: readFileGcBatchSize(),
         });
         const candidateFileIds = candidates
@@ -80,27 +92,66 @@ export async function runFileGcBatch(
                 scanned: 0,
                 referenced: 0,
                 deleted: 0,
+                notFound: 0,
+                failed: 0,
+                skippedState: 0,
+                skippedReferenced: 0,
                 candidateFileIds: [],
                 deletedFileIds: [],
             };
         }
 
-        const referencedFileIds =
-            await collectReferencedDirectusFileIds(candidateFileIds);
-        const orphanFileIds = candidateFileIds.filter(
-            (fileId) => !referencedFileIds.has(fileId),
+        const [referencedFileIds, currentLifecycleRows] = await Promise.all([
+            collectReferencedDirectusFileIds(candidateFileIds),
+            readManagedFilesByIds(candidateFileIds),
+        ]);
+        const detachedStateIds = new Set(
+            currentLifecycleRows
+                .filter((row) => row.app_lifecycle === "detached")
+                .map((row) => row.id),
+        );
+        const activeCandidateFileIds = candidateFileIds.filter((fileId) =>
+            detachedStateIds.has(fileId),
+        );
+        const referencedActiveFileIds = new Set(
+            activeCandidateFileIds.filter((fileId) =>
+                referencedFileIds.has(fileId),
+            ),
+        );
+        const orphanFileIds = activeCandidateFileIds.filter(
+            (fileId) => !referencedActiveFileIds.has(fileId),
         );
 
+        let deleted = 0;
+        let notFound = 0;
+        let failed = 0;
+        const deletedFileIds: string[] = [];
         for (const fileId of orphanFileIds) {
-            await deleteOrphanFileFromRepository(fileId);
+            const result = await deleteOrphanFileFromRepository(fileId);
+            if (result.ok) {
+                deleted += 1;
+                deletedFileIds.push(fileId);
+                continue;
+            }
+            if (result.reason === "not_found") {
+                notFound += 1;
+                continue;
+            }
+            failed += 1;
         }
 
         return {
             scanned: candidateFileIds.length,
             referenced: referencedFileIds.size,
-            deleted: orphanFileIds.length,
+            deleted,
+            notFound,
+            failed,
+            skippedState:
+                candidateFileIds.length - activeCandidateFileIds.length,
+            skippedReferenced:
+                activeCandidateFileIds.length - orphanFileIds.length,
             candidateFileIds,
-            deletedFileIds: orphanFileIds,
+            deletedFileIds,
         };
     });
 }

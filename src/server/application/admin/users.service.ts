@@ -33,7 +33,6 @@ import {
     readMany,
     readOneById,
     syncDirectusUserPolicies,
-    updateDirectusFileMetadata,
     updateDirectusUser,
     createOne,
     updateOne,
@@ -65,6 +64,10 @@ import {
     requireAdmin,
 } from "@/server/api/v1/shared";
 import { invalidateAuthorCache } from "@/server/api/v1/shared/author-cache";
+import {
+    bindFileOwnerToUser,
+    syncManagedFileBinding,
+} from "@/server/api/v1/me/_helpers";
 import {
     clearBlockingUserReferences,
     loadReferencedFilesByUser,
@@ -226,7 +229,7 @@ function buildProfilePayload(
 async function applyAvatarFileChange(
     body: JsonObject,
     userId: string,
-    _prevAvatarFile: string | null,
+    prevAvatarFile: string | null,
     nextAvatarFile: string | null,
     nextProfilePublic: boolean,
 ): Promise<void> {
@@ -234,12 +237,22 @@ async function applyAvatarFileChange(
     if (!hasAvatarPatch && !hasOwn(body, "profile_public")) {
         return;
     }
-    if (nextAvatarFile) {
-        await updateDirectusFileMetadata(nextAvatarFile, {
-            uploaded_by: userId,
-            app_owner_user_id: userId,
-            app_visibility: nextProfilePublic ? "public" : "private",
+    if (hasAvatarPatch) {
+        await syncManagedFileBinding({
+            previousFileValue: prevAvatarFile,
+            nextFileValue: nextAvatarFile,
+            userId,
+            visibility: nextProfilePublic ? "public" : "private",
         });
+        return;
+    }
+    if (nextAvatarFile) {
+        await bindFileOwnerToUser(
+            nextAvatarFile,
+            userId,
+            undefined,
+            nextProfilePublic ? "public" : "private",
+        );
     }
 }
 

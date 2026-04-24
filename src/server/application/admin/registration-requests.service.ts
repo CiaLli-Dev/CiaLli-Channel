@@ -26,7 +26,6 @@ import {
     deleteDirectusUser,
     readMany,
     syncDirectusUserPolicies,
-    updateDirectusFileMetadata,
     updateDirectusUser,
     updateOne,
     createOne,
@@ -37,6 +36,10 @@ import { withUserRepositoryContext } from "@/server/repositories/directus/scope"
 import { parseJsonBody, parsePagination } from "@/server/api/utils";
 import { invalidateOfficialSidebarCache } from "@/server/api/v1/public-data";
 import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
+import {
+    bindFileOwnerToUser,
+    detachManagedFiles,
+} from "@/server/api/v1/me/_helpers";
 
 import {
     ensureUsernameAvailable,
@@ -317,11 +320,12 @@ async function handleRegistrationApprove(
         target.avatar_file,
     );
     if (registrationAvatarFileId) {
-        await updateDirectusFileMetadata(registrationAvatarFileId, {
-            uploaded_by: created.user.id,
-            app_owner_user_id: created.user.id,
-            app_visibility: "public",
-        }).catch((error) => {
+        await bindFileOwnerToUser(
+            registrationAvatarFileId,
+            created.user.id,
+            undefined,
+            "public",
+        ).catch((error) => {
             console.warn(
                 "[registration-approve] 更新头像文件元数据失败, fileId:",
                 registrationAvatarFileId,
@@ -397,6 +401,7 @@ async function handleRegistrationRejectOrCancel(
             reject_reason: action === "reject" ? reason : null,
         },
     );
+    await detachManagedFiles([target.avatar_file]);
     return ok({ item: updated });
 }
 

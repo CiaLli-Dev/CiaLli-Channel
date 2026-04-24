@@ -25,6 +25,11 @@ export type SocialLink = {
 export type CommentStatus = "published" | "hidden" | "archived";
 
 export type AppRole = "admin" | "member";
+export type AppFileLifecycle =
+    | "temporary"
+    | "attached"
+    | "detached"
+    | "protected";
 
 export type AppPermissionKey =
     | "can_publish_articles"
@@ -332,9 +337,12 @@ export type AppFile = {
     type: string | null;
     filename_download: string | null;
     date_created: string | null;
+    date_updated?: string | null;
     app_owner_user_id?: string | { id?: string } | null;
     app_upload_purpose?: UploadPurpose | null;
     app_visibility?: "private" | "public" | null;
+    app_lifecycle?: AppFileLifecycle | null;
+    app_detached_at?: string | null;
     uploaded_by?: string | { id?: string } | null;
     modified_by?: string | { id?: string } | null;
 };

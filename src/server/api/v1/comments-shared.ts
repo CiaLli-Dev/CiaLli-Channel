@@ -398,7 +398,12 @@ async function collectDescendantCommentIds(
 export async function deleteCommentWithDescendants(
     collection: CommentCollection,
     commentId: string,
-): Promise<void> {
+): Promise<Array<{ id: string; body?: unknown; author_id?: unknown }>> {
+    const rootComment = await readCommentById(collection, commentId, [
+        "id",
+        "body",
+        "author_id",
+    ]);
     const descendants = await collectDescendantCommentIds(
         collection,
         commentId,
@@ -407,6 +412,16 @@ export async function deleteCommentWithDescendants(
         await deleteCommentById(collection, descendant.id);
     }
     await deleteCommentById(collection, commentId);
+    return rootComment
+        ? [
+              ...descendants,
+              {
+                  id: String(rootComment.id || commentId),
+                  body: rootComment.body,
+                  author_id: rootComment.author_id,
+              },
+          ]
+        : descendants;
 }
 
 export async function handleCommentPreview(

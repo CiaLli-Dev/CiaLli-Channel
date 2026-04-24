@@ -51,6 +51,8 @@ describe("upload.repository", () => {
                 app_upload_purpose: "registration-avatar",
                 app_owner_user_id: null,
                 app_visibility: "private",
+                app_lifecycle: "temporary",
+                app_detached_at: null,
             }),
         );
     });
@@ -75,6 +77,8 @@ describe("upload.repository", () => {
                 app_owner_user_id: "user-1",
                 app_upload_purpose: "article-cover",
                 app_visibility: "public",
+                app_lifecycle: "temporary",
+                app_detached_at: null,
             }),
         );
     });

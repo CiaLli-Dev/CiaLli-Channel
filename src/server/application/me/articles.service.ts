@@ -37,10 +37,17 @@ import {
     safeCsv,
     toSpecialArticleSlug,
 } from "@/server/api/v1/shared";
-import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
+import {
+    collectArticleCommentCleanupCandidates,
+    extractDirectusAssetIdsFromMarkdown,
+    normalizeDirectusFileId,
+} from "@/server/api/v1/shared/file-cleanup";
 import {
     bindFileOwnerToUser,
+    detachManagedFiles,
     renderMeMarkdownPreview,
+    syncManagedFileBinding,
+    syncMarkdownFileLifecycle,
     syncMarkdownFilesToVisibility,
 } from "@/server/api/v1/me/_helpers";
 
@@ -494,16 +501,17 @@ async function syncArticleCoverBinding(params: {
     nextVisibility: "private" | "public";
     access: AppAccess;
 }): Promise<void> {
-    if (hasOwn(params.body, "cover_file") && params.nextCoverFile) {
+    if (hasOwn(params.body, "cover_file")) {
         const coverTitle = params.target.short_id
             ? `Cover ${params.target.short_id}`
             : undefined;
-        await bindFileOwnerToUser(
-            params.nextCoverFile,
-            params.access.user.id,
-            coverTitle,
-            params.nextVisibility,
-        );
+        await syncManagedFileBinding({
+            previousFileValue: params.target.cover_file,
+            nextFileValue: params.nextCoverFile,
+            userId: params.access.user.id,
+            title: coverTitle,
+            visibility: params.nextVisibility,
+        });
     }
 }
 
@@ -518,13 +526,14 @@ async function syncArticleBodyVisibility(params: {
         params.input.is_public !== undefined ||
         params.input.status !== undefined
     ) {
-        await syncMarkdownFilesToVisibility(
-            String(
+        await syncMarkdownFileLifecycle({
+            previousMarkdown: String(params.target.body_markdown ?? ""),
+            nextMarkdown: String(
                 params.input.body_markdown ?? params.target.body_markdown ?? "",
             ),
-            params.access.user.id,
-            params.nextVisibility,
-        );
+            userId: params.access.user.id,
+            visibility: params.nextVisibility,
+        });
     }
 }
 
@@ -783,7 +792,21 @@ async function handleArticleDelete(
     target: OwnedArticleRecord,
 ): Promise<Response> {
     const id = target.id;
+    const candidateFileIds = new Set<string>([
+        ...extractDirectusAssetIdsFromMarkdown(
+            String(target.body_markdown ?? ""),
+        ),
+    ]);
+    const coverFileId = normalizeDirectusFileId(target.cover_file);
+    if (coverFileId) {
+        candidateFileIds.add(coverFileId);
+    }
+    const commentCleanup = await collectArticleCommentCleanupCandidates(id);
     await deleteOne("app_articles", id);
+    await detachManagedFiles([
+        ...candidateFileIds,
+        ...commentCleanup.candidateFileIds,
+    ]);
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("article-list"),

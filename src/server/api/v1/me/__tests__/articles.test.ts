@@ -64,6 +64,23 @@ vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
     ),
 }));
 
+vi.mock("@/server/api/v1/me/_helpers", () => ({
+    bindFileOwnerToUser: vi.fn().mockResolvedValue(undefined),
+    detachManagedFiles: vi.fn().mockResolvedValue([]),
+    renderMeMarkdownPreview: vi.fn().mockResolvedValue("<p>preview</p>"),
+    syncManagedFileBinding: vi.fn().mockResolvedValue({
+        attachedFileIds: [],
+        detachedFileIds: [],
+        nextFileIds: [],
+    }),
+    syncMarkdownFileLifecycle: vi.fn().mockResolvedValue({
+        attachedFileIds: [],
+        detachedFileIds: [],
+        nextFileIds: [],
+    }),
+    syncMarkdownFilesToVisibility: vi.fn().mockResolvedValue([]),
+}));
+
 import {
     deleteDirectusFile,
     readMany,

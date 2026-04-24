@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/server/repositories/files/file-cleanup.repository", () => ({
+    readAllReferencedIdsInSiteSettingsFromRepository: vi.fn(),
+    readAllReferencedIdsInStructuredTargetFromRepository: vi.fn(),
+    readAllReferencedIdsInMarkdownTargetFromRepository: vi.fn(),
     readReferencedIdsInSiteSettingsFromRepository: vi.fn(),
     readReferencedIdsInStructuredTargetFromRepository: vi.fn(),
     readReferencedIdsInMarkdownTargetFromRepository: vi.fn(),
@@ -20,6 +23,7 @@ vi.mock("@/server/repositories/files/file-cleanup.repository", () => ({
         { collection: "app_article_comments", field: "body" },
         { collection: "app_diary_comments", field: "body" },
         { collection: "app_diaries", field: "content" },
+        { collection: "app_site_announcements", field: "body_markdown" },
     ],
     readFileIdsFromCollectionFieldFromRepository: vi.fn(),
     readOwnedDirectusFileIdsFromRepository: vi.fn(),

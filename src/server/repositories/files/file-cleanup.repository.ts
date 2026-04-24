@@ -1,5 +1,6 @@
-import type { UploadPurpose } from "@/constants/upload-limits";
+import type { AppFile } from "@/types/app";
 import type { JsonObject } from "@/types/json";
+import type { DeleteDirectusFileResult } from "@/server/directus/client";
 import { deleteDirectusFile, readMany } from "@/server/directus/client";
 import {
     extractDirectusAssetIdsFromMarkdown,
@@ -30,7 +31,8 @@ export type MarkdownReferenceTarget = {
         | "app_articles"
         | "app_article_comments"
         | "app_diary_comments"
-        | "app_diaries";
+        | "app_diaries"
+        | "app_site_announcements";
     field: "body_markdown" | "body" | "content";
 };
 
@@ -51,40 +53,57 @@ export const MARKDOWN_REFERENCE_TARGETS: MarkdownReferenceTarget[] = [
     { collection: "app_article_comments", field: "body" },
     { collection: "app_diary_comments", field: "body" },
     { collection: "app_diaries", field: "content" },
+    { collection: "app_site_announcements", field: "body_markdown" },
 ];
+
+function shouldStopCollecting(
+    candidates: Set<string> | null,
+    output: Set<string>,
+): boolean {
+    return Boolean(candidates && output.size >= candidates.size);
+}
+
+function collectReferencedIdsFromString(
+    value: string,
+    candidates: Set<string> | null,
+    output: Set<string>,
+): void {
+    const found = extractDirectusAssetIdsFromMarkdown(value);
+    for (const fileId of found) {
+        if (!candidates || candidates.has(fileId)) {
+            output.add(fileId);
+        }
+    }
+}
 
 export function collectReferencedAssetIdsFromUnknown(
     value: unknown,
-    candidates: Set<string>,
+    candidates: Set<string> | null,
     output: Set<string>,
 ): void {
-    if (output.size >= candidates.size) {
+    if (shouldStopCollecting(candidates, output)) {
         return;
     }
     if (typeof value === "string") {
-        const found = extractDirectusAssetIdsFromMarkdown(value);
-        for (const fileId of found) {
-            if (candidates.has(fileId)) {
-                output.add(fileId);
-            }
-        }
+        collectReferencedIdsFromString(value, candidates, output);
         return;
     }
     if (Array.isArray(value)) {
         for (const item of value) {
             collectReferencedAssetIdsFromUnknown(item, candidates, output);
-            if (output.size >= candidates.size) {
+            if (shouldStopCollecting(candidates, output)) {
                 return;
             }
         }
         return;
     }
-    if (value && typeof value === "object") {
-        for (const item of Object.values(value as Record<string, unknown>)) {
-            collectReferencedAssetIdsFromUnknown(item, candidates, output);
-            if (output.size >= candidates.size) {
-                return;
-            }
+    if (!value || typeof value !== "object") {
+        return;
+    }
+    for (const item of Object.values(value as Record<string, unknown>)) {
+        collectReferencedAssetIdsFromUnknown(item, candidates, output);
+        if (shouldStopCollecting(candidates, output)) {
+            return;
         }
     }
 }
@@ -214,6 +233,27 @@ export async function readReferencedIdsInSiteSettingsFromRepository(
     return referenced;
 }
 
+export async function readAllReferencedIdsInSiteSettingsFromRepository(): Promise<
+    Set<string>
+> {
+    const referenced = new Set<string>();
+    const rows = await readMany("app_site_settings", {
+        filter: {
+            _and: [
+                { key: { _eq: "default" } },
+                { status: { _eq: "published" } },
+            ],
+        } as JsonObject,
+        fields: ["settings"],
+        sort: ["-date_updated", "-date_created"],
+        limit: 1,
+    });
+    for (const row of rows as Array<Record<string, unknown>>) {
+        collectReferencedAssetIdsFromUnknown(row.settings, null, referenced);
+    }
+    return referenced;
+}
+
 export async function readReferencedIdsInStructuredTargetFromRepository(
     target: StructuredReferenceTarget,
     fileIds: string[],
@@ -238,6 +278,32 @@ export async function readReferencedIdsInStructuredTargetFromRepository(
             }
         }
         if (list.length < REFERENCE_PAGE_SIZE || found.size >= fileIds.length) {
+            break;
+        }
+        offset += list.length;
+    }
+    return found;
+}
+
+export async function readAllReferencedIdsInStructuredTargetFromRepository(
+    target: StructuredReferenceTarget,
+): Promise<Set<string>> {
+    const found = new Set<string>();
+    let offset = 0;
+    while (true) {
+        const rows = await readMany(target.collection, {
+            fields: [target.field],
+            limit: REFERENCE_PAGE_SIZE,
+            offset,
+        });
+        const list = rows as Array<Record<string, unknown>>;
+        for (const row of list) {
+            const fileId = normalizeDirectusFileId(row[target.field]);
+            if (fileId) {
+                found.add(fileId);
+            }
+        }
+        if (list.length < REFERENCE_PAGE_SIZE) {
             break;
         }
         offset += list.length;
@@ -272,6 +338,33 @@ export async function readReferencedIdsInMarkdownTargetFromRepository(
             if (found.size >= candidateSet.size) {
                 return found;
             }
+        }
+        if (list.length < REFERENCE_PAGE_SIZE) {
+            break;
+        }
+        offset += list.length;
+    }
+    return found;
+}
+
+export async function readAllReferencedIdsInMarkdownTargetFromRepository(
+    target: MarkdownReferenceTarget,
+): Promise<Set<string>> {
+    const found = new Set<string>();
+    let offset = 0;
+    while (true) {
+        const rows = await readMany(target.collection, {
+            fields: [target.field],
+            limit: REFERENCE_PAGE_SIZE,
+            offset,
+        });
+        const list = rows as Array<Record<string, unknown>>;
+        for (const row of list) {
+            collectReferencedAssetIdsFromUnknown(
+                row[target.field],
+                null,
+                found,
+            );
         }
         if (list.length < REFERENCE_PAGE_SIZE) {
             break;
@@ -328,48 +421,34 @@ export async function readDeletableOwnedFilesFromRepository(
 }
 
 export async function readStaleFileGcCandidatesFromRepository(params: {
-    createdBefore: string;
-    temporaryPurposes: UploadPurpose[];
+    detachedBefore: string;
     limit: number;
 }): Promise<
     Array<{
         id: string;
         date_created: string | null;
-        app_owner_user_id?: unknown;
-        app_upload_purpose?: unknown;
+        app_lifecycle?: AppFile["app_lifecycle"];
+        app_detached_at?: string | null;
     }>
 > {
     const rows = await readMany("directus_files", {
         filter: {
             _and: [
-                { date_created: { _lte: params.createdBefore } },
-                {
-                    _or: [
-                        { app_owner_user_id: { _null: true } },
-                        {
-                            app_upload_purpose: {
-                                _in: params.temporaryPurposes,
-                            },
-                        },
-                    ],
-                },
+                { app_lifecycle: { _eq: "detached" } },
+                { app_detached_at: { _nnull: true } },
+                { app_detached_at: { _lte: params.detachedBefore } },
             ],
         } as JsonObject,
-        fields: [
-            "id",
-            "date_created",
-            "app_owner_user_id",
-            "app_upload_purpose",
-        ],
-        sort: ["date_created", "id"],
+        fields: ["id", "date_created", "app_lifecycle", "app_detached_at"],
+        sort: ["app_detached_at", "id"],
         limit: params.limit,
     });
 
     return rows as Array<{
         id: string;
         date_created: string | null;
-        app_owner_user_id?: unknown;
-        app_upload_purpose?: unknown;
+        app_lifecycle?: AppFile["app_lifecycle"];
+        app_detached_at?: string | null;
     }>;
 }
 
@@ -440,6 +519,6 @@ export async function readAlbumPhotoFileIdsFromRepository(
 
 export async function deleteOrphanFileFromRepository(
     fileId: string,
-): Promise<void> {
-    await deleteDirectusFile(fileId);
+): Promise<DeleteDirectusFileResult> {
+    return await deleteDirectusFile(fileId);
 }

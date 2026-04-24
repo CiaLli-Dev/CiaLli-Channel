@@ -42,6 +42,10 @@ import {
 import { splitSiteSettingsForStorage } from "@/server/site-settings/storage-sections";
 
 import { requireAdmin } from "@/server/api/v1/shared";
+import {
+    detachManagedFiles,
+    syncMarkdownFileLifecycle,
+} from "@/server/api/v1/me/_helpers";
 
 const ABOUT_ARTICLE_SLUG = "about";
 const ABOUT_FALLBACK_TITLE = "关于我们";
@@ -525,6 +529,7 @@ async function handleAdminSitePatch(
 
     const current = await getResolvedSiteSettings();
     const settings = resolveSiteSettingsPayload(patch, current.settings);
+    const previousFileIds = collectSettingsFileIds(current.settings);
     const nextFileIds = collectSettingsFileIds(settings);
     const { updatedAt } = await upsertSiteSettings(settings);
     for (const fileId of nextFileIds) {
@@ -532,8 +537,13 @@ async function handleAdminSitePatch(
             uploaded_by: adminUserId,
             app_owner_user_id: adminUserId,
             app_visibility: "public",
+            app_lifecycle: "attached",
+            app_detached_at: null,
         });
     }
+    await detachManagedFiles(
+        [...previousFileIds].filter((fileId) => !nextFileIds.has(fileId)),
+    );
     await invalidateSiteSettingsCache();
     return ok({
         settings,
@@ -597,6 +607,7 @@ async function handleAdminBulletinPatch(
     const body = await parseJsonBody(context.request);
     const input = validateBody(AdminBulletinUpdateSchema, body);
     const current = await getResolvedSiteSettings();
+    const previousAnnouncement = await readSiteAnnouncement();
     const announcementPatch = readAnnouncementFromRow({
         ...current.settings.announcement,
         ...(input.title !== undefined
@@ -611,6 +622,14 @@ async function handleAdminBulletinPatch(
         ...(input.closable !== undefined ? { closable: input.closable } : {}),
     });
     const { updatedAt } = await upsertSiteAnnouncement(announcementPatch);
+    await syncMarkdownFileLifecycle({
+        previousMarkdown:
+            previousAnnouncement?.announcement.body_markdown ??
+            current.settings.announcement.body_markdown,
+        nextMarkdown: announcementPatch.body_markdown,
+        userId: null,
+        visibility: "public",
+    });
     await invalidateSiteSettingsCache();
     return ok({
         announcement: announcementPatch,

@@ -59,6 +59,8 @@ export async function uploadManagedFile(params: {
                 app_owner_user_id: params.ownerUserId,
                 app_upload_purpose: params.purpose,
                 app_visibility: resolveInitialFileVisibility(params.purpose),
+                app_lifecycle: "temporary",
+                app_detached_at: null,
             });
         };
 

@@ -30,6 +30,11 @@ vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
 
 vi.mock("@/server/api/v1/me/_helpers", () => ({
     bindFileOwnerToUser: vi.fn().mockResolvedValue(undefined),
+    syncManagedFileBinding: vi.fn().mockResolvedValue({
+        attachedFileIds: [],
+        detachedFileIds: [],
+        nextFileIds: [],
+    }),
 }));
 
 import { updateDirectusUser, updateOne } from "@/server/directus/client";

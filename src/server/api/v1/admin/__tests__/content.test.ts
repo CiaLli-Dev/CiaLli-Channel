@@ -18,6 +18,7 @@ vi.mock("@/server/api/v1/shared", async (importOriginal) => {
 vi.mock("@/server/directus/client", () => ({
     deleteOne: vi.fn(),
     readMany: vi.fn(),
+    readOneById: vi.fn(),
     runWithDirectusUserAccess: vi.fn(
         async (_token: string, task: () => Promise<unknown>) => await task(),
     ),
@@ -43,7 +44,12 @@ vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
         ownerUserIds: [],
     }),
     collectDiaryFileIds: vi.fn().mockResolvedValue([]),
-    extractDirectusAssetIdsFromMarkdown: vi.fn(() => []),
+    extractDirectusAssetIdsFromMarkdown: vi.fn((markdown?: string | null) => {
+        const source = String(markdown ?? "");
+        return [...source.matchAll(/\/api\/v1\/assets\/([A-Za-z0-9-]+)/gu)].map(
+            (match) => match[1] ?? "",
+        );
+    }),
     mergeDirectusFileCleanupCandidates: vi.fn(
         (
             ...groups: Array<{
@@ -63,20 +69,41 @@ vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
 }));
 
 vi.mock("@/server/api/v1/comments-shared", () => ({
-    deleteCommentWithDescendants: vi.fn().mockResolvedValue(undefined),
+    deleteCommentWithDescendants: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock("@/server/api/v1/me/_helpers", () => ({
+    detachManagedFiles: vi.fn().mockResolvedValue([]),
+    detachMarkdownFiles: vi.fn().mockResolvedValue([]),
 }));
 
 import { requireAdmin } from "@/server/api/v1/shared";
-import { deleteOne, readMany, updateOne } from "@/server/directus/client";
+import {
+    deleteOne,
+    readMany,
+    readOneById,
+    updateOne,
+} from "@/server/directus/client";
 import { deleteCommentWithDescendants } from "@/server/api/v1/comments-shared";
+import {
+    detachManagedFiles,
+    detachMarkdownFiles,
+} from "@/server/api/v1/me/_helpers";
+import { collectArticleCommentCleanupCandidates } from "@/server/api/v1/shared/file-cleanup";
 import { handleAdminContent } from "@/server/api/v1/admin/content";
 
 const mockedRequireAdmin = vi.mocked(requireAdmin);
 const mockedReadMany = vi.mocked(readMany);
+const mockedReadOneById = vi.mocked(readOneById);
 const mockedUpdateOne = vi.mocked(updateOne);
 const mockedDeleteOne = vi.mocked(deleteOne);
 const mockedDeleteCommentWithDescendants = vi.mocked(
     deleteCommentWithDescendants,
+);
+const mockedDetachManagedFiles = vi.mocked(detachManagedFiles);
+const mockedDetachMarkdownFiles = vi.mocked(detachMarkdownFiles);
+const mockedCollectArticleCommentCleanupCandidates = vi.mocked(
+    collectArticleCommentCleanupCandidates,
 );
 
 function makeCtx(
@@ -203,6 +230,12 @@ describe("handleAdminContent diaries 权限收敛", () => {
                 article_id: "article-1",
             },
         ] as never);
+        mockedDeleteCommentWithDescendants.mockResolvedValueOnce([
+            {
+                id: "comment-1",
+                body: "![img](/api/v1/assets/file-comment)",
+            },
+        ]);
 
         const ctx = makeCtx(
             "admin/content/article-comments/comment-1",
@@ -219,5 +252,41 @@ describe("handleAdminContent diaries 权限收敛", () => {
             "comment-1",
         );
         expect(mockedDeleteOne).not.toHaveBeenCalled();
+        expect(mockedDetachMarkdownFiles).toHaveBeenCalledWith([
+            "![img](/api/v1/assets/file-comment)",
+        ]);
+    });
+
+    it("DELETE 文章时会先收集文件并在删除后 detach", async () => {
+        mockedReadOneById.mockResolvedValueOnce({
+            id: "article-1",
+            body_markdown:
+                "body ![img](/api/v1/assets/file-body) ![img](/api/v1/assets/file-body-2)",
+            cover_file: "file-cover",
+        } as never);
+        mockedCollectArticleCommentCleanupCandidates.mockResolvedValueOnce({
+            candidateFileIds: ["file-comment"],
+            ownerUserIds: [],
+        });
+
+        const ctx = makeCtx("admin/content/articles/article-1", "DELETE");
+        const response = await handleAdminContent(
+            ctx as unknown as APIContext,
+            ["content", "articles", "article-1"],
+        );
+
+        expect(response.status).toBe(200);
+        expect(mockedDeleteOne).toHaveBeenCalledWith(
+            "app_articles",
+            "article-1",
+        );
+        expect(mockedDetachManagedFiles).toHaveBeenCalledWith(
+            expect.arrayContaining([
+                "file-body",
+                "file-body-2",
+                "file-cover",
+                "file-comment",
+            ]),
+        );
     });
 });

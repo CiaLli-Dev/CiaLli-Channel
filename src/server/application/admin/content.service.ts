@@ -1,7 +1,12 @@
 import type { APIContext } from "astro";
 
 import type { JsonObject } from "@/types/json";
-import { deleteOne, readMany, updateOne } from "@/server/directus/client";
+import {
+    deleteOne,
+    readMany,
+    readOneById,
+    updateOne,
+} from "@/server/directus/client";
 import { fail, ok } from "@/server/api/response";
 import { withUserRepositoryContext } from "@/server/repositories/directus/scope";
 import {
@@ -13,6 +18,18 @@ import {
 import { cacheManager } from "@/server/cache/manager";
 import { awaitCacheInvalidations } from "@/server/cache/invalidation";
 import { deleteCommentWithDescendants } from "@/server/api/v1/comments-shared";
+import {
+    collectAlbumFileIds,
+    collectArticleCommentCleanupCandidates,
+    collectDiaryCommentCleanupCandidates,
+    collectDiaryFileIds,
+    extractDirectusAssetIdsFromMarkdown,
+    normalizeDirectusFileId,
+} from "@/server/api/v1/shared/file-cleanup";
+import {
+    detachManagedFiles,
+    detachMarkdownFiles,
+} from "@/server/api/v1/me/_helpers";
 
 import {
     ADMIN_MODULE_COLLECTION,
@@ -287,14 +304,27 @@ async function handleContentDelete(
     relatedComment: { article_id?: string; diary_id?: string } | undefined,
 ): Promise<Response> {
     if (module === "article-comments") {
-        await deleteCommentWithDescendants("app_article_comments", id);
-        await invalidateDeleteCache(module, id, null, relatedComment);
-        return ok({ id, module });
+        return await handleArticleCommentDelete(id, relatedComment);
     }
     if (module === "diary-comments") {
-        await deleteCommentWithDescendants("app_diary_comments", id);
-        await invalidateDeleteCache(module, id, null, relatedComment);
-        return ok({ id, module });
+        return await handleDiaryCommentDelete(id, relatedComment);
+    }
+
+    if (module === "articles") {
+        return await handleArticleDelete(collection, id, relatedComment);
+    }
+
+    if (module === "diaries") {
+        return await handleDiaryDelete(
+            collection,
+            id,
+            adminVisibleDiary,
+            relatedComment,
+        );
+    }
+
+    if (module === "albums") {
+        return await handleAlbumDelete(collection, id, relatedComment);
     }
 
     await deleteOne(collection, id);
@@ -305,6 +335,123 @@ async function handleContentDelete(
         relatedComment,
     );
     return ok({ id, module });
+}
+
+async function handleArticleCommentDelete(
+    id: string,
+    relatedComment: { article_id?: string; diary_id?: string } | undefined,
+): Promise<Response> {
+    const deletedComments = await deleteCommentWithDescendants(
+        "app_article_comments",
+        id,
+    );
+    await detachMarkdownFiles(
+        deletedComments.map(
+            (deletedComment) =>
+                deletedComment.body as string | null | undefined,
+        ),
+    );
+    await invalidateDeleteCache("article-comments", id, null, relatedComment);
+    return ok({ id, module: "article-comments" });
+}
+
+async function handleDiaryCommentDelete(
+    id: string,
+    relatedComment: { article_id?: string; diary_id?: string } | undefined,
+): Promise<Response> {
+    const deletedComments = await deleteCommentWithDescendants(
+        "app_diary_comments",
+        id,
+    );
+    await detachMarkdownFiles(
+        deletedComments.map(
+            (deletedComment) =>
+                deletedComment.body as string | null | undefined,
+        ),
+    );
+    await invalidateDeleteCache("diary-comments", id, null, relatedComment);
+    return ok({ id, module: "diary-comments" });
+}
+
+async function handleArticleDelete(
+    collection: AdminCollection,
+    id: string,
+    relatedComment: { article_id?: string; diary_id?: string } | undefined,
+): Promise<Response> {
+    const target = await readOneById("app_articles", id, {
+        fields: ["id", "body_markdown", "cover_file"],
+    });
+    if (!target) {
+        return fail("内容不存在", 404);
+    }
+    const commentCleanup = await collectArticleCommentCleanupCandidates(id);
+    const candidateFileIds = new Set<string>([
+        ...extractDirectusAssetIdsFromMarkdown(
+            String(target.body_markdown ?? ""),
+        ),
+        ...commentCleanup.candidateFileIds,
+    ]);
+    const coverFileId = normalizeDirectusFileId(target.cover_file);
+    if (coverFileId) {
+        candidateFileIds.add(coverFileId);
+    }
+    await deleteOne(collection, id);
+    await detachManagedFiles([...candidateFileIds]);
+    await invalidateDeleteCache("articles", id, null, relatedComment);
+    return ok({ id, module: "articles" });
+}
+
+async function handleDiaryDelete(
+    collection: AdminCollection,
+    id: string,
+    adminVisibleDiary: { id: string; short_id: string | null } | null,
+    relatedComment: { article_id?: string; diary_id?: string } | undefined,
+): Promise<Response> {
+    const target = await readOneById("app_diaries", id, {
+        fields: ["id", "content"],
+    });
+    if (!target) {
+        return fail("日记不存在", 404);
+    }
+    const [commentCleanup, diaryImageFileIds] = await Promise.all([
+        collectDiaryCommentCleanupCandidates(id),
+        collectDiaryFileIds(id),
+    ]);
+    await deleteOne(collection, id);
+    await detachManagedFiles([
+        ...extractDirectusAssetIdsFromMarkdown(String(target.content ?? "")),
+        ...diaryImageFileIds,
+        ...commentCleanup.candidateFileIds,
+    ]);
+    await invalidateDeleteCache(
+        "diaries",
+        id,
+        adminVisibleDiary?.short_id ?? null,
+        relatedComment,
+    );
+    return ok({ id, module: "diaries" });
+}
+
+async function handleAlbumDelete(
+    collection: AdminCollection,
+    id: string,
+    relatedComment: { article_id?: string; diary_id?: string } | undefined,
+): Promise<Response> {
+    const target = await readOneById("app_albums", id, {
+        fields: ["id", "cover_file"],
+    });
+    if (!target) {
+        return fail("内容不存在", 404);
+    }
+    const photoFileIds = await collectAlbumFileIds(id);
+    const coverFileId = normalizeDirectusFileId(target.cover_file);
+    await deleteOne(collection, id);
+    await detachManagedFiles([
+        ...(coverFileId ? [coverFileId] : []),
+        ...photoFileIds,
+    ]);
+    await invalidateDeleteCache("albums", id, null, relatedComment);
+    return ok({ id, module: "albums" });
 }
 
 async function loadRelatedComment(

@@ -21,7 +21,11 @@ import {
     renderCommentItem,
     validateReplyParent,
 } from "@/server/api/v1/comments-shared";
-import { syncMarkdownFilesToVisibility } from "@/server/api/v1/me/_helpers";
+import {
+    detachMarkdownFiles,
+    syncMarkdownFileLifecycle,
+    syncMarkdownFilesToVisibility,
+} from "@/server/api/v1/me/_helpers";
 
 async function getArticleCommentList(
     context: APIContext,
@@ -141,11 +145,13 @@ async function patchArticleComment(
     const payload = buildCommentUpdatePayload(input);
     const updated = await updateOne("app_article_comments", commentId, payload);
     if (input.body !== undefined || input.is_public !== undefined) {
-        await syncMarkdownFilesToVisibility(
-            input.body ?? updated.body,
-            comment.author_id,
-            (input.is_public ?? updated.is_public) ? "public" : "private",
-        );
+        await syncMarkdownFileLifecycle({
+            previousMarkdown: comment.body,
+            nextMarkdown: input.body ?? updated.body,
+            userId: comment.author_id,
+            visibility:
+                (input.is_public ?? updated.is_public) ? "public" : "private",
+        });
     }
     await awaitCacheInvalidations(
         [
@@ -175,7 +181,16 @@ async function deleteArticleComment(
     }
     assertOwnerOrAdmin(access, comment.author_id);
 
-    await deleteCommentWithDescendants("app_article_comments", commentId);
+    const deletedComments = await deleteCommentWithDescendants(
+        "app_article_comments",
+        commentId,
+    );
+    await detachMarkdownFiles(
+        deletedComments.map(
+            (deletedComment) =>
+                deletedComment.body as string | null | undefined,
+        ),
+    );
     await awaitCacheInvalidations(
         [
             cacheManager.invalidate("article-detail", comment.article_id),

@@ -19,7 +19,10 @@ import type { AppAccess } from "@/server/api/v1/shared";
 import { hasOwn, parseProfileBioField } from "@/server/api/v1/shared";
 import { invalidateAuthorCache } from "@/server/api/v1/shared/author-cache";
 import { invalidateOfficialSidebarCache } from "@/server/api/v1/public-data";
-import { bindFileOwnerToUser } from "@/server/api/v1/me/_helpers";
+import {
+    bindFileOwnerToUser,
+    syncManagedFileBinding,
+} from "@/server/api/v1/me/_helpers";
 
 type ProfileInput = UpdateProfileInput;
 
@@ -130,13 +133,13 @@ async function applyAvatarFileBindings(
     const nextProfilePublic =
         input.profile_public ?? access.profile.profile_public;
 
-    if (hasAvatarFilePatch && nextAvatarFile) {
-        await bindFileOwnerToUser(
-            nextAvatarFile,
-            access.user.id,
-            undefined,
-            nextProfilePublic ? "public" : "private",
-        );
+    if (hasAvatarFilePatch) {
+        await syncManagedFileBinding({
+            previousFileValue: prevAvatarFile,
+            nextFileValue: nextAvatarFile,
+            userId: access.user.id,
+            visibility: nextProfilePublic ? "public" : "private",
+        });
     }
 }
 
@@ -153,13 +156,13 @@ async function applyHeaderFileBindings(
         : prevHeaderFile;
     const nextProfilePublic = input.profile_public ?? currentProfilePublic;
 
-    if (hasHeaderFilePatch && nextHeaderFile) {
-        await bindFileOwnerToUser(
-            nextHeaderFile,
+    if (hasHeaderFilePatch) {
+        await syncManagedFileBinding({
+            previousFileValue: prevHeaderFile,
+            nextFileValue: nextHeaderFile,
             userId,
-            undefined,
-            nextProfilePublic ? "public" : "private",
-        );
+            visibility: nextProfilePublic ? "public" : "private",
+        });
     }
 }
 

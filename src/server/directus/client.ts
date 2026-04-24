@@ -25,6 +25,7 @@ import {
 
 import type { AppUser } from "@/types/app";
 import type { UploadPurpose } from "@/constants/upload-limits";
+import type { AppFileLifecycle } from "@/types/app";
 import type { JsonObject } from "@/types/json";
 import { internal } from "@/server/api/errors";
 import { getDirectusUrl } from "@/server/directus-auth";
@@ -706,12 +707,58 @@ export async function updateDirectusFileMetadata(
         app_owner_user_id?: string | null;
         app_upload_purpose?: UploadPurpose | null;
         app_visibility?: "private" | "public" | null;
+        app_lifecycle?: AppFileLifecycle | null;
+        app_detached_at?: string | null;
     },
 ): Promise<void> {
     await executeDirectusRequest(
         "更新 Directus 文件元数据",
         updateFile(id, payload as never),
     );
+}
+
+export type DeleteDirectusFileResult =
+    | {
+          ok: true;
+          fileId: string;
+      }
+    | {
+          ok: false;
+          fileId: string;
+          reason: "not_found" | "permission" | "network" | "unknown";
+      };
+
+function classifyDirectusFileDeleteError(
+    error: unknown,
+): Extract<DeleteDirectusFileResult, { ok: false }>["reason"] {
+    const message = String(error).toLowerCase();
+    if (
+        message.includes("not found") ||
+        message.includes("404") ||
+        message.includes("item_not_found")
+    ) {
+        return "not_found";
+    }
+    if (
+        message.includes("forbidden") ||
+        message.includes("permission") ||
+        message.includes("unauthorized") ||
+        message.includes("403") ||
+        message.includes("401")
+    ) {
+        return "permission";
+    }
+    if (
+        message.includes("network") ||
+        message.includes("fetch") ||
+        message.includes("timeout") ||
+        message.includes("socket") ||
+        message.includes("econn") ||
+        message.includes("connect")
+    ) {
+        return "network";
+    }
+    return "unknown";
 }
 
 export async function updateManyItemsByFilter(params: {
@@ -753,18 +800,28 @@ export async function updateManyItemsByFilter(params: {
     );
 }
 
-export async function deleteDirectusFile(fileId: string): Promise<void> {
+export async function deleteDirectusFile(
+    fileId: string,
+): Promise<DeleteDirectusFileResult> {
     if (!fileId) {
-        return;
+        return {
+            ok: false,
+            fileId,
+            reason: "unknown",
+        };
     }
     try {
         await executeDirectusRequest("删除 Directus 文件", deleteFile(fileId));
-    } catch (error) {
-        console.warn(
-            "[directus/client] 删除文件失败，可能已不存在:",
+        return {
+            ok: true,
             fileId,
-            error,
-        );
+        };
+    } catch (error) {
+        return {
+            ok: false,
+            fileId,
+            reason: classifyDirectusFileDeleteError(error),
+        };
     }
 }
 

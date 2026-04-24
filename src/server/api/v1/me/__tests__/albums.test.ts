@@ -42,7 +42,13 @@ vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
 
 vi.mock("@/server/api/v1/me/_helpers", () => ({
     bindFileOwnerToUser: vi.fn().mockResolvedValue(undefined),
+    detachManagedFiles: vi.fn().mockResolvedValue([]),
     isSlugUniqueConflict: vi.fn().mockReturnValue(false),
+    syncManagedFileBinding: vi.fn().mockResolvedValue({
+        attachedFileIds: [],
+        detachedFileIds: [],
+        nextFileIds: [],
+    }),
 }));
 
 import { readOneById, updateOne } from "@/server/directus/client";

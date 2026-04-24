@@ -30,10 +30,18 @@ import {
 import { createWithShortId } from "@/server/utils/short-id";
 import type { AppAccess } from "@/server/api/v1/shared";
 import { DIARY_FIELDS, hasOwn, parseRouteId } from "@/server/api/v1/shared";
-import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
+import {
+    collectDiaryCommentCleanupCandidates,
+    collectDiaryFileIds,
+    extractDirectusAssetIdsFromMarkdown,
+    normalizeDirectusFileId,
+} from "@/server/api/v1/shared/file-cleanup";
 import {
     bindFileOwnerToUser,
+    detachManagedFiles,
     renderMeMarkdownPreview,
+    syncManagedFileBinding,
+    syncMarkdownFileLifecycle,
     syncMarkdownFilesToVisibility,
 } from "@/server/api/v1/me/_helpers";
 
@@ -404,11 +412,12 @@ async function handleDiaryPatch(
         input.praviate !== undefined ||
         input.status !== undefined
     ) {
-        await syncMarkdownFilesToVisibility(
-            nextContent,
-            access.user.id,
-            resolveDiaryAssetVisibility(nextStatus, nextPraviate),
-        );
+        await syncMarkdownFileLifecycle({
+            previousMarkdown: String(target.content ?? ""),
+            nextMarkdown: nextContent,
+            userId: access.user.id,
+            visibility: resolveDiaryAssetVisibility(nextStatus, nextPraviate),
+        });
     }
     if (input.praviate !== undefined || input.status !== undefined) {
         await syncDiaryFilesVisibility(
@@ -480,13 +489,18 @@ async function handleWorkingDraftPut(
     const updated = await updateOne("app_diaries", target.id, payload, {
         fields: [...DIARY_FIELDS],
     });
-    await syncMarkdownFilesToVisibility(
-        input.content !== undefined
-            ? input.content
-            : String(target.content ?? ""),
-        access.user.id,
-        resolveDiaryAssetVisibility("draft", input.praviate ?? target.praviate),
-    );
+    await syncMarkdownFileLifecycle({
+        previousMarkdown: String(target.content ?? ""),
+        nextMarkdown:
+            input.content !== undefined
+                ? input.content
+                : String(target.content ?? ""),
+        userId: access.user.id,
+        visibility: resolveDiaryAssetVisibility(
+            "draft",
+            input.praviate ?? target.praviate,
+        ),
+    });
     if (input.praviate !== undefined) {
         await syncDiaryFilesVisibility(
             target.id,
@@ -526,7 +540,17 @@ async function handleDiaryDelete(
     diaryId: string,
     target: OwnedDiaryRecord,
 ): Promise<Response> {
+    const commentCleanup = await collectDiaryCommentCleanupCandidates(diaryId);
+    const diaryImageFileIds = await collectDiaryFileIds(diaryId);
+    const markdownFileIds = extractDirectusAssetIdsFromMarkdown(
+        String(target.content ?? ""),
+    );
     await deleteOne("app_diaries", diaryId);
+    await detachManagedFiles([
+        ...markdownFileIds,
+        ...diaryImageFileIds,
+        ...commentCleanup.candidateFileIds,
+    ]);
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("diary-list"),
@@ -687,19 +711,29 @@ async function handleDiaryImagePatch(
     image: JsonObject,
     diary: JsonObject,
 ): Promise<Response> {
-    const { payload, body, nextFileId } =
+    const { payload, input, body, nextFileId } =
         await buildDiaryImagePatchPayload(context);
     const updated = await updateOne("app_diary_images", imageId, payload);
-    if (hasOwn(body, "file_id") && nextFileId) {
+    const nextVisibility =
+        resolveDiaryAssetVisibility(diary.status, diary.praviate) ===
+            "public" &&
+        (updated.is_public ?? image.is_public)
+            ? "public"
+            : "private";
+    if (hasOwn(body, "file_id")) {
+        await syncManagedFileBinding({
+            previousFileValue: image.file_id,
+            nextFileValue: nextFileId,
+            userId: access.user.id,
+            title: buildDiaryFileTitle(diary.short_id, updated.sort),
+            visibility: nextVisibility,
+        });
+    } else if (nextFileId && input.is_public !== undefined) {
         await bindFileOwnerToUser(
             nextFileId,
             access.user.id,
             buildDiaryFileTitle(diary.short_id, updated.sort),
-            resolveDiaryAssetVisibility(diary.status, diary.praviate) ===
-                "public" &&
-                (updated.is_public ?? image.is_public)
-                ? "public"
-                : "private",
+            nextVisibility,
         );
     }
     await awaitCacheInvalidations(
@@ -721,6 +755,7 @@ async function handleDiaryImageDelete(
     diary: JsonObject,
 ): Promise<Response> {
     await deleteOne("app_diary_images", imageId);
+    await detachManagedFiles([image.file_id]);
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("mixed-feed"),

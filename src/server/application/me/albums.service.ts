@@ -42,10 +42,15 @@ import {
     safeCsv,
     sanitizeSlug,
 } from "@/server/api/v1/shared";
-import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
+import {
+    collectAlbumFileIds,
+    normalizeDirectusFileId,
+} from "@/server/api/v1/shared/file-cleanup";
 import {
     bindFileOwnerToUser,
+    detachManagedFiles,
     isSlugUniqueConflict,
+    syncManagedFileBinding,
 } from "@/server/api/v1/me/_helpers";
 
 async function handleAlbumsGet(
@@ -300,13 +305,13 @@ async function syncAlbumCoverVisibility(params: {
     input: AlbumInput;
     albumId: string;
 }): Promise<void> {
-    if (hasOwn(params.body, "cover_file") && params.nextCoverFile) {
-        await bindFileOwnerToUser(
-            params.nextCoverFile,
-            params.access.user.id,
-            undefined,
-            params.updatedIsPublic ? "public" : "private",
-        );
+    if (hasOwn(params.body, "cover_file")) {
+        await syncManagedFileBinding({
+            previousFileValue: params.target.cover_file,
+            nextFileValue: params.nextCoverFile,
+            userId: params.access.user.id,
+            visibility: params.updatedIsPublic ? "public" : "private",
+        });
     }
     if (
         params.input.is_public !== undefined &&
@@ -355,9 +360,15 @@ async function syncAlbumPhotoVisibility(
 
 async function handleAlbumDelete(
     id: string,
-    _target: AppAlbum,
+    target: AppAlbum,
 ): Promise<Response> {
+    const coverFileId = normalizeDirectusFileId(target.cover_file);
+    const photoFileIds = await collectAlbumFileIds(id);
     await deleteOne("app_albums", id);
+    await detachManagedFiles([
+        ...(coverFileId ? [coverFileId] : []),
+        ...photoFileIds,
+    ]);
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("album-list"),
@@ -523,14 +534,23 @@ async function handlePhotoPatch(
     const updated = await updateOne("app_album_photos", photoId, payload);
     const album = await readOneById("app_albums", photo.album_id);
 
-    if (hasOwn(body as JsonObject, "file_id") && nextFileId) {
+    const nextVisibility =
+        (updated.is_public ?? photo.is_public) && Boolean(album?.is_public)
+            ? "public"
+            : "private";
+    if (hasOwn(body as JsonObject, "file_id")) {
+        await syncManagedFileBinding({
+            previousFileValue: photo.file_id,
+            nextFileValue: nextFileId,
+            userId: access.user.id,
+            visibility: nextVisibility,
+        });
+    } else if (nextFileId && input.is_public !== undefined) {
         await bindFileOwnerToUser(
             nextFileId,
             access.user.id,
             undefined,
-            (updated.is_public ?? photo.is_public) && Boolean(album?.is_public)
-                ? "public"
-                : "private",
+            nextVisibility,
         );
     }
     await awaitCacheInvalidations(
@@ -546,6 +566,7 @@ async function handlePhotoDelete(
     _ownerUserId: string,
 ): Promise<Response> {
     await deleteOne("app_album_photos", photoId);
+    await detachManagedFiles([photo.file_id]);
     await awaitCacheInvalidations(
         [cacheManager.invalidate("album-detail", photo.album_id)],
         { label: "me/album-photos#delete" },

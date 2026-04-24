@@ -2,7 +2,12 @@ import {
     renderMarkdown,
     type MarkdownRenderMode,
 } from "@/server/markdown/render";
-import { updateManagedFileMetadata } from "@/server/repositories/files/file-metadata.repository";
+import {
+    diffFileIds,
+    diffMarkdownFileIds,
+    markFilesAttached,
+    markFilesDetached,
+} from "@/server/repositories/files/file-lifecycle.repository";
 
 import {
     extractDirectusAssetIdsFromMarkdown,
@@ -41,7 +46,7 @@ export async function renderMeMarkdownPreview(
 
 export async function bindFileOwnerToUser(
     fileValue: unknown,
-    userId: string,
+    userId: string | null | undefined,
     title?: string,
     visibility: "private" | "public" = "private",
 ): Promise<void> {
@@ -49,12 +54,12 @@ export async function bindFileOwnerToUser(
     if (!fileId) {
         return;
     }
-    await updateManagedFileMetadata(fileId, {
-        uploaded_by: userId,
-        app_owner_user_id: userId,
-        app_visibility: visibility,
-        title: title?.trim() || undefined,
-    } as never);
+    await markFilesAttached({
+        fileIds: [fileId],
+        ownerUserId: userId ? userId : undefined,
+        visibility,
+        title,
+    });
 }
 
 export async function syncMarkdownFilesToVisibility(
@@ -63,8 +68,90 @@ export async function syncMarkdownFilesToVisibility(
     visibility: "private" | "public",
 ): Promise<string[]> {
     const fileIds = extractDirectusAssetIdsFromMarkdown(markdown);
-    for (const fileId of fileIds) {
-        await bindFileOwnerToUser(fileId, userId, undefined, visibility);
-    }
+    await markFilesAttached({
+        fileIds,
+        ownerUserId: userId,
+        visibility,
+    });
     return fileIds;
+}
+
+export async function detachManagedFiles(
+    fileValues: unknown[],
+    detachedAt: string = new Date().toISOString(),
+): Promise<string[]> {
+    const { detachedFileIds } = diffFileIds({
+        previousFileIds: fileValues,
+        nextFileIds: [],
+    });
+    await markFilesDetached(detachedFileIds, detachedAt);
+    return detachedFileIds;
+}
+
+export async function detachMarkdownFiles(
+    markdownValues: Array<string | null | undefined>,
+    detachedAt: string = new Date().toISOString(),
+): Promise<string[]> {
+    return await detachManagedFiles(
+        markdownValues.flatMap((markdown) =>
+            extractDirectusAssetIdsFromMarkdown(markdown),
+        ),
+        detachedAt,
+    );
+}
+
+export async function syncManagedFileBinding(params: {
+    previousFileValue: unknown;
+    nextFileValue: unknown;
+    userId: string | null | undefined;
+    title?: string;
+    visibility: "private" | "public";
+    detachedAt?: string;
+}): Promise<{
+    attachedFileIds: string[];
+    detachedFileIds: string[];
+    nextFileIds: string[];
+}> {
+    const diff = diffFileIds({
+        previousFileIds: [params.previousFileValue],
+        nextFileIds: [params.nextFileValue],
+    });
+    await markFilesAttached({
+        fileIds: diff.nextFileIds,
+        ownerUserId: params.userId ? params.userId : undefined,
+        visibility: params.visibility,
+        title: params.title,
+    });
+    await markFilesDetached(
+        diff.detachedFileIds,
+        params.detachedAt || new Date().toISOString(),
+    );
+    return diff;
+}
+
+export async function syncMarkdownFileLifecycle(params: {
+    previousMarkdown: string | null | undefined;
+    nextMarkdown: string | null | undefined;
+    userId: string | null | undefined;
+    visibility: "private" | "public";
+    detachedAt?: string;
+}): Promise<{
+    attachedFileIds: string[];
+    detachedFileIds: string[];
+    nextFileIds: string[];
+}> {
+    const diff = diffMarkdownFileIds({
+        previousMarkdown: params.previousMarkdown,
+        nextMarkdown: params.nextMarkdown,
+    });
+    await markFilesAttached({
+        fileIds: diff.nextFileIds,
+        ownerUserId: params.userId ? params.userId : undefined,
+        visibility: params.visibility,
+    });
+    await markFilesDetached(
+        diff.detachedFileIds,
+        params.detachedAt || new Date().toISOString(),
+    );
+    return diff;
 }

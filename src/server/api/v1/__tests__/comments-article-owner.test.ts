@@ -48,6 +48,12 @@ vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
 }));
 
 vi.mock("@/server/api/v1/me/_helpers", () => ({
+    detachMarkdownFiles: vi.fn().mockResolvedValue([]),
+    syncMarkdownFileLifecycle: vi.fn().mockResolvedValue({
+        attachedFileIds: [],
+        detachedFileIds: [],
+        nextFileIds: [],
+    }),
     syncMarkdownFilesToVisibility: vi.fn().mockResolvedValue([]),
 }));
 
@@ -57,16 +63,14 @@ import {
     readOneById,
     updateOne,
 } from "@/server/directus/client";
-import { syncMarkdownFilesToVisibility } from "@/server/api/v1/me/_helpers";
+import { syncMarkdownFileLifecycle } from "@/server/api/v1/me/_helpers";
 import { handleArticleComments } from "@/server/api/v1/comments-article";
 
 const mockedRequireAccess = vi.mocked(requireAccess);
 const mockedDeleteDirectusFile = vi.mocked(deleteDirectusFile);
 const mockedReadOneById = vi.mocked(readOneById);
 const mockedUpdateOne = vi.mocked(updateOne);
-const mockedSyncMarkdownFilesToVisibility = vi.mocked(
-    syncMarkdownFilesToVisibility,
-);
+const mockedSyncMarkdownFileLifecycle = vi.mocked(syncMarkdownFileLifecycle);
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -107,11 +111,12 @@ describe("handleArticleComments PATCH", () => {
         );
 
         expect(response.status).toBe(200);
-        expect(mockedSyncMarkdownFilesToVisibility).toHaveBeenCalledWith(
-            "new body",
-            "comment-author",
-            "public",
-        );
+        expect(mockedSyncMarkdownFileLifecycle).toHaveBeenCalledWith({
+            previousMarkdown: "old body",
+            nextMarkdown: "new body",
+            userId: "comment-author",
+            visibility: "public",
+        });
         expect(mockedDeleteDirectusFile).not.toHaveBeenCalled();
     });
 });

@@ -33,6 +33,10 @@ vi.mock("@/server/markdown/render", () => ({
 }));
 
 vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
+    collectArticleCommentCleanupCandidates: vi.fn().mockResolvedValue({
+        candidateFileIds: [],
+        ownerUserIds: [],
+    }),
     normalizeDirectusFileId: vi.fn((value: unknown) => {
         if (!value) {
             return null;
@@ -51,6 +55,23 @@ vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
             ownerUserIds: groups.flatMap((group) => group.ownerUserIds),
         }),
     ),
+}));
+
+vi.mock("@/server/api/v1/me/_helpers", () => ({
+    detachManagedFiles: vi.fn().mockResolvedValue([]),
+    renderMeMarkdownPreview: vi.fn().mockResolvedValue("<p>preview</p>"),
+    bindFileOwnerToUser: vi.fn().mockResolvedValue(undefined),
+    syncManagedFileBinding: vi.fn().mockResolvedValue({
+        attachedFileIds: [],
+        detachedFileIds: [],
+        nextFileIds: [],
+    }),
+    syncMarkdownFileLifecycle: vi.fn().mockResolvedValue({
+        attachedFileIds: [],
+        detachedFileIds: [],
+        nextFileIds: [],
+    }),
+    syncMarkdownFilesToVisibility: vi.fn().mockResolvedValue([]),
 }));
 
 import {
