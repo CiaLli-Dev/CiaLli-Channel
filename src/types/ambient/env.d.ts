@@ -31,6 +31,7 @@ interface ImportMetaEnv {
     readonly REDIS_URL?: string;
     readonly STORAGE_S3_KEY?: string;
     readonly STORAGE_S3_SECRET?: string;
+    readonly CADDY_ADDITIONAL_SITE_ADDRESS?: string;
 }
 
 interface ImportMeta {

@@ -48,8 +48,9 @@ Directus 后台默认只绑定到 `127.0.0.1:8055`，不直接暴露公网。
    `STORAGE_S3_SECRET`
 6. 安装器还会把 `DIRECTUS_ADMIN_EMAIL` 与 `DIRECTUS_ADMIN_PASSWORD` 一并写入 `.env`，用于首次安装后的后台登录与运维排障；运行时服务本身不依赖这两项。
 7. `PUBLIC_ASSET_BASE_URL` 是唯一保留的可选环境变量；留空时继续统一走站内 BFF 代理资源地址。
-8. `pnpm check:env` 只负责校验已存在的 `.env`；首次安装所需密钥、账号名与 web / worker 静态 token 都由安装器生成并写入。
-9. `APP_PUBLIC_BASE_URL` 是站点唯一公网入口真源，同时驱动 Astro `site`、sitemap、RSS、canonical 与 Caddy 反向代理入口；它必须是站点根 URL，不支持子路径部署。
+8. `CADDY_ADDITIONAL_SITE_ADDRESS` 是可选的 Caddy 追加入口；生产通常留空，本地开发 override 默认使用 `http://` 以允许局域网设备通过 HTTP 访问。
+9. `pnpm check:env` 只负责校验已存在的 `.env`；首次安装所需密钥、账号名与 web / worker 静态 token 都由安装器生成并写入。
+10. `APP_PUBLIC_BASE_URL` 是站点唯一公网入口真源，同时驱动 Astro `site`、sitemap、RSS、canonical 与 Caddy 反向代理入口；它必须是站点根 URL，不支持子路径部署。
 
 ## 全局安装器
 
@@ -121,6 +122,8 @@ pnpm docker:up
 
 仓库提供 [docker-compose.override.yml](/Users/uednd/code/CiaLli-Channel/docker-compose.override.yml) 作为本地开发覆盖配置。使用默认 `docker compose up` 时，`web` 会以 `pnpm dev` 运行并挂载源码，`worker` 会以 `tsx watch` 运行，代码改动会自动热更新或重启。该入口仅用于本地开发，不作为正式生产部署流程。
 
+本地开发覆盖配置会让 `proxy` 额外接受任意 HTTP Host，因此同一局域网中的其他设备可通过 `http://<本机局域网IP>/` 访问主站。若容器已启动但其他设备仍无法连接，请先确认宿主机系统防火墙允许 80 端口入站。
+
 ## 生产部署约定
 
 正式部署流程统一使用安装器。安装器内部仍基于主 [docker-compose.yml](/Users/uednd/code/CiaLli-Channel/docker-compose.yml) 启动生产服务，并自动绕过本地开发用 override 配置。
@@ -158,6 +161,8 @@ pnpm docker:up
 - 主站通过 `proxy` 对外暴露 `80/443`
 - Directus 后台仅绑定 `127.0.0.1:8055`
 - MinIO Console 仅绑定 `127.0.0.1:9001`
+
+默认本地开发栈支持通过 `http://<本机局域网IP>/` 从同一局域网访问主站；正式生产部署仍应使用 `APP_PUBLIC_BASE_URL` 对应的域名或公开 IP 作为入口。
 
 如需访问 Directus 后台，建议使用 SSH 隧道或在服务器本机浏览器访问。
 

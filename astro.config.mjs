@@ -33,6 +33,9 @@ export default defineConfig({
     devToolbar: {
         enabled: false,
     },
+    server: {
+        allowedHosts: true,
+    },
 
     security: {
         // Astro's built-in form-origin middleware compares Origin with

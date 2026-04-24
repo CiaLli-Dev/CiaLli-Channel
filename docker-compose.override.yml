@@ -1,4 +1,8 @@
 services:
+  proxy:
+    environment:
+      CADDY_ADDITIONAL_SITE_ADDRESS: "${CADDY_ADDITIONAL_SITE_ADDRESS:-http://}"
+
   web:
     build:
       target: deps

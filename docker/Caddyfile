@@ -2,7 +2,7 @@
 	email ops@ciallichannel.com
 }
 
-{$APP_PUBLIC_BASE_URL} {
+{$APP_PUBLIC_BASE_URL} {$CADDY_ADDITIONAL_SITE_ADDRESS} {
 	encode gzip zstd
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
