@@ -3,7 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     resolvePreparationRouteState,
     resolvePreparationTransitionProxyPayload,
+    scheduleAbortedPreparationReset,
+    schedulePreventedPreparationReset,
     shouldResetViewportOnPreparation,
+    wrapPreparationLoaderWithReset,
 } from "../transition-hooks";
 
 function createSourceDocumentWithRightSidebar(): Document {
@@ -63,6 +66,12 @@ const routeDeps = {
     pathsEqual: (left: string, right: string) => left === right,
     url: (path: string) => path,
 };
+
+function flushMicrotasks(): Promise<void> {
+    return new Promise((resolve) => {
+        queueMicrotask(resolve);
+    });
+}
 
 describe("transition-hooks", () => {
     beforeEach(() => {
@@ -163,5 +172,83 @@ describe("transition-hooks", () => {
             },
             preservePreparedPayload: false,
         });
+    });
+
+    it("准备阶段 loader 失败时会触发复位并继续抛出原错误", async () => {
+        const reset = vi.fn();
+        const loaderError = new Error("blocked by response");
+        const originalLoader = vi.fn().mockRejectedValue(loaderError);
+        const event = {
+            defaultPrevented: false,
+            loader: originalLoader,
+        };
+
+        wrapPreparationLoaderWithReset(event, reset);
+
+        await expect(event.loader()).rejects.toThrow(loaderError);
+        expect(reset).toHaveBeenCalledTimes(1);
+        expect(originalLoader).toHaveBeenCalledTimes(1);
+    });
+
+    it("准备阶段已 preventDefault 时 loader 不再执行并触发复位", async () => {
+        const reset = vi.fn();
+        const originalLoader = vi.fn().mockResolvedValue(undefined);
+        const event = {
+            defaultPrevented: true,
+            loader: originalLoader,
+        };
+
+        wrapPreparationLoaderWithReset(event, reset);
+        await event.loader();
+
+        expect(reset).toHaveBeenCalledTimes(1);
+        expect(originalLoader).not.toHaveBeenCalled();
+    });
+
+    it("准备阶段被后续监听器 preventDefault 时会在微任务中复位", async () => {
+        const reset = vi.fn();
+        const shouldReset = vi.fn().mockReturnValue(true);
+        const event = {
+            defaultPrevented: false,
+        };
+
+        schedulePreventedPreparationReset(event, shouldReset, reset);
+        event.defaultPrevented = true;
+        await flushMicrotasks();
+
+        expect(shouldReset).toHaveBeenCalledTimes(1);
+        expect(reset).toHaveBeenCalledTimes(1);
+    });
+
+    it("准备阶段导航被 abort 且仍是当前导航时会复位", () => {
+        const reset = vi.fn();
+        const shouldReset = vi.fn().mockReturnValue(true);
+        const controller = new AbortController();
+
+        scheduleAbortedPreparationReset(
+            { signal: controller.signal },
+            shouldReset,
+            reset,
+        );
+        controller.abort();
+
+        expect(shouldReset).toHaveBeenCalledTimes(1);
+        expect(reset).toHaveBeenCalledTimes(1);
+    });
+
+    it("准备阶段旧导航 abort 不会误复位新导航", () => {
+        const reset = vi.fn();
+        const shouldReset = vi.fn().mockReturnValue(false);
+        const controller = new AbortController();
+
+        scheduleAbortedPreparationReset(
+            { signal: controller.signal },
+            shouldReset,
+            reset,
+        );
+        controller.abort();
+
+        expect(shouldReset).toHaveBeenCalledTimes(1);
+        expect(reset).not.toHaveBeenCalled();
     });
 });

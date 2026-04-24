@@ -66,6 +66,7 @@ type BeforePreparationEvent = Event & {
     direction?: string;
     loader: () => Promise<void>;
     navigationType?: string;
+    signal: AbortSignal;
 };
 
 type BeforeSwapEvent = Event & {
@@ -118,6 +119,15 @@ type PreparationRouteState = {
     isTargetHome: boolean;
 };
 
+type PreparationLoaderEvent = Pick<
+    BeforePreparationEvent,
+    "defaultPrevented" | "loader"
+>;
+
+type PreparationLoaderRunner = (
+    originalLoader: () => Promise<void>,
+) => Promise<void>;
+
 function setNavigationPhase(
     phase: NavigationPhase,
     targetDocument: Document = document,
@@ -169,11 +179,70 @@ function forceResetTransitionState(state: TransitionState): void {
         window.clearTimeout(state.proxyRevealTimerId);
         state.proxyRevealTimerId = null;
     }
+    setNavigationPhase("idle");
     resetNavigationState(state);
     clearBannerToSpecTransitionVisualState(state);
     setAwaitingReplaceState(false);
     setPageHeightExtendVisible(false);
     forceResetEnterSkeleton();
+}
+
+export function wrapPreparationLoaderWithReset(
+    event: PreparationLoaderEvent,
+    reset: () => void,
+    runLoader: PreparationLoaderRunner = async (originalLoader) => {
+        await originalLoader();
+    },
+): void {
+    const originalLoader = event.loader;
+    event.loader = async () => {
+        if (event.defaultPrevented) {
+            reset();
+            return;
+        }
+
+        try {
+            await runLoader(originalLoader);
+        } catch (error) {
+            reset();
+            throw error;
+        }
+
+        if (event.defaultPrevented) {
+            reset();
+        }
+    };
+}
+
+export function schedulePreventedPreparationReset(
+    event: Pick<BeforePreparationEvent, "defaultPrevented">,
+    shouldReset: () => boolean,
+    reset: () => void,
+): void {
+    queueMicrotask(() => {
+        if (event.defaultPrevented && shouldReset()) {
+            reset();
+        }
+    });
+}
+
+export function scheduleAbortedPreparationReset(
+    event: Pick<BeforePreparationEvent, "signal">,
+    shouldReset: () => boolean,
+    reset: () => void,
+): void {
+    const resetIfCurrent = (): void => {
+        if (shouldReset()) {
+            reset();
+        }
+    };
+
+    if (event.signal.aborted) {
+        resetIfCurrent();
+        return;
+    }
+
+    event.signal.addEventListener("abort", resetIfCurrent, { once: true });
 }
 
 function applyBannerToSpecTransitionSetup(
@@ -382,6 +451,10 @@ function handleBeforePreparation(
     const immediateProxyPayload = preparationProxyDecision.payload;
     state.preservePreparedTransitionProxyPayload =
         preparationProxyDecision.preservePreparedPayload;
+    const navigationToken = state.navigationToken;
+    const resetCurrentPreparation = (): void => {
+        forceResetTransitionState(state);
+    };
 
     if (shouldUseBannerToSpec) {
         applyBannerToSpecTransitionSetup(state, targetPathname);
@@ -396,20 +469,19 @@ function handleBeforePreparation(
 
         startBannerToSpecMoveTransition(state);
 
-        const originalLoader = e.loader;
-        e.loader = async () => {
-            try {
+        wrapPreparationLoaderWithReset(
+            e,
+            resetCurrentPreparation,
+            async (originalLoader) => {
                 const motionPromise =
                     state.bannerToSpecMotionPromise ?? Promise.resolve();
                 await Promise.all([originalLoader(), motionPromise]);
                 state.bannerToSpecLoaderSettled = true;
                 markBannerToSpecMotionCompleted(state);
-            } catch (error) {
-                forceResetTransitionState(state);
-                throw error;
-            }
-        };
+            },
+        );
     } else if (immediateProxyPayload) {
+        wrapPreparationLoaderWithReset(e, resetCurrentPreparation);
         state.pendingTransitionProxyRoutePath = targetPathname;
         state.transitionProxyMode = immediateProxyPayload.mode;
         state.transitionProxyLayoutKey = immediateProxyPayload.layoutKey;
@@ -422,8 +494,21 @@ function handleBeforePreparation(
         }
         setPageHeightExtendVisible(false);
     } else {
+        wrapPreparationLoaderWithReset(e, resetCurrentPreparation);
         setPageHeightExtendVisible(false);
     }
+    schedulePreventedPreparationReset(
+        e,
+        () => state.navigationToken === navigationToken && state.navigationInProgress,
+        resetCurrentPreparation,
+    );
+    scheduleAbortedPreparationReset(
+        e,
+        () =>
+            state.navigationToken === navigationToken &&
+            state.navigationInProgress,
+        resetCurrentPreparation,
+    );
 
     state.pendingSpecToBannerFreeze = !currentIsHome && isTargetHome;
     document.documentElement.classList.toggle(
