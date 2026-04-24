@@ -20,6 +20,8 @@ services:
       context: .
       dockerfile: Dockerfile
       target: web-runtime
+      args:
+        APP_PUBLIC_BASE_URL: ${APP_PUBLIC_BASE_URL:-https://localhost}
     command: ["node", "./dist/server/entry.mjs"]
     depends_on:
       directus:
@@ -45,6 +47,8 @@ services:
       context: .
       dockerfile: Dockerfile
       target: worker-runtime
+      args:
+        APP_PUBLIC_BASE_URL: ${APP_PUBLIC_BASE_URL:-https://localhost}
     command: ["node", "./dist/worker/entry.mjs"]
     depends_on:
       directus:
@@ -53,6 +57,7 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
+      APP_PUBLIC_BASE_URL: ${APP_PUBLIC_BASE_URL:-https://localhost}
       DIRECTUS_URL: http://directus:8055
       DIRECTUS_WORKER_STATIC_TOKEN: ${DIRECTUS_WORKER_STATIC_TOKEN}
       AI_SUMMARY_INTERNAL_SECRET: ${AI_SUMMARY_INTERNAL_SECRET}

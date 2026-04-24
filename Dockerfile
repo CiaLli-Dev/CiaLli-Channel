@@ -14,12 +14,16 @@ RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 
+ARG APP_PUBLIC_BASE_URL
+ENV APP_PUBLIC_BASE_URL="${APP_PUBLIC_BASE_URL}"
+
 COPY . .
 RUN pnpm build
 
 FROM deps AS prod-deps
 
-RUN pnpm prune --prod
+ENV HUSKY=0
+RUN pnpm prune --prod --ignore-scripts
 
 FROM node:24-bookworm-slim AS web-runtime
 
