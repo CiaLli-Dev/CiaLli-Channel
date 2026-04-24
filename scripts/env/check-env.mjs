@@ -20,7 +20,7 @@ const REQUIRED_KEYS = [
     "MINIO_ROOT_PASSWORD",
     "STORAGE_S3_KEY",
     "STORAGE_S3_SECRET",
-    "BANGUMI_TOKEN_ENCRYPTION_KEY",
+    "APP_SECRET_ENCRYPTION_KEY",
     "AI_SUMMARY_INTERNAL_SECRET",
 ];
 
@@ -31,7 +31,7 @@ const PRODUCTION_SENSITIVE_KEYS = [
     "POSTGRES_PASSWORD",
     "MINIO_ROOT_PASSWORD",
     "STORAGE_S3_SECRET",
-    "BANGUMI_TOKEN_ENCRYPTION_KEY",
+    "APP_SECRET_ENCRYPTION_KEY",
     "AI_SUMMARY_INTERNAL_SECRET",
 ];
 
@@ -42,6 +42,8 @@ const DANGEROUS_DEFAULTS = new Set([
     "minioadmin",
     "local-ai-summary-secret",
 ]);
+
+const SECRET_MIN_LENGTH = 32;
 
 function readEnv(name) {
     return String(process.env[name] || "").trim();
@@ -89,6 +91,12 @@ const unsafe = strictMode
           DANGEROUS_DEFAULTS.has(readEnv(key)),
       )
     : [];
+const weakSecrets = strictMode
+    ? [
+          ["AI_SUMMARY_INTERNAL_SECRET", readEnv("AI_SUMMARY_INTERNAL_SECRET")],
+          ["APP_SECRET_ENCRYPTION_KEY", readEnv("APP_SECRET_ENCRYPTION_KEY")],
+      ].filter(([, value]) => value && value.length < SECRET_MIN_LENGTH)
+    : [];
 
 if (!strictMode) {
     console.info(
@@ -114,7 +122,20 @@ if (unsafe.length > 0) {
     );
 }
 
-if (missing.length > 0 || unsafe.length > 0 || publicBaseUrlError) {
+if (weakSecrets.length > 0) {
+    console.error(
+        `[check:env] 生产模式下敏感密钥长度不足 ${SECRET_MIN_LENGTH} 字符，请替换: ${weakSecrets
+            .map(([key]) => `\`${key}\``)
+            .join(", ")}`,
+    );
+}
+
+if (
+    missing.length > 0 ||
+    unsafe.length > 0 ||
+    weakSecrets.length > 0 ||
+    publicBaseUrlError
+) {
     process.exit(1);
 }
 

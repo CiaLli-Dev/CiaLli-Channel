@@ -22,6 +22,7 @@ export type AppRedisClient = {
         options?: AppRedisSetOptions,
     ) => Promise<string | null>;
     del: (key: string) => Promise<number>;
+    delIfValue: (key: string, value: string) => Promise<boolean>;
     incr: (key: string) => Promise<number>;
     expire: (key: string, seconds: number) => Promise<number>;
     ttl: (key: string) => Promise<number>;
@@ -134,6 +135,14 @@ end
 return { current, ttl }
 `;
 
+const DELETE_IF_VALUE_MATCHES_SCRIPT = `
+if redis.call("GET", KEYS[1]) == ARGV[1] then
+    return redis.call("DEL", KEYS[1])
+end
+
+return 0
+`;
+
 function parseRedisInteger(value: unknown): number | null {
     if (typeof value === "number" && Number.isFinite(value)) {
         return Math.trunc(value);
@@ -174,6 +183,21 @@ const wrappedClient: AppRedisClient = {
             return 0;
         }
         return await client.del(key);
+    },
+    async delIfValue(key: string, value: string): Promise<boolean> {
+        const client = await getConnectedRedisClient();
+        if (!client) {
+            return false;
+        }
+
+        const result = await client.sendCommand([
+            "EVAL",
+            DELETE_IF_VALUE_MATCHES_SCRIPT,
+            "1",
+            key,
+            value,
+        ]);
+        return parseRedisInteger(result) === 1;
     },
     async incr(key: string): Promise<number> {
         const client = await getConnectedRedisClient();

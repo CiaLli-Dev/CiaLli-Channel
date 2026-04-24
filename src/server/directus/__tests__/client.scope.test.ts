@@ -26,6 +26,7 @@ vi.mock("@directus/sdk", () => {
         rest: vi.fn(() => ({})),
         staticToken: vi.fn(() => ({})),
         updateItem: vi.fn(),
+        updateItems: vi.fn(),
         updateFile: vi.fn(),
         updateUser: vi.fn(),
         uploadFiles: vi.fn(),

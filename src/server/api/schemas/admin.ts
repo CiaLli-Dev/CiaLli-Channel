@@ -3,6 +3,8 @@
  */
 import * as z from "zod";
 
+import { validateAiBaseUrlForCurrentEnvironment } from "@/server/ai-summary/base-url";
+
 import {
     type AppRole,
     type OptionalString,
@@ -414,4 +416,22 @@ export const AdminAiSettingsUpdateSchema: z.ZodType<AdminAiSettingsUpdateInput> 
             apiKey: OptionalStringSchema,
             clearApiKey: z.boolean(),
         })
-        .partial();
+        .partial()
+        .superRefine((value, context) => {
+            if (value.baseUrl === undefined || value.baseUrl === null) {
+                return;
+            }
+
+            try {
+                validateAiBaseUrlForCurrentEnvironment(value.baseUrl);
+            } catch (error) {
+                context.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message:
+                        error instanceof Error
+                            ? error.message
+                            : "AI API Base URL 非法",
+                    path: ["baseUrl"],
+                });
+            }
+        });

@@ -4,8 +4,11 @@ import type {
     AppAiSummaryJob,
     AppArticle,
 } from "@/types/app";
+import { randomUUID } from "node:crypto";
+
 import type { JsonObject } from "@/types/json";
 import { createOne, readMany, updateOne } from "@/server/directus/client";
+import { getRedisClient } from "@/server/redis/client";
 import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
 
@@ -39,7 +42,67 @@ const SUMMARY_JOB_FIELDS = [
     "prompt_version",
     "model",
     "target_length",
+    "scheduled_at",
+    "leased_until",
 ] as const;
+
+const DEFAULT_JOB_LEASE_SECONDS = 600;
+const DEFAULT_PENDING_JOB_BATCH_SIZE = 3;
+const LOCK_KEY_PREFIX = "ai-summary:job-lock";
+const STUCK_JOB_ERROR_MESSAGE = "AI 服务请求超时";
+
+export type AiSummaryJobLock = {
+    jobId: string;
+    owner: string;
+};
+
+function readPositiveInt(value: string, fallback: number): number {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+        return fallback;
+    }
+    return Math.floor(parsed);
+}
+
+export function readAiSummaryJobLeaseSeconds(): number {
+    return readPositiveInt(
+        String(
+            process.env.AI_SUMMARY_JOB_LEASE_SECONDS ||
+                import.meta.env.AI_SUMMARY_JOB_LEASE_SECONDS ||
+                "",
+        ).trim(),
+        DEFAULT_JOB_LEASE_SECONDS,
+    );
+}
+
+export function readAiSummaryJobBatchSize(): number {
+    return readPositiveInt(
+        String(
+            process.env.AI_SUMMARY_JOB_BATCH_SIZE ||
+                import.meta.env.AI_SUMMARY_JOB_BATCH_SIZE ||
+                "",
+        ).trim(),
+        DEFAULT_PENDING_JOB_BATCH_SIZE,
+    );
+}
+
+function buildJobLockKey(jobId: string): string {
+    return `${LOCK_KEY_PREFIX}:${jobId}`;
+}
+
+function buildDuePendingFilter(now: Date): JsonObject {
+    return {
+        _and: [
+            { status: { _eq: "pending" } },
+            {
+                _or: [
+                    { scheduled_at: { _null: true } },
+                    { scheduled_at: { _lte: now.toISOString() } },
+                ],
+            },
+        ],
+    } as JsonObject;
+}
 
 function hasUsableAiSettings(settings: DecryptedAiSettings): boolean {
     return Boolean(
@@ -74,6 +137,8 @@ async function readArticle(articleId: string): Promise<AppArticle | null> {
             "summary",
             "summary_source",
             "summary_content_hash",
+            "summary_prompt_version",
+            "summary_error",
             "ai_summary_enabled",
             "body_markdown",
         ],
@@ -93,6 +158,14 @@ async function readExistingJob(
             }),
     );
     return rows[0] ?? null;
+}
+
+async function clearArticleSummaryError(articleId: string): Promise<void> {
+    await withServiceRepositoryContext(async () => {
+        await updateOne("app_articles", articleId, {
+            summary_error: null,
+        });
+    });
 }
 
 function buildSkip(reason: string): EnqueueSummaryJobResult {
@@ -173,6 +246,7 @@ export async function enqueueArticleSummaryJob(input: {
     });
     const existing = await readExistingJob(dedupeKey);
     if (existing) {
+        await clearArticleSummaryError(article.id);
         return { jobId: existing.id, status: "pending" };
     }
 
@@ -199,15 +273,19 @@ export async function enqueueArticleSummaryJob(input: {
                 { fields: ["id"] },
             ),
     );
+    await clearArticleSummaryError(article.id);
 
     return { jobId: created.id, status: "pending" };
 }
 
-export async function readPendingSummaryJobs(limit: number): Promise<string[]> {
+export async function readPendingSummaryJobs(
+    limit: number,
+    now = new Date(),
+): Promise<string[]> {
     const rows = await withServiceRepositoryContext(
         async () =>
             await readMany("app_ai_summary_jobs", {
-                filter: { status: { _eq: "pending" } } as JsonObject,
+                filter: buildDuePendingFilter(now),
                 sort: ["-priority", "scheduled_at"],
                 limit,
                 fields: ["id"],
@@ -252,21 +330,66 @@ export async function recoverStuckSummaryJobs(
                     ],
                 } as JsonObject,
                 limit: 100,
-                fields: ["id", "attempts", "max_attempts"],
+                fields: ["id", "article_id", "attempts", "max_attempts"],
             }),
     );
 
     await withServiceRepositoryContext(async () => {
         await Promise.all(
-            rows.map((job) =>
-                updateOne("app_ai_summary_jobs", job.id, {
-                    status:
-                        job.attempts >= job.max_attempts ? "failed" : "pending",
+            rows.map(async (job) => {
+                const failed = job.attempts >= job.max_attempts;
+
+                await updateOne("app_ai_summary_jobs", job.id, {
+                    status: failed ? "failed" : "pending",
                     leased_until: null,
-                    scheduled_at: now.toISOString(),
-                }),
-            ),
+                    scheduled_at: failed ? null : now.toISOString(),
+                    finished_at: failed ? now.toISOString() : null,
+                    error_code: failed ? "PROVIDER_TIMEOUT" : null,
+                    error_message: failed ? STUCK_JOB_ERROR_MESSAGE : null,
+                });
+
+                if (failed) {
+                    await updateOne("app_articles", job.article_id, {
+                        summary_error: STUCK_JOB_ERROR_MESSAGE,
+                    });
+                }
+            }),
         );
     });
     return rows.length;
+}
+
+export async function acquireAiSummaryJobLock(
+    jobId: string,
+): Promise<AiSummaryJobLock | null> {
+    const redis = getRedisClient();
+    if (!redis) {
+        return null;
+    }
+
+    const owner = randomUUID();
+    const result = await redis.set(buildJobLockKey(jobId), owner, {
+        ex: readAiSummaryJobLeaseSeconds(),
+        nx: true,
+    });
+    if (result !== "OK") {
+        return null;
+    }
+
+    return { jobId, owner };
+}
+
+export async function releaseAiSummaryJobLock(
+    lock: AiSummaryJobLock | null,
+): Promise<void> {
+    if (!lock) {
+        return;
+    }
+
+    const redis = getRedisClient();
+    if (!redis) {
+        return;
+    }
+
+    await redis.delIfValue(buildJobLockKey(lock.jobId), lock.owner);
 }

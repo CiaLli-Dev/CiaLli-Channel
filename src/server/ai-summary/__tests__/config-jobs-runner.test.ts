@@ -4,6 +4,7 @@ vi.mock("@/server/directus/client", () => ({
     createOne: vi.fn(),
     readMany: vi.fn(),
     updateOne: vi.fn(),
+    updateMany: vi.fn(),
 }));
 
 vi.mock("@/server/site-settings/service", () => ({
@@ -29,7 +30,19 @@ vi.mock("@/server/repositories/directus/scope", () => ({
     ),
 }));
 
-import { createOne, readMany, updateOne } from "@/server/directus/client";
+vi.mock("@/server/redis/client", () => ({
+    getRedisClient: vi.fn(() => ({
+        set: vi.fn(async () => "OK"),
+        delIfValue: vi.fn(async () => true),
+    })),
+}));
+
+import {
+    createOne,
+    readMany,
+    updateMany,
+    updateOne,
+} from "@/server/directus/client";
 import { DEFAULT_SITE_THEME_PRESET } from "@/config/theme-presets";
 import {
     buildPublicAiSettings,
@@ -50,6 +63,7 @@ import type { ResolvedSiteSettings } from "@/types/site-settings";
 const mockedCreateOne = vi.mocked(createOne);
 const mockedReadMany = vi.mocked(readMany);
 const mockedUpdateOne = vi.mocked(updateOne);
+const mockedUpdateMany = vi.mocked(updateMany);
 const mockedGetResolvedSiteSettings = vi.mocked(getResolvedSiteSettings);
 const mockedWithServiceRepositoryContext = vi.mocked(
     withServiceRepositoryContext,
@@ -257,11 +271,31 @@ describe("AI summary config", () => {
             }),
         );
     });
+
+    it("rejects unsafe production AI base URLs", () => {
+        const originalNodeEnv = process.env.NODE_ENV;
+        const originalPublicBaseUrl = process.env.APP_PUBLIC_BASE_URL;
+        process.env.NODE_ENV = "production";
+        process.env.APP_PUBLIC_BASE_URL = "https://cialli.example.com";
+
+        expect(() =>
+            serializeAiSettingsPatch(
+                {
+                    baseUrl: "http://localhost:11434/v1",
+                },
+                resolveStoredAiSettings(null),
+            ),
+        ).toThrow(/Base URL/u);
+
+        process.env.NODE_ENV = originalNodeEnv;
+        process.env.APP_PUBLIC_BASE_URL = originalPublicBaseUrl;
+    });
 });
 
 describe("enqueueArticleSummaryJob", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mockedUpdateMany.mockResolvedValue([{ id: "article-1" }] as never);
         mockedGetResolvedSiteSettings.mockResolvedValue(
             createResolvedSiteSettings("zh_CN") as never,
         );
@@ -463,10 +497,27 @@ describe("runAiSummaryJob", () => {
                     status: "pending",
                     attempts: 0,
                     max_attempts: 3,
-                    content_hash: "old",
+                    content_hash: buildSummaryContentHash({
+                        title: "标题",
+                        bodyMarkdown: "# 正文\n内容",
+                    }),
                     prompt_version: "v1",
                     model: "test-model",
                     target_length: "medium",
+                    scheduled_at: null,
+                    leased_until: null,
+                },
+            ] as never)
+            .mockResolvedValueOnce([
+                {
+                    id: "article-1",
+                    author_id: "author-1",
+                    status: "published",
+                    ai_summary_enabled: true,
+                    title: "标题",
+                    summary: null,
+                    summary_source: "none",
+                    body_markdown: "# 正文\n内容",
                 },
             ] as never)
             .mockResolvedValueOnce([
@@ -503,9 +554,12 @@ describe("runAiSummaryJob", () => {
         });
 
         expect(result.status).toBe("succeeded");
-        expect(mockedUpdateOne).toHaveBeenCalledWith(
+        expect(mockedUpdateMany).toHaveBeenCalledWith(
             "app_articles",
-            "article-1",
+            expect.objectContaining({
+                filter: expect.any(Object),
+                limit: 1,
+            }),
             expect.objectContaining({
                 summary: "这是 AI 摘要。",
                 summary_source: "ai",
@@ -529,10 +583,27 @@ describe("runAiSummaryJob", () => {
                     status: "pending",
                     attempts: 0,
                     max_attempts: 3,
-                    content_hash: "old",
+                    content_hash: buildSummaryContentHash({
+                        title: "Release notes",
+                        bodyMarkdown: "# Update\nBody",
+                    }),
                     prompt_version: resolveAiSummaryPromptVersion("zh_CN"),
                     model: "test-model",
                     target_length: "medium",
+                    scheduled_at: null,
+                    leased_until: null,
+                },
+            ] as never)
+            .mockResolvedValueOnce([
+                {
+                    id: "article-1",
+                    author_id: "author-1",
+                    status: "published",
+                    ai_summary_enabled: true,
+                    title: "Release notes",
+                    summary: null,
+                    summary_source: "none",
+                    body_markdown: "# Update\nBody",
                 },
             ] as never)
             .mockResolvedValueOnce([
@@ -578,13 +649,126 @@ describe("runAiSummaryJob", () => {
                 body: expect.stringContaining("site's language setting"),
             }),
         );
-        expect(mockedUpdateOne).toHaveBeenCalledWith(
+        expect(mockedUpdateMany).toHaveBeenCalledWith(
             "app_articles",
-            "article-1",
+            expect.objectContaining({
+                filter: expect.any(Object),
+            }),
             expect.objectContaining({
                 summary_prompt_version: resolveAiSummaryPromptVersion("en"),
             }),
             expect.any(Object),
+        );
+    });
+
+    it("skips stale jobs before calling the provider when content hash changed", async () => {
+        mockedReadMany
+            .mockResolvedValueOnce([
+                {
+                    id: "job-1",
+                    article_id: "article-1",
+                    status: "pending",
+                    attempts: 0,
+                    max_attempts: 3,
+                    content_hash: "stale-hash",
+                    prompt_version: "v1",
+                    model: "test-model",
+                    target_length: "medium",
+                    scheduled_at: null,
+                    leased_until: null,
+                },
+            ] as never)
+            .mockResolvedValueOnce([
+                {
+                    id: "article-1",
+                    author_id: "author-1",
+                    status: "published",
+                    ai_summary_enabled: true,
+                    title: "标题",
+                    summary: null,
+                    summary_source: "none",
+                    body_markdown: "# 正文\n内容",
+                },
+            ] as never);
+        const fetchMock = vi.fn();
+
+        const result = await runAiSummaryJob({
+            jobId: "job-1",
+            settings: {
+                enabled: true,
+                articleSummaryEnabled: true,
+                baseUrl: "https://api.example.com/v1",
+                model: "test-model",
+                apiKey: "sk-secret",
+            },
+            fetch: fetchMock,
+        });
+
+        expect(result.status).toBe("skipped");
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(mockedUpdateOne).toHaveBeenCalledWith(
+            "app_ai_summary_jobs",
+            "job-1",
+            expect.objectContaining({
+                status: "skipped",
+                leased_until: null,
+                finished_at: expect.any(String),
+            }),
+        );
+    });
+
+    it("writes article summary_error after terminal failures", async () => {
+        mockedReadMany
+            .mockResolvedValueOnce([
+                {
+                    id: "job-1",
+                    article_id: "article-1",
+                    status: "pending",
+                    attempts: 2,
+                    max_attempts: 3,
+                    content_hash: buildSummaryContentHash({
+                        title: "标题",
+                        bodyMarkdown: "# 正文\n内容",
+                    }),
+                    prompt_version: "v1",
+                    model: "test-model",
+                    target_length: "medium",
+                    scheduled_at: null,
+                    leased_until: null,
+                },
+            ] as never)
+            .mockResolvedValueOnce([
+                {
+                    id: "article-1",
+                    author_id: "author-1",
+                    status: "published",
+                    ai_summary_enabled: true,
+                    title: "标题",
+                    summary: null,
+                    summary_source: "none",
+                    body_markdown: "# 正文\n内容",
+                },
+            ] as never);
+
+        const result = await runAiSummaryJob({
+            jobId: "job-1",
+            settings: {
+                enabled: true,
+                articleSummaryEnabled: true,
+                baseUrl: "https://api.example.com/v1",
+                model: "test-model",
+                apiKey: "sk-secret",
+            },
+            fetch: vi.fn().mockRejectedValue(new Error("provider exploded")),
+        });
+
+        expect(result.status).toBe("failed");
+        expect(mockedUpdateOne).toHaveBeenCalledWith(
+            "app_articles",
+            "article-1",
+            expect.objectContaining({
+                summary_error: "provider exploded",
+            }),
         );
     });
 });

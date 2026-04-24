@@ -8,6 +8,8 @@ import {
 } from "@/server/crypto/secret-box";
 import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 
+import { validateAiBaseUrlForCurrentEnvironment } from "./base-url";
+
 export type PublicAiSettings = {
     enabled: boolean;
     articleSummaryEnabled: boolean;
@@ -49,12 +51,24 @@ function readAiSection(source: unknown): unknown {
 export function resolveStoredAiSettings(raw: unknown): AiRuntimeSettings {
     const source = isRecord(raw) ? raw : {};
     const base = defaultSiteSettings.ai;
+    const normalizedBaseUrl = (() => {
+        const candidate = String(source.baseUrl || "").trim();
+        if (!candidate) {
+            return "";
+        }
+        try {
+            return validateAiBaseUrlForCurrentEnvironment(candidate);
+        } catch {
+            return "";
+        }
+    })();
+
     return {
         enabled: Boolean(source.enabled ?? base.enabled),
         articleSummaryEnabled: Boolean(
             source.articleSummaryEnabled ?? base.articleSummaryEnabled,
         ),
-        baseUrl: String(source.baseUrl || "").trim(),
+        baseUrl: normalizedBaseUrl,
         model: String(source.model || "").trim(),
         apiKeyEncrypted:
             typeof source.apiKeyEncrypted === "string" &&
@@ -114,7 +128,9 @@ export function serializeAiSettingsPatch(
         baseUrl:
             patch.baseUrl === undefined
                 ? current.baseUrl
-                : String(patch.baseUrl || "").trim(),
+                : validateAiBaseUrlForCurrentEnvironment(
+                      String(patch.baseUrl || "").trim(),
+                  ),
         model:
             patch.model === undefined
                 ? current.model

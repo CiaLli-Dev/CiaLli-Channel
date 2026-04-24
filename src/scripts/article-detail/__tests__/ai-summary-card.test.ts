@@ -18,9 +18,11 @@ function renderAiSummaryRoot(options?: {
             data-ai-summary-generating-label="生成中"
             data-ai-summary-queued-label="排队中"
             data-ai-summary-failed-label="失败"
+            data-ai-summary-timeout-label="仍在生成"
             data-ai-summary-generating-hint="正在生成新的摘要"
             data-ai-summary-queued-hint="摘要任务已排队"
             data-ai-summary-failed-hint="摘要生成失败"
+            data-ai-summary-timeout-hint="摘要生成时间较长，请稍后刷新查看"
         >
             <aside data-ai-summary-skeleton-card>
                 <p data-ai-summary-hint>摘要任务已排队</p>
@@ -182,5 +184,45 @@ describe("article-detail ai-summary-card", () => {
         expect(finalCard?.hidden).toBe(true);
         expect(hint?.textContent).toBe("摘要生成失败");
         expect(pillLabel?.textContent).toBe("失败");
+    });
+
+    it("轮询超时会展示等待文案而不是失败文案", async () => {
+        const root = renderAiSummaryRoot({
+            initialStatus: "processing",
+            finalHidden: false,
+            summaryText: "旧 AI 摘要",
+        });
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValue({
+                ok: true,
+                json: async () => ({
+                    ok: true,
+                    item: {
+                        summary: "旧 AI 摘要",
+                        summary_source: "ai",
+                        ai_summary_status: "processing",
+                    },
+                }),
+            }),
+        );
+
+        await initModuleAndRunInitialPoll();
+        await vi.advanceTimersByTimeAsync(120_000);
+
+        const hint = root.querySelector<HTMLElement>("[data-ai-summary-hint]");
+        const pillLabel = root.querySelector<HTMLElement>(
+            "[data-ai-summary-pill-label]",
+        );
+        const skeletonCard = root.querySelector<HTMLElement>(
+            "[data-ai-summary-skeleton-card]",
+        );
+
+        expect(root.dataset.aiSummaryStatus).toBe("timeout");
+        expect(skeletonCard?.getAttribute("data-ai-summary-terminal")).toBe(
+            "timeout",
+        );
+        expect(hint?.textContent).toBe("摘要生成时间较长，请稍后刷新查看");
+        expect(pillLabel?.textContent).toBe("仍在生成");
     });
 });

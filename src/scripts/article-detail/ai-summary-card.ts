@@ -147,8 +147,14 @@ function showTerminalFailure(
     elements.skeletonCard.hidden = false;
     elements.finalCard.classList.add("hidden");
     elements.finalCard.hidden = true;
-    elements.hint.textContent = root.dataset.aiSummaryFailedHint || "";
-    elements.pillLabel.textContent = root.dataset.aiSummaryFailedLabel || "";
+    elements.hint.textContent =
+        reason === "timeout"
+            ? root.dataset.aiSummaryTimeoutHint || ""
+            : root.dataset.aiSummaryFailedHint || "";
+    elements.pillLabel.textContent =
+        reason === "timeout"
+            ? root.dataset.aiSummaryTimeoutLabel || ""
+            : root.dataset.aiSummaryFailedLabel || "";
 }
 
 async function pollSummary(root: HTMLElement): Promise<"done" | "continue"> {

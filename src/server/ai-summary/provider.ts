@@ -1,6 +1,8 @@
 import type { AiSummaryChatMessage } from "@/server/ai-summary/prompts";
 import { AiSummaryError } from "@/server/ai-summary/errors";
 
+import { validateAiBaseUrlForCurrentEnvironment } from "./base-url";
+
 type ProviderFetch = typeof fetch;
 
 export type OpenAICompatibleChatCompletionInput = {
@@ -12,10 +14,23 @@ export type OpenAICompatibleChatCompletionInput = {
     maxTokens: number;
 };
 
+const DEFAULT_PROVIDER_TIMEOUT_MS = 90_000;
+
+function readProviderTimeoutMs(): number {
+    const raw = String(
+        process.env.AI_SUMMARY_PROVIDER_TIMEOUT_MS ||
+            import.meta.env.AI_SUMMARY_PROVIDER_TIMEOUT_MS ||
+            "",
+    ).trim();
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed < 1_000) {
+        return DEFAULT_PROVIDER_TIMEOUT_MS;
+    }
+    return Math.floor(parsed);
+}
+
 function buildChatCompletionsUrl(baseUrl: string): string {
-    const normalized = String(baseUrl || "")
-        .trim()
-        .replace(/\/+$/u, "");
+    const normalized = validateAiBaseUrlForCurrentEnvironment(baseUrl);
     if (!normalized) {
         throw new AiSummaryError("CONFIG_MISSING", "AI API Base URL 未配置");
     }
@@ -41,23 +56,46 @@ function readAssistantContent(payload: unknown): string {
     return String((message as { content?: unknown }).content || "").trim();
 }
 
+function isAbortLikeError(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+        return false;
+    }
+
+    return (
+        error.name === "AbortError" ||
+        error.name === "TimeoutError" ||
+        /aborted|timeout/iu.test(error.message)
+    );
+}
+
 export async function callOpenAICompatibleChatCompletion(
     input: OpenAICompatibleChatCompletionInput,
 ): Promise<string> {
     const fetchImpl = input.fetch ?? fetch;
-    const response = await fetchImpl(buildChatCompletionsUrl(input.baseUrl), {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${input.apiKey}`,
-        },
-        body: JSON.stringify({
-            model: input.model,
-            messages: input.messages,
-            temperature: 0.2,
-            max_tokens: input.maxTokens,
-        }),
-    });
+    let response: Response;
+    try {
+        response = await fetchImpl(buildChatCompletionsUrl(input.baseUrl), {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${input.apiKey}`,
+            },
+            body: JSON.stringify({
+                model: input.model,
+                messages: input.messages,
+                temperature: 0.2,
+                max_tokens: input.maxTokens,
+            }),
+            signal: AbortSignal.timeout(readProviderTimeoutMs()),
+        });
+    } catch (error) {
+        if (isAbortLikeError(error)) {
+            throw new AiSummaryError("PROVIDER_TIMEOUT", "AI 服务请求超时", {
+                retryable: true,
+            });
+        }
+        throw error;
+    }
 
     if (response.status === 429) {
         throw new AiSummaryError("PROVIDER_RATE_LIMIT", "AI 服务限流", {

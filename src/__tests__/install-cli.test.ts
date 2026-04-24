@@ -72,7 +72,7 @@ describe("installer env rendering", () => {
                 minioRootPassword: "minio-root-password",
                 storageS3Key: "s3_deadbeef",
                 storageS3Secret: "storage-s3-secret",
-                bangumiTokenEncryptionKey: "bangumi-key",
+                appSecretEncryptionKey: "app-secret-key",
                 aiSummaryInternalSecret: "ai-secret",
             }),
         );
@@ -89,6 +89,7 @@ describe("installer env rendering", () => {
         expect(envText).toContain("DIRECTUS_ADMIN_EMAIL=admin@example.com");
         expect(envText).toContain("DIRECTUS_ADMIN_PASSWORD=admin-password");
         expect(envText).toContain("STORAGE_S3_KEY=s3_deadbeef");
+        expect(envText).toContain("APP_SECRET_ENCRYPTION_KEY=app-secret-key");
     });
 
     it("generates required installer secrets and account values", () => {
@@ -104,7 +105,7 @@ describe("installer env rendering", () => {
             Buffer.alloc(24, 7).toString("base64url"),
         );
         expect(secrets.STORAGE_S3_KEY).toBe("s3_07070707");
-        expect(secrets.BANGUMI_TOKEN_ENCRYPTION_KEY).toBe(
+        expect(secrets.APP_SECRET_ENCRYPTION_KEY).toBe(
             Buffer.alloc(32, 7).toString("base64"),
         );
         expect(secrets.DIRECTUS_WEB_SERVICE_EMAIL).toBe(

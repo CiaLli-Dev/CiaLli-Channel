@@ -16,6 +16,7 @@ import {
     rest,
     staticToken,
     updateItem,
+    updateItems,
     updateFile,
     updateUser,
     uploadFiles,
@@ -425,6 +426,24 @@ export async function updateOne<K extends keyof DirectusSchema>(
             } as never,
         ),
     )) as DirectusSchema[K][number];
+}
+
+export async function updateMany<K extends keyof DirectusSchema>(
+    collection: K,
+    keysOrQuery: string[] | number[] | DirectusQuery,
+    payload: Partial<DirectusSchema[K][number]>,
+    query?: DirectusQuery,
+): Promise<DirectusSchema[K]> {
+    assertNonSystemCollection(collection);
+    return (await executeDirectusRequest(
+        `批量更新集合 ${String(collection)} 数据`,
+        updateItems(
+            collection as never,
+            keysOrQuery as never,
+            payload as never,
+            query as never,
+        ),
+    )) as DirectusSchema[K];
 }
 
 export async function deleteOne<K extends keyof DirectusSchema>(

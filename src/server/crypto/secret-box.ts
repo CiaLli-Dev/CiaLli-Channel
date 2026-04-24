@@ -9,7 +9,7 @@ const ENCRYPTION_ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
 const PAYLOAD_VERSION = "v1";
-const SECRET_KEY_ENV = "BANGUMI_TOKEN_ENCRYPTION_KEY";
+const SECRET_KEY_ENV = "APP_SECRET_ENCRYPTION_KEY";
 
 let cachedKey: Buffer | null = null;
 

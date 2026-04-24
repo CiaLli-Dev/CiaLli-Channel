@@ -19,8 +19,9 @@ interface ImportMetaEnv {
     readonly DIRECTUS_WORKER_STATIC_TOKEN?: string;
     readonly PUBLIC_ASSET_BASE_URL?: string;
     readonly APP_PUBLIC_BASE_URL?: string;
-    readonly BANGUMI_TOKEN_ENCRYPTION_KEY?: string;
+    readonly APP_SECRET_ENCRYPTION_KEY?: string;
     readonly AI_SUMMARY_INTERNAL_SECRET?: string;
+    readonly AI_SUMMARY_PROVIDER_TIMEOUT_MS?: string;
     readonly AI_SUMMARY_JOB_LEASE_SECONDS?: string;
     readonly AI_SUMMARY_MAX_CONCURRENCY?: string;
     readonly AI_SUMMARY_JOB_BATCH_SIZE?: string;

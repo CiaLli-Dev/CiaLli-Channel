@@ -240,8 +240,7 @@ export async function runInstallFlow(args, deps) {
         minioRootPassword: generatedSecrets.MINIO_ROOT_PASSWORD,
         storageS3Key: generatedSecrets.STORAGE_S3_KEY,
         storageS3Secret: generatedSecrets.STORAGE_S3_SECRET,
-        bangumiTokenEncryptionKey:
-            generatedSecrets.BANGUMI_TOKEN_ENCRYPTION_KEY,
+        appSecretEncryptionKey: generatedSecrets.APP_SECRET_ENCRYPTION_KEY,
         aiSummaryInternalSecret: generatedSecrets.AI_SUMMARY_INTERNAL_SECRET,
     });
 
@@ -947,10 +946,7 @@ function buildInstallSummary(params) {
         },
         {
             title: params.t("sectionAppSecrets"),
-            keys: [
-                "BANGUMI_TOKEN_ENCRYPTION_KEY",
-                "AI_SUMMARY_INTERNAL_SECRET",
-            ],
+            keys: ["APP_SECRET_ENCRYPTION_KEY", "AI_SUMMARY_INTERNAL_SECRET"],
         },
     ];
 

@@ -180,4 +180,26 @@ describe("callOpenAICompatibleChatCompletion", () => {
             }),
         );
     });
+
+    it("maps provider timeouts to retryable timeout errors", async () => {
+        const fetchMock = vi.fn().mockRejectedValue(
+            Object.assign(new Error("The operation timed out"), {
+                name: "TimeoutError",
+            }),
+        );
+
+        await expect(
+            callOpenAICompatibleChatCompletion({
+                fetch: fetchMock,
+                baseUrl: "https://api.example.com/v1",
+                apiKey: "sk-test",
+                model: "test-model",
+                messages: [{ role: "user", content: "总结" }],
+                maxTokens: 300,
+            }),
+        ).rejects.toMatchObject({
+            code: "PROVIDER_TIMEOUT",
+            retryable: true,
+        });
+    });
 });

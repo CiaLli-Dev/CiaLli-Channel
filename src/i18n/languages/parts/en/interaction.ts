@@ -73,12 +73,15 @@ export const enInteraction: Record<string, string> = {
     [Key.interactionArticleAiSummaryGenerating]: "Generating",
     [Key.interactionArticleAiSummaryQueued]: "Queued",
     [Key.interactionArticleAiSummaryFailed]: "Failed",
+    [Key.interactionArticleAiSummaryTimeout]: "Still generating",
     [Key.interactionArticleAiSummaryGeneratingHint]:
         "AI is generating the summary...",
     [Key.interactionArticleAiSummaryQueuedHint]:
         "The AI summary job has been created and is waiting to be processed...",
     [Key.interactionArticleAiSummaryFailedHint]:
         "The AI summary is temporarily unavailable. Please refresh and try again later.",
+    [Key.interactionArticleAiSummaryTimeoutHint]:
+        "The summary is taking longer than usual. Please refresh again later.",
     [Key.interactionDialogAuthRequiredTitle]: "Login required",
     [Key.interactionDialogAuthRequiredMessage]:
         "You need to log in before using this feature.",

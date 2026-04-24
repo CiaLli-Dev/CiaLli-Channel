@@ -9,6 +9,7 @@ import {
 import { loadDecryptedAiSettings } from "@/server/ai-summary/config";
 import {
     recoverStuckSummaryJobs,
+    readAiSummaryJobBatchSize,
     readPendingSummaryJobs,
 } from "@/server/ai-summary/jobs";
 import { verifyInternalSecretHeader } from "@/server/ai-summary/internal-auth";
@@ -17,6 +18,43 @@ import type { RunAiSummaryJobResult } from "@/server/ai-summary/runner";
 import { runWithDirectusServiceAccess } from "@/server/directus/client";
 
 const DEFAULT_PORT = 4322;
+const CONSUMER_INTERVAL_MS = 5_000;
+
+let activeExecutions = 0;
+const executionWaiters: Array<() => void> = [];
+let schedulerRunning = false;
+
+function readMaxConcurrency(): number {
+    const raw = String(
+        process.env.AI_SUMMARY_MAX_CONCURRENCY ||
+            import.meta.env.AI_SUMMARY_MAX_CONCURRENCY ||
+            "",
+    ).trim();
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+        return 3;
+    }
+    return Math.floor(parsed);
+}
+
+async function withExecutionSlot<T>(task: () => Promise<T>): Promise<T> {
+    while (activeExecutions >= readMaxConcurrency()) {
+        await new Promise<void>((resolve) => {
+            executionWaiters.push(resolve);
+        });
+    }
+
+    activeExecutions += 1;
+    try {
+        return await task();
+    } finally {
+        activeExecutions = Math.max(0, activeExecutions - 1);
+        const next = executionWaiters.shift();
+        if (next) {
+            next();
+        }
+    }
+}
 
 function sendJson(
     response: ServerResponse,
@@ -58,20 +96,54 @@ function readNumber(value: unknown, fallback: number): number {
 async function processJob(jobId: string): Promise<Record<string, unknown>> {
     return await runWithDirectusServiceAccess(async () => {
         const settings = await loadDecryptedAiSettings();
-        return await runAiSummaryJob({ jobId, settings });
+        return await withExecutionSlot(
+            async () => await runAiSummaryJob({ jobId, settings }),
+        );
     });
 }
 
 async function processDueJobs(limit: number): Promise<Record<string, unknown>> {
     return await runWithDirectusServiceAccess(async () => {
-        const jobIds = await readPendingSummaryJobs(limit);
+        const now = new Date();
+        const jobIds = await readPendingSummaryJobs(limit, now);
         const settings = await loadDecryptedAiSettings();
-        const results: RunAiSummaryJobResult[] = [];
-        for (const jobId of jobIds) {
-            results.push(await runAiSummaryJob({ jobId, settings }));
-        }
+        const results = await Promise.all(
+            jobIds.map(
+                async (jobId): Promise<RunAiSummaryJobResult> =>
+                    await withExecutionSlot(
+                        async () =>
+                            await runAiSummaryJob({ jobId, settings, now }),
+                    ),
+            ),
+        );
         return { processed: results.length, results };
     });
+}
+
+async function runSchedulerTick(
+    trigger: "startup" | "interval",
+): Promise<void> {
+    if (schedulerRunning) {
+        return;
+    }
+
+    schedulerRunning = true;
+    try {
+        const now = new Date();
+        const recovered = await runWithDirectusServiceAccess(
+            async () => await recoverStuckSummaryJobs(now),
+        );
+        const processed = await processDueJobs(readAiSummaryJobBatchSize());
+        console.info("[ai-summary-worker] scheduler tick", {
+            trigger,
+            recovered,
+            processed: processed.processed,
+        });
+    } catch (error) {
+        console.error("[ai-summary-worker] scheduler tick failed", error);
+    } finally {
+        schedulerRunning = false;
+    }
 }
 
 async function handleProcessJob(
@@ -95,8 +167,11 @@ async function handleProcessDue(
 ): Promise<void> {
     const limit =
         body && typeof body === "object"
-            ? readNumber((body as { limit?: unknown }).limit, 3)
-            : 3;
+            ? readNumber(
+                  (body as { limit?: unknown }).limit,
+                  readAiSummaryJobBatchSize(),
+              )
+            : readAiSummaryJobBatchSize();
     sendJson(response, 200, { ok: true, ...(await processDueJobs(limit)) });
 }
 
@@ -157,4 +232,8 @@ createServer((request, response) => {
     });
 }).listen(port, () => {
     console.info(`[ai-summary-worker] listening on ${port}`);
+    void runSchedulerTick("startup");
+    setInterval(() => {
+        void runSchedulerTick("interval");
+    }, CONSUMER_INTERVAL_MS);
 });

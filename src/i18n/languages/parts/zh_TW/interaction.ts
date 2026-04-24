@@ -69,11 +69,14 @@ export const zhTWInteraction: Record<string, string> = {
     [Key.interactionArticleAiSummaryGenerating]: "生成中",
     [Key.interactionArticleAiSummaryQueued]: "排隊中",
     [Key.interactionArticleAiSummaryFailed]: "生成失敗",
+    [Key.interactionArticleAiSummaryTimeout]: "仍在生成",
     [Key.interactionArticleAiSummaryGeneratingHint]: "AI 正在生成摘要...",
     [Key.interactionArticleAiSummaryQueuedHint]:
         "AI 摘要任務已建立，正在排隊處理中...",
     [Key.interactionArticleAiSummaryFailedHint]:
         "AI 摘要暫時不可用，請稍後重新整理再試。",
+    [Key.interactionArticleAiSummaryTimeoutHint]:
+        "摘要生成時間較長，請稍後重新整理查看。",
     [Key.interactionDialogAuthRequiredTitle]: "登入提示",
     [Key.interactionDialogAuthRequiredMessage]: "登入後才能使用此功能。",
     [Key.interactionDialogGoLogin]: "前往登入",

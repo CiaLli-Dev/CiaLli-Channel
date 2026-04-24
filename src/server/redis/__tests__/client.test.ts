@@ -99,4 +99,23 @@ describe("server/redis/client", () => {
             "300",
         ]);
     });
+
+    it("只在值匹配时删除锁", async () => {
+        process.env.REDIS_URL = "redis://redis.test:6379/0";
+        redisSendCommandMock.mockResolvedValue(1);
+
+        const { getRedisClient } = await import("@/server/redis/client");
+
+        const client = getRedisClient();
+        const deleted = await client?.delIfValue("lock-key", "owner-1");
+
+        expect(deleted).toBe(true);
+        expect(redisSendCommandMock).toHaveBeenCalledWith([
+            "EVAL",
+            expect.stringContaining('redis.call("GET", KEYS[1])'),
+            "1",
+            "lock-key",
+            "owner-1",
+        ]);
+    });
 });

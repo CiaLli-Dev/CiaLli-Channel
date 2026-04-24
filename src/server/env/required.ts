@@ -1,12 +1,12 @@
 type RequiredEnvName =
     | "DIRECTUS_URL"
     | "DIRECTUS_WEB_STATIC_TOKEN"
-    | "BANGUMI_TOKEN_ENCRYPTION_KEY";
+    | "APP_SECRET_ENCRYPTION_KEY";
 
 const REQUIRED_ENV_KEYS: RequiredEnvName[] = [
     "DIRECTUS_URL",
     "DIRECTUS_WEB_STATIC_TOKEN",
-    "BANGUMI_TOKEN_ENCRYPTION_KEY",
+    "APP_SECRET_ENCRYPTION_KEY",
 ];
 
 let cachedError: Error | null = null;

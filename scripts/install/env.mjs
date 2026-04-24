@@ -21,7 +21,7 @@ export const INSTALL_ENV_KEYS = [
     "DIRECTUS_ADMIN_PASSWORD",
     "STORAGE_S3_KEY",
     "STORAGE_S3_SECRET",
-    "BANGUMI_TOKEN_ENCRYPTION_KEY",
+    "APP_SECRET_ENCRYPTION_KEY",
     "AI_SUMMARY_INTERNAL_SECRET",
 ];
 
@@ -39,7 +39,7 @@ export const INSTALL_ENV_KEYS = [
  *   STORAGE_S3_KEY: string;
  *   STORAGE_S3_SECRET: string;
  *   AI_SUMMARY_INTERNAL_SECRET: string;
- *   BANGUMI_TOKEN_ENCRYPTION_KEY: string;
+ *   APP_SECRET_ENCRYPTION_KEY: string;
  *   DIRECTUS_WEB_STATIC_TOKEN: string;
  *   DIRECTUS_WORKER_STATIC_TOKEN: string;
  *   DIRECTUS_WEB_SERVICE_EMAIL: string;
@@ -62,7 +62,7 @@ export function generateInstallerSecrets(random = randomBytes) {
         STORAGE_S3_KEY: `s3_${suffix}`,
         STORAGE_S3_SECRET: random(24).toString("base64url"),
         AI_SUMMARY_INTERNAL_SECRET: random(24).toString("hex"),
-        BANGUMI_TOKEN_ENCRYPTION_KEY: random(32).toString("base64"),
+        APP_SECRET_ENCRYPTION_KEY: random(32).toString("base64"),
         DIRECTUS_WEB_STATIC_TOKEN: random(24).toString("hex"),
         DIRECTUS_WORKER_STATIC_TOKEN: random(24).toString("hex"),
         DIRECTUS_WEB_SERVICE_EMAIL: `svc-web-${suffix}@example.com`,
@@ -90,7 +90,7 @@ export function generateInstallerSecrets(random = randomBytes) {
  *   minioRootPassword: string;
  *   storageS3Key: string;
  *   storageS3Secret: string;
- *   bangumiTokenEncryptionKey: string;
+ *   appSecretEncryptionKey: string;
  *   aiSummaryInternalSecret: string;
  * }} params
  * @returns {Record<string, string>}
@@ -113,7 +113,7 @@ export function buildEnvValues(params) {
         MINIO_ROOT_PASSWORD: params.minioRootPassword,
         STORAGE_S3_KEY: params.storageS3Key,
         STORAGE_S3_SECRET: params.storageS3Secret,
-        BANGUMI_TOKEN_ENCRYPTION_KEY: params.bangumiTokenEncryptionKey,
+        APP_SECRET_ENCRYPTION_KEY: params.appSecretEncryptionKey,
         AI_SUMMARY_INTERNAL_SECRET: params.aiSummaryInternalSecret,
     };
 }
@@ -171,8 +171,8 @@ export function renderEnvFile(values) {
         "# ============================================",
         "# Application Secrets",
         "# ============================================",
-        "# Bangumi AccessToken 加密密钥（base64 编码的 32-byte key）",
-        `BANGUMI_TOKEN_ENCRYPTION_KEY=${values.BANGUMI_TOKEN_ENCRYPTION_KEY}`,
+        "# 应用密钥加密主密钥（base64 编码的 32-byte key）",
+        `APP_SECRET_ENCRYPTION_KEY=${values.APP_SECRET_ENCRYPTION_KEY}`,
         "",
         "# ============================================",
         "# AI Summary Worker",

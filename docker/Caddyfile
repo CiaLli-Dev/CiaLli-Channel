@@ -9,5 +9,7 @@
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
 	}
+	@internal path /api/internal/*
+	respond @internal 404
 	reverse_proxy web:4321
 }

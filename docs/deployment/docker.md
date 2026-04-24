@@ -32,8 +32,9 @@ Directus 后台默认只绑定到 `127.0.0.1:8055`，不直接暴露公网。
    `DIRECTUS_URL`
    `DIRECTUS_WEB_STATIC_TOKEN`
    `DIRECTUS_WORKER_STATIC_TOKEN`
-   `BANGUMI_TOKEN_ENCRYPTION_KEY`
+   `APP_SECRET_ENCRYPTION_KEY`
    `AI_SUMMARY_INTERNAL_SECRET`
+   `AI_SUMMARY_PROVIDER_TIMEOUT_MS`（可选，默认 `90000`）
    `DIRECTUS_SECRET`
    `POSTGRES_USER`
    `POSTGRES_DB`
@@ -128,6 +129,7 @@ pnpm docker:up
 - 当前 `seed/metadata.json` 记录的 MinIO `objectCount` 为 `1`，对应仓库中的 `seed/minio/demo-bucket/.gitkeep`
 - PostgreSQL seed 保留 `admin@example.com` 这条管理员记录以承接业务外键；安装器会在 restore 后确保该管理员存在并重置为新的随机密码
 - AI 运行时密钥、基础设施账号名与内部调用密钥都由安装器写入 `.env`
+- `APP_SECRET_ENCRYPTION_KEY` 是运行时唯一生效的通用加密密钥变量，必须提供 base64 编码的 32-byte key
 - PostgreSQL seed dump 仍通过 Git LFS 分发，部署前依然应执行 `git lfs install && git lfs pull`
 - 如果需要重新触发演示恢复，请先删除 `postgres_data` 与 `minio_data` 对应的 Docker volume，或使用 `cialli-install install --reset`
 

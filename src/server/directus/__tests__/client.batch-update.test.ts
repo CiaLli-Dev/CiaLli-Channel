@@ -26,6 +26,23 @@ vi.mock("@directus/sdk", () => {
         rest: vi.fn(() => ({})),
         staticToken: vi.fn(() => ({})),
         updateItem: vi.fn(),
+        updateItems: vi.fn(
+            (
+                collection: string,
+                keysOrQuery: unknown,
+                data: unknown,
+                query?: unknown,
+            ) => ({
+                path: `/items/${collection}`,
+                method: "PATCH",
+                params: query ?? {},
+                body: JSON.stringify(
+                    Array.isArray(keysOrQuery)
+                        ? { keys: keysOrQuery, data }
+                        : { query: keysOrQuery, data },
+                ),
+            }),
+        ),
         updateFile: vi.fn(),
         updateUser: vi.fn(),
         uploadFiles: vi.fn(),
@@ -127,5 +144,49 @@ describe("updateManyItemsByFilter", () => {
                 data: { user_updated: null },
             }),
         });
+    });
+});
+
+describe("updateMany", () => {
+    it("uses Directus SDK query mode for filtered updates", async () => {
+        requestMock.mockResolvedValue([{ id: "article-1" }]);
+
+        const { runWithDirectusServiceAccess, updateMany } =
+            await import("@/server/directus/client");
+
+        await runWithDirectusServiceAccess(async () => {
+            await updateMany(
+                "app_articles",
+                {
+                    filter: { id: { _eq: "article-1" } },
+                    limit: 1,
+                },
+                {
+                    summary_error: null,
+                },
+                {
+                    fields: ["id"],
+                },
+            );
+        });
+
+        expect(requestMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+                path: "/items/app_articles",
+                method: "PATCH",
+                params: {
+                    fields: ["id"],
+                },
+                body: JSON.stringify({
+                    query: {
+                        filter: { id: { _eq: "article-1" } },
+                        limit: 1,
+                    },
+                    data: {
+                        summary_error: null,
+                    },
+                }),
+            }),
+        );
     });
 });

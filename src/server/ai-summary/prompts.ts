@@ -1,3 +1,4 @@
+import type { AiSummaryTargetLength } from "@/types/app";
 import type { SiteLanguage } from "@/types/config";
 
 export const AI_SUMMARY_PROMPT_VERSION_BASE = "v4";
@@ -20,6 +21,13 @@ type AiSummaryPromptCopy = {
     finalSystem: string;
     finalUserTitleLabel: string;
     finalUserInstruction: string;
+};
+
+type AiSummaryLengthConfig = {
+    chunkMaxTokens: number;
+    finalMaxTokens: number;
+    chunkInstruction: string;
+    finalInstruction: string;
 };
 
 const AI_SUMMARY_PROMPT_COPIES: Record<
@@ -80,6 +88,36 @@ const AI_SUMMARY_PROMPT_COPIES: Record<
     },
 };
 
+const AI_SUMMARY_LENGTH_CONFIG: Record<
+    AiSummaryTargetLength,
+    AiSummaryLengthConfig
+> = {
+    short: {
+        chunkMaxTokens: 220,
+        finalMaxTokens: 140,
+        chunkInstruction:
+            "Write a tighter, higher-density chunk summary that preserves only the most important facts.",
+        finalInstruction:
+            "Keep the final summary to one concise paragraph and favor compression over detail.",
+    },
+    medium: {
+        chunkMaxTokens: 350,
+        finalMaxTokens: 260,
+        chunkInstruction:
+            "Keep a balanced density so important context is preserved without becoming verbose.",
+        finalInstruction:
+            "Keep the final summary compact but complete, usually in 1-2 natural paragraphs.",
+    },
+    long: {
+        chunkMaxTokens: 500,
+        finalMaxTokens: 380,
+        chunkInstruction:
+            "Retain more context and nuance while staying faithful to the source text.",
+        finalInstruction:
+            "Allow a fuller summary in 2-3 natural paragraphs when the source material warrants it.",
+    },
+};
+
 export function resolveAiSummaryPromptLanguage(
     language: string | null | undefined,
 ): AiSummaryPromptLanguage {
@@ -106,14 +144,19 @@ export function buildChunkSummaryMessages(input: {
     chunk: string;
     chunkIndex: number;
     chunkCount: number;
+    targetLength?: AiSummaryTargetLength;
 }): AiSummaryChatMessage[] {
     const language = resolveAiSummaryPromptLanguage(input.language);
     const copy = AI_SUMMARY_PROMPT_COPIES[language];
+    const lengthConfig =
+        AI_SUMMARY_LENGTH_CONFIG[input.targetLength ?? "medium"];
 
     return [
         {
             role: "system",
-            content: copy.chunkSystem,
+            content: [copy.chunkSystem, lengthConfig.chunkInstruction].join(
+                " ",
+            ),
         },
         {
             role: "user",
@@ -131,14 +174,19 @@ export function buildFinalSummaryMessages(input: {
     language: string;
     title: string;
     chunkSummaries: string[];
+    targetLength?: AiSummaryTargetLength;
 }): AiSummaryChatMessage[] {
     const language = resolveAiSummaryPromptLanguage(input.language);
     const copy = AI_SUMMARY_PROMPT_COPIES[language];
+    const lengthConfig =
+        AI_SUMMARY_LENGTH_CONFIG[input.targetLength ?? "medium"];
 
     return [
         {
             role: "system",
-            content: copy.finalSystem,
+            content: [copy.finalSystem, lengthConfig.finalInstruction].join(
+                " ",
+            ),
         },
         {
             role: "user",
@@ -188,4 +236,10 @@ export function normalizeAiSummaryText(summary: string): string {
     }
 
     return cleanedLines.join("\n\n").trim();
+}
+
+export function resolveAiSummaryLengthConfig(
+    targetLength: AiSummaryTargetLength | null | undefined,
+): AiSummaryLengthConfig {
+    return AI_SUMMARY_LENGTH_CONFIG[targetLength ?? "medium"];
 }
