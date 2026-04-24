@@ -188,9 +188,7 @@ async function l2Get(
 ): Promise<string | null> {
     const strategy = STRATEGIES[domain];
     if (strategy.l2TtlMs <= 0) return null;
-    const redis = getRedisClient({
-        automaticDeserialization: false,
-    });
+    const redis = getRedisClient();
     if (!redis) {
         return null;
     }
@@ -214,9 +212,7 @@ async function l2Set(
     const strategy = STRATEGIES[domain];
     if (strategy.l2TtlMs <= 0) return;
     const ttlSeconds = Math.ceil(strategy.l2TtlMs / 1000);
-    const redis = getRedisClient({
-        automaticDeserialization: false,
-    });
+    const redis = getRedisClient();
     if (!redis) {
         return;
     }
@@ -229,9 +225,7 @@ async function l2Set(
 }
 
 async function l2Delete(fullKey: string): Promise<void> {
-    const redis = getRedisClient({
-        automaticDeserialization: false,
-    });
+    const redis = getRedisClient();
     if (!redis) {
         return;
     }
@@ -266,9 +260,7 @@ async function getDomainVersion(domain: CacheDomain): Promise<number> {
         return local.version;
     }
 
-    const redis = getRedisClient({
-        automaticDeserialization: false,
-    });
+    const redis = getRedisClient();
     let ver = 0;
     if (redis) {
         const redisKey = prefixRedisKey(versionKey(domain));
@@ -288,9 +280,7 @@ async function getDomainVersion(domain: CacheDomain): Promise<number> {
 }
 
 async function incrementDomainVersion(domain: CacheDomain): Promise<number> {
-    const redis = getRedisClient({
-        automaticDeserialization: false,
-    });
+    const redis = getRedisClient();
     let ver = 1;
     if (redis) {
         const redisKey = prefixRedisKey(versionKey(domain));

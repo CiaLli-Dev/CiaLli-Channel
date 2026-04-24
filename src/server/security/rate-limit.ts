@@ -53,9 +53,8 @@ function buildRateLimitRedisKey(
 }
 
 /**
- * 生产环境改为走标准 Redis，因此这里使用固定窗口计数。
- * 当前业务只依赖“是否超过阈值 + 剩余额度 + 重置时间”，
- * 因此改为使用标准 Redis 就足够支撑限流语义。
+ * 使用 Redis 固定窗口计数实现限流，
+ * 返回是否超限、剩余额度与重置时间。
  */
 async function redisRateLimit(
     cleanIp: string,
@@ -68,15 +67,13 @@ async function redisRateLimit(
 
     const cat = CATEGORY_CONFIG[category];
     const key = buildRateLimitRedisKey(category, cleanIp);
-    const current = await redis.incr(key);
+    const { current, ttlSeconds } = await redis.incrementFixedWindow(
+        key,
+        cat.windowSeconds,
+    );
     if (current <= 0) {
         throw internal("Redis 限流服务不可用");
     }
-    if (current === 1) {
-        await redis.expire(key, cat.windowSeconds);
-    }
-
-    const ttlSeconds = await redis.ttl(key);
     const safeTtlSeconds = ttlSeconds > 0 ? ttlSeconds : cat.windowSeconds;
 
     return {

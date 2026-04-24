@@ -66,9 +66,7 @@ describe("cache/manager", () => {
         expect(redis.get.mock.calls[1]?.[0]).toBe(
             "cialli:dev:local:cache:v1:article-list:v0:article-1",
         );
-        expect(getRedisClientMock).toHaveBeenCalledWith({
-            automaticDeserialization: false,
-        });
+        expect(getRedisClientMock).toHaveBeenCalledWith();
     });
 
     it("版本读取失败时仍按 v0 写入，并保留原有 TTL 秒数", async () => {

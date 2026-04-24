@@ -49,9 +49,10 @@ describe("security/rate-limit", () => {
 
     it("存在 Redis 配置时使用带命名空间的固定窗口键", async () => {
         const redis = {
-            incr: vi.fn().mockResolvedValue(1),
-            expire: vi.fn().mockResolvedValue(1),
-            ttl: vi.fn().mockResolvedValue(300),
+            incrementFixedWindow: vi.fn().mockResolvedValue({
+                current: 1,
+                ttlSeconds: 300,
+            }),
         };
         getRedisConfigMock.mockReturnValue({
             url: "redis://redis.test:6379/0",
@@ -67,23 +68,18 @@ describe("security/rate-limit", () => {
             remaining: 9,
             resetAt: expect.any(Number),
         });
-        expect(redis.incr).toHaveBeenCalledWith(
-            "cialli:dev:local:rl:auth:ip:127.0.0.1",
-        );
-        expect(redis.expire).toHaveBeenCalledWith(
+        expect(redis.incrementFixedWindow).toHaveBeenCalledWith(
             "cialli:dev:local:rl:auth:ip:127.0.0.1",
             300,
-        );
-        expect(redis.ttl).toHaveBeenCalledWith(
-            "cialli:dev:local:rl:auth:ip:127.0.0.1",
         );
     });
 
     it("超过阈值时返回 ok=false 且不出现负数剩余额度", async () => {
         const redis = {
-            incr: vi.fn().mockResolvedValue(12),
-            expire: vi.fn(),
-            ttl: vi.fn().mockResolvedValue(120),
+            incrementFixedWindow: vi.fn().mockResolvedValue({
+                current: 12,
+                ttlSeconds: 120,
+            }),
         };
         getRedisConfigMock.mockReturnValue({
             url: "redis://redis.test:6379/0",
@@ -97,7 +93,7 @@ describe("security/rate-limit", () => {
             remaining: 0,
             resetAt: expect.any(Number),
         });
-        expect(redis.expire).not.toHaveBeenCalled();
+        expect(redis.incrementFixedWindow).toHaveBeenCalledTimes(1);
     });
 });
 

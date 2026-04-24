@@ -114,9 +114,7 @@ export async function getDistributedRefreshResult(
         return null;
     }
 
-    const redis = getRedisClient({
-        automaticDeserialization: false,
-    });
+    const redis = getRedisClient();
     if (!redis) {
         return null;
     }
@@ -143,9 +141,7 @@ export async function cacheDistributedRefreshResult(params: {
         return;
     }
 
-    const redis = getRedisClient({
-        automaticDeserialization: false,
-    });
+    const redis = getRedisClient();
     if (!redis) {
         return;
     }
@@ -176,9 +172,7 @@ export async function tryAcquireDistributedRefreshLock(
         return { status: "unavailable" };
     }
 
-    const redis = getRedisClient({
-        automaticDeserialization: false,
-    });
+    const redis = getRedisClient();
     if (!redis) {
         return { status: "unavailable" };
     }

@@ -7,6 +7,7 @@ type RedisCreateClientConfig = {
 const redisCreateClientMock = vi.fn();
 const redisConnectMock = vi.fn();
 const redisOnMock = vi.fn();
+const redisSendCommandMock = vi.fn();
 
 vi.mock("redis", () => ({
     createClient: (config: RedisCreateClientConfig) => {
@@ -20,6 +21,7 @@ vi.mock("redis", () => ({
             incr: vi.fn(),
             expire: vi.fn(),
             ttl: vi.fn(),
+            sendCommand: redisSendCommandMock,
         };
     },
 }));
@@ -36,6 +38,7 @@ beforeEach(() => {
     redisCreateClientMock.mockReset();
     redisConnectMock.mockReset();
     redisOnMock.mockReset();
+    redisSendCommandMock.mockReset();
     resetRedisEnv();
 });
 
@@ -54,7 +57,6 @@ describe("server/redis/client", () => {
 
         expect(getRedisConfig()).toBeNull();
         expect(getRedisClient()).toBeNull();
-        expect(getRedisClient({ automaticDeserialization: false })).toBe(null);
         expect(redisCreateClientMock).not.toHaveBeenCalled();
     });
 
@@ -63,24 +65,38 @@ describe("server/redis/client", () => {
 
         const { getRedisClient } = await import("@/server/redis/client");
 
-        const defaultClient = getRedisClient();
-        const sameDefaultClient = getRedisClient();
-        const rawClient = getRedisClient({
-            automaticDeserialization: false,
-        });
-        const sameRawClient = getRedisClient({
-            automaticDeserialization: false,
-        });
+        const client = getRedisClient();
+        const sameClient = getRedisClient();
 
-        expect(defaultClient).toBe(sameDefaultClient);
-        expect(rawClient).toBe(sameRawClient);
-        expect(rawClient).toBe(defaultClient);
-        await defaultClient?.get("cache-key");
+        expect(client).toBe(sameClient);
+        await client?.get("cache-key");
         expect(redisCreateClientMock).toHaveBeenCalledTimes(1);
         expect(redisCreateClientMock.mock.calls[0]?.[0]).toMatchObject({
             url: "redis://redis.test:6379/0",
         });
         expect(redisConnectMock).toHaveBeenCalledTimes(1);
         expect(redisOnMock).toHaveBeenCalledWith("error", expect.any(Function));
+    });
+
+    it("固定窗口自增通过 Lua 脚本原子设置 TTL", async () => {
+        process.env.REDIS_URL = "redis://redis.test:6379/0";
+        redisSendCommandMock.mockResolvedValue([1, 300]);
+
+        const { getRedisClient } = await import("@/server/redis/client");
+
+        const client = getRedisClient();
+        const result = await client?.incrementFixedWindow(
+            "rate-limit-key",
+            300,
+        );
+
+        expect(result).toEqual({ current: 1, ttlSeconds: 300 });
+        expect(redisSendCommandMock).toHaveBeenCalledWith([
+            "EVAL",
+            expect.stringContaining('redis.call("INCR", KEYS[1])'),
+            "1",
+            "rate-limit-key",
+            "300",
+        ]);
     });
 });
