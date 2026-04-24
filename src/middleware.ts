@@ -7,6 +7,7 @@ import { assertRequiredEnv } from "@/server/env/required";
 import { registerRequestScopedI18n } from "@/server/request-context/i18n";
 import { runWithRequestContext } from "@/server/request-context";
 import { ensureCsrfCookie } from "@/server/security/csrf";
+import { applyFrameProtectionHeaders } from "@/server/security/frame-protection";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
 
 registerRequestScopedI18n();
@@ -55,7 +56,7 @@ export const onRequest: MiddlewareHandler = defineMiddleware(
                 );
             }
 
-            return await runWithRequestContext(
+            const response = await runWithRequestContext(
                 {
                     requestId: "prerender",
                     language: siteSettings?.system.lang ?? "en",
@@ -64,6 +65,9 @@ export const onRequest: MiddlewareHandler = defineMiddleware(
                 },
                 async () => await next(),
             );
+
+            applyFrameProtectionHeaders(response);
+            return response;
         }
 
         // 1. 生成/复用请求 ID
@@ -108,6 +112,7 @@ export const onRequest: MiddlewareHandler = defineMiddleware(
         );
 
         // 6. 响应头附加 requestId
+        applyFrameProtectionHeaders(response);
         response.headers.set("X-Request-ID", requestId);
         return response;
     },
