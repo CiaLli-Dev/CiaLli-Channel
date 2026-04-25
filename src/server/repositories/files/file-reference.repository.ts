@@ -9,6 +9,7 @@ import {
     updateOne,
 } from "@/server/directus/client";
 import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup-reference-utils";
+import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 
 export type FileReferenceKind =
     | "structured_field"
@@ -151,18 +152,21 @@ export async function replaceOwnerFieldReferences(
         ]),
     );
     const nowIso = now.toISOString();
-    const existing = (await readMany("app_file_references", {
-        filter: buildOwnerFilter(owner),
-        fields: [
-            "id",
-            "file_id",
-            "owner_user_id",
-            "visibility",
-            "created_at",
-            "updated_at",
-        ],
-        limit: 5000,
-    })) as AppFileReference[];
+    const existing = await withServiceRepositoryContext(
+        async () =>
+            (await readMany("app_file_references", {
+                filter: buildOwnerFilter(owner),
+                fields: [
+                    "id",
+                    "file_id",
+                    "owner_user_id",
+                    "visibility",
+                    "created_at",
+                    "updated_at",
+                ],
+                limit: 5000,
+            })) as AppFileReference[],
+    );
 
     let created = 0;
     let updated = 0;
@@ -183,7 +187,11 @@ export async function replaceOwnerFieldReferences(
             nowIso,
         );
         if (!current) {
-            await createOne("app_file_references", payload, { fields: ["id"] });
+            await withServiceRepositoryContext(async () => {
+                await createOne("app_file_references", payload, {
+                    fields: ["id"],
+                });
+            });
             created += 1;
             continue;
         }
@@ -191,10 +199,12 @@ export async function replaceOwnerFieldReferences(
             normalizeOwnerUserId(current.owner_user_id) !== ownerUserId ||
             current.visibility !== input.visibility
         ) {
-            await updateOne("app_file_references", current.id, {
-                owner_user_id: ownerUserId,
-                visibility: input.visibility,
-                updated_at: nowIso,
+            await withServiceRepositoryContext(async () => {
+                await updateOne("app_file_references", current.id, {
+                    owner_user_id: ownerUserId,
+                    visibility: input.visibility,
+                    updated_at: nowIso,
+                });
             });
             updated += 1;
         }
@@ -202,7 +212,9 @@ export async function replaceOwnerFieldReferences(
 
     for (const current of existing) {
         if (!nextById.has(current.id)) {
-            await deleteOne("app_file_references", current.id);
+            await withServiceRepositoryContext(async () => {
+                await deleteOne("app_file_references", current.id);
+            });
             deleted += 1;
         }
     }
@@ -233,13 +245,18 @@ export async function deleteOwnerReferences(params: {
 
     let deleted = 0;
     while (true) {
-        const rows = (await readMany("app_file_references", {
-            filter: { _and: conditions } as JsonObject,
-            fields: ["id"],
-            limit: REFERENCE_PAGE_SIZE,
-        })) as Array<{ id: string }>;
+        const rows = await withServiceRepositoryContext(
+            async () =>
+                (await readMany("app_file_references", {
+                    filter: { _and: conditions } as JsonObject,
+                    fields: ["id"],
+                    limit: REFERENCE_PAGE_SIZE,
+                })) as Array<{ id: string }>,
+        );
         for (const row of rows) {
-            await deleteOne("app_file_references", row.id);
+            await withServiceRepositoryContext(async () => {
+                await deleteOne("app_file_references", row.id);
+            });
             deleted += 1;
         }
         if (rows.length < REFERENCE_PAGE_SIZE) {
@@ -257,25 +274,28 @@ export async function readOwnerFileReferences(params: {
     if (!ownerCollection || !ownerId) {
         return [];
     }
-    return (await readMany("app_file_references", {
-        filter: {
-            _and: [
-                { owner_collection: { _eq: ownerCollection } },
-                { owner_id: { _eq: ownerId } },
-            ],
-        } as JsonObject,
-        fields: [
-            "id",
-            "file_id",
-            "owner_collection",
-            "owner_id",
-            "owner_field",
-            "reference_kind",
-            "owner_user_id",
-            "visibility",
-        ],
-        limit: 5000,
-    })) as OwnerFileReferenceRow[];
+    return await withServiceRepositoryContext(
+        async () =>
+            (await readMany("app_file_references", {
+                filter: {
+                    _and: [
+                        { owner_collection: { _eq: ownerCollection } },
+                        { owner_id: { _eq: ownerId } },
+                    ],
+                } as JsonObject,
+                fields: [
+                    "id",
+                    "file_id",
+                    "owner_collection",
+                    "owner_id",
+                    "owner_field",
+                    "reference_kind",
+                    "owner_user_id",
+                    "visibility",
+                ],
+                limit: 5000,
+            })) as OwnerFileReferenceRow[],
+    );
 }
 
 export async function readReferencedFileIdsFromReferenceTable(
@@ -288,12 +308,15 @@ export async function readReferencedFileIdsFromReferenceTable(
     }
     let offset = 0;
     while (true) {
-        const rows = (await readMany("app_file_references", {
-            filter: { file_id: { _in: normalized } } as JsonObject,
-            fields: ["file_id"],
-            limit: REFERENCE_PAGE_SIZE,
-            offset,
-        })) as Array<{ file_id: unknown }>;
+        const rows = await withServiceRepositoryContext(
+            async () =>
+                (await readMany("app_file_references", {
+                    filter: { file_id: { _in: normalized } } as JsonObject,
+                    fields: ["file_id"],
+                    limit: REFERENCE_PAGE_SIZE,
+                    offset,
+                })) as Array<{ file_id: unknown }>,
+        );
         for (const row of rows) {
             const fileId = normalizeDirectusFileId(row.file_id);
             if (fileId) {
@@ -321,21 +344,24 @@ export async function readFileReferencesByFileIds(
     const rows: OwnerFileReferenceRow[] = [];
     let offset = 0;
     while (true) {
-        const page = (await readMany("app_file_references", {
-            filter: { file_id: { _in: normalized } } as JsonObject,
-            fields: [
-                "id",
-                "file_id",
-                "owner_collection",
-                "owner_id",
-                "owner_field",
-                "reference_kind",
-                "owner_user_id",
-                "visibility",
-            ],
-            limit: REFERENCE_PAGE_SIZE,
-            offset,
-        })) as OwnerFileReferenceRow[];
+        const page = await withServiceRepositoryContext(
+            async () =>
+                (await readMany("app_file_references", {
+                    filter: { file_id: { _in: normalized } } as JsonObject,
+                    fields: [
+                        "id",
+                        "file_id",
+                        "owner_collection",
+                        "owner_id",
+                        "owner_field",
+                        "reference_kind",
+                        "owner_user_id",
+                        "visibility",
+                    ],
+                    limit: REFERENCE_PAGE_SIZE,
+                    offset,
+                })) as OwnerFileReferenceRow[],
+        );
         rows.push(...page);
         if (page.length < REFERENCE_PAGE_SIZE) {
             return rows;
@@ -350,11 +376,14 @@ export async function readAllReferencedFileIdsFromReferenceTable(): Promise<
     const found = new Set<string>();
     let offset = 0;
     while (true) {
-        const rows = (await readMany("app_file_references", {
-            fields: ["file_id"],
-            limit: REFERENCE_PAGE_SIZE,
-            offset,
-        })) as Array<{ file_id: unknown }>;
+        const rows = await withServiceRepositoryContext(
+            async () =>
+                (await readMany("app_file_references", {
+                    fields: ["file_id"],
+                    limit: REFERENCE_PAGE_SIZE,
+                    offset,
+                })) as Array<{ file_id: unknown }>,
+        );
         for (const row of rows) {
             const fileId = normalizeDirectusFileId(row.file_id);
             if (fileId) {
@@ -369,9 +398,12 @@ export async function readAllReferencedFileIdsFromReferenceTable(): Promise<
 }
 
 export async function countFileReferencesFromRepository(): Promise<number> {
-    const rows = await readMany("app_file_references", {
-        fields: ["id"],
-        limit: 1,
-    });
+    const rows = await withServiceRepositoryContext(
+        async () =>
+            await readMany("app_file_references", {
+                fields: ["id"],
+                limit: 1,
+            }),
+    );
     return rows.length;
 }

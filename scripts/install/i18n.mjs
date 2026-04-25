@@ -48,10 +48,14 @@ const MESSAGES = {
             "[install] Starting infrastructure, seed restore jobs, and Directus.",
         provisionStorage:
             "[install] Provisioning the MinIO service account used by Directus storage.",
+        applySchema:
+            "[install] Applying the repository Directus schema snapshot.",
         createRole: "[install] Creating Directus administrator role.",
         createAdminUser: "[install] Creating Directus administrator user.",
         resetAdminPassword:
             "[install] Resetting the existing Directus administrator password.",
+        repairAccessPolicies:
+            "[install] Repairing Directus access policies for the app runtime.",
         generateStaticToken:
             "[install] Logging into Directus and provisioning web / worker service tokens.",
         updateSiteLanguage:
@@ -123,9 +127,12 @@ const MESSAGES = {
         startInfra: "[install] 启动基础设施、seed 恢复与 Directus。",
         provisionStorage:
             "[install] 为 Directus 存储创建 MinIO service account。",
+        applySchema: "[install] 应用仓库中的 Directus schema 快照。",
         createRole: "[install] 创建 Directus 管理员角色。",
         createAdminUser: "[install] 创建 Directus 管理员账户。",
         resetAdminPassword: "[install] 重置已存在的 Directus 管理员密码。",
+        repairAccessPolicies:
+            "[install] 修复应用运行所需的 Directus 访问策略。",
         generateStaticToken:
             "[install] 登录 Directus 并为 web / worker 创建服务端静态 token。",
         updateSiteLanguage:
@@ -192,9 +199,12 @@ const MESSAGES = {
         startInfra: "[install] 啟動基礎設施、seed 還原與 Directus。",
         provisionStorage:
             "[install] 為 Directus 儲存建立 MinIO service account。",
+        applySchema: "[install] 套用倉庫中的 Directus schema 快照。",
         createRole: "[install] 建立 Directus 管理員角色。",
         createAdminUser: "[install] 建立 Directus 管理員帳號。",
         resetAdminPassword: "[install] 重設既有 Directus 管理員密碼。",
+        repairAccessPolicies:
+            "[install] 修復應用執行所需的 Directus 存取策略。",
         generateStaticToken:
             "[install] 登入 Directus 並為 web / worker 建立伺服器端靜態 token。",
         updateSiteLanguage:
@@ -264,10 +274,14 @@ const MESSAGES = {
             "[install] 基盤サービス、seed 復元ジョブ、Directus を起動します。",
         provisionStorage:
             "[install] Directus ストレージ用の MinIO service account を作成します。",
+        applySchema:
+            "[install] リポジトリの Directus schema snapshot を適用します。",
         createRole: "[install] Directus 管理者ロールを作成します。",
         createAdminUser: "[install] Directus 管理者ユーザーを作成します。",
         resetAdminPassword:
             "[install] 既存の Directus 管理者パスワードを再設定します。",
+        repairAccessPolicies:
+            "[install] アプリ実行に必要な Directus アクセスポリシーを修復します。",
         generateStaticToken:
             "[install] Directus にログインし、web / worker 用のサービス token を作成します。",
         updateSiteLanguage:

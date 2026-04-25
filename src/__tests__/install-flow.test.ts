@@ -122,6 +122,39 @@ function createFakeDeps() {
                 );
             }
             if (
+                String(url).startsWith(
+                    "http://127.0.0.1:8055/permissions?filter%5Bcollection%5D%5B_eq%5D=app_friends",
+                )
+            ) {
+                return new Response(
+                    JSON.stringify({
+                        data: [
+                            {
+                                id: "public-friends-permission",
+                                policy: {
+                                    name: "$t:public_label",
+                                },
+                            },
+                        ],
+                    }),
+                    { status: 200 },
+                );
+            }
+            if (
+                url ===
+                    "http://127.0.0.1:8055/permissions/public-friends-permission" &&
+                init?.method === "PATCH"
+            ) {
+                return new Response(
+                    JSON.stringify({
+                        data: {
+                            id: "public-friends-permission",
+                        },
+                    }),
+                    { status: 200 },
+                );
+            }
+            if (
                 url === "http://127.0.0.1:8055/users" &&
                 init?.method === "POST"
             ) {

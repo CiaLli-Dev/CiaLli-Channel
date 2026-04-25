@@ -4,7 +4,6 @@ import type { DirectusSchema } from "@/server/directus/schema";
 import {
     createOne,
     readMany,
-    readOneById,
     updateMany,
     updateOne,
 } from "@/server/directus/client";
@@ -242,10 +241,12 @@ async function isDetachJobSourceDeleted(
             RESOURCE_OWNER_RELEASE_SOURCE_PREFIX,
         );
     }
-    const row = await readOneById(collection, job.source_id, {
+    const rows = await readMany(collection, {
+        filter: { id: { _eq: job.source_id } } as JsonObject,
+        limit: 1,
         fields: ["id"],
     });
-    return row === null;
+    return rows.length === 0;
 }
 
 async function claimFileDetachJob(params: {

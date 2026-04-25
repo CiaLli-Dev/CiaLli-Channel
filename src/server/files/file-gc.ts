@@ -154,6 +154,7 @@ function buildQuarantinedBeforeIso(now: Date): string {
 type ManagedFileGcState = {
     id?: string | null;
     date_created?: string | null;
+    created_on?: string | null;
     app_lifecycle?:
         | "temporary"
         | "attached"

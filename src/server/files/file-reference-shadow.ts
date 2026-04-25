@@ -117,6 +117,9 @@ function buildStructuredBackfillFields(
     ) {
         return [...common, "author_id", "is_public"];
     }
+    if (collection === "app_friends") {
+        return ["id", field, "is_public"];
+    }
     if (
         collection === "app_diary_images" ||
         collection === "app_album_photos"
@@ -134,13 +137,17 @@ function buildMarkdownBackfillFields(
     field: string,
 ): string[] {
     const common = ["id", field, "status"];
+    if (collection === "app_articles") {
+        return [...common, "author_id", "is_public"];
+    }
+    if (collection === "app_diaries") {
+        return [...common, "author_id", "praviate"];
+    }
     if (
-        collection === "app_articles" ||
         collection === "app_article_comments" ||
-        collection === "app_diary_comments" ||
-        collection === "app_diaries"
+        collection === "app_diary_comments"
     ) {
-        return [...common, "author_id", "is_public", "praviate"];
+        return [...common, "author_id", "is_public"];
     }
     return common;
 }

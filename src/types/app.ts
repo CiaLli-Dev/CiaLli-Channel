@@ -400,7 +400,9 @@ export type AppFile = {
     type: string | null;
     filename_download: string | null;
     date_created: string | null;
+    created_on?: string | null;
     date_updated?: string | null;
+    modified_on?: string | null;
     app_owner_user_id?: string | { id?: string } | null;
     app_upload_purpose?: UploadPurpose | null;
     app_visibility?: "private" | "public" | null;

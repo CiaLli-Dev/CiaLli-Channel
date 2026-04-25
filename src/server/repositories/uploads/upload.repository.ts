@@ -66,14 +66,7 @@ export async function uploadManagedFile(params: {
             });
         };
 
-        if (params.purpose === "registration-avatar") {
-            await withServiceRepositoryContext(metadataTask);
-        } else {
-            await withUserRepositoryContext(
-                String(params.accessToken || ""),
-                metadataTask,
-            );
-        }
+        await withServiceRepositoryContext(metadataTask);
     }
 
     return uploaded;

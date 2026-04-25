@@ -31,6 +31,7 @@ const WEB_SERVICE_PERMISSION_SPECS = [
         "app_user_profiles",
         "app_ai_summary_jobs",
         "app_file_detach_jobs",
+        "app_file_references",
         "app_articles",
         "app_article_comments",
         "app_article_comment_likes",
@@ -78,6 +79,10 @@ const WORKER_SERVICE_PERMISSION_SPECS = [
     {
         collection: "app_file_detach_jobs",
         actions: ["read", "create", "update"],
+    },
+    {
+        collection: "app_file_references",
+        actions: ["read", "create", "update", "delete"],
     },
     { collection: "app_articles", actions: ["read", "update"] },
     { collection: "app_article_comments", actions: ["read"] },
@@ -295,6 +300,9 @@ export async function runInstallFlow(args, deps) {
     await runCompose(projectRoot, envFilePath, ["up", "-d", "directus"], deps);
     await waitForHttpOk(`${directusUrl}${DIRECTUS_HEALTH_PATH}`, deps, t);
 
+    deps.log(t("applySchema"));
+    await applyDirectusSchema(projectRoot, envFilePath, deps);
+
     let adminRoleId = (
         await runComposeExec(
             projectRoot,
@@ -467,6 +475,14 @@ export async function runInstallFlow(args, deps) {
             );
         }
     }
+
+    deps.log(t("repairAccessPolicies"));
+    await repairDirectusAccessPolicies({
+        directusUrl,
+        accessToken,
+        deps,
+        t,
+    });
 
     deps.log(t("generateStaticToken"));
     const webPolicyId = await createDirectusPolicy({
@@ -852,6 +868,151 @@ async function upsertSiteLanguage(params) {
             }),
         );
     }
+}
+
+/**
+ * @param {string} projectRoot
+ * @param {string} envFilePath
+ * @param {InstallerDeps} deps
+ */
+async function applyDirectusSchema(projectRoot, envFilePath, deps) {
+    const schemaFilePath = path.join(
+        projectRoot,
+        "directus",
+        "schema",
+        "app-schema.json",
+    );
+    await runCompose(
+        projectRoot,
+        envFilePath,
+        ["cp", schemaFilePath, "directus:/tmp/cialli-app-schema.json"],
+        deps,
+    );
+    await runComposeExec(
+        projectRoot,
+        envFilePath,
+        [
+            "directus",
+            "npx",
+            "directus",
+            "schema",
+            "apply",
+            "/tmp/cialli-app-schema.json",
+            "--yes",
+        ],
+        deps,
+    );
+}
+
+/**
+ * @param {unknown} payload
+ * @returns {Array<Record<string, unknown>>}
+ */
+function readDirectusDataArray(payload) {
+    if (payload && typeof payload === "object" && Array.isArray(payload.data)) {
+        return payload.data;
+    }
+    return [];
+}
+
+/**
+ * @param {Record<string, unknown>} permission
+ * @param {string} policyName
+ * @returns {boolean}
+ */
+function isPermissionForPolicyName(permission, policyName) {
+    const policy = permission.policy;
+    if (!policy || typeof policy !== "object") {
+        return false;
+    }
+    return String(policy.name || "").trim() === policyName;
+}
+
+/**
+ * @param {{
+ *   directusUrl: string;
+ *   accessToken: string;
+ *   collection: string;
+ *   action: string;
+ *   policyName: string;
+ *   permissions: Record<string, unknown>;
+ *   deps: InstallerDeps;
+ *   t: InstallTranslator;
+ * }} params
+ */
+async function patchPermissionByPolicyName(params) {
+    const query = new URLSearchParams({
+        "filter[collection][_eq]": params.collection,
+        "filter[action][_eq]": params.action,
+        fields: "id,policy.name",
+        limit: "50",
+    });
+    const readResponse = await params.deps.fetch(
+        `${params.directusUrl}/permissions?${query.toString()}`,
+        {
+            headers: {
+                authorization: `Bearer ${params.accessToken}`,
+            },
+        },
+    );
+    if (!readResponse.ok) {
+        throw new Error(
+            params.t("directusStaticTokenPersistFailed", {
+                status: readResponse.status,
+            }),
+        );
+    }
+    const readPayload = await readResponse.json();
+    const permission = readDirectusDataArray(readPayload).find((entry) =>
+        isPermissionForPolicyName(entry, params.policyName),
+    );
+    const permissionId = String(permission?.id || "").trim();
+    if (!permissionId) {
+        return;
+    }
+
+    const writeResponse = await params.deps.fetch(
+        `${params.directusUrl}/permissions/${encodeURIComponent(permissionId)}`,
+        {
+            method: "PATCH",
+            headers: {
+                authorization: `Bearer ${params.accessToken}`,
+                "content-type": "application/json",
+            },
+            body: JSON.stringify({
+                permissions: params.permissions,
+            }),
+        },
+    );
+    if (!writeResponse.ok) {
+        throw new Error(
+            params.t("directusStaticTokenPersistFailed", {
+                status: writeResponse.status,
+            }),
+        );
+    }
+}
+
+/**
+ * @param {{
+ *   directusUrl: string;
+ *   accessToken: string;
+ *   deps: InstallerDeps;
+ *   t: InstallTranslator;
+ * }} params
+ */
+async function repairDirectusAccessPolicies(params) {
+    await patchPermissionByPolicyName({
+        ...params,
+        collection: "app_friends",
+        action: "read",
+        policyName: "$t:public_label",
+        permissions: {
+            is_public: {
+                _eq: true,
+            },
+        },
+    });
 }
 
 /**

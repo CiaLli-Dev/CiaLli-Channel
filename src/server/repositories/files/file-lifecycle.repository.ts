@@ -12,6 +12,7 @@ import {
     extractDirectusAssetIdsFromMarkdown,
     normalizeDirectusFileId,
 } from "@/server/api/v1/shared/file-cleanup-reference-utils";
+import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 
 export type ManagedFileVisibility = "private" | "public";
 
@@ -28,8 +29,8 @@ const NON_ATTACHABLE_LIFECYCLES = new Set<AppFileLifecycle>([
 
 const MANAGED_FILE_FIELDS = [
     "id",
-    "date_created",
-    "date_updated",
+    "created_on",
+    "modified_on",
     "app_lifecycle",
     "app_detached_at",
     "app_quarantined_at",
@@ -99,10 +100,12 @@ async function updateLifecycleForFileIds(params: {
     if (fileIds.length === 0) {
         return;
     }
-    await updateManyItemsByFilter({
-        collection: "directus_files",
-        filter: { id: { _in: fileIds } } as JsonObject,
-        data: params.data,
+    await withServiceRepositoryContext(async () => {
+        await updateManyItemsByFilter({
+            collection: "directus_files",
+            filter: { id: { _in: fileIds } } as JsonObject,
+            data: params.data,
+        });
     });
 }
 
@@ -155,21 +158,23 @@ export async function markFilesAttached(params: {
     }
 
     if (fileIds.length === 1) {
-        await updateDirectusFileMetadata(fileIds[0], {
-            ...(lifecyclePayload as {
-                uploaded_by?: string | null;
-                app_owner_user_id?: string | null;
-                app_visibility?: ManagedFileVisibility;
-                app_lifecycle?: AppFileLifecycle;
-                app_detached_at?: string | null;
-                app_quarantined_at?: string | null;
-                app_deleted_at?: string | null;
-                app_delete_attempts?: number | null;
-                app_delete_next_retry_at?: string | null;
-                app_delete_last_error?: string | null;
-                app_delete_dead_lettered_at?: string | null;
-            }),
-            title: params.title?.trim() || undefined,
+        await withServiceRepositoryContext(async () => {
+            await updateDirectusFileMetadata(fileIds[0], {
+                ...(lifecyclePayload as {
+                    uploaded_by?: string | null;
+                    app_owner_user_id?: string | null;
+                    app_visibility?: ManagedFileVisibility;
+                    app_lifecycle?: AppFileLifecycle;
+                    app_detached_at?: string | null;
+                    app_quarantined_at?: string | null;
+                    app_deleted_at?: string | null;
+                    app_delete_attempts?: number | null;
+                    app_delete_next_retry_at?: string | null;
+                    app_delete_last_error?: string | null;
+                    app_delete_dead_lettered_at?: string | null;
+                }),
+                title: params.title?.trim() || undefined,
+            });
         });
         return;
     }
@@ -249,28 +254,31 @@ export async function claimFileForQuarantine(params: {
     if (!fileId) {
         return false;
     }
-    const updated = await updateDirectusFilesByFilter({
-        filter: {
-            _and: [
-                { id: { _eq: fileId } },
-                { app_lifecycle: { _eq: "detached" } },
-                { app_detached_at: { _nnull: true } },
-                { app_detached_at: { _lte: params.detachedBefore } },
-            ],
-        } as JsonObject,
-        data: {
-            app_lifecycle: "quarantined",
-            app_visibility: "private",
-            app_quarantined_at: params.quarantinedAt,
-            app_deleted_at: null,
-            app_delete_attempts: 0,
-            app_delete_next_retry_at: null,
-            app_delete_last_error: null,
-            app_delete_dead_lettered_at: null,
-        },
-        limit: 1,
-        fields: ["id"],
-    });
+    const updated = await withServiceRepositoryContext(
+        async () =>
+            await updateDirectusFilesByFilter({
+                filter: {
+                    _and: [
+                        { id: { _eq: fileId } },
+                        { app_lifecycle: { _eq: "detached" } },
+                        { app_detached_at: { _nnull: true } },
+                        { app_detached_at: { _lte: params.detachedBefore } },
+                    ],
+                } as JsonObject,
+                data: {
+                    app_lifecycle: "quarantined",
+                    app_visibility: "private",
+                    app_quarantined_at: params.quarantinedAt,
+                    app_deleted_at: null,
+                    app_delete_attempts: 0,
+                    app_delete_next_retry_at: null,
+                    app_delete_last_error: null,
+                    app_delete_dead_lettered_at: null,
+                },
+                limit: 1,
+                fields: ["id"],
+            }),
+    );
     return updated.length === 1;
 }
 
@@ -311,49 +319,60 @@ export async function claimFileForDelete(params: {
             },
         ],
     };
-    const updated = await updateDirectusFilesByFilter({
-        filter: {
-            _and: [
-                { id: { _eq: fileId } },
-                {
-                    _or: [
+    const updated = await withServiceRepositoryContext(
+        async () =>
+            await updateDirectusFilesByFilter({
+                filter: {
+                    _and: [
+                        { id: { _eq: fileId } },
                         {
-                            _and: [
-                                { app_lifecycle: { _eq: "quarantined" } },
-                                { app_quarantined_at: { _nnull: true } },
+                            _or: [
                                 {
-                                    app_quarantined_at: {
-                                        _lte: params.quarantinedBefore,
-                                    },
+                                    _and: [
+                                        {
+                                            app_lifecycle: {
+                                                _eq: "quarantined",
+                                            },
+                                        },
+                                        {
+                                            app_quarantined_at: {
+                                                _nnull: true,
+                                            },
+                                        },
+                                        {
+                                            app_quarantined_at: {
+                                                _lte: params.quarantinedBefore,
+                                            },
+                                        },
+                                    ],
+                                },
+                                {
+                                    _and: [
+                                        { app_lifecycle: { _eq: "deleted" } },
+                                        retryDueFilter,
+                                    ],
+                                },
+                                {
+                                    _and: [
+                                        { app_lifecycle: { _eq: "deleting" } },
+                                        retryDueFilter,
+                                    ],
                                 },
                             ],
                         },
-                        {
-                            _and: [
-                                { app_lifecycle: { _eq: "deleted" } },
-                                retryDueFilter,
-                            ],
-                        },
-                        {
-                            _and: [
-                                { app_lifecycle: { _eq: "deleting" } },
-                                retryDueFilter,
-                            ],
-                        },
                     ],
+                } as JsonObject,
+                data: {
+                    app_lifecycle: "deleting",
+                    app_visibility: "private",
+                    app_deleted_at: params.deletedAt,
+                    app_delete_next_retry_at: params.retryAfter,
+                    app_delete_dead_lettered_at: null,
                 },
-            ],
-        } as JsonObject,
-        data: {
-            app_lifecycle: "deleting",
-            app_visibility: "private",
-            app_deleted_at: params.deletedAt,
-            app_delete_next_retry_at: params.retryAfter,
-            app_delete_dead_lettered_at: null,
-        },
-        limit: 1,
-        fields: ["id"],
-    });
+                limit: 1,
+                fields: ["id"],
+            }),
+    );
     return updated.length === 1;
 }
 
@@ -363,13 +382,15 @@ export async function markFileDeleteRetry(params: {
     nextRetryAt: string;
     lastError: string;
 }): Promise<void> {
-    await updateDirectusFileMetadata(params.fileId, {
-        app_lifecycle: "deleted",
-        app_visibility: "private",
-        app_delete_attempts: params.attempts,
-        app_delete_next_retry_at: params.nextRetryAt,
-        app_delete_last_error: params.lastError,
-        app_delete_dead_lettered_at: null,
+    await withServiceRepositoryContext(async () => {
+        await updateDirectusFileMetadata(params.fileId, {
+            app_lifecycle: "deleted",
+            app_visibility: "private",
+            app_delete_attempts: params.attempts,
+            app_delete_next_retry_at: params.nextRetryAt,
+            app_delete_last_error: params.lastError,
+            app_delete_dead_lettered_at: null,
+        });
     });
 }
 
@@ -379,13 +400,15 @@ export async function markFileDeleteDeadLetter(params: {
     deadLetteredAt: string;
     lastError: string;
 }): Promise<void> {
-    await updateDirectusFileMetadata(params.fileId, {
-        app_lifecycle: "delete_failed",
-        app_visibility: "private",
-        app_delete_attempts: params.attempts,
-        app_delete_next_retry_at: null,
-        app_delete_last_error: params.lastError,
-        app_delete_dead_lettered_at: params.deadLetteredAt,
+    await withServiceRepositoryContext(async () => {
+        await updateDirectusFileMetadata(params.fileId, {
+            app_lifecycle: "delete_failed",
+            app_visibility: "private",
+            app_delete_attempts: params.attempts,
+            app_delete_next_retry_at: null,
+            app_delete_last_error: params.lastError,
+            app_delete_dead_lettered_at: params.deadLetteredAt,
+        });
     });
 }
 
@@ -396,11 +419,14 @@ export async function readManagedFilesByIds(
     if (normalizedIds.length === 0) {
         return [];
     }
-    return (await readMany("directus_files", {
-        filter: { id: { _in: normalizedIds } } as JsonObject,
-        fields: [...MANAGED_FILE_FIELDS],
-        limit: Math.max(normalizedIds.length, 1),
-    })) as AppFile[];
+    return await withServiceRepositoryContext(
+        async () =>
+            (await readMany("directus_files", {
+                filter: { id: { _in: normalizedIds } } as JsonObject,
+                fields: [...MANAGED_FILE_FIELDS],
+                limit: Math.max(normalizedIds.length, 1),
+            })) as AppFile[],
+    );
 }
 
 export async function readAllManagedFiles(): Promise<AppFile[]> {
@@ -409,11 +435,14 @@ export async function readAllManagedFiles(): Promise<AppFile[]> {
     let offset = 0;
 
     while (true) {
-        const page = (await readMany("directus_files", {
-            fields: [...MANAGED_FILE_FIELDS],
-            limit,
-            offset,
-        })) as AppFile[];
+        const page = await withServiceRepositoryContext(
+            async () =>
+                (await readMany("directus_files", {
+                    fields: [...MANAGED_FILE_FIELDS],
+                    limit,
+                    offset,
+                })) as AppFile[],
+        );
         files.push(...page);
         if (page.length < limit) {
             return files;

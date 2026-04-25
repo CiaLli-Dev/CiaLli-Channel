@@ -6,6 +6,7 @@ import type {
 import { AppError } from "@/server/api/errors";
 import { createOne, updateOne } from "@/server/directus/client";
 import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup-reference-utils";
+import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 import {
     assertFilesAttachable,
     FILE_LIFECYCLE_NOT_ATTACHABLE_CODE,
@@ -203,24 +204,27 @@ async function enqueueResourceReferenceSyncJob(
     payload: ResourceReferenceSyncJobPayload,
 ): Promise<string> {
     const now = new Date().toISOString();
-    const created = await createOne(
-        "app_file_detach_jobs",
-        {
-            status: "pending",
-            source_type: RESOURCE_REFERENCE_SYNC_SOURCE_TYPE,
-            source_id: payload.ownerId,
-            candidate_file_ids: payload,
-            detached_file_ids: [],
-            skipped_referenced_file_ids: [],
-            attempts: 0,
-            scheduled_at: now,
-            leased_until: null,
-            started_at: null,
-            finished_at: null,
-            error_code: null,
-            error_message: null,
-        },
-        { fields: ["id"] },
+    const created = await withServiceRepositoryContext(
+        async () =>
+            await createOne(
+                "app_file_detach_jobs",
+                {
+                    status: "pending",
+                    source_type: RESOURCE_REFERENCE_SYNC_SOURCE_TYPE,
+                    source_id: payload.ownerId,
+                    candidate_file_ids: payload,
+                    detached_file_ids: [],
+                    skipped_referenced_file_ids: [],
+                    attempts: 0,
+                    scheduled_at: now,
+                    leased_until: null,
+                    started_at: null,
+                    finished_at: null,
+                    error_code: null,
+                    error_message: null,
+                },
+                { fields: ["id"] },
+            ),
     );
     return created.id;
 }
@@ -232,24 +236,27 @@ async function enqueueOwnerReleaseJob(params: {
 }): Promise<{ jobId: string; status: "pending" | "skipped" }> {
     const now = new Date().toISOString();
     const status = params.candidateFileIds.length > 0 ? "pending" : "skipped";
-    const created = await createOne(
-        "app_file_detach_jobs",
-        {
-            status,
-            source_type: `resource.owner.release:${params.ownerCollection}`,
-            source_id: params.ownerId,
-            candidate_file_ids: params.candidateFileIds,
-            detached_file_ids: [],
-            skipped_referenced_file_ids: [],
-            attempts: 0,
-            scheduled_at: status === "pending" ? now : null,
-            leased_until: null,
-            started_at: null,
-            finished_at: status === "skipped" ? now : null,
-            error_code: null,
-            error_message: null,
-        },
-        { fields: ["id", "status"] },
+    const created = await withServiceRepositoryContext(
+        async () =>
+            await createOne(
+                "app_file_detach_jobs",
+                {
+                    status,
+                    source_type: `resource.owner.release:${params.ownerCollection}`,
+                    source_id: params.ownerId,
+                    candidate_file_ids: params.candidateFileIds,
+                    detached_file_ids: [],
+                    skipped_referenced_file_ids: [],
+                    attempts: 0,
+                    scheduled_at: status === "pending" ? now : null,
+                    leased_until: null,
+                    started_at: null,
+                    finished_at: status === "skipped" ? now : null,
+                    error_code: null,
+                    error_message: null,
+                },
+                { fields: ["id", "status"] },
+            ),
     );
     return { jobId: created.id, status };
 }
@@ -545,15 +552,17 @@ export async function markResourceReferenceSyncJobSucceeded(params: {
     jobId: string;
     nowIso: string;
 }): Promise<void> {
-    await updateOne("app_file_detach_jobs", params.jobId, {
-        status: "succeeded",
-        scheduled_at: null,
-        leased_until: null,
-        finished_at: params.nowIso,
-        detached_file_ids: [],
-        skipped_referenced_file_ids: [],
-        error_code: null,
-        error_message: null,
+    await withServiceRepositoryContext(async () => {
+        await updateOne("app_file_detach_jobs", params.jobId, {
+            status: "succeeded",
+            scheduled_at: null,
+            leased_until: null,
+            finished_at: params.nowIso,
+            detached_file_ids: [],
+            skipped_referenced_file_ids: [],
+            error_code: null,
+            error_message: null,
+        });
     });
 }
 

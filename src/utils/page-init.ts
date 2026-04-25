@@ -35,7 +35,13 @@ const getLastRunByKey = (): Map<string, string> => {
 };
 
 const resolveNavigationSignature = (): string => {
-    const historyState = history.state as {
+    const historySource =
+        "history" in window
+            ? window.history
+            : typeof history !== "undefined"
+              ? history
+              : null;
+    const historyState = historySource?.state as {
         index?: unknown;
     } | null;
     const historyIndex =

@@ -39,7 +39,8 @@ export type MarkdownReferenceTarget = {
 
 type StaleFileGcCandidate = {
     id: string;
-    date_created: string | null;
+    date_created?: string | null;
+    created_on?: string | null;
     app_lifecycle?: AppFile["app_lifecycle"];
     app_detached_at?: string | null;
     app_quarantined_at?: string | null;
@@ -568,21 +569,17 @@ export async function readDeletableOwnedFilesFromRepository(
 }
 
 function getCandidateCleanupTimestamp(row: StaleFileGcCandidate): string {
+    const createdAt = row.date_created || row.created_on || "";
     if (row.app_lifecycle === "detached") {
-        return row.app_detached_at || row.date_created || "";
+        return row.app_detached_at || createdAt;
     }
     if (row.app_lifecycle === "quarantined") {
-        return row.app_quarantined_at || row.date_created || "";
+        return row.app_quarantined_at || createdAt;
     }
     if (row.app_lifecycle === "deleted" || row.app_lifecycle === "deleting") {
-        return (
-            row.app_delete_next_retry_at ||
-            row.app_deleted_at ||
-            row.date_created ||
-            ""
-        );
+        return row.app_delete_next_retry_at || row.app_deleted_at || createdAt;
     }
-    return row.date_created || "";
+    return createdAt;
 }
 
 function sortStaleFileGcCandidates(
@@ -606,7 +603,7 @@ export async function readStaleFileGcCandidatesFromRepository(params: {
 }): Promise<StaleFileGcCandidate[]> {
     const fields = [
         "id",
-        "date_created",
+        "created_on",
         "app_lifecycle",
         "app_detached_at",
         "app_quarantined_at",

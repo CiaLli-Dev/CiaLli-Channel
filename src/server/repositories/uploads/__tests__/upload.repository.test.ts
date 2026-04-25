@@ -68,7 +68,8 @@ describe("upload.repository", () => {
             title: "Article Cover",
         });
 
-        expect(mocks.withUserRepositoryContext).toHaveBeenCalledTimes(2);
+        expect(mocks.withUserRepositoryContext).toHaveBeenCalledTimes(1);
+        expect(mocks.withServiceRepositoryContext).toHaveBeenCalledTimes(1);
         expect(mocks.updateDirectusFileMetadata).toHaveBeenCalledWith(
             "file-1",
             expect.objectContaining({

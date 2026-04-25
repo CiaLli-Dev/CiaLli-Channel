@@ -5,6 +5,9 @@ const mocks = vi.hoisted(() => ({
     deleteOne: vi.fn(),
     readMany: vi.fn(),
     updateOne: vi.fn(),
+    withServiceRepositoryContext: vi.fn(
+        async (task: () => Promise<unknown>) => await task(),
+    ),
 }));
 
 vi.mock("@/server/directus/client", () => ({
@@ -12,6 +15,10 @@ vi.mock("@/server/directus/client", () => ({
     deleteOne: mocks.deleteOne,
     readMany: mocks.readMany,
     updateOne: mocks.updateOne,
+}));
+
+vi.mock("@/server/repositories/directus/scope", () => ({
+    withServiceRepositoryContext: mocks.withServiceRepositoryContext,
 }));
 
 import {

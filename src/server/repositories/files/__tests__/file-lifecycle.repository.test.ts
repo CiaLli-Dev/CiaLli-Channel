@@ -5,6 +5,9 @@ const mocks = vi.hoisted(() => ({
     updateDirectusFileMetadata: vi.fn(),
     updateDirectusFilesByFilter: vi.fn(),
     updateManyItemsByFilter: vi.fn(),
+    withServiceRepositoryContext: vi.fn(
+        async (task: () => Promise<unknown>) => await task(),
+    ),
 }));
 
 vi.mock("@/server/directus/client", () => ({
@@ -12,6 +15,10 @@ vi.mock("@/server/directus/client", () => ({
     updateDirectusFileMetadata: mocks.updateDirectusFileMetadata,
     updateDirectusFilesByFilter: mocks.updateDirectusFilesByFilter,
     updateManyItemsByFilter: mocks.updateManyItemsByFilter,
+}));
+
+vi.mock("@/server/repositories/directus/scope", () => ({
+    withServiceRepositoryContext: mocks.withServiceRepositoryContext,
 }));
 
 import {
@@ -46,8 +53,8 @@ it("attaches temporary files through the normal binding path", async () => {
         filter: { id: { _in: [FILE_ID] } },
         fields: [
             "id",
-            "date_created",
-            "date_updated",
+            "created_on",
+            "modified_on",
             "app_lifecycle",
             "app_detached_at",
             "app_quarantined_at",

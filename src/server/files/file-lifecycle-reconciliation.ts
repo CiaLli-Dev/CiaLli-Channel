@@ -51,6 +51,13 @@ function isExpired(detachedBefore: string, createdAt: string | null): boolean {
     return createdAt <= detachedBefore;
 }
 
+function readFileCreatedAt(params: {
+    date_created?: string | null;
+    created_on?: string | null;
+}): string | null {
+    return params.date_created || params.created_on || null;
+}
+
 function classifyManagedFileLifecycle(params: {
     file: Awaited<ReturnType<typeof readAllManagedFiles>>[number];
     referencedFileIds: Set<string>;
@@ -72,7 +79,7 @@ function classifyManagedFileLifecycle(params: {
     if (params.file.app_lifecycle === "quarantined") {
         return "quarantined";
     }
-    if (isExpired(params.detachedBefore, params.file.date_created ?? null)) {
+    if (isExpired(params.detachedBefore, readFileCreatedAt(params.file))) {
         return "detached";
     }
     return "temporary";
@@ -178,7 +185,10 @@ export async function reconcileManagedFileLifecycle(
             }
             detachedAtById.set(
                 file.id,
-                file.date_updated || file.date_created || detachedBefore,
+                file.date_updated ||
+                    file.modified_on ||
+                    readFileCreatedAt(file) ||
+                    detachedBefore,
             );
         }
 

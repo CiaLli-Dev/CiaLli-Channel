@@ -47,7 +47,7 @@ describe("file-cleanup.repository", () => {
 
         const fields = [
             "id",
-            "date_created",
+            "created_on",
             "app_lifecycle",
             "app_detached_at",
             "app_quarantined_at",

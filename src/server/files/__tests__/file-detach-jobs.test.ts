@@ -312,18 +312,18 @@ it("reschedules pending jobs when the source record still exists", async () => {
         scheduled_at: "2026-04-24T00:00:00.000Z",
         leased_until: null,
     });
-    mocks.readOneById.mockResolvedValue({ id: "article-1" });
+    mocks.readMany.mockResolvedValueOnce([{ id: "article-1" }]);
 
     const result = await runFileDetachJob(
         "job-1",
         new Date("2026-04-24T00:00:00.000Z"),
     );
 
-    expect(mocks.readOneById).toHaveBeenCalledWith(
-        "app_articles",
-        "article-1",
-        { fields: ["id"] },
-    );
+    expect(mocks.readMany).toHaveBeenCalledWith("app_articles", {
+        filter: { id: { _eq: "article-1" } },
+        limit: 1,
+        fields: ["id"],
+    });
     expect(mocks.markFilesDetached).not.toHaveBeenCalled();
     expect(mocks.updateOne).toHaveBeenCalledWith(
         "app_file_detach_jobs",
@@ -359,7 +359,7 @@ it("does not block legacy jobs with unknown source types", async () => {
         new Date("2026-04-24T00:00:00.000Z"),
     );
 
-    expect(mocks.readOneById).not.toHaveBeenCalled();
+    expect(mocks.readMany).toHaveBeenCalledTimes(1);
     expect(mocks.markFilesDetached).toHaveBeenCalledWith(
         [FILE_TWO],
         "2026-04-24T00:00:00.000Z",
@@ -384,11 +384,11 @@ it("deletes owner references only after a resource owner release source is gone"
         new Date("2026-04-24T00:00:00.000Z"),
     );
 
-    expect(mocks.readOneById).toHaveBeenCalledWith(
-        "app_articles",
-        "article-1",
-        { fields: ["id"] },
-    );
+    expect(mocks.readMany).toHaveBeenCalledWith("app_articles", {
+        filter: { id: { _eq: "article-1" } },
+        limit: 1,
+        fields: ["id"],
+    });
     expect(mocks.deleteOwnerReferences).toHaveBeenCalledWith({
         ownerCollection: "app_articles",
         ownerId: "article-1",
