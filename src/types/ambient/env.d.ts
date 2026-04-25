@@ -32,6 +32,7 @@ interface ImportMetaEnv {
     readonly FILE_DETACH_JOB_BATCH_SIZE?: string;
     readonly FILE_DETACH_JOB_LEASE_SECONDS?: string;
     readonly FILE_LIFECYCLE_RECONCILE_INTERVAL_MS?: string;
+    readonly FILE_REFERENCE_SHADOW_INTERVAL_MS?: string;
     readonly REDIS_URL?: string;
     readonly STORAGE_S3_KEY?: string;
     readonly STORAGE_S3_SECRET?: string;

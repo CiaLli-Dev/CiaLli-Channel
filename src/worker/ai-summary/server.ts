@@ -18,6 +18,10 @@ import {
     readFileLifecycleReconcileIntervalMs,
     runManagedFileLifecycleReconciliation,
 } from "@/server/files/file-lifecycle-reconciliation";
+import {
+    readFileReferenceShadowIntervalMs,
+    runFileReferenceShadowComparison,
+} from "@/server/files/file-reference-shadow";
 import { loadDecryptedAiSettings } from "@/server/ai-summary/config";
 import {
     recoverStuckSummaryJobs,
@@ -196,6 +200,19 @@ const fileLifecycleReconciliationScheduler = createNonOverlappingScheduler({
     },
 });
 
+const fileReferenceShadowScheduler = createNonOverlappingScheduler({
+    task: async (trigger) => {
+        const result = await runFileReferenceShadowComparison();
+        console.info("[file-reference-shadow-worker] scheduler tick", {
+            trigger,
+            legacyCount: result.legacyCount,
+            tableCount: result.tableCount,
+            missingInTable: result.missingInTable.length,
+            extraInTable: result.extraInTable.length,
+        });
+    },
+});
+
 async function runAiSummarySchedulerTick(
     trigger: "startup" | "interval",
 ): Promise<void> {
@@ -234,6 +251,19 @@ async function runFileLifecycleReconciliationSchedulerTick(
     } catch (error) {
         console.error(
             "[file-lifecycle-reconcile-worker] scheduler tick failed",
+            error,
+        );
+    }
+}
+
+async function runFileReferenceShadowSchedulerTick(
+    trigger: "startup" | "interval",
+): Promise<void> {
+    try {
+        await fileReferenceShadowScheduler.run(trigger);
+    } catch (error) {
+        console.error(
+            "[file-reference-shadow-worker] scheduler tick failed",
             error,
         );
     }
@@ -329,6 +359,7 @@ createServer((request, response) => {
     void runFileDetachJobSchedulerTick("startup");
     void runFileGcSchedulerTick("startup");
     void runFileLifecycleReconciliationSchedulerTick("startup");
+    void runFileReferenceShadowSchedulerTick("startup");
     setInterval(() => {
         void runAiSummarySchedulerTick("interval");
     }, CONSUMER_INTERVAL_MS);
@@ -341,4 +372,7 @@ createServer((request, response) => {
     setInterval(() => {
         void runFileLifecycleReconciliationSchedulerTick("interval");
     }, readFileLifecycleReconcileIntervalMs());
+    setInterval(() => {
+        void runFileReferenceShadowSchedulerTick("interval");
+    }, readFileReferenceShadowIntervalMs());
 });

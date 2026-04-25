@@ -49,6 +49,7 @@ import {
 } from "@/server/api/v1/shared/file-cleanup";
 import {
     bindFileOwnerToUser,
+    deleteFileReferencesForOwner,
     isSlugUniqueConflict,
     syncManagedFileBinding,
 } from "@/server/api/v1/me/_helpers";
@@ -113,6 +114,12 @@ async function createAlbumWithSlugRetry(
             userId,
             undefined,
             created.is_public ? "public" : "private",
+            {
+                ownerCollection: "app_albums",
+                ownerId: created.id,
+                ownerField: "cover_file",
+                referenceKind: "structured_field",
+            },
         );
     }
     return created!;
@@ -311,6 +318,12 @@ async function syncAlbumCoverVisibility(params: {
             nextFileValue: params.nextCoverFile,
             userId: params.access.user.id,
             visibility: params.updatedIsPublic ? "public" : "private",
+            reference: {
+                ownerCollection: "app_albums",
+                ownerId: params.albumId,
+                ownerField: "cover_file",
+                referenceKind: "structured_field",
+            },
         });
     }
     if (
@@ -323,6 +336,12 @@ async function syncAlbumCoverVisibility(params: {
             params.access.user.id,
             undefined,
             params.updatedIsPublic ? "public" : "private",
+            {
+                ownerCollection: "app_albums",
+                ownerId: params.albumId,
+                ownerField: "cover_file",
+                referenceKind: "structured_field",
+            },
         );
     }
     if (params.input.is_public !== undefined) {
@@ -341,7 +360,7 @@ async function syncAlbumPhotoVisibility(
 ): Promise<void> {
     const photoRows = await readMany("app_album_photos", {
         filter: { album_id: { _eq: albumId } } as JsonObject,
-        fields: ["file_id", "is_public"],
+        fields: ["id", "file_id", "is_public"],
         limit: 300,
     });
     for (const photo of photoRows) {
@@ -354,6 +373,12 @@ async function syncAlbumPhotoVisibility(
             userId,
             undefined,
             albumIsPublic && photo.is_public ? "public" : "private",
+            {
+                ownerCollection: "app_album_photos",
+                ownerId: String(photo.id ?? ""),
+                ownerField: "file_id",
+                referenceKind: "structured_field",
+            },
         );
     }
 }
@@ -368,6 +393,10 @@ async function handleAlbumDelete(
         sourceType: "me.album.delete",
         sourceId: id,
         fileValues: [...(coverFileId ? [coverFileId] : []), ...photoFileIds],
+    });
+    await deleteFileReferencesForOwner({
+        ownerCollection: "app_albums",
+        ownerId: id,
     });
     await deleteOne("app_albums", id);
     await awaitCacheInvalidations(
@@ -462,6 +491,12 @@ async function handlePhotoPost(
             access.user.id,
             undefined,
             created.is_public && album.is_public ? "public" : "private",
+            {
+                ownerCollection: "app_album_photos",
+                ownerId: created.id,
+                ownerField: "file_id",
+                referenceKind: "structured_field",
+            },
         );
     }
     await awaitCacheInvalidations(
@@ -545,6 +580,12 @@ async function handlePhotoPatch(
             nextFileValue: nextFileId,
             userId: access.user.id,
             visibility: nextVisibility,
+            reference: {
+                ownerCollection: "app_album_photos",
+                ownerId: photoId,
+                ownerField: "file_id",
+                referenceKind: "structured_field",
+            },
         });
     } else if (nextFileId && input.is_public !== undefined) {
         await bindFileOwnerToUser(
@@ -552,6 +593,12 @@ async function handlePhotoPatch(
             access.user.id,
             undefined,
             nextVisibility,
+            {
+                ownerCollection: "app_album_photos",
+                ownerId: photoId,
+                ownerField: "file_id",
+                referenceKind: "structured_field",
+            },
         );
     }
     await awaitCacheInvalidations(
@@ -570,6 +617,10 @@ async function handlePhotoDelete(
         sourceType: "me.album-photo.delete",
         sourceId: photoId,
         fileValues: [photo.file_id],
+    });
+    await deleteFileReferencesForOwner({
+        ownerCollection: "app_album_photos",
+        ownerId: photoId,
     });
     await deleteOne("app_album_photos", photoId);
     await awaitCacheInvalidations(

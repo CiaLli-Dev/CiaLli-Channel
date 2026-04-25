@@ -39,6 +39,7 @@ vi.mock("@/server/api/v1/shared/file-cleanup", async () => {
 });
 
 vi.mock("@/server/api/v1/me/_helpers", () => ({
+    deleteFileReferencesForOwner: vi.fn().mockResolvedValue(0),
     detachManagedFiles: vi.fn().mockResolvedValue([]),
     syncMarkdownFileLifecycle: vi.fn().mockResolvedValue({
         attachedFileIds: [],

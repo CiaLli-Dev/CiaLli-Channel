@@ -1,0 +1,155 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+    createOne: vi.fn(),
+    deleteOne: vi.fn(),
+    readMany: vi.fn(),
+    updateOne: vi.fn(),
+}));
+
+vi.mock("@/server/directus/client", () => ({
+    createOne: mocks.createOne,
+    deleteOne: mocks.deleteOne,
+    readMany: mocks.readMany,
+    updateOne: mocks.updateOne,
+}));
+
+import {
+    buildFileReferenceId,
+    deleteOwnerReferences,
+    readAllReferencedFileIdsFromReferenceTable,
+    replaceOwnerFieldReferences,
+} from "@/server/repositories/files/file-reference.repository";
+
+const FILE_KEEP = "11111111-1111-4111-8111-111111111111";
+const FILE_NEW = "22222222-2222-4222-8222-222222222222";
+const FILE_STALE = "33333333-3333-4333-8333-333333333333";
+
+describe("file-reference.repository", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mocks.createOne.mockResolvedValue({ id: "created" });
+        mocks.updateOne.mockResolvedValue({ id: "updated" });
+        mocks.deleteOne.mockResolvedValue(undefined);
+        mocks.readMany.mockResolvedValue([]);
+    });
+
+    it("builds stable deterministic ids for the same owner/file tuple", () => {
+        const first = buildFileReferenceId({
+            fileId: FILE_KEEP,
+            ownerCollection: "app_articles",
+            ownerId: "article-1",
+            ownerField: "body_markdown",
+            referenceKind: "markdown_asset",
+        });
+        const second = buildFileReferenceId({
+            fileId: FILE_KEEP,
+            ownerCollection: "app_articles",
+            ownerId: "article-1",
+            ownerField: "body_markdown",
+            referenceKind: "markdown_asset",
+        });
+
+        expect(first).toBe(second);
+        expect(first).toMatch(
+            /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+        );
+    });
+
+    it("creates, updates, and deletes references for one owner field", async () => {
+        const keepId = buildFileReferenceId({
+            fileId: FILE_KEEP,
+            ownerCollection: "app_articles",
+            ownerId: "article-1",
+            ownerField: "body_markdown",
+            referenceKind: "markdown_asset",
+        });
+        mocks.readMany.mockResolvedValue([
+            {
+                id: keepId,
+                file_id: FILE_KEEP,
+                owner_user_id: "old-user",
+                visibility: "private",
+            },
+            {
+                id: "stale-reference",
+                file_id: FILE_STALE,
+                owner_user_id: "user-1",
+                visibility: "public",
+            },
+        ]);
+
+        const result = await replaceOwnerFieldReferences(
+            {
+                ownerCollection: "app_articles",
+                ownerId: "article-1",
+                ownerField: "body_markdown",
+                referenceKind: "markdown_asset",
+                fileIds: [FILE_KEEP, FILE_NEW, FILE_NEW],
+                ownerUserId: "user-1",
+                visibility: "public",
+            },
+            new Date("2026-04-25T00:00:00.000Z"),
+        );
+
+        expect(mocks.createOne).toHaveBeenCalledTimes(1);
+        expect(mocks.createOne).toHaveBeenCalledWith(
+            "app_file_references",
+            expect.objectContaining({
+                file_id: FILE_NEW,
+                owner_collection: "app_articles",
+                owner_id: "article-1",
+                owner_field: "body_markdown",
+                reference_kind: "markdown_asset",
+                owner_user_id: "user-1",
+                visibility: "public",
+            }),
+            { fields: ["id"] },
+        );
+        expect(mocks.updateOne).toHaveBeenCalledWith(
+            "app_file_references",
+            keepId,
+            {
+                owner_user_id: "user-1",
+                visibility: "public",
+                updated_at: "2026-04-25T00:00:00.000Z",
+            },
+        );
+        expect(mocks.deleteOne).toHaveBeenCalledWith(
+            "app_file_references",
+            "stale-reference",
+        );
+        expect(result).toMatchObject({
+            created: 1,
+            updated: 1,
+            deleted: 1,
+            fileIds: [FILE_KEEP, FILE_NEW],
+        });
+    });
+
+    it("deletes every reference owned by an item", async () => {
+        mocks.readMany.mockResolvedValue([{ id: "ref-1" }, { id: "ref-2" }]);
+
+        await expect(
+            deleteOwnerReferences({
+                ownerCollection: "app_articles",
+                ownerId: "article-1",
+            }),
+        ).resolves.toBe(2);
+
+        expect(mocks.deleteOne).toHaveBeenCalledTimes(2);
+    });
+
+    it("reads all distinct referenced file ids from the table", async () => {
+        mocks.readMany.mockResolvedValueOnce([
+            { file_id: FILE_KEEP },
+            { file_id: FILE_NEW },
+            { file_id: FILE_KEEP },
+            { file_id: null },
+        ]);
+
+        await expect(
+            readAllReferencedFileIdsFromReferenceTable(),
+        ).resolves.toEqual(new Set([FILE_KEEP, FILE_NEW]));
+    });
+});

@@ -39,6 +39,7 @@ import {
 } from "@/server/api/v1/shared/file-cleanup";
 import {
     bindFileOwnerToUser,
+    deleteFileReferencesForOwner,
     renderMeMarkdownPreview,
     syncManagedFileBinding,
     syncMarkdownFileLifecycle,
@@ -266,7 +267,7 @@ async function syncDiaryFilesVisibility(
 ): Promise<void> {
     const imageRows = await readMany("app_diary_images", {
         filter: { diary_id: { _eq: diaryId } } as JsonObject,
-        fields: ["file_id", "is_public", "sort"],
+        fields: ["id", "file_id", "is_public", "sort"],
         limit: 200,
     });
     for (const image of imageRows) {
@@ -279,6 +280,12 @@ async function syncDiaryFilesVisibility(
             ownerId,
             buildDiaryFileTitle(shortId, image.sort),
             visibility === "public" && image.is_public ? "public" : "private",
+            {
+                ownerCollection: "app_diary_images",
+                ownerId: String(image.id ?? ""),
+                ownerField: "file_id",
+                referenceKind: "structured_field",
+            },
         );
     }
 }
@@ -365,6 +372,12 @@ async function handleDiaryCreate(
         created.content,
         access.user.id,
         resolveDiaryAssetVisibility(created.status, created.praviate),
+        {
+            ownerCollection: "app_diaries",
+            ownerId: created.id,
+            ownerField: "content",
+            referenceKind: "markdown_asset",
+        },
     );
     await awaitCacheInvalidations(
         [
@@ -417,6 +430,12 @@ async function handleDiaryPatch(
             nextMarkdown: nextContent,
             userId: access.user.id,
             visibility: resolveDiaryAssetVisibility(nextStatus, nextPraviate),
+            reference: {
+                ownerCollection: "app_diaries",
+                ownerId: diaryId,
+                ownerField: "content",
+                referenceKind: "markdown_asset",
+            },
         });
     }
     if (input.praviate !== undefined || input.status !== undefined) {
@@ -471,6 +490,12 @@ async function handleWorkingDraftPut(
             created.content,
             access.user.id,
             resolveDiaryAssetVisibility(created.status, created.praviate),
+            {
+                ownerCollection: "app_diaries",
+                ownerId: created.id,
+                ownerField: "content",
+                referenceKind: "markdown_asset",
+            },
         );
         await awaitCacheInvalidations(
             [
@@ -500,6 +525,12 @@ async function handleWorkingDraftPut(
             "draft",
             input.praviate ?? target.praviate,
         ),
+        reference: {
+            ownerCollection: "app_diaries",
+            ownerId: target.id,
+            ownerField: "content",
+            referenceKind: "markdown_asset",
+        },
     });
     if (input.praviate !== undefined) {
         await syncDiaryFilesVisibility(
@@ -553,6 +584,10 @@ async function handleDiaryDelete(
             ...diaryImageFileIds,
             ...commentCleanup.candidateFileIds,
         ],
+    });
+    await deleteFileReferencesForOwner({
+        ownerCollection: "app_diaries",
+        ownerId: diaryId,
     });
     await deleteOne("app_diaries", diaryId);
     await awaitCacheInvalidations(
@@ -659,6 +694,12 @@ async function handleDiaryImageCreate(
                 "public" && created.is_public
                 ? "public"
                 : "private",
+            {
+                ownerCollection: "app_diary_images",
+                ownerId: created.id,
+                ownerField: "file_id",
+                referenceKind: "structured_field",
+            },
         );
     }
     await awaitCacheInvalidations(
@@ -731,6 +772,12 @@ async function handleDiaryImagePatch(
             userId: access.user.id,
             title: buildDiaryFileTitle(diary.short_id, updated.sort),
             visibility: nextVisibility,
+            reference: {
+                ownerCollection: "app_diary_images",
+                ownerId: imageId,
+                ownerField: "file_id",
+                referenceKind: "structured_field",
+            },
         });
     } else if (nextFileId && input.is_public !== undefined) {
         await bindFileOwnerToUser(
@@ -738,6 +785,12 @@ async function handleDiaryImagePatch(
             access.user.id,
             buildDiaryFileTitle(diary.short_id, updated.sort),
             nextVisibility,
+            {
+                ownerCollection: "app_diary_images",
+                ownerId: imageId,
+                ownerField: "file_id",
+                referenceKind: "structured_field",
+            },
         );
     }
     await awaitCacheInvalidations(
@@ -762,6 +815,10 @@ async function handleDiaryImageDelete(
         sourceType: "me.diary-image.delete",
         sourceId: imageId,
         fileValues: [image.file_id],
+    });
+    await deleteFileReferencesForOwner({
+        ownerCollection: "app_diary_images",
+        ownerId: imageId,
     });
     await deleteOne("app_diary_images", imageId);
     await awaitCacheInvalidations(

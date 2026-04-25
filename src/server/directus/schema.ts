@@ -3,6 +3,7 @@ import type {
     AppAlbumPhoto,
     AppAnimeEntry,
     AppFileDetachJob,
+    AppFileReference,
     AppAiSummaryJob,
     AppArticle,
     AppArticleComment,
@@ -28,6 +29,7 @@ export type DirectusSchema = {
     app_user_profiles: AppProfile[];
     app_ai_summary_jobs: AppAiSummaryJob[];
     app_file_detach_jobs: AppFileDetachJob[];
+    app_file_references: AppFileReference[];
     app_articles: AppArticle[];
     app_article_comments: AppArticleComment[];
     app_article_comment_likes: AppArticleCommentLike[];

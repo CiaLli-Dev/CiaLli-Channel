@@ -48,6 +48,7 @@ vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
 }));
 
 vi.mock("@/server/api/v1/me/_helpers", () => ({
+    deleteFileReferencesForOwner: vi.fn().mockResolvedValue(0),
     detachMarkdownFiles: vi.fn().mockResolvedValue([]),
     syncMarkdownFileLifecycle: vi.fn().mockResolvedValue({
         attachedFileIds: [],
@@ -116,6 +117,12 @@ describe("handleArticleComments PATCH", () => {
             nextMarkdown: "new body",
             userId: "comment-author",
             visibility: "public",
+            reference: {
+                ownerCollection: "app_article_comments",
+                ownerId: "comment-1",
+                ownerField: "body",
+                referenceKind: "markdown_asset",
+            },
         });
         expect(mockedDeleteDirectusFile).not.toHaveBeenCalled();
     });

@@ -164,7 +164,8 @@ describe("file-cleanup.repository", () => {
                     relation.related_collection === "directus_files" &&
                     typeof relation.collection === "string" &&
                     typeof relation.field === "string" &&
-                    relation.collection.startsWith("app_"),
+                    relation.collection.startsWith("app_") &&
+                    relation.collection !== "app_file_references",
             )
             .map(
                 (relation) =>

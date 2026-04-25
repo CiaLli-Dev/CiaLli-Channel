@@ -26,6 +26,7 @@ import {
     validateReplyParent,
 } from "@/server/api/v1/comments-shared";
 import {
+    deleteFileReferencesForOwner,
     syncMarkdownFileLifecycle,
     syncMarkdownFilesToVisibility,
 } from "@/server/api/v1/me/_helpers";
@@ -153,6 +154,12 @@ async function createDiaryCommentForEntry(
         created.body,
         access.user.id,
         created.is_public ? "public" : "private",
+        {
+            ownerCollection: "app_diary_comments",
+            ownerId: created.id,
+            ownerField: "body",
+            referenceKind: "markdown_asset",
+        },
     );
     await awaitCacheInvalidations(
         [
@@ -196,6 +203,12 @@ async function patchDiaryComment(
             userId: comment.author_id,
             visibility:
                 (input.is_public ?? updated.is_public) ? "public" : "private",
+            reference: {
+                ownerCollection: "app_diary_comments",
+                ownerId: commentId,
+                ownerField: "body",
+                referenceKind: "markdown_asset",
+            },
         });
     }
     await awaitCacheInvalidations(
@@ -241,6 +254,12 @@ async function deleteDiaryComment(
             ),
         ),
     });
+    for (const deletedComment of deletedComments) {
+        await deleteFileReferencesForOwner({
+            ownerCollection: "app_diary_comments",
+            ownerId: deletedComment.id,
+        });
+    }
     await deleteCollectedCommentTargets(
         "app_diary_comments",
         commentId,

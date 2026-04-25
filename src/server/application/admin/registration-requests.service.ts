@@ -38,6 +38,7 @@ import { invalidateOfficialSidebarCache } from "@/server/api/v1/public-data";
 import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
 import {
     bindFileOwnerToUser,
+    deleteFileReferencesForOwner,
     detachManagedFiles,
 } from "@/server/api/v1/me/_helpers";
 
@@ -325,6 +326,12 @@ async function handleRegistrationApprove(
             created.user.id,
             undefined,
             "public",
+            {
+                ownerCollection: "directus_users",
+                ownerId: created.user.id,
+                ownerField: "avatar",
+                referenceKind: "structured_field",
+            },
         ).catch((error) => {
             console.warn(
                 "[registration-approve] 更新头像文件元数据失败, fileId:",
@@ -402,6 +409,10 @@ async function handleRegistrationRejectOrCancel(
         },
     );
     await detachManagedFiles([target.avatar_file]);
+    await deleteFileReferencesForOwner({
+        ownerCollection: "app_user_registration_requests",
+        ownerId: target.id,
+    });
     return ok({ item: updated });
 }
 

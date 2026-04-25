@@ -35,6 +35,11 @@ export type AppFileLifecycle =
     | "attached"
     | "detached"
     | "protected";
+export type AppFileReferenceKind =
+    | "structured_field"
+    | "markdown_asset"
+    | "settings_asset";
+export type AppFileReferenceVisibility = "private" | "public";
 
 export type AppPermissionKey =
     | "can_publish_articles"
@@ -167,6 +172,19 @@ export type AppFileDetachJob = {
     date_created: string | null;
     user_updated: string | null;
     date_updated: string | null;
+};
+
+export type AppFileReference = {
+    id: string;
+    file_id: string;
+    owner_collection: string;
+    owner_id: string;
+    owner_field: string;
+    reference_kind: AppFileReferenceKind;
+    owner_user_id: string | { id?: string } | null;
+    visibility: AppFileReferenceVisibility;
+    created_at: string | null;
+    updated_at: string | null;
 };
 
 export type AppDiary = {

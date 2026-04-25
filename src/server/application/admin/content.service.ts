@@ -42,6 +42,7 @@ import {
     parseRouteId,
     requireAdmin,
 } from "@/server/api/v1/shared";
+import { deleteOwnerReferences } from "@/server/repositories/files/file-reference.repository";
 
 function buildDiaryDetailInvalidationTasks(
     id: string,
@@ -356,6 +357,12 @@ async function handleArticleCommentDelete(
             ),
         ),
     });
+    for (const deletedComment of deletedComments) {
+        await deleteOwnerReferences({
+            ownerCollection: "app_article_comments",
+            ownerId: deletedComment.id,
+        });
+    }
     await deleteCollectedCommentTargets(
         "app_article_comments",
         id,
@@ -384,6 +391,12 @@ async function handleDiaryCommentDelete(
             ),
         ),
     });
+    for (const deletedComment of deletedComments) {
+        await deleteOwnerReferences({
+            ownerCollection: "app_diary_comments",
+            ownerId: deletedComment.id,
+        });
+    }
     await deleteCollectedCommentTargets(
         "app_diary_comments",
         id,
@@ -420,6 +433,10 @@ async function handleArticleDelete(
         sourceId: id,
         fileValues: [...candidateFileIds],
     });
+    await deleteOwnerReferences({
+        ownerCollection: "app_articles",
+        ownerId: id,
+    });
     await deleteOne(collection, id);
     await invalidateDeleteCache("articles", id, null, relatedComment);
     return ok({ id, module: "articles" });
@@ -452,6 +469,10 @@ async function handleDiaryDelete(
             ...commentCleanup.candidateFileIds,
         ],
     });
+    await deleteOwnerReferences({
+        ownerCollection: "app_diaries",
+        ownerId: id,
+    });
     await deleteOne(collection, id);
     await invalidateDeleteCache(
         "diaries",
@@ -479,6 +500,10 @@ async function handleAlbumDelete(
         sourceType: "admin.album.delete",
         sourceId: id,
         fileValues: [...(coverFileId ? [coverFileId] : []), ...photoFileIds],
+    });
+    await deleteOwnerReferences({
+        ownerCollection: "app_albums",
+        ownerId: id,
     });
     await deleteOne(collection, id);
     await invalidateDeleteCache("albums", id, null, relatedComment);

@@ -76,6 +76,7 @@ vi.mock("@/server/api/v1/admin/users-helpers", () => ({
 }));
 
 vi.mock("@/server/api/v1/me/_helpers", () => ({
+    deleteFileReferencesForOwner: vi.fn().mockResolvedValue(0),
     bindFileOwnerToUser: vi.fn().mockResolvedValue(undefined),
     detachManagedFiles: vi.fn().mockResolvedValue([]),
     syncManagedFileBinding: vi.fn().mockResolvedValue({

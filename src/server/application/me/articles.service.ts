@@ -45,6 +45,7 @@ import {
 } from "@/server/api/v1/shared/file-cleanup";
 import {
     bindFileOwnerToUser,
+    deleteFileReferencesForOwner,
     renderMeMarkdownPreview,
     syncManagedFileBinding,
     syncMarkdownFileLifecycle,
@@ -353,12 +354,24 @@ async function handleArticlesCreate(
             access.user.id,
             coverTitle,
             resolveArticleAssetVisibility(created.status, created.is_public),
+            {
+                ownerCollection: "app_articles",
+                ownerId: created.id,
+                ownerField: "cover_file",
+                referenceKind: "structured_field",
+            },
         );
     }
     await syncMarkdownFilesToVisibility(
         created?.body_markdown,
         access.user.id,
         resolveArticleAssetVisibility(created.status, created.is_public),
+        {
+            ownerCollection: "app_articles",
+            ownerId: created.id,
+            ownerField: "body_markdown",
+            referenceKind: "markdown_asset",
+        },
     );
     await awaitCacheInvalidations(
         [
@@ -519,6 +532,12 @@ async function syncArticleCoverBinding(params: {
             userId: params.access.user.id,
             title: coverTitle,
             visibility: params.nextVisibility,
+            reference: {
+                ownerCollection: "app_articles",
+                ownerId: params.target.id,
+                ownerField: "cover_file",
+                referenceKind: "structured_field",
+            },
         });
     }
 }
@@ -541,6 +560,12 @@ async function syncArticleBodyVisibility(params: {
             ),
             userId: params.access.user.id,
             visibility: params.nextVisibility,
+            reference: {
+                ownerCollection: "app_articles",
+                ownerId: params.target.id,
+                ownerField: "body_markdown",
+                referenceKind: "markdown_asset",
+            },
         });
     }
 }
@@ -567,6 +592,12 @@ async function syncExistingArticleCoverVisibility(params: {
             params.access.user.id,
             coverTitle,
             params.nextVisibility,
+            {
+                ownerCollection: "app_articles",
+                ownerId: params.target.id,
+                ownerField: "cover_file",
+                referenceKind: "structured_field",
+            },
         );
     }
 }
@@ -678,12 +709,24 @@ async function handleWorkingDraftPut(
                 access.user.id,
                 coverTitle,
                 visibility,
+                {
+                    ownerCollection: "app_articles",
+                    ownerId: created.id,
+                    ownerField: "cover_file",
+                    referenceKind: "structured_field",
+                },
             );
         }
         await syncMarkdownFilesToVisibility(
             created.body_markdown,
             access.user.id,
             visibility,
+            {
+                ownerCollection: "app_articles",
+                ownerId: created.id,
+                ownerField: "body_markdown",
+                referenceKind: "markdown_asset",
+            },
         );
         await awaitCacheInvalidations(
             [
@@ -816,6 +859,10 @@ async function handleArticleDelete(
         sourceType: "me.article.delete",
         sourceId: id,
         fileValues: [...candidateFileIds, ...commentCleanup.candidateFileIds],
+    });
+    await deleteFileReferencesForOwner({
+        ownerCollection: "app_articles",
+        ownerId: id,
     });
     await deleteOne("app_articles", id);
     await awaitCacheInvalidations(

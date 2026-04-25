@@ -47,9 +47,26 @@ import {
     detachManagedFiles,
     syncMarkdownFileLifecycle,
 } from "@/server/api/v1/me/_helpers";
+import { replaceOwnerFieldReferences } from "@/server/repositories/files/file-reference.repository";
 
 const ABOUT_ARTICLE_SLUG = "about";
 const ABOUT_FALLBACK_TITLE = "关于我们";
+
+async function replaceFileReferencesBestEffort(
+    params: Parameters<typeof replaceOwnerFieldReferences>[0],
+): Promise<void> {
+    try {
+        await replaceOwnerFieldReferences(params);
+    } catch (error) {
+        console.warn("[file-references] settings sync failed", {
+            ownerCollection: params.ownerCollection,
+            ownerId: params.ownerId,
+            ownerField: params.ownerField,
+            referenceKind: params.referenceKind,
+            error: error instanceof Error ? error.message : String(error),
+        });
+    }
+}
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -487,6 +504,15 @@ async function handleAdminSitePatch(
     const previousFileIds = collectSettingsFileIds(current.settings);
     const nextFileIds = collectSettingsFileIds(settings);
     const { updatedAt } = await upsertSiteSettings(settings);
+    await replaceFileReferencesBestEffort({
+        ownerCollection: "app_site_settings",
+        ownerId: "default",
+        ownerField: "settings",
+        referenceKind: "settings_asset",
+        fileIds: [...nextFileIds],
+        ownerUserId: adminUserId,
+        visibility: "public",
+    });
     for (const fileId of nextFileIds) {
         await updateDirectusFileMetadata(fileId, {
             uploaded_by: adminUserId,
@@ -584,6 +610,12 @@ async function handleAdminBulletinPatch(
         nextMarkdown: announcementPatch.body_markdown,
         userId: null,
         visibility: "public",
+        reference: {
+            ownerCollection: "app_site_announcements",
+            ownerId: "default",
+            ownerField: "body_markdown",
+            referenceKind: "markdown_asset",
+        },
     });
     await invalidateSiteSettingsCache();
     return ok({
@@ -647,10 +679,23 @@ async function handleAdminAboutPatch(
 ): Promise<Response> {
     const body = await parseJsonBody(context.request);
     const input = validateBody(AdminAboutUpdateSchema, body);
+    const previousAbout = await readAboutArticleRow();
     const about = await upsertAboutArticle(adminUserId, {
         title: input.title,
         summary: input.summary,
         body_markdown: input.body_markdown,
+    });
+    await syncMarkdownFileLifecycle({
+        previousMarkdown: previousAbout?.body_markdown ?? "",
+        nextMarkdown: about.body_markdown,
+        userId: adminUserId,
+        visibility: "public",
+        reference: {
+            ownerCollection: "app_articles",
+            ownerId: about.id,
+            ownerField: "body_markdown",
+            referenceKind: "markdown_asset",
+        },
     });
     await awaitCacheInvalidations(
         [

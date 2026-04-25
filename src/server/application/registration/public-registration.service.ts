@@ -20,6 +20,7 @@ import {
     normalizeRegistrationRequestId,
 } from "@/server/auth/registration-request-cookie";
 import {
+    deleteFileReferencesForOwner,
     detachManagedFiles,
     syncManagedFileBinding,
 } from "@/server/api/v1/me/_helpers";
@@ -320,6 +321,12 @@ export async function createPublicRegistration(
                 nextFileValue: uploadedAvatarFileId,
                 userId: pendingUser.id,
                 visibility: "private",
+                reference: {
+                    ownerCollection: "app_user_registration_requests",
+                    ownerId: createdRequest.id,
+                    ownerField: "avatar_file",
+                    referenceKind: "structured_field",
+                },
             });
         }
 
@@ -384,6 +391,10 @@ export async function cancelPublicRegistration(params: {
         reviewedAt: new Date().toISOString(),
     });
     await detachManagedFiles([target.avatar_file]);
+    await deleteFileReferencesForOwner({
+        ownerCollection: "app_user_registration_requests",
+        ownerId: params.requestId,
+    });
     return updated;
 }
 
@@ -421,6 +432,12 @@ export async function replacePublicRegistrationAvatar(params: {
         nextFileValue: nextAvatarFileId,
         userId: String(target.pending_user_id ?? "").trim(),
         visibility: "private",
+        reference: {
+            ownerCollection: "app_user_registration_requests",
+            ownerId: params.requestId,
+            ownerField: "avatar_file",
+            referenceKind: "structured_field",
+        },
     });
     return updated;
 }

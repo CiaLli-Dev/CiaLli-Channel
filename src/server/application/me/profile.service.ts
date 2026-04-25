@@ -139,6 +139,12 @@ async function applyAvatarFileBindings(
             nextFileValue: nextAvatarFile,
             userId: access.user.id,
             visibility: nextProfilePublic ? "public" : "private",
+            reference: {
+                ownerCollection: "directus_users",
+                ownerId: access.user.id,
+                ownerField: "avatar",
+                referenceKind: "structured_field",
+            },
         });
     }
 }
@@ -146,6 +152,7 @@ async function applyAvatarFileBindings(
 async function applyHeaderFileBindings(
     body: JsonObject,
     input: ProfileInput,
+    profileId: string,
     userId: string,
     prevHeaderFile: string | null,
     currentProfilePublic: boolean,
@@ -162,6 +169,12 @@ async function applyHeaderFileBindings(
             nextFileValue: nextHeaderFile,
             userId,
             visibility: nextProfilePublic ? "public" : "private",
+            reference: {
+                ownerCollection: "app_user_profiles",
+                ownerId: profileId,
+                ownerField: "header_file",
+                referenceKind: "structured_field",
+            },
         });
     }
 }
@@ -177,6 +190,7 @@ async function applyFileBindingsAndCleanup(
     await applyHeaderFileBindings(
         body,
         input,
+        access.profile.id,
         access.user.id,
         prevHeaderFile,
         access.profile.profile_public,
@@ -189,6 +203,12 @@ async function applyFileBindingsAndCleanup(
                 access.user.id,
                 undefined,
                 visibility,
+                {
+                    ownerCollection: "directus_users",
+                    ownerId: access.user.id,
+                    ownerField: "avatar",
+                    referenceKind: "structured_field",
+                },
             );
         }
         if (prevHeaderFile && !hasOwn(body, "header_file")) {
@@ -197,6 +217,12 @@ async function applyFileBindingsAndCleanup(
                 access.user.id,
                 undefined,
                 visibility,
+                {
+                    ownerCollection: "app_user_profiles",
+                    ownerId: access.profile.id,
+                    ownerField: "header_file",
+                    referenceKind: "structured_field",
+                },
             );
         }
     }

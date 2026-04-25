@@ -24,6 +24,7 @@ import {
     validateReplyParent,
 } from "@/server/api/v1/comments-shared";
 import {
+    deleteFileReferencesForOwner,
     syncMarkdownFileLifecycle,
     syncMarkdownFilesToVisibility,
 } from "@/server/api/v1/me/_helpers";
@@ -113,6 +114,12 @@ async function createArticleComment(
         created.body,
         access.user.id,
         created.is_public ? "public" : "private",
+        {
+            ownerCollection: "app_article_comments",
+            ownerId: created.id,
+            ownerField: "body",
+            referenceKind: "markdown_asset",
+        },
     );
     await awaitCacheInvalidations(
         [
@@ -153,6 +160,12 @@ async function patchArticleComment(
             userId: comment.author_id,
             visibility:
                 (input.is_public ?? updated.is_public) ? "public" : "private",
+            reference: {
+                ownerCollection: "app_article_comments",
+                ownerId: commentId,
+                ownerField: "body",
+                referenceKind: "markdown_asset",
+            },
         });
     }
     await awaitCacheInvalidations(
@@ -198,6 +211,12 @@ async function deleteArticleComment(
             ),
         ),
     });
+    for (const deletedComment of deletedComments) {
+        await deleteFileReferencesForOwner({
+            ownerCollection: "app_article_comments",
+            ownerId: deletedComment.id,
+        });
+    }
     await deleteCollectedCommentTargets(
         "app_article_comments",
         commentId,

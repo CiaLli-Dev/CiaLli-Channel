@@ -30,6 +30,7 @@ vi.mock("@/server/markdown/render", () => ({
 }));
 
 vi.mock("@/server/api/v1/me/_helpers", () => ({
+    deleteFileReferencesForOwner: vi.fn().mockResolvedValue(0),
     bindFileOwnerToUser: vi.fn().mockResolvedValue(undefined),
     detachManagedFiles: vi.fn().mockResolvedValue([]),
     renderMeMarkdownPreview: vi.fn().mockResolvedValue("<p>preview</p>"),

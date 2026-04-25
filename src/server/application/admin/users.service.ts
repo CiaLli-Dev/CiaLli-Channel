@@ -244,6 +244,12 @@ async function applyAvatarFileChange(
             nextFileValue: nextAvatarFile,
             userId,
             visibility: nextProfilePublic ? "public" : "private",
+            reference: {
+                ownerCollection: "directus_users",
+                ownerId: userId,
+                ownerField: "avatar",
+                referenceKind: "structured_field",
+            },
         });
         return;
     }
@@ -253,6 +259,12 @@ async function applyAvatarFileChange(
             userId,
             undefined,
             nextProfilePublic ? "public" : "private",
+            {
+                ownerCollection: "directus_users",
+                ownerId: userId,
+                ownerField: "avatar",
+                referenceKind: "structured_field",
+            },
         );
     }
 }
