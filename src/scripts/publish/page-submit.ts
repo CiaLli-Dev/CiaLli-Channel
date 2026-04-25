@@ -418,18 +418,21 @@ export async function handleSubmitApiResponse(
     if (ownerPasswordForStorage) {
         persistOwnerPassword(ownerPasswordForStorage, item, state);
     }
+    const shouldRedirect = options.redirectOnSuccess !== false;
     ui.updateEditorHeader();
-    ui.updateUrlState();
+    if (!shouldRedirect) {
+        ui.updateUrlState();
+    }
     ui.setSubmitMessage(
         options.targetStatus === "draft"
             ? t(I18nKey.articleEditorLocalDraftSaved)
-            : options.redirectOnSuccess === false
+            : !shouldRedirect
               ? t(I18nKey.interactionCommonSaveSuccess)
               : t(I18nKey.articleEditorPublished),
     );
     ui.setSubmitError("");
 
-    if (options.redirectOnSuccess === false) {
+    if (!shouldRedirect) {
         return;
     }
 
@@ -447,7 +450,7 @@ export async function handleSubmitApiResponse(
         const navigateOptions =
             options.targetStatus === "draft"
                 ? { force: true, replace: true }
-                : { replace: true };
+                : { force: true, replace: true };
         navigateToPage(successRedirectUrl, navigateOptions);
     }
 }

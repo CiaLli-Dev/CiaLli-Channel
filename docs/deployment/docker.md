@@ -102,6 +102,14 @@ pnpm install:host -- --reset --lang zh_CN --site-url https://example.com
 
 如果当前目录已有 `.env`、Compose volumes 或历史容器记录，安装器默认拒绝覆盖；显式传入 `--reset` 才会清空当前 Compose 资源并重装。
 
+本机手动 QA 建议使用 HTTP 本地入口，例如：
+
+```bash
+pnpm install:host --reset --lang zh_CN --site-url http://localhost
+```
+
+如果传入 `https://localhost`、`https://127.0.0.1` 或其他回环地址，安装器会自动改写为对应的 `http://` 入口，避免浏览器被本地自签证书拦截。
+
 建议在启动前先执行：
 
 ```bash

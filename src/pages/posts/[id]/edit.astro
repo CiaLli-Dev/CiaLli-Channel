@@ -2,6 +2,7 @@
 import MainGridLayout from "@layouts/MainGridLayout.astro";
 import { Icon } from "astro-icon/components";
 import { getSessionUser } from "@/server/auth/session";
+import { getAppAccessContext } from "@/server/auth/acl";
 import PublishPageSkeleton from "@components/publish/PublishPageSkeleton.astro";
 import PublishSettingsOverlay from "@components/publish/PublishSettingsOverlay.astro";
 import "@/styles/markdown.css";
@@ -18,6 +19,7 @@ if (!user) {
     `/auth/login?redirect=${encodeURIComponent(`/posts/${articleId}/edit`)}`,
   );
 }
+const access = await getAppAccessContext(user);
 ---
 
 <MainGridLayout title="编辑文章" description="编辑文章">
@@ -27,9 +29,9 @@ if (!user) {
     data-mode="edit"
     data-article-id={articleId}
     data-initial-authenticated="true"
-    data-initial-is-admin={String(user.isSystemAdmin)}
+    data-initial-is-admin={String(access.isAdmin)}
     data-initial-user-id={user.id}
-    data-initial-username={user.name || user.email}
+    data-initial-username={access.profile.username}
     data-enter-skeleton-page="publish-page"
     data-enter-skeleton-target="publish-page"
   >
@@ -38,12 +40,14 @@ if (!user) {
       class="flex-1 min-h-0 flex flex-col gap-4"
     >
       <!-- 标题栏 -->
-      <section class="card-base px-9 py-6 rounded-(--radius-large)">
+      <section
+        class="card-base px-5 py-5 sm:px-9 sm:py-6 rounded-(--radius-large)"
+      >
         <div>
           <h1
-            class="text-4xl font-bold text-black/90 dark:text-white/90 mb-2 relative
-            before:w-1 before:h-8 before:rounded-md before:bg-(--primary)
-            before:absolute before:top-1/2 before:-translate-y-1/2 before:-left-4"
+            class="text-2xl sm:text-4xl font-bold text-black/90 dark:text-white/90 mb-2 relative
+            before:w-1 before:h-7 sm:before:h-8 before:rounded-md before:bg-(--primary)
+            before:absolute before:top-1/2 before:-translate-y-1/2 before:-left-3 sm:before:-left-4"
           >
             发布中心
           </h1>
@@ -64,7 +68,7 @@ if (!user) {
         >
           <!-- 左栏：编辑 -->
           <div
-            class="card-base p-6 rounded-(--radius-large) flex flex-col publish-editor-col"
+            class="card-base p-4 sm:p-6 rounded-(--radius-large) flex flex-col publish-editor-col"
           >
             <div class="publish-editor-head publish-pane-head">
               <span class="text-sm text-60">
@@ -175,7 +179,7 @@ if (!user) {
 
           <!-- 右栏：实时预览 -->
           <div
-            class="card-base p-6 rounded-(--radius-large) flex flex-col publish-preview-col"
+            class="card-base p-4 sm:p-6 rounded-(--radius-large) flex flex-col publish-preview-col"
           >
             <div class="publish-preview-head publish-pane-head">
               <span class="text-sm text-60 shrink-0">实时预览</span>

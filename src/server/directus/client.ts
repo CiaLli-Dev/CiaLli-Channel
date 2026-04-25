@@ -73,9 +73,13 @@ type DirectusRoleRecord = {
     users?: string[] | null;
 };
 
-type DirectusUserPolicyAssignment = {
+export type DirectusUserPolicyAssignment = {
     id: string;
     policy: string;
+};
+
+type DirectusAccessPolicyAssignment = DirectusUserPolicyAssignment & {
+    user: string;
 };
 
 type BatchCollectionPath =
@@ -572,6 +576,64 @@ export async function syncDirectusUserPolicies(params: {
             } as never,
         ),
     );
+}
+
+function normalizeAccessPolicyAssignment(
+    input: Record<string, unknown>,
+): DirectusAccessPolicyAssignment | null {
+    const id = String(input.id ?? "").trim();
+    const user = String(input.user ?? "").trim();
+    const policy = String(input.policy ?? "").trim();
+    if (!id || !user || !policy) {
+        return null;
+    }
+    return { id, user, policy };
+}
+
+export async function listDirectusUserPolicyAssignments(
+    userIds: readonly string[],
+): Promise<Map<string, DirectusUserPolicyAssignment[]>> {
+    const normalizedUserIds = Array.from(
+        new Set(
+            userIds
+                .map((userId) => String(userId || "").trim())
+                .filter(Boolean),
+        ),
+    );
+    const assignmentsByUser = new Map<string, DirectusUserPolicyAssignment[]>();
+    for (const userId of normalizedUserIds) {
+        assignmentsByUser.set(userId, []);
+    }
+    if (normalizedUserIds.length === 0) {
+        return assignmentsByUser;
+    }
+
+    const response = await executeDirectusRequest(
+        "读取 Directus 用户策略关联",
+        customEndpoint({
+            path: "/access",
+            method: "GET",
+            params: {
+                filter: { user: { _in: normalizedUserIds } },
+                fields: ["id", "user", "policy"],
+                limit: Math.max(normalizedUserIds.length * 20, 100),
+            },
+        }),
+    );
+
+    for (const item of parseItemArrayResponse<Record<string, unknown>>(
+        response,
+    )) {
+        const assignment = normalizeAccessPolicyAssignment(item);
+        if (!assignment || !assignmentsByUser.has(assignment.user)) {
+            continue;
+        }
+        assignmentsByUser.get(assignment.user)?.push({
+            id: assignment.id,
+            policy: assignment.policy,
+        });
+    }
+    return assignmentsByUser;
 }
 
 export async function deleteDirectusUser(id: string): Promise<void> {

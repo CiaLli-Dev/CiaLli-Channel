@@ -4,6 +4,7 @@ import {
     ensurePublishMonacoStylesheet,
     restoreDetachedMonacoThemeServiceStyles,
 } from "@/scripts/publish/editor-monaco-styles";
+import { shouldRecoverNonAsciiBeforeInput } from "@/scripts/publish/editor-monaco";
 
 type MockCssRule = {
     cssText?: string;
@@ -221,5 +222,37 @@ describe("ensurePublishMonacoStylesheet", () => {
 
         expect(themeService._globalStyleElement).toBeNull();
         expect(registerEditorContainer).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe("shouldRecoverNonAsciiBeforeInput", () => {
+    function makeInputEvent(overrides: Partial<InputEvent> = {}): InputEvent {
+        return {
+            inputType: "insertText",
+            data: "中文",
+            isComposing: false,
+            defaultPrevented: false,
+            ...overrides,
+        } as unknown as InputEvent;
+    }
+
+    it("recovers direct non-ASCII insertText input", () => {
+        expect(shouldRecoverNonAsciiBeforeInput(makeInputEvent())).toBe(true);
+    });
+
+    it("does not recover ASCII, composition, or already handled input", () => {
+        expect(
+            shouldRecoverNonAsciiBeforeInput(makeInputEvent({ data: "abc" })),
+        ).toBe(false);
+        expect(
+            shouldRecoverNonAsciiBeforeInput(
+                makeInputEvent({ isComposing: true }),
+            ),
+        ).toBe(false);
+        expect(
+            shouldRecoverNonAsciiBeforeInput(
+                makeInputEvent({ defaultPrevented: true }),
+            ),
+        ).toBe(false);
     });
 });

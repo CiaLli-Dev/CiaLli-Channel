@@ -17,6 +17,7 @@ vi.mock("@/server/directus/client", () => ({
     createOne: vi.fn(),
     deleteDirectusUser: vi.fn(),
     deleteOne: vi.fn().mockResolvedValue(undefined),
+    listDirectusUserPolicyAssignments: vi.fn(),
     listDirectusUsers: vi.fn(),
     readMany: vi.fn(),
     readOneById: vi.fn(),
@@ -102,6 +103,7 @@ import { requireAdmin } from "@/server/api/v1/shared/auth";
 import { loadDirectusAccessRegistry } from "@/server/auth/directus-registry";
 import {
     deleteDirectusUser,
+    listDirectusUserPolicyAssignments,
     listDirectusUsers,
     readMany,
     readOneById,
@@ -120,6 +122,9 @@ import {
 const mockedRequireAdmin = vi.mocked(requireAdmin);
 const mockedLoadDirectusAccessRegistry = vi.mocked(loadDirectusAccessRegistry);
 const mockedDeleteDirectusUser = vi.mocked(deleteDirectusUser);
+const mockedListDirectusUserPolicyAssignments = vi.mocked(
+    listDirectusUserPolicyAssignments,
+);
 const mockedListDirectusUsers = vi.mocked(listDirectusUsers);
 const mockedReadMany = vi.mocked(readMany);
 const mockedReadOneById = vi.mocked(readOneById);
@@ -145,6 +150,7 @@ function createDirectusUser(overrides: Partial<AppUser> = {}): AppUser {
         last_name: "Two",
         description: null,
         avatar: null,
+        status: "active",
         role: {
             id: "role-member",
             name: DIRECTUS_ROLE_NAME.member,
@@ -169,6 +175,7 @@ describe("GET /admin/users", () => {
             policyIdByName: new Map<string, string>(),
             roleIdByName: new Map<string, string>(),
         } as never);
+        mockedListDirectusUserPolicyAssignments.mockResolvedValue(new Map());
     });
 
     it("默认列表请求返回成功", async () => {
@@ -256,6 +263,11 @@ describe("GET /admin/users", () => {
             createDirectusUser({
                 id: "svc-worker",
                 email: "svc-worker-abc123@example.com",
+            }),
+            createDirectusUser({
+                id: "pending-user",
+                email: "pending@example.com",
+                status: "draft",
             }),
         ] as never);
         mockedReadMany.mockResolvedValueOnce([
@@ -365,6 +377,7 @@ describe("GET /admin/users", () => {
             policyIdByName: new Map<string, string>(),
             roleIdByName: new Map<string, string>(),
         } as never);
+        mockedListDirectusUserPolicyAssignments.mockResolvedValue(new Map());
         mockedReadOneById.mockResolvedValueOnce(
             createDirectusUser({
                 id: "admin-1",
@@ -450,6 +463,7 @@ describe("PATCH /admin/users/:id", () => {
             policyIdByName: new Map<string, string>(),
             roleIdByName: new Map<string, string>(),
         } as never);
+        mockedListDirectusUserPolicyAssignments.mockResolvedValue(new Map());
     });
 
     it("仅更新 display_name 时不会隐式清空 social_links", async () => {

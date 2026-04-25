@@ -72,6 +72,7 @@ const WEB_SERVICE_PERMISSION_SPECS = [
     },
     { collection: "directus_roles", actions: ["read"] },
     { collection: "directus_policies", actions: ["read"] },
+    { collection: "directus_access", actions: ["read"] },
 ];
 
 const WORKER_SERVICE_PERMISSION_SPECS = [
@@ -637,8 +638,12 @@ async function resolveInstallInput(args, deps, t) {
         const resolved = resolvePublicBaseUrl({
             APP_PUBLIC_BASE_URL: siteUrl,
         });
+        const publicUrl = new URL(resolved.origin);
+        if (publicUrl.protocol === "https:" && isLocalBrowserHost(publicUrl)) {
+            publicUrl.protocol = "http:";
+        }
         return {
-            siteUrl: resolved.origin,
+            siteUrl: publicUrl.origin,
         };
     } catch {
         throw new Error(
@@ -647,6 +652,21 @@ async function resolveInstallInput(args, deps, t) {
             }),
         );
     }
+}
+
+/**
+ * @param {URL} url
+ * @returns {boolean}
+ */
+function isLocalBrowserHost(url) {
+    const hostname = url.hostname.toLowerCase();
+    if (hostname === "localhost" || hostname.endsWith(".localhost")) {
+        return true;
+    }
+    if (hostname === "::1" || hostname === "[::1]") {
+        return true;
+    }
+    return /^127(?:\.\d{1,3}){3}$/.test(hostname);
 }
 
 /**

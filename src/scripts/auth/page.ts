@@ -40,6 +40,7 @@ let registerI18n: Record<string, string> = {};
 
 const API_REGISTER = "/api/v1/public/registration-requests";
 const DATA_BOUND = "data-register-bound";
+const SUBMIT_SUCCESS_STORAGE_KEY = "dc_registration_submit_success_v1";
 
 let DEFAULT_AVATAR_SRC = "";
 
@@ -201,6 +202,11 @@ async function handleFormSubmit(opts: SubmitHandlerOptions): Promise<void> {
             text: registerI18n["submitRequestOverlayText"] ?? "",
         });
         await postRegistrationRequest(values, opts.ctx.pendingAvatarBlob);
+        try {
+            window.sessionStorage.setItem(SUBMIT_SUCCESS_STORAGE_KEY, "1");
+        } catch {
+            // ignore
+        }
         updateOverlayTask(overlayHandle, {
             text: registerI18n["submitSuccessRedirecting"] ?? "",
         });
@@ -629,14 +635,14 @@ function initPage(): void {
     readPageConfig();
     DEFAULT_AVATAR_SRC = String(defaultAvatarPreviewSrc || "").trim();
 
-    const oldCropModal = document.body.querySelector(
-        ":scope > #register-avatar-crop-modal",
-    );
-    if (oldCropModal) {
-        oldCropModal.remove();
-    }
     const cropModal = document.getElementById("register-avatar-crop-modal");
-    if (cropModal) {
+    if (cropModal && cropModal.parentElement !== document.body) {
+        const oldCropModal = document.body.querySelector(
+            ":scope > #register-avatar-crop-modal",
+        );
+        if (oldCropModal && oldCropModal !== cropModal) {
+            oldCropModal.remove();
+        }
         document.body.appendChild(cropModal);
     }
 
@@ -648,6 +654,17 @@ function initPage(): void {
     };
 
     bindCurrentAvatarFallback();
+    try {
+        if (window.sessionStorage.getItem(SUBMIT_SUCCESS_STORAGE_KEY)) {
+            window.sessionStorage.removeItem(SUBMIT_SUCCESS_STORAGE_KEY);
+            setPageMessage(
+                registerI18n["submitSuccessMessage"] ?? "",
+                "success",
+            );
+        }
+    } catch {
+        // ignore
+    }
     void initRegisterPage();
     initStatusAvatarReplace(dialogs);
     initRegistrationStatusPage(registerI18n, dialogs);
@@ -656,5 +673,6 @@ function initPage(): void {
 setupPageInit({
     key: "auth-register-page",
     init: initPage,
-    stages: ["page-load"],
+    delay: 300,
+    stages: ["after-swap", "page-load", "navigation-settled"],
 });

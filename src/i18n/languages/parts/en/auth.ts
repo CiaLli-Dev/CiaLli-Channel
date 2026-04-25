@@ -6,6 +6,8 @@ export const enAuth: Record<string, string> = {
     [Key.authLoginDescription]: "Log in to your account",
     [Key.authLoginHint]:
         "If you don't have an account yet, submit a registration request or ask an administrator for an invite.",
+    [Key.authLoginHintRegisterClosed]:
+        "If you don't have an account yet, ask an administrator for an invite.",
     [Key.authEmailLabel]: "Email",
     [Key.authPasswordLabel]: "Password",
     [Key.authPasswordPlaceholder]: "Enter your password",
@@ -13,6 +15,7 @@ export const enAuth: Record<string, string> = {
     [Key.authHidePassword]: "Hide password",
     [Key.authRemember]: "Keep me logged in",
     [Key.authNoAccount]: "Don't have an account yet?",
+    [Key.authHasAccount]: "Already have an account?",
     [Key.authApplyRegister]: "Submit registration request",
     [Key.authLoggingIn]: "Logging in...",
     [Key.authLoginSubmit]: "Login",
@@ -42,6 +45,8 @@ export const enAuth: Record<string, string> = {
     [Key.authRegisterDescription]:
         "Send your request and we'll review it as soon as possible.",
     [Key.authRegisterDisabled]: "Registration is closed",
+    [Key.authRegisterDisabledDescription]:
+        "If you don't have an account yet, ask an administrator for an invite.",
     [Key.authRegisterDisplayNameLabel]: "Display name",
     [Key.authRegisterDisplayNamePlaceholder]: "Enter display name",
     [Key.authRegisterEmailAvailable]: "Email is available",

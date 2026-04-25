@@ -390,7 +390,12 @@ export type AppUser = {
     status?: string | null;
     role: string | { id?: string; name?: string } | null;
     policies?: Array<
-        string | { id?: string; name?: string; policy?: string }
+        | string
+        | {
+              id?: string;
+              name?: string;
+              policy?: string | { id?: string; name?: string };
+          }
     > | null;
 };
 

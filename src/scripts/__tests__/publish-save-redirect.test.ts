@@ -89,6 +89,7 @@ describe("publish save redirect", () => {
                 ),
             ),
             {
+                force: true,
                 replace: true,
             },
         );
@@ -100,6 +101,7 @@ describe("publish save redirect", () => {
                 ),
             ),
             {
+                force: true,
                 replace: true,
             },
         );

@@ -15,6 +15,7 @@ import {
     waitDistributedRefreshResult,
 } from "@/server/auth/refresh-coordinator";
 import {
+    listDirectusUserPolicyAssignments,
     readOneById,
     runWithDirectusServiceAccess,
 } from "@/server/directus/client";
@@ -225,7 +226,11 @@ async function buildSessionUser(
     const avatarUrl = resolveAvatarUrl(me, fallbackUser);
     const { roleId, roleName } = extractRole(me.role, fallbackUser?.role);
     const isSystemAdmin = readAdminAccessFromToken(accessToken);
-    const policyIds = extractDirectusPolicyIds(fallbackUser?.policies);
+    const embeddedPolicyIds = extractDirectusPolicyIds(fallbackUser?.policies);
+    const accessPolicyIds = await loadUserAccessPolicyIds(id);
+    const policyIds = Array.from(
+        new Set([...embeddedPolicyIds, ...accessPolicyIds]),
+    );
     const policyMap = await loadPolicyNameMap().catch(
         () => new Map<string, string>(),
     );
@@ -252,6 +257,23 @@ async function buildSessionUser(
         policyNames,
         isSystemAdmin,
     };
+}
+
+async function loadUserAccessPolicyIds(userId: string): Promise<string[]> {
+    try {
+        const assignments = await runWithDirectusServiceAccess(
+            async () => await listDirectusUserPolicyAssignments([userId]),
+        );
+        return (assignments.get(userId) ?? [])
+            .map((assignment) => assignment.policy)
+            .filter(Boolean);
+    } catch (error) {
+        console.warn(
+            "[auth/session] Failed to load directus access policies",
+            error,
+        );
+        return [];
+    }
 }
 
 async function loadDirectusUserById(userId: string): Promise<AppUser | null> {

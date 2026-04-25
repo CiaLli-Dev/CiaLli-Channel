@@ -27,16 +27,20 @@ const siteDateContext = buildSiteDateFormatContext(resolvedSettings);
 const registerEnabled = Boolean(
   resolvedSettings.settings.auth?.register_enabled,
 );
-if (!registerEnabled) {
-  return Astro.redirect("/404");
-}
 
 const sessionUser = await getSessionUser(Astro);
-const registrationPageState = await loadRegistrationPageState({
-  requestIdCookie: Astro.cookies.get(REGISTRATION_REQUEST_COOKIE_NAME)?.value,
-  sessionUserId: sessionUser?.id ?? null,
-  context: Astro,
-});
+const registrationPageState = registerEnabled
+  ? await loadRegistrationPageState({
+      requestIdCookie: Astro.cookies.get(REGISTRATION_REQUEST_COOKIE_NAME)
+        ?.value,
+      sessionUserId: sessionUser?.id ?? null,
+      context: Astro,
+    })
+  : {
+      currentRegistration: null,
+      hiddenBySessionMismatch: false,
+      shouldClearCookie: false,
+    };
 const currentRegistration = registrationPageState.currentRegistration;
 
 const registrationStatusMeta = buildRegistrationStatusMeta();
@@ -104,8 +108,24 @@ const registerI18n = buildRegisterI18n();
         </div>
 
         {
-          currentRegistration ? (
+          !registerEnabled ? (
             <section class="space-y-4">
+              <p class="text-sm text-75">
+                {i18n(I18nKey.authRegisterDisabled)}
+              </p>
+              <p class="text-sm text-70">
+                {i18n(I18nKey.authRegisterDisabledDescription)}
+              </p>
+              <a
+                href="/auth/login"
+                class="px-4 h-9 rounded-lg text-sm font-medium bg-(--btn-regular-bg) text-(--btn-content) inline-flex items-center"
+              >
+                {i18n(I18nKey.authApplyLogin)}
+              </a>
+            </section>
+          ) : currentRegistration ? (
+            <section class="space-y-4">
+              <div id="register-message" class="text-sm text-70 hidden" />
               <div class="flex items-start justify-between gap-4 flex-wrap">
                 <div class="flex items-center gap-3">
                   {currentRegistrationAvatar ? (
@@ -417,7 +437,7 @@ const registerI18n = buildRegisterI18n();
               </form>
 
               <p class="text-sm text-70">
-                {i18n(I18nKey.authNoAccount)}
+                {i18n(I18nKey.authHasAccount)}
                 <a class="text-(--primary) hover:underline" href="/auth/login">
                   {i18n(I18nKey.authApplyLogin)}
                 </a>

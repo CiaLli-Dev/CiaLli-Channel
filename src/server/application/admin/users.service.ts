@@ -29,6 +29,7 @@ import {
 import {
     deleteDirectusUser,
     deleteOne,
+    listDirectusUserPolicyAssignments,
     listDirectusUsers,
     readMany,
     readOneById,
@@ -36,6 +37,7 @@ import {
     updateDirectusUser,
     createOne,
     updateOne,
+    type DirectusUserPolicyAssignment,
 } from "@/server/directus/client";
 import { cacheManager } from "@/server/cache/manager";
 import { badRequest, forbidden } from "@/server/api/errors";
@@ -98,6 +100,13 @@ function isInternalServiceAccountEmail(email: unknown): boolean {
 
 function isInternalServiceUser(user: AppUser | null | undefined): boolean {
     return Boolean(user && isInternalServiceAccountEmail(user.email));
+}
+
+function isVisibleManagedUser(user: AppUser): boolean {
+    if (isInternalServiceUser(user)) {
+        return false;
+    }
+    return String(user.status || "").trim() !== "draft";
 }
 
 type AdminUserRow = {
@@ -287,9 +296,17 @@ async function applyAvatarFileChange(
 function extractSnapshot(
     user: AppUser,
     registry: Awaited<ReturnType<typeof loadDirectusAccessRegistry>>,
+    accessAssignments: readonly DirectusUserPolicyAssignment[] = [],
 ): DirectusUserSnapshot {
     const roleName = extractDirectusRoleName(user.role);
-    const policyIds = extractDirectusPolicyIds(user.policies);
+    const policyIds = Array.from(
+        new Set([
+            ...extractDirectusPolicyIds(user.policies),
+            ...accessAssignments.map((assignment) =>
+                String(assignment.policy || "").trim(),
+            ),
+        ]),
+    ).filter(Boolean);
     const policyNames = resolvePolicyNames(policyIds, registry.policyNameById);
     return {
         roleName,
@@ -311,8 +328,9 @@ function buildProfileView(profile: AppProfile, user: AppUser): AppProfileView {
 function buildPermissionSnapshot(
     user: AppUser,
     registry: Awaited<ReturnType<typeof loadDirectusAccessRegistry>>,
+    accessAssignments: readonly DirectusUserPolicyAssignment[] = [],
 ): AppPermissions {
-    const snapshot = extractSnapshot(user, registry);
+    const snapshot = extractSnapshot(user, registry, accessAssignments);
     return buildPermissionsFromDirectus({
         roleName: snapshot.roleName,
         policyNames: snapshot.policyNames,
@@ -598,8 +616,10 @@ async function handleUsersList(context: APIContext): Promise<Response> {
         }),
         loadDirectusAccessRegistry(),
     ]);
-    const visibleUsers = users.filter((user) => !isInternalServiceUser(user));
+    const visibleUsers = users.filter(isVisibleManagedUser);
     const userIds = visibleUsers.map((user) => user.id);
+    const accessAssignmentsByUser =
+        await listDirectusUserPolicyAssignments(userIds);
     const filterByIds =
         userIds.length > 0
             ? ({ user_id: { _in: userIds } } as JsonObject)
@@ -616,7 +636,11 @@ async function handleUsersList(context: APIContext): Promise<Response> {
 
     const items = applyAdminUsersSort({
         items: visibleUsers.map((user) => {
-            const snapshot = extractSnapshot(user, registry);
+            const snapshot = extractSnapshot(
+                user,
+                registry,
+                accessAssignmentsByUser.get(user.id),
+            );
             const profile = profileMap.get(user.id) || null;
             return {
                 user,
@@ -659,8 +683,21 @@ async function handleUserPatch(
         return fail("用户不存在", 404);
     }
 
-    const actingSnapshot = extractSnapshot(actingAdminUser, registry);
-    const targetSnapshot = extractSnapshot(targetUser, registry);
+    const accessAssignmentsByUser = await listDirectusUserPolicyAssignments([
+        actingAdminUser.id,
+        targetUser.id,
+    ]);
+    const actingSnapshot = extractSnapshot(
+        actingAdminUser,
+        registry,
+        accessAssignmentsByUser.get(actingAdminUser.id),
+    );
+    const targetAssignments = accessAssignmentsByUser.get(targetUser.id) ?? [];
+    const targetSnapshot = extractSnapshot(
+        targetUser,
+        registry,
+        targetAssignments,
+    );
     assertEditableBySiteAdmin({
         actingIsPlatformAdmin: actingSnapshot.isPlatformAdmin,
         targetIsPlatformAdmin: targetSnapshot.isPlatformAdmin,
@@ -686,7 +723,11 @@ async function handleUserPatch(
         directusPayload.avatar = input.avatar_file ?? null;
     }
 
-    const currentPermissions = buildPermissionSnapshot(targetUser, registry);
+    const currentPermissions = buildPermissionSnapshot(
+        targetUser,
+        registry,
+        targetAssignments,
+    );
     const mergedPermissions = mergePermissions(
         currentPermissions,
         extractPermissionPatch(input),
@@ -719,17 +760,7 @@ async function handleUserPatch(
         });
         await syncDirectusUserPolicies({
             userId,
-            currentAssignments: Array.isArray(targetUser.policies)
-                ? targetUser.policies
-                      .filter(
-                          (entry): entry is { id?: string; policy?: string } =>
-                              Boolean(entry && typeof entry === "object"),
-                      )
-                      .map((entry) => ({
-                          id: String(entry.id ?? "").trim(),
-                          policy: String(entry.policy ?? "").trim(),
-                      }))
-                : [],
+            currentAssignments: targetAssignments,
             desiredPolicyIds,
         });
     }
@@ -771,13 +802,24 @@ async function handleUserPatch(
 
     const refreshedUser =
         (await loadDirectusUserForAdmin(userId)) || targetUser;
+    const refreshedAssignmentsByUser = await listDirectusUserPolicyAssignments([
+        userId,
+    ]);
+    const refreshedSnapshot = extractSnapshot(
+        refreshedUser,
+        registry,
+        refreshedAssignmentsByUser.get(userId),
+    );
     return ok({
         id: userId,
         user: refreshedUser,
         profile: buildProfileView(updatedProfile, refreshedUser),
-        permissions: buildPermissionSnapshot(refreshedUser, registry),
-        is_platform_admin: extractSnapshot(refreshedUser, registry)
-            .isPlatformAdmin,
+        permissions: buildPermissionsFromDirectus({
+            roleName: refreshedSnapshot.roleName,
+            policyNames: refreshedSnapshot.policyNames,
+            isPlatformAdmin: refreshedSnapshot.isPlatformAdmin,
+        }),
+        is_platform_admin: refreshedSnapshot.isPlatformAdmin,
         is_site_admin:
             extractDirectusRoleName(refreshedUser.role) ===
             DIRECTUS_ROLE_NAME.siteAdmin,

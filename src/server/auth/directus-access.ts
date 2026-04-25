@@ -62,11 +62,17 @@ export function extractDirectusPolicyIds(
                 return entry.trim();
             }
             if (entry && typeof entry === "object") {
-                return (
-                    String(
-                        (entry as { policy?: unknown }).policy ?? "",
-                    ).trim() || String(entry.id ?? "").trim()
-                );
+                const policy = entry.policy;
+                if (typeof policy === "string") {
+                    return policy.trim() || String(entry.id ?? "").trim();
+                }
+                if (policy && typeof policy === "object") {
+                    const policyId = String(policy.id ?? "").trim();
+                    if (policyId) {
+                        return policyId;
+                    }
+                }
+                return String(entry.id ?? "").trim();
             }
             return "";
         })

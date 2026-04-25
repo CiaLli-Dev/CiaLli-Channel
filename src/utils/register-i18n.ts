@@ -94,6 +94,7 @@ export function buildRegisterI18n(): Record<string, string> {
         submitSuccessRedirecting: i18n(
             I18nKey.authRegisterSubmitSuccessRedirecting,
         ),
+        submitSuccessMessage: i18n(I18nKey.authRegisterStatusPendingDesc),
         submitFailedRetry: i18n(I18nKey.authRegisterSubmitFailedRetry),
         reapplyButtonText: i18n(I18nKey.authRegisterReapply),
         processing: i18n(I18nKey.interactionCommonProcessing),

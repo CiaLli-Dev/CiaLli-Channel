@@ -230,6 +230,23 @@ function bindPasswordToggle(
     });
 }
 
+export function shouldManuallyInsertUsernameInput(event: InputEvent): boolean {
+    return (
+        event.inputType === "insertText" &&
+        typeof event.data === "string" &&
+        USERNAME_PATTERN.test(event.data) &&
+        !event.isComposing &&
+        !event.defaultPrevented
+    );
+}
+
+function insertTextIntoInput(input: HTMLInputElement, text: string): void {
+    const value = input.value;
+    const start = input.selectionStart ?? value.length;
+    const end = input.selectionEnd ?? start;
+    input.setRangeText(text, start, end, "end");
+}
+
 // ── 公开工厂函数 ──
 
 export function createFieldValidators(
@@ -371,6 +388,18 @@ export function createFieldValidators(
     });
     emailEl.addEventListener("blur", () => {
         void validateEmailField(true);
+    });
+    usernameEl.addEventListener("beforeinput", (event) => {
+        if (
+            !(event instanceof InputEvent) ||
+            !shouldManuallyInsertUsernameInput(event) ||
+            !event.data
+        ) {
+            return;
+        }
+        event.preventDefault();
+        insertTextIntoInput(usernameEl, event.data);
+        void validateUsernameField(false);
     });
     usernameEl.addEventListener("input", () => {
         void validateUsernameField(false);

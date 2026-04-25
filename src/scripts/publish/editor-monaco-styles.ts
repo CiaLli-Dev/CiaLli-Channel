@@ -100,9 +100,8 @@ function stylesheetContainsMonacoStyles(stylesheet: StylesheetLike): boolean {
             return false;
         }
         return cssRuleListContainsMonacoStyles(rules);
-    } catch (error) {
+    } catch {
         // 兜底：若样式表不可读（例如浏览器限制），跳过即可。
-        console.warn("[publish] inspect stylesheet failed:", error);
         return false;
     }
 }

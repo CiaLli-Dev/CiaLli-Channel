@@ -12,6 +12,9 @@ const resolvedSettings =
 const registerEnabled = Boolean(
   resolvedSettings.settings.auth?.register_enabled,
 );
+const loginHint = registerEnabled
+  ? i18n(I18nKey.authLoginHint)
+  : i18n(I18nKey.authLoginHintRegisterClosed);
 const loginI18n = {
   hidePassword: i18n(I18nKey.authHidePassword),
   showPassword: i18n(I18nKey.authShowPassword),
@@ -47,7 +50,7 @@ const loginI18n = {
                 <h1 class="text-2xl font-bold text-90">
                   {i18n(I18nKey.authLoginTitle)}
                 </h1>
-                <p class="text-sm text-75">{i18n(I18nKey.authLoginHint)}</p>
+                <p class="text-sm text-75">{loginHint}</p>
               </div>
             </div>
 

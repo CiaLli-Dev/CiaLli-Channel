@@ -6,6 +6,8 @@ export const zhTWAuth: Record<string, string> = {
     [Key.authLoginDescription]: "登入你的帳號",
     [Key.authLoginHint]:
         "如果你還沒有帳號，可以先提交註冊申請，或聯絡管理員邀請你加入。",
+    [Key.authLoginHintRegisterClosed]:
+        "如果你還沒有帳號，請聯絡管理員邀請你加入。",
     [Key.authEmailLabel]: "信箱",
     [Key.authPasswordLabel]: "密碼",
     [Key.authPasswordPlaceholder]: "請輸入密碼",
@@ -13,6 +15,7 @@ export const zhTWAuth: Record<string, string> = {
     [Key.authHidePassword]: "隱藏密碼",
     [Key.authRemember]: "保持登入狀態",
     [Key.authNoAccount]: "還沒有帳號？",
+    [Key.authHasAccount]: "已有帳號？",
     [Key.authApplyRegister]: "提交註冊申請",
     [Key.authLoggingIn]: "登入中...",
     [Key.authLoginSubmit]: "登入",
@@ -40,6 +43,8 @@ export const zhTWAuth: Record<string, string> = {
     [Key.authRegisterDescription]:
         "送出後我們會盡快審核，你可以隨時回來查看進度。",
     [Key.authRegisterDisabled]: "註冊已關閉",
+    [Key.authRegisterDisabledDescription]:
+        "如果你還沒有帳號，請聯絡管理員邀請你加入。",
     [Key.authRegisterDisplayNameLabel]: "顯示名稱",
     [Key.authRegisterDisplayNamePlaceholder]: "請輸入顯示名稱",
     [Key.authRegisterEmailAvailable]: "電子郵件可用",

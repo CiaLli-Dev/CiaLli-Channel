@@ -372,6 +372,31 @@ describe("installer flow", () => {
         expect(prompts[1]).toContain("Public site root URL");
     });
 
+    it("normalizes localhost https site url to browser-testable http", async () => {
+        const { deps, logs, writes } = createFakeDeps();
+
+        await runInstallFlow(
+            {
+                command: "install",
+                lang: "zh_CN",
+                siteUrl: "https://localhost",
+                envFile: null,
+                interactive: false,
+                reset: false,
+            },
+            deps,
+        );
+
+        expect(writes.at(-1)?.contents).toContain(
+            "APP_PUBLIC_BASE_URL=http://localhost",
+        );
+        expect(
+            logs.some((message) =>
+                message.includes("主站入口：http://localhost"),
+            ),
+        ).toBe(true);
+    });
+
     it("rejects site URLs that are not root public URLs", async () => {
         const { deps } = createFakeDeps();
 

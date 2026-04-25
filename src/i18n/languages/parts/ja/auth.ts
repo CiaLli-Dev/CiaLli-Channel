@@ -6,6 +6,8 @@ export const jaAuth: Record<string, string> = {
     [Key.authLoginDescription]: "アカウントにログイン",
     [Key.authLoginHint]:
         "まだアカウントがない場合は、登録申請を送信するか、管理者に招待を依頼してください。",
+    [Key.authLoginHintRegisterClosed]:
+        "まだアカウントがない場合は、管理者に招待を依頼してください。",
     [Key.authEmailLabel]: "メールアドレス",
     [Key.authPasswordLabel]: "パスワード",
     [Key.authPasswordPlaceholder]: "パスワードを入力してください",
@@ -13,6 +15,7 @@ export const jaAuth: Record<string, string> = {
     [Key.authHidePassword]: "パスワードを隠す",
     [Key.authRemember]: "ログイン状態を保持",
     [Key.authNoAccount]: "アカウントをお持ちでないですか？",
+    [Key.authHasAccount]: "すでにアカウントをお持ちですか？",
     [Key.authApplyRegister]: "登録申請を送信",
     [Key.authLoggingIn]: "ログイン中...",
     [Key.authLoginSubmit]: "ログイン",
@@ -46,6 +49,8 @@ export const jaAuth: Record<string, string> = {
     [Key.authRegisterDescription]:
         "申請を送信すると、確認が終わり次第お知らせします。",
     [Key.authRegisterDisabled]: "登録は停止中です",
+    [Key.authRegisterDisabledDescription]:
+        "まだアカウントがない場合は、管理者に招待を依頼してください。",
     [Key.authRegisterDisplayNameLabel]: "ニックネーム",
     [Key.authRegisterDisplayNamePlaceholder]: "ニックネームを入力してください",
     [Key.authRegisterEmailAvailable]: "メールアドレスは使用可能です",

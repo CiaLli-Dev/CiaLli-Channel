@@ -6,6 +6,8 @@ export const zhCNAuth: Record<string, string> = {
     [Key.authLoginDescription]: "登录到你的账号",
     [Key.authLoginHint]:
         "如果你还没有账号，可以先提交注册申请，或联系管理员邀请你加入。",
+    [Key.authLoginHintRegisterClosed]:
+        "如果你还没有账号，请联系管理员邀请你加入。",
     [Key.authEmailLabel]: "邮箱",
     [Key.authPasswordLabel]: "密码",
     [Key.authPasswordPlaceholder]: "请输入密码",
@@ -13,6 +15,7 @@ export const zhCNAuth: Record<string, string> = {
     [Key.authHidePassword]: "隐藏密码",
     [Key.authRemember]: "保持登录状态",
     [Key.authNoAccount]: "还没有账号？",
+    [Key.authHasAccount]: "已有账号？",
     [Key.authApplyRegister]: "提交注册申请",
     [Key.authLoggingIn]: "正在登录...",
     [Key.authLoginSubmit]: "登录",
@@ -40,6 +43,8 @@ export const zhCNAuth: Record<string, string> = {
     [Key.authRegisterDescription]:
         "提交后我们会尽快审核，你可以随时回来查看进度。",
     [Key.authRegisterDisabled]: "注册已关闭",
+    [Key.authRegisterDisabledDescription]:
+        "如果你还没有账号，请联系管理员邀请你加入。",
     [Key.authRegisterDisplayNameLabel]: "昵称",
     [Key.authRegisterDisplayNamePlaceholder]: "请输入昵称",
     [Key.authRegisterEmailAvailable]: "邮箱可用",

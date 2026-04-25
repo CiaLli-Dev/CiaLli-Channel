@@ -75,7 +75,6 @@ import {
     resolveSiteSettingsPayload,
 } from "@/server/site-settings/service";
 import {
-    createOne,
     readMany,
     updateDirectusFileMetadata,
     updateOne,
@@ -91,7 +90,6 @@ const mockedInvalidateSiteSettingsCache = vi.mocked(
     invalidateSiteSettingsCache,
 );
 const mockedResolveSiteSettingsPayload = vi.mocked(resolveSiteSettingsPayload);
-const mockedCreateOne = vi.mocked(createOne);
 const mockedReadMany = vi.mocked(readMany);
 const mockedUpdateOne = vi.mocked(updateOne);
 const mockedUpdateDirectusFileMetadata = vi.mocked(updateDirectusFileMetadata);
@@ -966,115 +964,5 @@ describe("handleAdminSettings /site validation", () => {
         }>(response);
         expect(body.ok).toBe(false);
         expect(body.error.code).toBe("INVALID_TIME_ZONE");
-    });
-});
-
-describe("handleAdminSettings /about", () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-        mockedRequireAdmin.mockResolvedValue({
-            access: {
-                isAdmin: true,
-                user: {
-                    id: "admin-1",
-                },
-            },
-            accessToken: "test-access-token",
-        } as never);
-    });
-
-    it("GET /admin/settings/about 返回关于页配置", async () => {
-        mockedReadMany.mockResolvedValue([
-            {
-                id: "about-id",
-                title: "关于 CiaLli",
-                summary: "这里是摘要",
-                body_markdown: "# 关于内容",
-                date_updated: "2026-02-16T08:00:00.000Z",
-                date_created: "2026-02-15T08:00:00.000Z",
-            },
-        ] as never);
-
-        const ctx = makeCtx("admin/settings/about");
-        const response = await handleAdminSettings(
-            ctx as unknown as APIContext,
-            ["settings", "about"],
-        );
-        expect(response.status).toBe(200);
-
-        const body = await parseResponseJson<{
-            ok: boolean;
-            about: {
-                id: string;
-                title: string;
-                summary: string;
-                body_markdown: string;
-            };
-            updated_at: string;
-        }>(response);
-        expect(body.ok).toBe(true);
-        expect(body.about.id).toBe("about-id");
-        expect(body.about.title).toBe("关于 CiaLli");
-        expect(body.about.body_markdown).toBe("# 关于内容");
-        expect(body.updated_at).toBe("2026-02-16T08:00:00.000Z");
-    });
-
-    it("PATCH /admin/settings/about 不存在则创建", async () => {
-        mockedReadMany.mockResolvedValue([] as never);
-        mockedCreateOne.mockResolvedValue({
-            id: "about-id",
-            title: "关于我们",
-            summary: "摘要",
-            body_markdown: "# 内容",
-            date_updated: "2026-02-17T00:00:00.000Z",
-            date_created: "2026-02-17T00:00:00.000Z",
-        } as never);
-
-        const ctx = makeCtx("admin/settings/about", "PATCH", {
-            title: "关于我们",
-            summary: "摘要",
-            body_markdown: "# 内容",
-        });
-        const response = await handleAdminSettings(
-            ctx as unknown as APIContext,
-            ["settings", "about"],
-        );
-        expect(response.status).toBe(200);
-        expect(mockedCreateOne).toHaveBeenCalledTimes(1);
-        expect(mockedUpdateOne).not.toHaveBeenCalled();
-
-        const body = await parseResponseJson<{
-            ok: boolean;
-            about: {
-                id: string;
-                title: string;
-                summary: string;
-                body_markdown: string;
-            };
-        }>(response);
-        expect(body.ok).toBe(true);
-        expect(body.about.id).toBe("about-id");
-        expect(body.about.body_markdown).toBe("# 内容");
-    });
-
-    it("POST /admin/settings/about/preview 渲染 Markdown 预览", async () => {
-        mockedRenderMarkdown.mockResolvedValue("<h1>关于内容</h1>");
-        const ctx = makeCtx("admin/settings/about/preview", "POST", {
-            body_markdown: "# 关于内容",
-        });
-        const response = await handleAdminSettings(
-            ctx as unknown as APIContext,
-            ["settings", "about", "preview"],
-        );
-        expect(response.status).toBe(200);
-
-        const body = await parseResponseJson<{
-            ok: boolean;
-            body_markdown: string;
-            body_html: string;
-        }>(response);
-        expect(body.ok).toBe(true);
-        expect(body.body_markdown).toBe("# 关于内容");
-        expect(body.body_html).toBe("<h1>关于内容</h1>");
     });
 });

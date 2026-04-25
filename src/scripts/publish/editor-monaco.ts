@@ -333,6 +333,56 @@ function bindMonacoLayoutRecovery(
     };
 }
 
+export function shouldRecoverNonAsciiBeforeInput(event: InputEvent): boolean {
+    const text = event.data;
+    return (
+        event.inputType === "insertText" &&
+        typeof text === "string" &&
+        Array.from(text).some((char) => char.charCodeAt(0) > 127) &&
+        !event.isComposing &&
+        !event.defaultPrevented
+    );
+}
+
+function bindNonAsciiBeforeInputRecovery(editor: MonacoEditor): () => void {
+    const domNode = editor.getDomNode();
+    if (!domNode) {
+        return () => {
+            // No DOM node to detach from.
+        };
+    }
+
+    const handleBeforeInput = (event: Event): void => {
+        if (
+            !(event instanceof InputEvent) ||
+            !shouldRecoverNonAsciiBeforeInput(event) ||
+            !editor.hasTextFocus()
+        ) {
+            return;
+        }
+
+        const model = editor.getModel();
+        const selection = editor.getSelection();
+        if (!model || !selection || !event.data) {
+            return;
+        }
+
+        event.preventDefault();
+        editor.executeEdits("publish-editor-non-ascii-input", [
+            {
+                range: selection,
+                text: event.data,
+                forceMoveMarkers: true,
+            },
+        ]);
+    };
+
+    domNode.addEventListener("beforeinput", handleBeforeInput, true);
+    return () => {
+        domNode.removeEventListener("beforeinput", handleBeforeInput, true);
+    };
+}
+
 async function ensureMonacoWorkers(): Promise<void> {
     const runtimeWindow = window as MonacoRuntimeWindow;
     if (runtimeWindow.__publishMonacoWorkerReady) {
@@ -598,10 +648,13 @@ async function createMonacoAdapter(
         editor,
         monacoHostEl,
     );
+    const nonAsciiInputRecoveryDispose =
+        bindNonAsciiBeforeInputRecovery(editor);
     return new MonacoEditorAdapter(monaco, editor, textareaEl, [
         themeDispose,
         diagnosticsDispose,
         layoutRecoveryDispose,
+        nonAsciiInputRecoveryDispose,
     ]);
 }
 
