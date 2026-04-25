@@ -34,6 +34,8 @@ export type AppFileLifecycle =
     | "temporary"
     | "attached"
     | "detached"
+    | "quarantined"
+    | "deleted"
     | "protected";
 export type AppFileReferenceKind =
     | "structured_field"
@@ -402,6 +404,8 @@ export type AppFile = {
     app_visibility?: "private" | "public" | null;
     app_lifecycle?: AppFileLifecycle | null;
     app_detached_at?: string | null;
+    app_quarantined_at?: string | null;
+    app_deleted_at?: string | null;
     uploaded_by?: string | { id?: string } | null;
     modified_by?: string | { id?: string } | null;
 };

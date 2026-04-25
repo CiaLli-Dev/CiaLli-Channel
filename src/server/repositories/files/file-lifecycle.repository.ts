@@ -85,6 +85,8 @@ export async function markFilesTemporary(fileIds: string[]): Promise<void> {
         data: {
             app_lifecycle: "temporary",
             app_detached_at: null,
+            app_quarantined_at: null,
+            app_deleted_at: null,
         },
     });
 }
@@ -102,6 +104,8 @@ export async function markFilesAttached(params: {
     const lifecyclePayload: JsonObject = {
         app_lifecycle: "attached" satisfies AppFileLifecycle,
         app_detached_at: null,
+        app_quarantined_at: null,
+        app_deleted_at: null,
     };
     if (params.ownerUserId !== undefined) {
         lifecyclePayload.uploaded_by = params.ownerUserId;
@@ -119,6 +123,8 @@ export async function markFilesAttached(params: {
                 app_visibility?: ManagedFileVisibility;
                 app_lifecycle?: AppFileLifecycle;
                 app_detached_at?: string | null;
+                app_quarantined_at?: string | null;
+                app_deleted_at?: string | null;
             }),
             title: params.title?.trim() || undefined,
         });
@@ -140,6 +146,35 @@ export async function markFilesDetached(
         data: {
             app_lifecycle: "detached",
             app_detached_at: detachedAt,
+            app_quarantined_at: null,
+            app_deleted_at: null,
+        },
+    });
+}
+
+export async function markFilesQuarantined(
+    fileIds: string[],
+    quarantinedAt: string,
+): Promise<void> {
+    await updateLifecycleForFileIds({
+        fileIds,
+        data: {
+            app_lifecycle: "quarantined",
+            app_quarantined_at: quarantinedAt,
+            app_deleted_at: null,
+        },
+    });
+}
+
+export async function markFilesDeleted(
+    fileIds: string[],
+    deletedAt: string,
+): Promise<void> {
+    await updateLifecycleForFileIds({
+        fileIds,
+        data: {
+            app_lifecycle: "deleted",
+            app_deleted_at: deletedAt,
         },
     });
 }
@@ -159,6 +194,8 @@ export async function readManagedFilesByIds(
             "date_updated",
             "app_lifecycle",
             "app_detached_at",
+            "app_quarantined_at",
+            "app_deleted_at",
         ],
         limit: Math.max(normalizedIds.length, 1),
     })) as AppFile[];
@@ -177,6 +214,8 @@ export async function readAllManagedFiles(): Promise<AppFile[]> {
                 "date_updated",
                 "app_lifecycle",
                 "app_detached_at",
+                "app_quarantined_at",
+                "app_deleted_at",
             ],
             limit,
             offset,

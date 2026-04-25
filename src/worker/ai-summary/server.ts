@@ -158,6 +158,8 @@ const fileGcScheduler = createNonOverlappingScheduler({
             trigger,
             scanned: result.scanned,
             referenced: result.referenced,
+            quarantined: result.quarantined,
+            recovered: result.recovered,
             deleted: result.deleted,
         });
     },
@@ -195,6 +197,8 @@ const fileLifecycleReconciliationScheduler = createNonOverlappingScheduler({
             attached: result.attached,
             detached: result.detached,
             temporary: result.temporary,
+            quarantined: result.quarantined,
+            deleted: result.deleted,
             protected: result.protected,
         });
     },

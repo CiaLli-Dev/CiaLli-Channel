@@ -28,6 +28,14 @@ export function readFileLifecycleReconcileIntervalMs(): number {
     );
 }
 
+type ClassifiedLifecycle =
+    | "attached"
+    | "detached"
+    | "temporary"
+    | "quarantined"
+    | "deleted"
+    | "protected";
+
 function buildDetachedBeforeIso(now: Date): string {
     return new Date(
         now.getTime() - readFileGcRetentionHours() * 60 * 60 * 1000,
@@ -45,17 +53,50 @@ function classifyManagedFileLifecycle(params: {
     file: Awaited<ReturnType<typeof readAllManagedFiles>>[number];
     referencedFileIds: Set<string>;
     detachedBefore: string;
-}): "attached" | "detached" | "temporary" | "protected" {
+}): ClassifiedLifecycle {
     if (params.file.app_lifecycle === "protected") {
         return "protected";
     }
+    if (params.file.app_lifecycle === "deleted") {
+        return "deleted";
+    }
     if (params.referencedFileIds.has(params.file.id)) {
         return "attached";
+    }
+    if (params.file.app_lifecycle === "quarantined") {
+        return "quarantined";
     }
     if (isExpired(params.detachedBefore, params.file.date_created ?? null)) {
         return "detached";
     }
     return "temporary";
+}
+
+function collectClassifiedFile(params: {
+    lifecycle: ClassifiedLifecycle;
+    fileId: string;
+    attachedFileIds: string[];
+    detachedFileIds: string[];
+    temporaryFileIds: string[];
+    counts: {
+        quarantined: number;
+        deleted: number;
+        protected: number;
+    };
+}): void {
+    if (params.lifecycle === "attached") {
+        params.attachedFileIds.push(params.fileId);
+        return;
+    }
+    if (params.lifecycle === "detached") {
+        params.detachedFileIds.push(params.fileId);
+        return;
+    }
+    if (params.lifecycle === "temporary") {
+        params.temporaryFileIds.push(params.fileId);
+        return;
+    }
+    params.counts[params.lifecycle] += 1;
 }
 
 export async function reconcileManagedFileLifecycle(
@@ -64,6 +105,8 @@ export async function reconcileManagedFileLifecycle(
     attached: number;
     detached: number;
     temporary: number;
+    quarantined: number;
+    deleted: number;
     protected: number;
 }> {
     const [referencedFileIds, files] = await Promise.all([
@@ -74,7 +117,11 @@ export async function reconcileManagedFileLifecycle(
     const attachedFileIds: string[] = [];
     const detachedFileIds: string[] = [];
     const temporaryFileIds: string[] = [];
-    let protectedCount = 0;
+    const counts = {
+        quarantined: 0,
+        deleted: 0,
+        protected: 0,
+    };
 
     for (const file of files) {
         if (!file.id) {
@@ -85,19 +132,14 @@ export async function reconcileManagedFileLifecycle(
             referencedFileIds,
             detachedBefore,
         });
-        if (lifecycle === "protected") {
-            protectedCount += 1;
-            continue;
-        }
-        if (lifecycle === "attached") {
-            attachedFileIds.push(file.id);
-            continue;
-        }
-        if (lifecycle === "detached") {
-            detachedFileIds.push(file.id);
-            continue;
-        }
-        temporaryFileIds.push(file.id);
+        collectClassifiedFile({
+            lifecycle,
+            fileId: file.id,
+            attachedFileIds,
+            detachedFileIds,
+            temporaryFileIds,
+            counts,
+        });
     }
 
     await Promise.all([
@@ -134,7 +176,9 @@ export async function reconcileManagedFileLifecycle(
         attached: attachedFileIds.length,
         detached: detachedFileIds.length,
         temporary: temporaryFileIds.length,
-        protected: protectedCount,
+        quarantined: counts.quarantined,
+        deleted: counts.deleted,
+        protected: counts.protected,
     };
 }
 

@@ -36,11 +36,21 @@ describe("file-cleanup.repository", () => {
         mocks.readMany.mockResolvedValue([]);
     });
 
-    it("builds the GC candidate filters for expired detached and temporary files", async () => {
+    it("builds the GC candidate filters for quarantine and physical delete phases", async () => {
         await readStaleFileGcCandidatesFromRepository({
             detachedBefore: "2026-04-23T00:00:00.000Z",
+            quarantinedBefore: "2026-04-30T00:00:00.000Z",
             limit: 200,
         });
+
+        const fields = [
+            "id",
+            "date_created",
+            "app_lifecycle",
+            "app_detached_at",
+            "app_quarantined_at",
+            "app_deleted_at",
+        ];
 
         expect(mocks.readMany).toHaveBeenNthCalledWith(1, "directus_files", {
             filter: {
@@ -50,20 +60,32 @@ describe("file-cleanup.repository", () => {
                     { app_detached_at: { _lte: "2026-04-23T00:00:00.000Z" } },
                 ],
             },
-            fields: ["id", "date_created", "app_lifecycle", "app_detached_at"],
+            fields,
             sort: ["app_detached_at", "id"],
             limit: 200,
         });
         expect(mocks.readMany).toHaveBeenNthCalledWith(2, "directus_files", {
             filter: {
                 _and: [
-                    { app_lifecycle: { _eq: "temporary" } },
-                    { date_created: { _nnull: true } },
-                    { date_created: { _lte: "2026-04-23T00:00:00.000Z" } },
+                    { app_lifecycle: { _eq: "quarantined" } },
+                    { app_quarantined_at: { _nnull: true } },
+                    {
+                        app_quarantined_at: {
+                            _lte: "2026-04-30T00:00:00.000Z",
+                        },
+                    },
                 ],
             },
-            fields: ["id", "date_created", "app_lifecycle", "app_detached_at"],
-            sort: ["date_created", "id"],
+            fields,
+            sort: ["app_quarantined_at", "id"],
+            limit: 200,
+        });
+        expect(mocks.readMany).toHaveBeenNthCalledWith(3, "directus_files", {
+            filter: {
+                app_lifecycle: { _eq: "deleted" },
+            },
+            fields,
+            sort: ["app_deleted_at", "id"],
             limit: 200,
         });
     });

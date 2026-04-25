@@ -37,6 +37,7 @@ Directus 后台默认只绑定到 `127.0.0.1:8055`，不直接暴露公网。
    `AI_SUMMARY_PROVIDER_TIMEOUT_MS`（可选，默认 `90000`）
    `FILE_GC_INTERVAL_MS`（可选，默认 `900000`）
    `FILE_GC_RETENTION_HOURS`（可选，默认 `168`）
+   `FILE_GC_QUARANTINE_DAYS`（可选，默认 `7`）
    `FILE_GC_BATCH_SIZE`（可选，默认 `200`）
    `FILE_DETACH_JOB_INTERVAL_MS`（可选，默认 `60000`）
    `FILE_DETACH_JOB_BATCH_SIZE`（可选，默认 `50`）

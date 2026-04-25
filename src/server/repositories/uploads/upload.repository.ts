@@ -61,6 +61,8 @@ export async function uploadManagedFile(params: {
                 app_visibility: resolveInitialFileVisibility(params.purpose),
                 app_lifecycle: "temporary",
                 app_detached_at: null,
+                app_quarantined_at: null,
+                app_deleted_at: null,
             });
         };
 

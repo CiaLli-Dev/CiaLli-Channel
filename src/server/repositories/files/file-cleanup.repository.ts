@@ -42,6 +42,8 @@ type StaleFileGcCandidate = {
     date_created: string | null;
     app_lifecycle?: AppFile["app_lifecycle"];
     app_detached_at?: string | null;
+    app_quarantined_at?: string | null;
+    app_deleted_at?: string | null;
 };
 
 export const STRUCTURED_REFERENCE_TARGETS: StructuredReferenceTarget[] = [
@@ -463,6 +465,12 @@ function getCandidateCleanupTimestamp(row: StaleFileGcCandidate): string {
     if (row.app_lifecycle === "detached") {
         return row.app_detached_at || row.date_created || "";
     }
+    if (row.app_lifecycle === "quarantined") {
+        return row.app_quarantined_at || row.date_created || "";
+    }
+    if (row.app_lifecycle === "deleted") {
+        return row.app_deleted_at || row.date_created || "";
+    }
     return row.date_created || "";
 }
 
@@ -481,10 +489,18 @@ function sortStaleFileGcCandidates(
 
 export async function readStaleFileGcCandidatesFromRepository(params: {
     detachedBefore: string;
+    quarantinedBefore: string;
     limit: number;
 }): Promise<StaleFileGcCandidate[]> {
-    const fields = ["id", "date_created", "app_lifecycle", "app_detached_at"];
-    const [detachedRows, temporaryRows] = await Promise.all([
+    const fields = [
+        "id",
+        "date_created",
+        "app_lifecycle",
+        "app_detached_at",
+        "app_quarantined_at",
+        "app_deleted_at",
+    ];
+    const [detachedRows, quarantinedRows, deletedRows] = await Promise.all([
         readMany("directus_files", {
             filter: {
                 _and: [
@@ -504,24 +520,33 @@ export async function readStaleFileGcCandidatesFromRepository(params: {
         readMany("directus_files", {
             filter: {
                 _and: [
-                    { app_lifecycle: { _eq: "temporary" } },
-                    { date_created: { _nnull: true } },
+                    { app_lifecycle: { _eq: "quarantined" } },
+                    { app_quarantined_at: { _nnull: true } },
                     {
-                        date_created: {
-                            _lte: params.detachedBefore,
+                        app_quarantined_at: {
+                            _lte: params.quarantinedBefore,
                         },
                     },
                 ],
             } as JsonObject,
             fields,
-            sort: ["date_created", "id"],
+            sort: ["app_quarantined_at", "id"],
+            limit: params.limit,
+        }),
+        readMany("directus_files", {
+            filter: {
+                app_lifecycle: { _eq: "deleted" },
+            } as JsonObject,
+            fields,
+            sort: ["app_deleted_at", "id"],
             limit: params.limit,
         }),
     ]);
 
     return sortStaleFileGcCandidates([
         ...(detachedRows as StaleFileGcCandidate[]),
-        ...(temporaryRows as StaleFileGcCandidate[]),
+        ...(quarantinedRows as StaleFileGcCandidate[]),
+        ...(deletedRows as StaleFileGcCandidate[]),
     ]).slice(0, params.limit);
 }
 

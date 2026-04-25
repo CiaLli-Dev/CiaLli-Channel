@@ -7,7 +7,9 @@ const mocks = vi.hoisted(() => ({
     collectReferencedDirectusFileIds: vi.fn(),
     readStaleFileGcCandidatesFromRepository: vi.fn(),
     deleteOrphanFileFromRepository: vi.fn(),
-    reconcileManagedFileLifecycle: vi.fn(),
+    markFilesAttached: vi.fn(),
+    markFilesDeleted: vi.fn(),
+    markFilesQuarantined: vi.fn(),
     readManagedFilesByIds: vi.fn(),
 }));
 
@@ -25,20 +27,24 @@ vi.mock("@/server/repositories/files/file-cleanup.repository", () => ({
     deleteOrphanFileFromRepository: mocks.deleteOrphanFileFromRepository,
 }));
 
-vi.mock("@/server/files/file-lifecycle-reconciliation", () => ({
-    reconcileManagedFileLifecycle: mocks.reconcileManagedFileLifecycle,
-}));
-
 vi.mock("@/server/repositories/files/file-lifecycle.repository", () => ({
+    markFilesAttached: mocks.markFilesAttached,
+    markFilesDeleted: mocks.markFilesDeleted,
+    markFilesQuarantined: mocks.markFilesQuarantined,
     readManagedFilesByIds: mocks.readManagedFilesByIds,
 }));
 
 import {
     readFileGcBatchSize,
     readFileGcIntervalMs,
+    readFileGcQuarantineDays,
     readFileGcRetentionHours,
     runFileGcBatch,
 } from "@/server/files/file-gc";
+
+const NOW = new Date("2026-04-28T00:00:00.000Z");
+const DETACHED_BEFORE = "2026-04-21T00:00:00.000Z";
+const QUARANTINED_BEFORE = "2026-04-21T00:00:00.000Z";
 
 function resetFileGcMocks(): void {
     vi.clearAllMocks();
@@ -47,6 +53,7 @@ function resetFileGcMocks(): void {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     delete process.env.FILE_GC_INTERVAL_MS;
     delete process.env.FILE_GC_RETENTION_HOURS;
+    delete process.env.FILE_GC_QUARANTINE_DAYS;
     delete process.env.FILE_GC_BATCH_SIZE;
     mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([]);
     mocks.collectReferencedDirectusFileIds.mockResolvedValue(new Set());
@@ -54,13 +61,46 @@ function resetFileGcMocks(): void {
         ok: true,
         fileId: "file-1",
     });
-    mocks.reconcileManagedFileLifecycle.mockResolvedValue({
-        attached: 0,
-        detached: 0,
-        temporary: 0,
-        protected: 0,
-    });
+    mocks.markFilesAttached.mockResolvedValue(undefined);
+    mocks.markFilesDeleted.mockResolvedValue(undefined);
+    mocks.markFilesQuarantined.mockResolvedValue(undefined);
     mocks.readManagedFilesByIds.mockResolvedValue([]);
+}
+
+function staleDetachedFile(id: string): {
+    id: string;
+    date_created: string;
+    app_lifecycle: "detached";
+    app_detached_at: string;
+    app_quarantined_at: null;
+    app_deleted_at: null;
+} {
+    return {
+        id,
+        date_created: "2026-04-20T00:00:00.000Z",
+        app_lifecycle: "detached",
+        app_detached_at: "2026-04-20T00:00:00.000Z",
+        app_quarantined_at: null,
+        app_deleted_at: null,
+    };
+}
+
+function staleQuarantinedFile(id: string): {
+    id: string;
+    date_created: string;
+    app_lifecycle: "quarantined";
+    app_detached_at: string;
+    app_quarantined_at: string;
+    app_deleted_at: null;
+} {
+    return {
+        id,
+        date_created: "2026-04-10T00:00:00.000Z",
+        app_lifecycle: "quarantined",
+        app_detached_at: "2026-04-11T00:00:00.000Z",
+        app_quarantined_at: "2026-04-20T00:00:00.000Z",
+        app_deleted_at: null,
+    };
 }
 
 describe("file-gc", () => {
@@ -71,229 +111,170 @@ describe("file-gc", () => {
     it("uses GC env defaults when variables are absent", () => {
         expect(readFileGcIntervalMs()).toBe(900_000);
         expect(readFileGcRetentionHours()).toBe(168);
+        expect(readFileGcQuarantineDays()).toBe(7);
         expect(readFileGcBatchSize()).toBe(200);
     });
 
-    it("deletes only unreferenced stale candidate files", async () => {
-        mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([
-            {
-                id: "file-orphan",
-                date_created: "2026-04-20T00:00:00.000Z",
-                app_lifecycle: "detached",
-                app_detached_at: "2026-04-20T00:00:00.000Z",
-            },
-            {
-                id: "file-referenced",
-                date_created: "2026-04-20T00:00:00.000Z",
-                app_lifecycle: "detached",
-                app_detached_at: "2026-04-20T00:00:00.000Z",
-            },
-        ]);
-        mocks.readManagedFilesByIds.mockResolvedValue([
-            {
-                id: "file-orphan",
-                date_created: "2026-04-20T00:00:00.000Z",
-                app_lifecycle: "detached",
-                app_detached_at: "2026-04-20T00:00:00.000Z",
-            },
-            {
-                id: "file-referenced",
-                date_created: "2026-04-20T00:00:00.000Z",
-                app_lifecycle: "detached",
-                app_detached_at: "2026-04-20T00:00:00.000Z",
-            },
-        ]);
-        mocks.collectReferencedDirectusFileIds.mockResolvedValue(
-            new Set(["file-referenced"]),
-        );
+    it("quarantines stale detached orphan files instead of deleting them", async () => {
+        const file = staleDetachedFile("file-orphan");
+        mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([file]);
+        mocks.readManagedFilesByIds.mockResolvedValue([file]);
 
-        const result = await runFileGcBatch(
-            new Date("2026-04-28T00:00:00.000Z"),
-        );
+        const result = await runFileGcBatch(NOW);
 
         expect(
             mocks.readStaleFileGcCandidatesFromRepository,
         ).toHaveBeenCalledWith({
-            detachedBefore: "2026-04-21T00:00:00.000Z",
+            detachedBefore: DETACHED_BEFORE,
+            quarantinedBefore: QUARANTINED_BEFORE,
             limit: 200,
         });
-        expect(mocks.deleteOrphanFileFromRepository).toHaveBeenCalledTimes(1);
-        expect(mocks.deleteOrphanFileFromRepository).toHaveBeenCalledWith(
-            "file-orphan",
+        expect(mocks.markFilesQuarantined).toHaveBeenCalledWith(
+            ["file-orphan"],
+            NOW.toISOString(),
         );
+        expect(mocks.deleteOrphanFileFromRepository).not.toHaveBeenCalled();
         expect(console.info).toHaveBeenCalledWith(
             "[file-gc] delete audit",
             expect.objectContaining({
                 event: "file_gc_delete",
                 fileId: "file-orphan",
                 dryRun: false,
-                detachedBefore: "2026-04-21T00:00:00.000Z",
+                detachedBefore: DETACHED_BEFORE,
+                quarantinedBefore: QUARANTINED_BEFORE,
                 lifecycle: "detached",
-                outcome: "deleted",
+                outcome: "quarantined",
             }),
         );
-        expect(result).toEqual({
+        expect(result).toMatchObject({
             dryRun: false,
-            scanned: 2,
-            referenced: 1,
-            deleted: 1,
+            scanned: 1,
+            referenced: 0,
+            quarantined: 1,
+            wouldQuarantine: 0,
+            recovered: 0,
+            deleted: 0,
             wouldDelete: 0,
-            notFound: 0,
-            failed: 0,
             skippedState: 0,
-            skippedReferenced: 1,
-            candidateFileIds: ["file-orphan", "file-referenced"],
-            deletedFileIds: ["file-orphan"],
-            wouldDeleteFileIds: [],
+            skippedReferenced: 0,
+            candidateFileIds: ["file-orphan"],
+            quarantinedFileIds: ["file-orphan"],
+            deletedFileIds: [],
         });
     });
 
-    it("deletes unreferenced stale temporary files", async () => {
-        mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([
-            {
-                id: "file-temporary",
-                date_created: "2026-04-20T00:00:00.000Z",
-                app_lifecycle: "temporary",
-                app_detached_at: null,
-            },
-        ]);
-        mocks.readManagedFilesByIds.mockResolvedValue([
-            {
-                id: "file-temporary",
-                date_created: "2026-04-20T00:00:00.000Z",
-                app_lifecycle: "temporary",
-                app_detached_at: null,
-            },
-        ]);
+    it("supports dry-run quarantine without metadata mutation", async () => {
+        const file = staleDetachedFile("file-dry-run");
+        mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([file]);
+        mocks.readManagedFilesByIds.mockResolvedValue([file]);
 
-        const result = await runFileGcBatch(
-            new Date("2026-04-28T00:00:00.000Z"),
+        const result = await runFileGcBatch(NOW, { dryRun: true });
+
+        expect(mocks.markFilesQuarantined).not.toHaveBeenCalled();
+        expect(mocks.deleteOrphanFileFromRepository).not.toHaveBeenCalled();
+        expect(console.info).toHaveBeenCalledWith(
+            "[file-gc] delete audit",
+            expect.objectContaining({
+                fileId: "file-dry-run",
+                dryRun: true,
+                outcome: "would_quarantine",
+            }),
         );
+        expect(result.quarantined).toBe(0);
+        expect(result.wouldQuarantine).toBe(1);
+        expect(result.wouldQuarantineFileIds).toEqual(["file-dry-run"]);
+    });
 
+    it("deletes stale quarantined orphan files after the quarantine window", async () => {
+        const file = staleQuarantinedFile("file-quarantined");
+        mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([file]);
+        mocks.readManagedFilesByIds.mockResolvedValue([file]);
+
+        const result = await runFileGcBatch(NOW);
+
+        expect(mocks.markFilesDeleted).toHaveBeenCalledWith(
+            ["file-quarantined"],
+            NOW.toISOString(),
+        );
         expect(mocks.deleteOrphanFileFromRepository).toHaveBeenCalledWith(
-            "file-temporary",
+            "file-quarantined",
         );
         expect(result.deleted).toBe(1);
-        expect(result.skippedReferenced).toBe(0);
-        expect(result.skippedState).toBe(0);
+        expect(result.deletedFileIds).toEqual(["file-quarantined"]);
     });
 
-    it("skips stale temporary files that are referenced", async () => {
+    it("skips quarantined files younger than the quarantine window", async () => {
+        const candidate = staleQuarantinedFile("file-fresh-quarantine");
+        const current = {
+            ...candidate,
+            app_quarantined_at: "2026-04-22T00:00:00.000Z",
+        };
         mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([
-            {
-                id: "file-temporary",
-                date_created: "2026-04-20T00:00:00.000Z",
-                app_lifecycle: "temporary",
-                app_detached_at: null,
-            },
+            candidate,
         ]);
-        mocks.readManagedFilesByIds.mockResolvedValue([
-            {
-                id: "file-temporary",
-                date_created: "2026-04-20T00:00:00.000Z",
-                app_lifecycle: "temporary",
-                app_detached_at: null,
-            },
-        ]);
-        mocks.collectReferencedDirectusFileIds.mockResolvedValue(
-            new Set(["file-temporary"]),
-        );
+        mocks.readManagedFilesByIds.mockResolvedValue([current]);
 
-        const result = await runFileGcBatch(
-            new Date("2026-04-28T00:00:00.000Z"),
-        );
+        const result = await runFileGcBatch(NOW);
 
-        expect(mocks.deleteOrphanFileFromRepository).not.toHaveBeenCalled();
-        expect(result.deleted).toBe(0);
-        expect(result.skippedReferenced).toBe(1);
-    });
-
-    it("rechecks references before deleting each orphan", async () => {
-        mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([
-            {
-                id: "file-raced",
-                date_created: "2026-04-20T00:00:00.000Z",
-                app_lifecycle: "detached",
-                app_detached_at: "2026-04-20T00:00:00.000Z",
-            },
-        ]);
-        mocks.readManagedFilesByIds.mockResolvedValue([
-            {
-                id: "file-raced",
-                date_created: "2026-04-20T00:00:00.000Z",
-                app_lifecycle: "detached",
-                app_detached_at: "2026-04-20T00:00:00.000Z",
-            },
-        ]);
-        mocks.collectReferencedDirectusFileIds
-            .mockResolvedValueOnce(new Set())
-            .mockResolvedValueOnce(new Set(["file-raced"]));
-
-        const result = await runFileGcBatch(
-            new Date("2026-04-28T00:00:00.000Z"),
-        );
-
-        expect(mocks.collectReferencedDirectusFileIds).toHaveBeenCalledTimes(2);
-        expect(mocks.deleteOrphanFileFromRepository).not.toHaveBeenCalled();
-        expect(result.deleted).toBe(0);
-        expect(result.skippedReferenced).toBe(1);
-    });
-
-    it("rechecks lifecycle state before deleting each orphan", async () => {
-        mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([
-            {
-                id: "file-raced",
-                date_created: "2026-04-20T00:00:00.000Z",
-                app_lifecycle: "detached",
-                app_detached_at: "2026-04-20T00:00:00.000Z",
-            },
-        ]);
-        mocks.readManagedFilesByIds
-            .mockResolvedValueOnce([
-                {
-                    id: "file-raced",
-                    date_created: "2026-04-20T00:00:00.000Z",
-                    app_lifecycle: "detached",
-                    app_detached_at: "2026-04-20T00:00:00.000Z",
-                },
-            ])
-            .mockResolvedValueOnce([
-                {
-                    id: "file-raced",
-                    date_created: "2026-04-20T00:00:00.000Z",
-                    app_lifecycle: "attached",
-                    app_detached_at: null,
-                },
-            ]);
-
-        const result = await runFileGcBatch(
-            new Date("2026-04-28T00:00:00.000Z"),
-        );
-
+        expect(mocks.markFilesDeleted).not.toHaveBeenCalled();
         expect(mocks.deleteOrphanFileFromRepository).not.toHaveBeenCalled();
         expect(result.deleted).toBe(0);
         expect(result.skippedState).toBe(1);
     });
 
+    it("recovers referenced quarantined candidates to attached", async () => {
+        const file = staleQuarantinedFile("file-referenced");
+        mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([file]);
+        mocks.readManagedFilesByIds.mockResolvedValue([file]);
+        mocks.collectReferencedDirectusFileIds.mockResolvedValue(
+            new Set(["file-referenced"]),
+        );
+
+        const result = await runFileGcBatch(NOW);
+
+        expect(mocks.markFilesAttached).toHaveBeenCalledWith({
+            fileIds: ["file-referenced"],
+        });
+        expect(mocks.deleteOrphanFileFromRepository).not.toHaveBeenCalled();
+        expect(result.recovered).toBe(1);
+        expect(result.recoveredFileIds).toEqual(["file-referenced"]);
+        expect(result.skippedReferenced).toBe(1);
+    });
+
+    it("rechecks references before changing each orphan", async () => {
+        const file = staleDetachedFile("file-raced");
+        mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([file]);
+        mocks.readManagedFilesByIds.mockResolvedValue([file]);
+        mocks.collectReferencedDirectusFileIds
+            .mockResolvedValueOnce(new Set())
+            .mockResolvedValueOnce(new Set(["file-raced"]));
+
+        const result = await runFileGcBatch(NOW);
+
+        expect(mocks.collectReferencedDirectusFileIds).toHaveBeenCalledTimes(2);
+        expect(mocks.markFilesAttached).toHaveBeenCalledWith({
+            fileIds: ["file-raced"],
+        });
+        expect(mocks.markFilesQuarantined).not.toHaveBeenCalled();
+        expect(result.recovered).toBe(1);
+        expect(result.skippedReferenced).toBe(1);
+    });
+
     it("skips current lifecycle rows that are not GC eligible", async () => {
         mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([
+            staleDetachedFile("file-attached"),
+            staleDetachedFile("file-protected"),
             {
-                id: "file-attached",
+                id: "file-temporary",
                 date_created: "2026-04-20T00:00:00.000Z",
-                app_lifecycle: "detached",
-                app_detached_at: "2026-04-20T00:00:00.000Z",
-            },
-            {
-                id: "file-protected",
-                date_created: "2026-04-20T00:00:00.000Z",
-                app_lifecycle: "detached",
-                app_detached_at: "2026-04-20T00:00:00.000Z",
-            },
-            {
-                id: "file-fresh-temporary",
-                date_created: "2026-04-24T00:00:00.000Z",
                 app_lifecycle: "temporary",
                 app_detached_at: null,
+                app_quarantined_at: null,
+                app_deleted_at: null,
+            },
+            {
+                ...staleDetachedFile("file-fresh-detached"),
+                app_detached_at: "2026-04-22T00:00:00.000Z",
             },
         ]);
         mocks.readManagedFilesByIds.mockResolvedValue([
@@ -302,125 +283,82 @@ describe("file-gc", () => {
                 date_created: "2026-04-20T00:00:00.000Z",
                 app_lifecycle: "attached",
                 app_detached_at: null,
+                app_quarantined_at: null,
+                app_deleted_at: null,
             },
             {
                 id: "file-protected",
                 date_created: "2026-04-20T00:00:00.000Z",
                 app_lifecycle: "protected",
                 app_detached_at: null,
+                app_quarantined_at: null,
+                app_deleted_at: null,
             },
             {
-                id: "file-fresh-temporary",
-                date_created: "2026-04-24T00:00:00.000Z",
+                id: "file-temporary",
+                date_created: "2026-04-20T00:00:00.000Z",
                 app_lifecycle: "temporary",
                 app_detached_at: null,
+                app_quarantined_at: null,
+                app_deleted_at: null,
+            },
+            {
+                id: "file-fresh-detached",
+                date_created: "2026-04-20T00:00:00.000Z",
+                app_lifecycle: "detached",
+                app_detached_at: "2026-04-22T00:00:00.000Z",
+                app_quarantined_at: null,
+                app_deleted_at: null,
             },
         ]);
 
-        const result = await runFileGcBatch(
-            new Date("2026-04-28T00:00:00.000Z"),
-        );
+        const result = await runFileGcBatch(NOW);
 
+        expect(mocks.markFilesQuarantined).not.toHaveBeenCalled();
+        expect(mocks.markFilesDeleted).not.toHaveBeenCalled();
         expect(mocks.deleteOrphanFileFromRepository).not.toHaveBeenCalled();
-        expect(result.skippedState).toBe(3);
+        expect(result.skippedState).toBe(4);
         expect(result.skippedReferenced).toBe(0);
     });
-});
 
-describe("file-gc dry-run and audit", () => {
-    beforeEach(() => {
-        resetFileGcMocks();
-    });
-
-    it("supports dry-run without deleting eligible orphan files", async () => {
+    it("marks failed physical deletes as deleted so future batches can retry", async () => {
+        const quarantined = staleQuarantinedFile("file-failed");
+        const deleted = {
+            ...staleQuarantinedFile("file-retry"),
+            app_lifecycle: "deleted" as const,
+            app_deleted_at: "2026-04-27T00:00:00.000Z",
+        };
         mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([
-            {
-                id: "file-dry-run",
-                date_created: "2026-04-20T00:00:00.000Z",
-                app_lifecycle: "detached",
-                app_detached_at: "2026-04-20T00:00:00.000Z",
-            },
+            quarantined,
+            deleted,
         ]);
-        mocks.readManagedFilesByIds.mockResolvedValue([
-            {
-                id: "file-dry-run",
-                date_created: "2026-04-20T00:00:00.000Z",
-                app_lifecycle: "detached",
-                app_detached_at: "2026-04-20T00:00:00.000Z",
-            },
-        ]);
-
-        const result = await runFileGcBatch(
-            new Date("2026-04-28T00:00:00.000Z"),
-            { dryRun: true },
-        );
-
-        expect(mocks.deleteOrphanFileFromRepository).not.toHaveBeenCalled();
-        expect(console.info).toHaveBeenCalledWith(
-            "[file-gc] delete audit",
-            expect.objectContaining({
-                fileId: "file-dry-run",
-                dryRun: true,
-                outcome: "would_delete",
-            }),
-        );
-        expect(result.deleted).toBe(0);
-        expect(result.wouldDelete).toBe(1);
-        expect(result.wouldDeleteFileIds).toEqual(["file-dry-run"]);
-    });
-
-    it("audits not found and failed delete outcomes", async () => {
-        mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([
-            {
-                id: "file-not-found",
-                date_created: "2026-04-20T00:00:00.000Z",
-                app_lifecycle: "detached",
-                app_detached_at: "2026-04-20T00:00:00.000Z",
-            },
-            {
-                id: "file-failed",
-                date_created: "2026-04-20T00:00:00.000Z",
-                app_lifecycle: "detached",
-                app_detached_at: "2026-04-20T00:00:00.000Z",
-            },
-        ]);
-        mocks.readManagedFilesByIds.mockResolvedValue([
-            {
-                id: "file-not-found",
-                date_created: "2026-04-20T00:00:00.000Z",
-                app_lifecycle: "detached",
-                app_detached_at: "2026-04-20T00:00:00.000Z",
-            },
-            {
-                id: "file-failed",
-                date_created: "2026-04-20T00:00:00.000Z",
-                app_lifecycle: "detached",
-                app_detached_at: "2026-04-20T00:00:00.000Z",
-            },
-        ]);
+        mocks.readManagedFilesByIds
+            .mockResolvedValueOnce([quarantined, deleted])
+            .mockResolvedValueOnce([quarantined])
+            .mockResolvedValueOnce([deleted]);
         mocks.deleteOrphanFileFromRepository
-            .mockResolvedValueOnce({
-                ok: false,
-                fileId: "file-not-found",
-                reason: "not_found",
-            })
             .mockResolvedValueOnce({
                 ok: false,
                 fileId: "file-failed",
                 reason: "network",
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                fileId: "file-retry",
             });
 
-        const result = await runFileGcBatch(
-            new Date("2026-04-28T00:00:00.000Z"),
-        );
+        const result = await runFileGcBatch(NOW);
 
-        expect(console.warn).toHaveBeenCalledWith(
-            "[file-gc] delete audit",
-            expect.objectContaining({
-                fileId: "file-not-found",
-                outcome: "not_found",
-                reason: "not_found",
-            }),
+        expect(mocks.markFilesDeleted).toHaveBeenCalledTimes(1);
+        expect(mocks.markFilesDeleted).toHaveBeenCalledWith(
+            ["file-failed"],
+            NOW.toISOString(),
+        );
+        expect(mocks.deleteOrphanFileFromRepository).toHaveBeenCalledWith(
+            "file-failed",
+        );
+        expect(mocks.deleteOrphanFileFromRepository).toHaveBeenCalledWith(
+            "file-retry",
         );
         expect(console.error).toHaveBeenCalledWith(
             "[file-gc] delete audit",
@@ -430,13 +368,31 @@ describe("file-gc dry-run and audit", () => {
                 reason: "network",
             }),
         );
-        expect(result.notFound).toBe(1);
         expect(result.failed).toBe(1);
+        expect(result.deleted).toBe(1);
+        expect(result.deletedFileIds).toEqual(["file-retry"]);
     });
 
-    it("does not run full lifecycle reconciliation before a GC batch", async () => {
-        await runFileGcBatch(new Date("2026-04-28T00:00:00.000Z"));
+    it("audits not found delete outcomes", async () => {
+        const file = staleQuarantinedFile("file-not-found");
+        mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([file]);
+        mocks.readManagedFilesByIds.mockResolvedValue([file]);
+        mocks.deleteOrphanFileFromRepository.mockResolvedValueOnce({
+            ok: false,
+            fileId: "file-not-found",
+            reason: "not_found",
+        });
 
-        expect(mocks.reconcileManagedFileLifecycle).not.toHaveBeenCalled();
+        const result = await runFileGcBatch(NOW);
+
+        expect(console.warn).toHaveBeenCalledWith(
+            "[file-gc] delete audit",
+            expect.objectContaining({
+                fileId: "file-not-found",
+                outcome: "not_found",
+                reason: "not_found",
+            }),
+        );
+        expect(result.notFound).toBe(1);
     });
 });

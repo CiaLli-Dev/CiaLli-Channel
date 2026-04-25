@@ -15767,7 +15767,7 @@
         "group": null,
         "hidden": true,
         "interface": "select-dropdown",
-        "note": "显式文件生命周期；GC 仅处理 detached 文件",
+        "note": "显式文件生命周期；GC 处理 detached/quarantined/deleted 文件",
         "options": {
           "choices": [
             {
@@ -15781,6 +15781,14 @@
             {
               "text": "Detached",
               "value": "detached"
+            },
+            {
+              "text": "Quarantined",
+              "value": "quarantined"
+            },
+            {
+              "text": "Deleted",
+              "value": "deleted"
             },
             {
               "text": "Protected",
@@ -15846,6 +15854,98 @@
       },
       "schema": {
         "name": "app_detached_at",
+        "table": "directus_files",
+        "data_type": "timestamp with time zone",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": false,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "directus_files",
+      "field": "app_quarantined_at",
+      "type": "timestamp",
+      "meta": {
+        "collection": "directus_files",
+        "conditions": null,
+        "display": "datetime",
+        "display_options": {
+          "relative": true
+        },
+        "field": "app_quarantined_at",
+        "group": null,
+        "hidden": true,
+        "interface": "datetime",
+        "note": "文件进入 quarantined 状态的时间",
+        "options": null,
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 6,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "app_quarantined_at",
+        "table": "directus_files",
+        "data_type": "timestamp with time zone",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": false,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "directus_files",
+      "field": "app_deleted_at",
+      "type": "timestamp",
+      "meta": {
+        "collection": "directus_files",
+        "conditions": null,
+        "display": "datetime",
+        "display_options": {
+          "relative": true
+        },
+        "field": "app_deleted_at",
+        "group": null,
+        "hidden": true,
+        "interface": "datetime",
+        "note": "文件进入 deleted 状态并准备物理删除的时间",
+        "options": null,
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 7,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "app_deleted_at",
         "table": "directus_files",
         "data_type": "timestamp with time zone",
         "default_value": null,

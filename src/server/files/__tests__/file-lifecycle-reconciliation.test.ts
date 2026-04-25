@@ -41,9 +41,13 @@ describe("file-lifecycle-reconciliation", () => {
         mocks.readAllManagedFiles.mockResolvedValue([]);
     });
 
-    it("classifies referenced and unreferenced files into attached/detached/temporary/protected", async () => {
+    it("classifies referenced and unreferenced files into managed lifecycle states", async () => {
         mocks.collectAllReferencedDirectusFileIds.mockResolvedValue(
-            new Set(["file-attached"]),
+            new Set([
+                "file-attached",
+                "file-quarantined-referenced",
+                "file-deleted",
+            ]),
         );
         mocks.readAllManagedFiles.mockResolvedValue([
             {
@@ -74,6 +78,33 @@ describe("file-lifecycle-reconciliation", () => {
                 app_lifecycle: "protected",
                 app_detached_at: null,
             },
+            {
+                id: "file-quarantined",
+                date_created: "2026-04-01T00:00:00.000Z",
+                date_updated: "2026-04-02T00:00:00.000Z",
+                app_lifecycle: "quarantined",
+                app_detached_at: "2026-04-03T00:00:00.000Z",
+                app_quarantined_at: "2026-04-10T00:00:00.000Z",
+                app_deleted_at: null,
+            },
+            {
+                id: "file-quarantined-referenced",
+                date_created: "2026-04-01T00:00:00.000Z",
+                date_updated: "2026-04-02T00:00:00.000Z",
+                app_lifecycle: "quarantined",
+                app_detached_at: "2026-04-03T00:00:00.000Z",
+                app_quarantined_at: "2026-04-10T00:00:00.000Z",
+                app_deleted_at: null,
+            },
+            {
+                id: "file-deleted",
+                date_created: "2026-04-01T00:00:00.000Z",
+                date_updated: "2026-04-02T00:00:00.000Z",
+                app_lifecycle: "deleted",
+                app_detached_at: "2026-04-03T00:00:00.000Z",
+                app_quarantined_at: "2026-04-10T00:00:00.000Z",
+                app_deleted_at: "2026-04-20T00:00:00.000Z",
+            },
         ]);
 
         const result = await reconcileManagedFileLifecycle(
@@ -81,7 +112,7 @@ describe("file-lifecycle-reconciliation", () => {
         );
 
         expect(mocks.markFilesAttached).toHaveBeenCalledWith({
-            fileIds: ["file-attached"],
+            fileIds: ["file-attached", "file-quarantined-referenced"],
         });
         expect(mocks.markFilesTemporary).toHaveBeenCalledWith([
             "file-temporary",
@@ -91,9 +122,11 @@ describe("file-lifecycle-reconciliation", () => {
             "2026-04-22T00:00:00.000Z",
         );
         expect(result).toEqual({
-            attached: 1,
+            attached: 2,
             detached: 1,
             temporary: 1,
+            quarantined: 1,
+            deleted: 1,
             protected: 1,
         });
     });

@@ -709,6 +709,8 @@ export async function updateDirectusFileMetadata(
         app_visibility?: "private" | "public" | null;
         app_lifecycle?: AppFileLifecycle | null;
         app_detached_at?: string | null;
+        app_quarantined_at?: string | null;
+        app_deleted_at?: string | null;
     },
 ): Promise<void> {
     await executeDirectusRequest(
