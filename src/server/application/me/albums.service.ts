@@ -23,10 +23,7 @@ import { parseJsonBody, parsePagination } from "@/server/api/utils";
 import { validateBody } from "@/server/api/validate";
 import { awaitCacheInvalidations } from "@/server/cache/invalidation";
 import { cacheManager } from "@/server/cache/manager";
-import {
-    enqueueFileDetachJob,
-    runFileDetachJobBestEffort,
-} from "@/server/files/file-detach-jobs";
+import { enqueueFileDetachJob } from "@/server/files/file-detach-jobs";
 import {
     countItems,
     createOne,
@@ -367,16 +364,12 @@ async function handleAlbumDelete(
 ): Promise<Response> {
     const coverFileId = normalizeDirectusFileId(target.cover_file);
     const photoFileIds = await collectAlbumFileIds(id);
-    const detachJob = await enqueueFileDetachJob({
+    await enqueueFileDetachJob({
         sourceType: "me.album.delete",
         sourceId: id,
         fileValues: [...(coverFileId ? [coverFileId] : []), ...photoFileIds],
     });
     await deleteOne("app_albums", id);
-    await runFileDetachJobBestEffort({
-        jobId: detachJob.jobId,
-        label: "me/albums#delete",
-    });
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("album-list"),
@@ -573,16 +566,12 @@ async function handlePhotoDelete(
     photo: AppAlbumPhoto,
     _ownerUserId: string,
 ): Promise<Response> {
-    const detachJob = await enqueueFileDetachJob({
+    await enqueueFileDetachJob({
         sourceType: "me.album-photo.delete",
         sourceId: photoId,
         fileValues: [photo.file_id],
     });
     await deleteOne("app_album_photos", photoId);
-    await runFileDetachJobBestEffort({
-        jobId: detachJob.jobId,
-        label: "me/album-photos#delete",
-    });
     await awaitCacheInvalidations(
         [cacheManager.invalidate("album-detail", photo.album_id)],
         { label: "me/album-photos#delete" },

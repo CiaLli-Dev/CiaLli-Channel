@@ -40,30 +40,37 @@ import {
     runFileGcBatch,
 } from "@/server/files/file-gc";
 
+function resetFileGcMocks(): void {
+    vi.clearAllMocks();
+    vi.spyOn(console, "info").mockImplementation(() => undefined);
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    delete process.env.FILE_GC_INTERVAL_MS;
+    delete process.env.FILE_GC_RETENTION_HOURS;
+    delete process.env.FILE_GC_BATCH_SIZE;
+    mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([]);
+    mocks.collectReferencedDirectusFileIds.mockResolvedValue(new Set());
+    mocks.deleteOrphanFileFromRepository.mockResolvedValue({
+        ok: true,
+        fileId: "file-1",
+    });
+    mocks.reconcileManagedFileLifecycle.mockResolvedValue({
+        attached: 0,
+        detached: 0,
+        temporary: 0,
+        protected: 0,
+    });
+    mocks.readManagedFilesByIds.mockResolvedValue([]);
+}
+
 describe("file-gc", () => {
     beforeEach(() => {
-        vi.clearAllMocks();
-        delete process.env.FILE_GC_INTERVAL_MS;
-        delete process.env.FILE_GC_RETENTION_HOURS;
-        delete process.env.FILE_GC_BATCH_SIZE;
-        mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([]);
-        mocks.collectReferencedDirectusFileIds.mockResolvedValue(new Set());
-        mocks.deleteOrphanFileFromRepository.mockResolvedValue({
-            ok: true,
-            fileId: "file-1",
-        });
-        mocks.reconcileManagedFileLifecycle.mockResolvedValue({
-            attached: 0,
-            detached: 0,
-            temporary: 0,
-            protected: 0,
-        });
-        mocks.readManagedFilesByIds.mockResolvedValue([]);
+        resetFileGcMocks();
     });
 
     it("uses GC env defaults when variables are absent", () => {
         expect(readFileGcIntervalMs()).toBe(900_000);
-        expect(readFileGcRetentionHours()).toBe(24);
+        expect(readFileGcRetentionHours()).toBe(168);
         expect(readFileGcBatchSize()).toBe(200);
     });
 
@@ -101,29 +108,43 @@ describe("file-gc", () => {
         );
 
         const result = await runFileGcBatch(
-            new Date("2026-04-24T00:00:00.000Z"),
+            new Date("2026-04-28T00:00:00.000Z"),
         );
 
         expect(
             mocks.readStaleFileGcCandidatesFromRepository,
         ).toHaveBeenCalledWith({
-            detachedBefore: "2026-04-23T00:00:00.000Z",
+            detachedBefore: "2026-04-21T00:00:00.000Z",
             limit: 200,
         });
         expect(mocks.deleteOrphanFileFromRepository).toHaveBeenCalledTimes(1);
         expect(mocks.deleteOrphanFileFromRepository).toHaveBeenCalledWith(
             "file-orphan",
         );
+        expect(console.info).toHaveBeenCalledWith(
+            "[file-gc] delete audit",
+            expect.objectContaining({
+                event: "file_gc_delete",
+                fileId: "file-orphan",
+                dryRun: false,
+                detachedBefore: "2026-04-21T00:00:00.000Z",
+                lifecycle: "detached",
+                outcome: "deleted",
+            }),
+        );
         expect(result).toEqual({
+            dryRun: false,
             scanned: 2,
             referenced: 1,
             deleted: 1,
+            wouldDelete: 0,
             notFound: 0,
             failed: 0,
             skippedState: 0,
             skippedReferenced: 1,
             candidateFileIds: ["file-orphan", "file-referenced"],
             deletedFileIds: ["file-orphan"],
+            wouldDeleteFileIds: [],
         });
     });
 
@@ -146,7 +167,7 @@ describe("file-gc", () => {
         ]);
 
         const result = await runFileGcBatch(
-            new Date("2026-04-24T00:00:00.000Z"),
+            new Date("2026-04-28T00:00:00.000Z"),
         );
 
         expect(mocks.deleteOrphanFileFromRepository).toHaveBeenCalledWith(
@@ -179,7 +200,7 @@ describe("file-gc", () => {
         );
 
         const result = await runFileGcBatch(
-            new Date("2026-04-24T00:00:00.000Z"),
+            new Date("2026-04-28T00:00:00.000Z"),
         );
 
         expect(mocks.deleteOrphanFileFromRepository).not.toHaveBeenCalled();
@@ -209,7 +230,7 @@ describe("file-gc", () => {
             .mockResolvedValueOnce(new Set(["file-raced"]));
 
         const result = await runFileGcBatch(
-            new Date("2026-04-24T00:00:00.000Z"),
+            new Date("2026-04-28T00:00:00.000Z"),
         );
 
         expect(mocks.collectReferencedDirectusFileIds).toHaveBeenCalledTimes(2);
@@ -246,7 +267,7 @@ describe("file-gc", () => {
             ]);
 
         const result = await runFileGcBatch(
-            new Date("2026-04-24T00:00:00.000Z"),
+            new Date("2026-04-28T00:00:00.000Z"),
         );
 
         expect(mocks.deleteOrphanFileFromRepository).not.toHaveBeenCalled();
@@ -297,16 +318,124 @@ describe("file-gc", () => {
         ]);
 
         const result = await runFileGcBatch(
-            new Date("2026-04-24T00:00:00.000Z"),
+            new Date("2026-04-28T00:00:00.000Z"),
         );
 
         expect(mocks.deleteOrphanFileFromRepository).not.toHaveBeenCalled();
         expect(result.skippedState).toBe(3);
         expect(result.skippedReferenced).toBe(0);
     });
+});
+
+describe("file-gc dry-run and audit", () => {
+    beforeEach(() => {
+        resetFileGcMocks();
+    });
+
+    it("supports dry-run without deleting eligible orphan files", async () => {
+        mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([
+            {
+                id: "file-dry-run",
+                date_created: "2026-04-20T00:00:00.000Z",
+                app_lifecycle: "detached",
+                app_detached_at: "2026-04-20T00:00:00.000Z",
+            },
+        ]);
+        mocks.readManagedFilesByIds.mockResolvedValue([
+            {
+                id: "file-dry-run",
+                date_created: "2026-04-20T00:00:00.000Z",
+                app_lifecycle: "detached",
+                app_detached_at: "2026-04-20T00:00:00.000Z",
+            },
+        ]);
+
+        const result = await runFileGcBatch(
+            new Date("2026-04-28T00:00:00.000Z"),
+            { dryRun: true },
+        );
+
+        expect(mocks.deleteOrphanFileFromRepository).not.toHaveBeenCalled();
+        expect(console.info).toHaveBeenCalledWith(
+            "[file-gc] delete audit",
+            expect.objectContaining({
+                fileId: "file-dry-run",
+                dryRun: true,
+                outcome: "would_delete",
+            }),
+        );
+        expect(result.deleted).toBe(0);
+        expect(result.wouldDelete).toBe(1);
+        expect(result.wouldDeleteFileIds).toEqual(["file-dry-run"]);
+    });
+
+    it("audits not found and failed delete outcomes", async () => {
+        mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([
+            {
+                id: "file-not-found",
+                date_created: "2026-04-20T00:00:00.000Z",
+                app_lifecycle: "detached",
+                app_detached_at: "2026-04-20T00:00:00.000Z",
+            },
+            {
+                id: "file-failed",
+                date_created: "2026-04-20T00:00:00.000Z",
+                app_lifecycle: "detached",
+                app_detached_at: "2026-04-20T00:00:00.000Z",
+            },
+        ]);
+        mocks.readManagedFilesByIds.mockResolvedValue([
+            {
+                id: "file-not-found",
+                date_created: "2026-04-20T00:00:00.000Z",
+                app_lifecycle: "detached",
+                app_detached_at: "2026-04-20T00:00:00.000Z",
+            },
+            {
+                id: "file-failed",
+                date_created: "2026-04-20T00:00:00.000Z",
+                app_lifecycle: "detached",
+                app_detached_at: "2026-04-20T00:00:00.000Z",
+            },
+        ]);
+        mocks.deleteOrphanFileFromRepository
+            .mockResolvedValueOnce({
+                ok: false,
+                fileId: "file-not-found",
+                reason: "not_found",
+            })
+            .mockResolvedValueOnce({
+                ok: false,
+                fileId: "file-failed",
+                reason: "network",
+            });
+
+        const result = await runFileGcBatch(
+            new Date("2026-04-28T00:00:00.000Z"),
+        );
+
+        expect(console.warn).toHaveBeenCalledWith(
+            "[file-gc] delete audit",
+            expect.objectContaining({
+                fileId: "file-not-found",
+                outcome: "not_found",
+                reason: "not_found",
+            }),
+        );
+        expect(console.error).toHaveBeenCalledWith(
+            "[file-gc] delete audit",
+            expect.objectContaining({
+                fileId: "file-failed",
+                outcome: "failed",
+                reason: "network",
+            }),
+        );
+        expect(result.notFound).toBe(1);
+        expect(result.failed).toBe(1);
+    });
 
     it("does not run full lifecycle reconciliation before a GC batch", async () => {
-        await runFileGcBatch(new Date("2026-04-24T00:00:00.000Z"));
+        await runFileGcBatch(new Date("2026-04-28T00:00:00.000Z"));
 
         expect(mocks.reconcileManagedFileLifecycle).not.toHaveBeenCalled();
     });

@@ -42,6 +42,7 @@ import {
 import { splitSiteSettingsForStorage } from "@/server/site-settings/storage-sections";
 
 import { requireAdmin } from "@/server/api/v1/shared";
+import { extractDirectusFileIdsFromUnknown } from "@/server/api/v1/shared/file-cleanup";
 import {
     detachManagedFiles,
     syncMarkdownFileLifecycle,
@@ -257,58 +258,12 @@ async function readSiteAnnouncement(): Promise<{
     };
 }
 
-const DIRECTUS_FILE_ID_PATTERN =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function extractDirectusFileIdFromAssetValue(value: unknown): string | null {
-    if (typeof value !== "string") {
-        return null;
-    }
-    const raw = value.trim();
-    if (!raw) {
-        return null;
-    }
-    if (DIRECTUS_FILE_ID_PATTERN.test(raw)) {
-        return raw;
-    }
-    try {
-        const parsed = new URL(raw, "http://localhost");
-        const path = parsed.pathname;
-        const directPattern = /^\/api\/v1\/public\/assets\/([^/?#]+)\/?$/;
-        const privatePattern = /^\/api\/v1\/assets\/([^/?#]+)\/?$/;
-        const assetPattern = /^\/assets\/([^/?#]+)\/?$/;
-        const matched =
-            path.match(directPattern)?.[1] ||
-            path.match(privatePattern)?.[1] ||
-            path.match(assetPattern)?.[1] ||
-            "";
-        if (!matched) {
-            return null;
-        }
-        const decoded = decodeURIComponent(matched).trim();
-        return DIRECTUS_FILE_ID_PATTERN.test(decoded) ? decoded : null;
-    } catch {
-        return null;
-    }
-}
-
-function collectBannerAssetValues(value: unknown): string[] {
-    if (typeof value === "string") {
-        return [value];
-    }
-    if (Array.isArray(value)) {
-        return value
-            .map((entry) => (typeof entry === "string" ? entry : ""))
-            .filter(Boolean);
-    }
-    return [];
-}
-
 function collectSettingsFileIds(settings: SiteSettingsPayload): Set<string> {
     const ids = new Set<string>();
     const collectSingleAsset = (value: unknown): void => {
-        const fileId = extractDirectusFileIdFromAssetValue(value);
-        if (fileId) {
+        for (const fileId of extractDirectusFileIdsFromUnknown(value, {
+            includeBareUuid: true,
+        })) {
             ids.add(fileId);
         }
     };
@@ -316,9 +271,7 @@ function collectSettingsFileIds(settings: SiteSettingsPayload): Set<string> {
     for (const item of settings.site.favicon || []) {
         collectSingleAsset(item.src);
     }
-    for (const source of collectBannerAssetValues(settings.banner.src)) {
-        collectSingleAsset(source);
-    }
+    collectSingleAsset(settings.banner.src);
     collectSingleAsset(settings.navbarTitle.icon);
     collectSingleAsset(settings.navbarTitle.logo);
     collectSingleAsset(settings.profile.avatar);

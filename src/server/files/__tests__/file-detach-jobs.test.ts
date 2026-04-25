@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
     createOne: vi.fn(),
     markFilesDetached: vi.fn(),
     readMany: vi.fn(),
+    readOneById: vi.fn(),
     updateOne: vi.fn(),
     withServiceRepositoryContext: vi.fn(
         async (task: () => Promise<unknown>) => await task(),
@@ -14,6 +15,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/server/directus/client", () => ({
     createOne: mocks.createOne,
     readMany: mocks.readMany,
+    readOneById: mocks.readOneById,
     updateOne: mocks.updateOne,
 }));
 
@@ -55,6 +57,7 @@ describe("file-detach-jobs", () => {
         });
         mocks.markFilesDetached.mockResolvedValue(undefined);
         mocks.readMany.mockResolvedValue([]);
+        mocks.readOneById.mockResolvedValue(null);
         mocks.updateOne.mockResolvedValue({});
     });
 
@@ -193,6 +196,76 @@ describe("file-detach-jobs", () => {
             }),
         );
         expect(result.status).toBe("pending");
+    });
+
+    it("reschedules pending jobs when the source record still exists", async () => {
+        mocks.readMany.mockResolvedValue([
+            {
+                id: "job-1",
+                status: "pending",
+                source_type: "me.article.delete",
+                source_id: "article-1",
+                attempts: 0,
+                candidate_file_ids: [FILE_TWO],
+                scheduled_at: "2026-04-24T00:00:00.000Z",
+                leased_until: null,
+            },
+        ]);
+        mocks.readOneById.mockResolvedValue({ id: "article-1" });
+
+        const result = await runFileDetachJob(
+            "job-1",
+            new Date("2026-04-24T00:00:00.000Z"),
+        );
+
+        expect(mocks.readOneById).toHaveBeenCalledWith(
+            "app_articles",
+            "article-1",
+            { fields: ["id"] },
+        );
+        expect(mocks.markFilesDetached).not.toHaveBeenCalled();
+        expect(mocks.updateOne).toHaveBeenCalledWith(
+            "app_file_detach_jobs",
+            "job-1",
+            expect.objectContaining({
+                status: "pending",
+                scheduled_at: "2026-04-24T00:00:30.000Z",
+                error_code: "SOURCE_NOT_DELETED",
+            }),
+        );
+        expect(result).toEqual({
+            status: "pending",
+            jobId: "job-1",
+            detached: 0,
+            skippedReferenced: 0,
+        });
+    });
+
+    it("does not block legacy jobs with unknown source types", async () => {
+        mocks.readMany.mockResolvedValue([
+            {
+                id: "job-legacy",
+                status: "pending",
+                source_type: "legacy.delete",
+                source_id: "source-1",
+                attempts: 0,
+                candidate_file_ids: [FILE_TWO],
+                scheduled_at: "2026-04-24T00:00:00.000Z",
+                leased_until: null,
+            },
+        ]);
+
+        const result = await runFileDetachJob(
+            "job-legacy",
+            new Date("2026-04-24T00:00:00.000Z"),
+        );
+
+        expect(mocks.readOneById).not.toHaveBeenCalled();
+        expect(mocks.markFilesDetached).toHaveBeenCalledWith(
+            [FILE_TWO],
+            "2026-04-24T00:00:00.000Z",
+        );
+        expect(result.status).toBe("succeeded");
     });
 
     it("recovers processing jobs with expired leases", async () => {

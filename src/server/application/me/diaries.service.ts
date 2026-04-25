@@ -20,10 +20,7 @@ import { parseJsonBody, parsePagination } from "@/server/api/utils";
 import { validateBody } from "@/server/api/validate";
 import { awaitCacheInvalidations } from "@/server/cache/invalidation";
 import { cacheManager } from "@/server/cache/manager";
-import {
-    enqueueFileDetachJob,
-    runFileDetachJobBestEffort,
-} from "@/server/files/file-detach-jobs";
+import { enqueueFileDetachJob } from "@/server/files/file-detach-jobs";
 import {
     createOne,
     deleteOne,
@@ -548,7 +545,7 @@ async function handleDiaryDelete(
     const markdownFileIds = extractDirectusAssetIdsFromMarkdown(
         String(target.content ?? ""),
     );
-    const detachJob = await enqueueFileDetachJob({
+    await enqueueFileDetachJob({
         sourceType: "me.diary.delete",
         sourceId: diaryId,
         fileValues: [
@@ -558,10 +555,6 @@ async function handleDiaryDelete(
         ],
     });
     await deleteOne("app_diaries", diaryId);
-    await runFileDetachJobBestEffort({
-        jobId: detachJob.jobId,
-        label: "me/diaries#delete",
-    });
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("diary-list"),
@@ -765,16 +758,12 @@ async function handleDiaryImageDelete(
     image: JsonObject,
     diary: JsonObject,
 ): Promise<Response> {
-    const detachJob = await enqueueFileDetachJob({
+    await enqueueFileDetachJob({
         sourceType: "me.diary-image.delete",
         sourceId: imageId,
         fileValues: [image.file_id],
     });
     await deleteOne("app_diary_images", imageId);
-    await runFileDetachJobBestEffort({
-        jobId: detachJob.jobId,
-        label: "me/diary-images#delete",
-    });
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("mixed-feed"),

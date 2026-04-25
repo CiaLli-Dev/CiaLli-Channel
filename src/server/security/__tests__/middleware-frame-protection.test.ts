@@ -174,18 +174,14 @@ describe("middleware frame protection", () => {
 
         const response = assertResponse(
             await onRequest(
-                createContext(
-                    "/posts/CLtR47Cf7U6c",
-                    "http://192.168.1.20",
-                    {
-                        headers: {
-                            referer: "http://192.168.1.20/",
-                            "sec-fetch-dest": "iframe",
-                            "sec-fetch-mode": "navigate",
-                            "sec-fetch-site": "same-origin",
-                        },
+                createContext("/posts/CLtR47Cf7U6c", "http://192.168.1.20", {
+                    headers: {
+                        referer: "http://192.168.1.20/",
+                        "sec-fetch-dest": "iframe",
+                        "sec-fetch-mode": "navigate",
+                        "sec-fetch-site": "same-origin",
                     },
-                ),
+                }),
                 next as unknown as MiddlewareNext,
             ),
         );
@@ -210,18 +206,14 @@ describe("middleware frame protection", () => {
 
         const response = assertResponse(
             await onRequest(
-                createContext(
-                    "/posts/CLtR47Cf7U6c",
-                    "http://192.168.1.20",
-                    {
-                        headers: {
-                            referer: "http://192.168.1.20/",
-                            "sec-fetch-dest": "iframe",
-                            "sec-fetch-mode": "navigate",
-                            "sec-fetch-site": "same-origin",
-                        },
+                createContext("/posts/CLtR47Cf7U6c", "http://192.168.1.20", {
+                    headers: {
+                        referer: "http://192.168.1.20/",
+                        "sec-fetch-dest": "iframe",
+                        "sec-fetch-mode": "navigate",
+                        "sec-fetch-site": "same-origin",
                     },
-                ),
+                }),
                 next as unknown as MiddlewareNext,
             ),
         );

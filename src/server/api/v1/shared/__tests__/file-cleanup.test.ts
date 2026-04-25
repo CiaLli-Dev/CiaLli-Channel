@@ -44,6 +44,7 @@ vi.mock("@/server/repositories/directus/scope", () => ({
 import {
     collectReferencedDirectusFileIds,
     extractDirectusAssetIdsFromMarkdown,
+    extractDirectusFileIdsFromUnknown,
     normalizeDirectusFileId,
 } from "@/server/api/v1/shared/file-cleanup";
 import {
@@ -96,7 +97,7 @@ describe("extractDirectusAssetIdsFromMarkdown", () => {
     it("仅提取受支持的相对资源 URL", () => {
         expect(
             extractDirectusAssetIdsFromMarkdown(
-                `![a](/api/v1/public/assets/${UUID_A}) ![b](/api/v1/assets/${UUID_B}?width=320)`,
+                `![a](/api/v1/public/assets/${UUID_A}) ![b](/api/v1/assets/${UUID_B}?width=320) ![c](/assets/${UUID_A})`,
             ),
         ).toEqual([UUID_A, UUID_B]);
     });
@@ -114,9 +115,36 @@ describe("extractDirectusAssetIdsFromMarkdown", () => {
 
         expect(
             extractDirectusAssetIdsFromMarkdown(
-                `![cdn](https://cdn.example.com/${UUID_A}?format=webp)`,
+                `![cdn](https://cdn.example.com/assets/${UUID_A}?format=webp)`,
             ),
         ).toEqual([UUID_A]);
+    });
+});
+
+describe("extractDirectusFileIdsFromUnknown", () => {
+    it("支持结构化 settings 中的多种 Directus 文件引用格式", () => {
+        process.env.PUBLIC_ASSET_BASE_URL = "https://cdn.example.com/assets";
+
+        expect(
+            extractDirectusFileIdsFromUnknown(
+                {
+                    bare: UUID_A,
+                    direct: `/assets/${UUID_B}`,
+                    privateUrl: `/api/v1/assets/${UUID_A}?width=320`,
+                    publicUrl: `/api/v1/public/assets/${UUID_B}`,
+                    cdnUrl: `https://cdn.example.com/assets/${UUID_A}?format=webp`,
+                    object: { id: UUID_B.toUpperCase() },
+                    nested: [`https://example.com/assets/${UUID_A}`],
+                },
+                { includeBareUuid: true },
+            ),
+        ).toEqual([UUID_A, UUID_B]);
+    });
+
+    it("默认不把普通文本里的裸 UUID 当作文件引用", () => {
+        expect(
+            extractDirectusFileIdsFromUnknown(`plain uuid ${UUID_A}`),
+        ).toEqual([]);
     });
 });
 

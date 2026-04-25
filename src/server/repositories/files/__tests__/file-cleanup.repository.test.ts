@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 
 const mocks = vi.hoisted(() => ({
     readMany: vi.fn(),
@@ -10,6 +11,7 @@ vi.mock("@/server/directus/client", () => ({
 }));
 
 import {
+    STRUCTURED_REFERENCE_TARGETS,
     readAllReferencedIdsInSiteSettingsFromRepository,
     readReferencedIdsInSiteSettingsFromRepository,
     readStaleFileGcCandidatesFromRepository,
@@ -30,6 +32,7 @@ const UUID_C = "11111111-2222-4333-8abc-444444444444";
 describe("file-cleanup.repository", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        delete process.env.PUBLIC_ASSET_BASE_URL;
         mocks.readMany.mockResolvedValue([]);
     });
 
@@ -66,15 +69,16 @@ describe("file-cleanup.repository", () => {
     });
 
     it("scans all site settings section fields for candidate file references", async () => {
+        process.env.PUBLIC_ASSET_BASE_URL = "https://cdn.example.com/assets";
         mocks.readMany.mockResolvedValue([
             {
                 settings_site: {
-                    logo: `![logo](/api/v1/public/assets/${UUID_A})`,
+                    logo: UUID_A,
                 },
                 settings_nav: {
                     links: [
                         {
-                            icon: `![ignored](/api/v1/public/assets/${UUID_C})`,
+                            icon: { id: UUID_C },
                         },
                     ],
                 },
@@ -83,7 +87,7 @@ describe("file-cleanup.repository", () => {
                     cover: "plain text without supported asset URL",
                 },
                 settings_other: {
-                    footer: `![footer](/api/v1/assets/${UUID_B}?width=320)`,
+                    footer: `https://cdn.example.com/assets/${UUID_B}?width=320`,
                 },
             },
         ]);
@@ -91,6 +95,7 @@ describe("file-cleanup.repository", () => {
         const referenced = await readReferencedIdsInSiteSettingsFromRepository([
             UUID_A,
             UUID_B,
+            UUID_C,
         ]);
 
         expect(mocks.readMany).toHaveBeenCalledWith("app_site_settings", {
@@ -104,19 +109,20 @@ describe("file-cleanup.repository", () => {
             sort: ["-date_updated", "-date_created"],
             limit: 1,
         });
-        expect(referenced).toEqual(new Set([UUID_A, UUID_B]));
+        expect(referenced).toEqual(new Set([UUID_A, UUID_C, UUID_B]));
     });
 
     it("scans all site settings section fields for full reference collection", async () => {
+        process.env.PUBLIC_ASSET_BASE_URL = "https://cdn.example.com/assets";
         mocks.readMany.mockResolvedValue([
             {
-                settings_site: `![logo](/api/v1/public/assets/${UUID_A})`,
+                settings_site: UUID_A,
                 settings_nav: {
-                    items: [`![nav](/api/v1/assets/${UUID_B})`],
+                    items: [{ id: UUID_B }],
                 },
                 settings_home: {
                     hero: {
-                        image: `![hero](/api/v1/public/assets/${UUID_C}#hash)`,
+                        image: `https://cdn.example.com/assets/${UUID_C}#hash`,
                     },
                 },
                 settings_article: null,
@@ -141,5 +147,46 @@ describe("file-cleanup.repository", () => {
             limit: 1,
         });
         expect(referenced).toEqual(new Set([UUID_A, UUID_B, UUID_C]));
+    });
+
+    it("keeps every Directus file relation covered by structured reference targets", () => {
+        type DirectusSchemaRelation = {
+            collection?: unknown;
+            field?: unknown;
+            related_collection?: unknown;
+        };
+        const schema = JSON.parse(
+            readFileSync("directus/schema/app-schema.json", "utf8"),
+        ) as { relations?: DirectusSchemaRelation[] };
+        const directusFileRelations = (schema.relations || [])
+            .filter(
+                (relation) =>
+                    relation.related_collection === "directus_files" &&
+                    typeof relation.collection === "string" &&
+                    typeof relation.field === "string" &&
+                    relation.collection.startsWith("app_"),
+            )
+            .map(
+                (relation) =>
+                    `${String(relation.collection)}.${String(relation.field)}`,
+            )
+            .sort();
+        const structuredTargets = STRUCTURED_REFERENCE_TARGETS.map(
+            (target) => `${target.collection}.${target.field}`,
+        ).sort();
+
+        expect(structuredTargets).toEqual(
+            expect.arrayContaining(directusFileRelations),
+        );
+        expect(directusFileRelations).toEqual([
+            "app_album_photos.file_id",
+            "app_albums.cover_file",
+            "app_anime_entries.cover_file",
+            "app_articles.cover_file",
+            "app_diary_images.file_id",
+            "app_friends.avatar_file",
+            "app_user_profiles.header_file",
+            "app_user_registration_requests.avatar_file",
+        ]);
     });
 });

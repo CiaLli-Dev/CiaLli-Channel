@@ -28,9 +28,15 @@ vi.mock("@/server/directus/client", () => ({
     updateOne: vi.fn(),
 }));
 
-vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
-    cleanupOwnedOrphanDirectusFiles: vi.fn(),
-}));
+vi.mock("@/server/api/v1/shared/file-cleanup", async () => {
+    const actual =
+        await import("@/server/api/v1/shared/file-cleanup-reference-utils");
+    return {
+        extractDirectusFileIdsFromUnknown:
+            actual.extractDirectusFileIdsFromUnknown,
+        cleanupOwnedOrphanDirectusFiles: vi.fn(),
+    };
+});
 
 vi.mock("@/server/api/v1/me/_helpers", () => ({
     detachManagedFiles: vi.fn().mockResolvedValue([]),
@@ -97,6 +103,7 @@ function makeCtx(
 describe("handleAdminSettings /bulletin", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        delete process.env.PUBLIC_ASSET_BASE_URL;
         mockedRequireAdmin.mockResolvedValue({
             access: {
                 isAdmin: true,
@@ -606,6 +613,88 @@ describe("handleAdminSettings /site wallpaper lifecycle", () => {
             }),
         );
         expect(mockedDetachManagedFiles).toHaveBeenCalledWith([]);
+    });
+
+    it("PATCH /admin/settings/site 用共享提取器识别 settings 文件引用格式", async () => {
+        process.env.PUBLIC_ASSET_BASE_URL = "https://cdn.example.com/assets";
+        const oldFaviconFileId = "a1b2c3d4-e5f6-1234-9abc-def012345678";
+        const newFaviconFileId = "f1e2d3c4-b5a6-4234-8abc-fedcba987654";
+        const newBannerFileId = "11111111-2222-4333-8abc-444444444444";
+        const newIconFileId = "22222222-3333-4444-8abc-555555555555";
+        const newAvatarFileId = "33333333-4444-4555-8abc-666666666666";
+        mockedGetResolvedSiteSettings.mockResolvedValue({
+            system: {
+                timeZone: "Asia/Shanghai",
+            },
+            settings: {
+                ...defaultSiteSettings,
+                site: {
+                    ...defaultSiteSettings.site,
+                    favicon: [{ src: oldFaviconFileId }],
+                },
+            },
+        } as never);
+        mockedResolveSiteSettingsPayload.mockReturnValue({
+            ...defaultSiteSettings,
+            site: {
+                ...defaultSiteSettings.site,
+                favicon: [{ src: `/assets/${newFaviconFileId}` }],
+            },
+            banner: {
+                ...defaultSiteSettings.banner,
+                src: `https://cdn.example.com/assets/${newBannerFileId}`,
+            },
+            navbarTitle: {
+                ...defaultSiteSettings.navbarTitle,
+                icon: `/api/v1/public/assets/${newIconFileId}`,
+            },
+            profile: {
+                ...defaultSiteSettings.profile,
+                avatar: { id: newAvatarFileId },
+            },
+        } as never);
+        mockedReadMany.mockResolvedValue([
+            {
+                id: "row-1",
+                date_updated: "2026-02-15T12:00:00.000Z",
+                date_created: "2026-02-10T12:00:00.000Z",
+            },
+        ] as never);
+        mockedUpdateOne.mockResolvedValue({
+            date_updated: "2026-02-16T00:00:00.000Z",
+            date_created: "2026-02-10T12:00:00.000Z",
+        } as never);
+
+        const ctx = makeCtx("admin/settings/site", "PATCH", {
+            site: {
+                favicon: [{ src: `/assets/${newFaviconFileId}` }],
+            },
+        });
+        const response = await handleAdminSettings(
+            ctx as unknown as APIContext,
+            ["settings", "site"],
+        );
+
+        expect(response.status).toBe(200);
+        expect(mockedUpdateDirectusFileMetadata).toHaveBeenCalledTimes(4);
+        for (const fileId of [
+            newFaviconFileId,
+            newBannerFileId,
+            newIconFileId,
+            newAvatarFileId,
+        ]) {
+            expect(mockedUpdateDirectusFileMetadata).toHaveBeenCalledWith(
+                fileId,
+                expect.objectContaining({
+                    uploaded_by: "admin-1",
+                    app_lifecycle: "attached",
+                    app_detached_at: null,
+                }),
+            );
+        }
+        expect(mockedDetachManagedFiles).toHaveBeenCalledWith([
+            oldFaviconFileId,
+        ]);
     });
 });
 

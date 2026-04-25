@@ -57,7 +57,6 @@ vi.mock("@/server/files/file-detach-jobs", () => ({
         status: "pending",
         candidateFileIds: [],
     }),
-    runFileDetachJobBestEffort: vi.fn().mockResolvedValue(undefined),
 }));
 
 import {

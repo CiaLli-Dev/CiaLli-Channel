@@ -16,6 +16,7 @@ import {
 
 export {
     extractDirectusAssetIdsFromMarkdown,
+    extractDirectusFileIdsFromUnknown,
     normalizeDirectusFileId,
 } from "@/server/api/v1/shared/file-cleanup-reference-utils";
 

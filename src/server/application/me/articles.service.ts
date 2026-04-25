@@ -21,10 +21,7 @@ import { validateBody } from "@/server/api/validate";
 import { enqueueAndTriggerArticleSummaryJob } from "@/server/ai-summary/dispatch";
 import { awaitCacheInvalidations } from "@/server/cache/invalidation";
 import { cacheManager } from "@/server/cache/manager";
-import {
-    enqueueFileDetachJob,
-    runFileDetachJobBestEffort,
-} from "@/server/files/file-detach-jobs";
+import { enqueueFileDetachJob } from "@/server/files/file-detach-jobs";
 import {
     createOne,
     deleteOne,
@@ -815,16 +812,12 @@ async function handleArticleDelete(
         candidateFileIds.add(coverFileId);
     }
     const commentCleanup = await collectArticleCommentCleanupCandidates(id);
-    const detachJob = await enqueueFileDetachJob({
+    await enqueueFileDetachJob({
         sourceType: "me.article.delete",
         sourceId: id,
         fileValues: [...candidateFileIds, ...commentCleanup.candidateFileIds],
     });
     await deleteOne("app_articles", id);
-    await runFileDetachJobBestEffort({
-        jobId: detachJob.jobId,
-        label: "me/articles#delete",
-    });
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("article-list"),

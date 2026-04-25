@@ -499,7 +499,9 @@ function handleBeforePreparation(
     }
     schedulePreventedPreparationReset(
         e,
-        () => state.navigationToken === navigationToken && state.navigationInProgress,
+        () =>
+            state.navigationToken === navigationToken &&
+            state.navigationInProgress,
         resetCurrentPreparation,
     );
     scheduleAbortedPreparationReset(

@@ -97,7 +97,9 @@ function hasSafeHtmlRequestMethod(request: Pick<Request, "method">): boolean {
 }
 
 function hasUpgradeInsecureRequests(headers: Headers): boolean {
-    return normalizeHeaderValue(headers.get("upgrade-insecure-requests")) === "1";
+    return (
+        normalizeHeaderValue(headers.get("upgrade-insecure-requests")) === "1"
+    );
 }
 
 function hasExplicitDocumentNavigation(headers: Headers): boolean {

@@ -6,20 +6,27 @@ import {
 } from "@/server/repositories/files/file-cleanup.repository";
 import { readManagedFilesByIds } from "@/server/repositories/files/file-lifecycle.repository";
 
-const DEFAULT_FILE_GC_RETENTION_HOURS = 24;
+const DEFAULT_FILE_GC_RETENTION_HOURS = 168;
 const DEFAULT_FILE_GC_BATCH_SIZE = 200;
 const DEFAULT_FILE_GC_INTERVAL_MS = 900_000;
 
 type FileGcResult = {
+    dryRun: boolean;
     scanned: number;
     referenced: number;
     deleted: number;
+    wouldDelete: number;
     notFound: number;
     failed: number;
     skippedState: number;
     skippedReferenced: number;
     candidateFileIds: string[];
     deletedFileIds: string[];
+    wouldDeleteFileIds: string[];
+};
+
+type FileGcOptions = {
+    dryRun?: boolean;
 };
 
 function readPositiveIntegerEnv(
@@ -86,10 +93,47 @@ function isGcEligibleLifecycle(
     return false;
 }
 
+function readAuditLifecycle(row: ManagedFileGcState | undefined): string {
+    return row?.app_lifecycle || "unknown";
+}
+
+function logFileGcAudit(params: {
+    fileId: string;
+    dryRun: boolean;
+    detachedBefore: string;
+    lifecycle: string;
+    outcome: "deleted" | "would_delete" | "not_found" | "failed";
+    reason?: string;
+    message?: string;
+}): void {
+    const payload = {
+        event: "file_gc_delete",
+        fileId: params.fileId,
+        dryRun: params.dryRun,
+        detachedBefore: params.detachedBefore,
+        lifecycle: params.lifecycle,
+        outcome: params.outcome,
+        ...(params.reason ? { reason: params.reason } : {}),
+        ...(params.message ? { message: params.message } : {}),
+    };
+
+    if (params.outcome === "failed") {
+        console.error("[file-gc] delete audit", payload);
+        return;
+    }
+    if (params.outcome === "not_found") {
+        console.warn("[file-gc] delete audit", payload);
+        return;
+    }
+    console.info("[file-gc] delete audit", payload);
+}
+
 export async function runFileGcBatch(
     now: Date = new Date(),
+    options: FileGcOptions = {},
 ): Promise<FileGcResult> {
     return await withServiceRepositoryContext(async () => {
+        const dryRun = options.dryRun === true;
         const detachedBefore = buildDetachedBeforeIso(now);
         const candidates = await readStaleFileGcCandidatesFromRepository({
             detachedBefore,
@@ -101,15 +145,18 @@ export async function runFileGcBatch(
 
         if (candidateFileIds.length === 0) {
             return {
+                dryRun,
                 scanned: 0,
                 referenced: 0,
                 deleted: 0,
+                wouldDelete: 0,
                 notFound: 0,
                 failed: 0,
                 skippedState: 0,
                 skippedReferenced: 0,
                 candidateFileIds: [],
                 deletedFileIds: [],
+                wouldDeleteFileIds: [],
             };
         }
 
@@ -136,11 +183,13 @@ export async function runFileGcBatch(
         );
 
         let deleted = 0;
+        let wouldDelete = 0;
         let notFound = 0;
         let failed = 0;
         let finalSkippedState = 0;
         let finalSkippedReferenced = 0;
         const deletedFileIds: string[] = [];
+        const wouldDeleteFileIds: string[] = [];
         for (const fileId of orphanFileIds) {
             const finalReferencedFileIds =
                 await collectReferencedDirectusFileIds([fileId]);
@@ -153,17 +202,53 @@ export async function runFileGcBatch(
                 finalSkippedState += 1;
                 continue;
             }
+            const lifecycle = readAuditLifecycle(finalLifecycleRow);
+            if (dryRun) {
+                wouldDelete += 1;
+                wouldDeleteFileIds.push(fileId);
+                logFileGcAudit({
+                    fileId,
+                    dryRun,
+                    detachedBefore,
+                    lifecycle,
+                    outcome: "would_delete",
+                });
+                continue;
+            }
             const result = await deleteOrphanFileFromRepository(fileId);
             if (result.ok) {
                 deleted += 1;
                 deletedFileIds.push(fileId);
+                logFileGcAudit({
+                    fileId,
+                    dryRun,
+                    detachedBefore,
+                    lifecycle,
+                    outcome: "deleted",
+                });
                 continue;
             }
             if (result.reason === "not_found") {
                 notFound += 1;
+                logFileGcAudit({
+                    fileId,
+                    dryRun,
+                    detachedBefore,
+                    lifecycle,
+                    outcome: "not_found",
+                    reason: result.reason,
+                });
                 continue;
             }
             failed += 1;
+            logFileGcAudit({
+                fileId,
+                dryRun,
+                detachedBefore,
+                lifecycle,
+                outcome: "failed",
+                reason: result.reason,
+            });
         }
 
         const skippedState =
@@ -176,15 +261,18 @@ export async function runFileGcBatch(
             finalSkippedReferenced;
 
         return {
+            dryRun,
             scanned: candidateFileIds.length,
             referenced: referencedFileIds.size,
             deleted,
+            wouldDelete,
             notFound,
             failed,
             skippedState: skippedState,
             skippedReferenced,
             candidateFileIds,
             deletedFileIds,
+            wouldDeleteFileIds,
         };
     });
 }

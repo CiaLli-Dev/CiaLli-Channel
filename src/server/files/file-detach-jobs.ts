@@ -1,6 +1,11 @@
 import type { AppFileDetachJob } from "@/types/app";
 import type { JsonObject } from "@/types/json";
-import { createOne, readMany, updateOne } from "@/server/directus/client";
+import {
+    createOne,
+    readMany,
+    readOneById,
+    updateOne,
+} from "@/server/directus/client";
 import { collectReferencedDirectusFileIds } from "@/server/api/v1/shared/file-cleanup";
 import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup-reference-utils";
 import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
@@ -10,6 +15,34 @@ const DEFAULT_FILE_DETACH_JOB_INTERVAL_MS = 60_000;
 const DEFAULT_FILE_DETACH_JOB_BATCH_SIZE = 50;
 const DEFAULT_FILE_DETACH_JOB_LEASE_SECONDS = 300;
 const MAX_RETRY_DELAY_MS = 60 * 60_000;
+
+type FileDetachJobSourceCollection =
+    | "app_albums"
+    | "app_album_photos"
+    | "app_articles"
+    | "app_article_comments"
+    | "app_diaries"
+    | "app_diary_comments"
+    | "app_diary_images";
+
+const SOURCE_COLLECTION_BY_TYPE: Partial<
+    Record<string, FileDetachJobSourceCollection>
+> = {
+    "admin.album.delete": "app_albums",
+    "admin.album-photo.delete": "app_album_photos",
+    "admin.article.delete": "app_articles",
+    "admin.article-comment.delete": "app_article_comments",
+    "admin.diary.delete": "app_diaries",
+    "admin.diary-comment.delete": "app_diary_comments",
+    "admin.diary-image.delete": "app_diary_images",
+    "comment.article.delete": "app_article_comments",
+    "comment.diary.delete": "app_diary_comments",
+    "me.album.delete": "app_albums",
+    "me.album-photo.delete": "app_album_photos",
+    "me.article.delete": "app_articles",
+    "me.diary.delete": "app_diaries",
+    "me.diary-image.delete": "app_diary_images",
+};
 
 export type FileDetachJobRunResult = {
     status: "succeeded" | "pending" | "skipped";
@@ -133,6 +166,8 @@ async function readFileDetachJob(
         fields: [
             "id",
             "status",
+            "source_type",
+            "source_id",
             "candidate_file_ids",
             "attempts",
             "scheduled_at",
@@ -140,6 +175,22 @@ async function readFileDetachJob(
         ],
     });
     return rows[0] ?? null;
+}
+
+async function isDetachJobSourceDeleted(
+    job: AppFileDetachJob,
+): Promise<boolean> {
+    if (!job.source_id) {
+        return true;
+    }
+    const collection = SOURCE_COLLECTION_BY_TYPE[job.source_type];
+    if (!collection) {
+        return true;
+    }
+    const row = await readOneById(collection, job.source_id, {
+        fields: ["id"],
+    });
+    return row === null;
 }
 
 export async function enqueueFileDetachJob(input: {
@@ -244,18 +295,40 @@ export async function runFileDetachJob(
         const attempts = job.attempts + 1;
         const candidateFileIds = readJobCandidateFileIds(job);
 
-        await updateOne("app_file_detach_jobs", job.id, {
-            status: "processing",
-            attempts,
-            started_at: nowIso,
-            leased_until: new Date(
-                now.getTime() + readFileDetachJobLeaseSeconds() * 1_000,
-            ).toISOString(),
-            error_code: null,
-            error_message: null,
-        });
-
         try {
+            if (!(await isDetachJobSourceDeleted(job))) {
+                await updateOne("app_file_detach_jobs", job.id, {
+                    status: "pending",
+                    attempts,
+                    scheduled_at: new Date(
+                        now.getTime() + buildRetryDelayMs(attempts),
+                    ).toISOString(),
+                    leased_until: null,
+                    started_at: null,
+                    finished_at: null,
+                    error_code: "SOURCE_NOT_DELETED",
+                    error_message:
+                        "文件 detach job 的源记录尚未删除，已重新排期",
+                });
+                return {
+                    status: "pending",
+                    jobId: job.id,
+                    detached: 0,
+                    skippedReferenced: 0,
+                };
+            }
+
+            await updateOne("app_file_detach_jobs", job.id, {
+                status: "processing",
+                attempts,
+                started_at: nowIso,
+                leased_until: new Date(
+                    now.getTime() + readFileDetachJobLeaseSeconds() * 1_000,
+                ).toISOString(),
+                error_code: null,
+                error_message: null,
+            });
+
             if (candidateFileIds.length === 0) {
                 await updateOne("app_file_detach_jobs", job.id, {
                     status: "skipped",

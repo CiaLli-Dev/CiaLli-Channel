@@ -2,6 +2,7 @@ const UUID_SOURCE =
     "[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
 
 const UUID_PATTERN = new RegExp(UUID_SOURCE, "i");
+const EXACT_UUID_PATTERN = new RegExp(`^${UUID_SOURCE}$`, "i");
 const RELATIVE_PUBLIC_ASSET_PATTERN = new RegExp(
     `(?:https?:\\/\\/[^\\s"'()\\]]+)?\\/api\\/v1\\/public\\/assets\\/(${UUID_SOURCE})(?=[/?#)"'\\]\\s]|$)`,
     "gi",
@@ -10,6 +11,14 @@ const RELATIVE_PRIVATE_ASSET_PATTERN = new RegExp(
     `(?:https?:\\/\\/[^\\s"'()\\]]+)?\\/api\\/v1\\/assets\\/(${UUID_SOURCE})(?=[/?#)"'\\]\\s]|$)`,
     "gi",
 );
+const DIRECT_ASSET_PATTERN = new RegExp(
+    `(?:https?:\\/\\/[^\\s"'()\\]]+)?\\/assets\\/(${UUID_SOURCE})(?=[/?#)"'\\]\\s]|$)`,
+    "gi",
+);
+
+type ExtractDirectusFileIdsOptions = {
+    includeBareUuid?: boolean;
+};
 
 function escapeRegExp(value: string): string {
     return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -33,9 +42,11 @@ function buildExternalPublicAssetPattern(): RegExp | null {
     }
 
     try {
-        const origin = new URL(rawBaseUrl).origin;
+        const parsed = new URL(rawBaseUrl);
+        const basePath = parsed.pathname.replace(/\/+$/u, "");
+        const baseUrl = `${parsed.origin}${basePath}`;
         return new RegExp(
-            `${escapeRegExp(origin)}\\/(${UUID_SOURCE})(?=[/?#)"'\\]\\s]|$)`,
+            `${escapeRegExp(baseUrl)}\\/(${UUID_SOURCE})(?=[/?#)"'\\]\\s]|$)`,
             "gi",
         );
     } catch {
@@ -43,10 +54,23 @@ function buildExternalPublicAssetPattern(): RegExp | null {
     }
 }
 
-function collectAssetIdsFromString(value: string, output: Set<string>): void {
+function collectAssetIdsFromString(
+    value: string,
+    output: Set<string>,
+    options: ExtractDirectusFileIdsOptions = {},
+): void {
+    const raw = value.trim();
+    if (options.includeBareUuid && EXACT_UUID_PATTERN.test(raw)) {
+        const fileId = normalizeDirectusFileId(raw);
+        if (fileId) {
+            output.add(fileId);
+        }
+    }
+
     const patterns = [
         RELATIVE_PUBLIC_ASSET_PATTERN,
         RELATIVE_PRIVATE_ASSET_PATTERN,
+        DIRECT_ASSET_PATTERN,
         buildExternalPublicAssetPattern(),
     ].filter((pattern): pattern is RegExp => pattern instanceof RegExp);
 
@@ -61,6 +85,41 @@ function collectAssetIdsFromString(value: string, output: Set<string>): void {
             match = pattern.exec(value);
         }
     }
+}
+
+export function extractDirectusFileIdsFromUnknown(
+    value: unknown,
+    options: ExtractDirectusFileIdsOptions = {},
+): string[] {
+    const found = new Set<string>();
+    const visit = (current: unknown): void => {
+        if (typeof current === "string") {
+            collectAssetIdsFromString(current, found, options);
+            return;
+        }
+        if (Array.isArray(current)) {
+            for (const item of current) {
+                visit(item);
+            }
+            return;
+        }
+        if (!current || typeof current !== "object") {
+            return;
+        }
+        const record = current as Record<string, unknown>;
+        if (typeof record.id === "string") {
+            collectAssetIdsFromString(record.id, found, {
+                ...options,
+                includeBareUuid: true,
+            });
+        }
+        for (const item of Object.values(record)) {
+            visit(item);
+        }
+    };
+
+    visit(value);
+    return [...found];
 }
 
 export function toUniqueFileIds(values: unknown[]): string[] {
@@ -83,7 +142,7 @@ export function extractDirectusAssetIdsFromMarkdown(
 
     const found = new Set<string>();
     // 仅接受项目生成的资源 URL，避免把正文里的普通 UUID 误判成文件引用。
-    collectAssetIdsFromString(value, found);
+    collectAssetIdsFromString(value, found, { includeBareUuid: false });
     return [...found];
 }
 

@@ -4,6 +4,7 @@ import type { DeleteDirectusFileResult } from "@/server/directus/client";
 import { deleteDirectusFile, readMany } from "@/server/directus/client";
 import {
     extractDirectusAssetIdsFromMarkdown,
+    extractDirectusFileIdsFromUnknown,
     normalizeDirectusFileId,
     toUniqueFileIds,
 } from "@/server/api/v1/shared/file-cleanup-reference-utils";
@@ -82,8 +83,11 @@ function collectReferencedIdsFromString(
     value: string,
     candidates: Set<string> | null,
     output: Set<string>,
+    includeBareUuid: boolean,
 ): void {
-    const found = extractDirectusAssetIdsFromMarkdown(value);
+    const found = extractDirectusFileIdsFromUnknown(value, {
+        includeBareUuid,
+    });
     for (const fileId of found) {
         if (!candidates || candidates.has(fileId)) {
             output.add(fileId);
@@ -95,17 +99,28 @@ export function collectReferencedAssetIdsFromUnknown(
     value: unknown,
     candidates: Set<string> | null,
     output: Set<string>,
+    options: { includeBareUuid?: boolean } = { includeBareUuid: true },
 ): void {
     if (shouldStopCollecting(candidates, output)) {
         return;
     }
     if (typeof value === "string") {
-        collectReferencedIdsFromString(value, candidates, output);
+        collectReferencedIdsFromString(
+            value,
+            candidates,
+            output,
+            options.includeBareUuid !== false,
+        );
         return;
     }
     if (Array.isArray(value)) {
         for (const item of value) {
-            collectReferencedAssetIdsFromUnknown(item, candidates, output);
+            collectReferencedAssetIdsFromUnknown(
+                item,
+                candidates,
+                output,
+                options,
+            );
             if (shouldStopCollecting(candidates, output)) {
                 return;
             }
@@ -116,7 +131,7 @@ export function collectReferencedAssetIdsFromUnknown(
         return;
     }
     for (const item of Object.values(value as Record<string, unknown>)) {
-        collectReferencedAssetIdsFromUnknown(item, candidates, output);
+        collectReferencedAssetIdsFromUnknown(item, candidates, output, options);
         if (shouldStopCollecting(candidates, output)) {
             return;
         }
@@ -356,6 +371,7 @@ export async function readReferencedIdsInMarkdownTargetFromRepository(
                 row[target.field],
                 candidateSet,
                 found,
+                { includeBareUuid: false },
             );
             if (found.size >= candidateSet.size) {
                 return found;
@@ -386,6 +402,7 @@ export async function readAllReferencedIdsInMarkdownTargetFromRepository(
                 row[target.field],
                 null,
                 found,
+                { includeBareUuid: false },
             );
         }
         if (list.length < REFERENCE_PAGE_SIZE) {

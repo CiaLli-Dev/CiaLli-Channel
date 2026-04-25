@@ -96,7 +96,9 @@ describe("security/frame-protection", () => {
             shouldApplyFrameProtection({ url: new URL("https://[::1]/") }),
         ).toBe(false);
         expect(
-            shouldApplyFrameProtection({ url: new URL("https://example.com/") }),
+            shouldApplyFrameProtection({
+                url: new URL("https://example.com/"),
+            }),
         ).toBe(true);
     });
 
@@ -113,10 +115,9 @@ describe("security/frame-protection", () => {
             },
         });
 
-        applyFrameProtectionHeaders(
-            htmlResponse,
-            { url: new URL("https://example.com/") },
-        );
+        applyFrameProtectionHeaders(htmlResponse, {
+            url: new URL("https://example.com/"),
+        });
         applyFrameProtectionHeaders(jsonResponse);
 
         expect(htmlResponse.headers.get("X-Frame-Options")).toBe(
@@ -237,19 +238,24 @@ describe("security/frame-protection", () => {
         );
 
         expect(shouldApplyFrameProtection(noRefererContext)).toBe(true);
-        expect(shouldApplyFrameProtection(crossOriginRefererContext)).toBe(true);
+        expect(shouldApplyFrameProtection(crossOriginRefererContext)).toBe(
+            true,
+        );
     });
 
     it("开发模式同源 iframe/frame 语义请求使用 SAMEORIGIN 策略", () => {
-        const iframeContext = createRequestContext("https://example.com/posts", {
-            allowSameOriginFrameNavigation: true,
-            headers: {
-                referer: "https://example.com/",
-                "sec-fetch-dest": "iframe",
-                "sec-fetch-mode": "navigate",
-                "sec-fetch-site": "same-origin",
+        const iframeContext = createRequestContext(
+            "https://example.com/posts",
+            {
+                allowSameOriginFrameNavigation: true,
+                headers: {
+                    referer: "https://example.com/",
+                    "sec-fetch-dest": "iframe",
+                    "sec-fetch-mode": "navigate",
+                    "sec-fetch-site": "same-origin",
+                },
             },
-        });
+        );
         const frameContext = createRequestContext("https://example.com/posts", {
             allowSameOriginFrameNavigation: true,
             headers: {
@@ -286,14 +292,17 @@ describe("security/frame-protection", () => {
     });
 
     it("生产模式 iframe/frame/document 语义请求继续使用 DENY 策略", () => {
-        const iframeContext = createRequestContext("https://example.com/posts", {
-            headers: {
-                referer: "https://example.com/",
-                "sec-fetch-dest": "iframe",
-                "sec-fetch-mode": "navigate",
-                "sec-fetch-site": "same-origin",
+        const iframeContext = createRequestContext(
+            "https://example.com/posts",
+            {
+                headers: {
+                    referer: "https://example.com/",
+                    "sec-fetch-dest": "iframe",
+                    "sec-fetch-mode": "navigate",
+                    "sec-fetch-site": "same-origin",
+                },
             },
-        });
+        );
         const frameContext = createRequestContext("https://example.com/posts", {
             headers: {
                 referer: "https://example.com/",

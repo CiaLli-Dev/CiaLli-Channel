@@ -3,10 +3,7 @@ import type { APIContext } from "astro";
 import { assertCan, assertOwnerOrAdmin } from "@/server/auth/acl";
 import { awaitCacheInvalidations } from "@/server/cache/invalidation";
 import { cacheManager } from "@/server/cache/manager";
-import {
-    enqueueFileDetachJob,
-    runFileDetachJobBestEffort,
-} from "@/server/files/file-detach-jobs";
+import { enqueueFileDetachJob } from "@/server/files/file-detach-jobs";
 import { parseJsonBody } from "@/server/api/utils";
 import { validateBody } from "@/server/api/validate";
 import { CreateCommentSchema, UpdateCommentSchema } from "@/server/api/schemas";
@@ -233,7 +230,7 @@ async function deleteDiaryComment(
         "app_diary_comments",
         commentId,
     );
-    const detachJob = await enqueueFileDetachJob({
+    await enqueueFileDetachJob({
         sourceType: "comment.diary.delete",
         sourceId: commentId,
         fileValues: deletedComments.flatMap((deletedComment) =>
@@ -249,10 +246,6 @@ async function deleteDiaryComment(
         commentId,
         deletedComments,
     );
-    await runFileDetachJobBestEffort({
-        jobId: detachJob.jobId,
-        label: "comments-diary#delete",
-    });
     await awaitCacheInvalidations(
         [
             invalidateDiaryDetailCacheByDiaryId(comment.diary_id),
