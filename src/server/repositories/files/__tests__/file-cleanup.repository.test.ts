@@ -13,6 +13,7 @@ vi.mock("@/server/directus/client", () => ({
 import {
     STRUCTURED_REFERENCE_TARGETS,
     readAllReferencedIdsInSiteSettingsFromRepository,
+    readOwnerSourceReferencedFileIdsFromRepository,
     readReferencedIdsInSiteSettingsFromRepository,
     readStaleFileGcCandidatesFromRepository,
 } from "@/server/repositories/files/file-cleanup.repository";
@@ -40,6 +41,7 @@ describe("file-cleanup.repository", () => {
         await readStaleFileGcCandidatesFromRepository({
             detachedBefore: "2026-04-23T00:00:00.000Z",
             quarantinedBefore: "2026-04-30T00:00:00.000Z",
+            deleteRetryBefore: "2026-05-01T00:00:00.000Z",
             limit: 200,
         });
 
@@ -50,6 +52,10 @@ describe("file-cleanup.repository", () => {
             "app_detached_at",
             "app_quarantined_at",
             "app_deleted_at",
+            "app_delete_attempts",
+            "app_delete_next_retry_at",
+            "app_delete_last_error",
+            "app_delete_dead_lettered_at",
         ];
 
         expect(mocks.readMany).toHaveBeenNthCalledWith(1, "directus_files", {
@@ -82,10 +88,42 @@ describe("file-cleanup.repository", () => {
         });
         expect(mocks.readMany).toHaveBeenNthCalledWith(3, "directus_files", {
             filter: {
-                app_lifecycle: { _eq: "deleted" },
+                _and: [
+                    { app_lifecycle: { _eq: "deleting" } },
+                    {
+                        _or: [
+                            { app_delete_next_retry_at: { _null: true } },
+                            {
+                                app_delete_next_retry_at: {
+                                    _lte: "2026-05-01T00:00:00.000Z",
+                                },
+                            },
+                        ],
+                    },
+                ],
             },
             fields,
-            sort: ["app_deleted_at", "id"],
+            sort: ["app_delete_next_retry_at", "app_deleted_at", "id"],
+            limit: 200,
+        });
+        expect(mocks.readMany).toHaveBeenNthCalledWith(4, "directus_files", {
+            filter: {
+                _and: [
+                    { app_lifecycle: { _eq: "deleted" } },
+                    {
+                        _or: [
+                            { app_delete_next_retry_at: { _null: true } },
+                            {
+                                app_delete_next_retry_at: {
+                                    _lte: "2026-05-01T00:00:00.000Z",
+                                },
+                            },
+                        ],
+                    },
+                ],
+            },
+            fields,
+            sort: ["app_delete_next_retry_at", "app_deleted_at", "id"],
             limit: 200,
         });
     });
@@ -171,6 +209,48 @@ describe("file-cleanup.repository", () => {
         expect(referenced).toEqual(new Set([UUID_A, UUID_B, UUID_C]));
     });
 
+    it("scans the owner source row when release candidates are missing from the reference table", async () => {
+        mocks.readMany.mockImplementation(async (collection, query) => {
+            if (
+                collection === "app_articles" &&
+                query?.fields?.includes("cover_file")
+            ) {
+                return [{ id: "article-1", cover_file: UUID_A }];
+            }
+            if (
+                collection === "app_articles" &&
+                query?.fields?.includes("body_markdown")
+            ) {
+                return [
+                    {
+                        id: "article-1",
+                        body_markdown: `![cover](/api/v1/public/assets/${UUID_B}?width=960)`,
+                    },
+                ];
+            }
+            return [];
+        });
+
+        const referenced = await readOwnerSourceReferencedFileIdsFromRepository(
+            {
+                ownerCollection: "app_articles",
+                ownerId: "article-1",
+            },
+        );
+
+        expect(mocks.readMany).toHaveBeenCalledWith("app_articles", {
+            filter: { id: { _eq: "article-1" } },
+            fields: ["id", "cover_file"],
+            limit: 1,
+        });
+        expect(mocks.readMany).toHaveBeenCalledWith("app_articles", {
+            filter: { id: { _eq: "article-1" } },
+            fields: ["id", "body_markdown"],
+            limit: 1,
+        });
+        expect(referenced).toEqual([UUID_A, UUID_B]);
+    });
+
     it("keeps every Directus file relation covered by structured reference targets", () => {
         type DirectusSchemaRelation = {
             collection?: unknown;
@@ -211,5 +291,47 @@ describe("file-cleanup.repository", () => {
             "app_user_profiles.header_file",
             "app_user_registration_requests.avatar_file",
         ]);
+    });
+
+    it("keeps GC and reference lookup fields indexed in the Directus schema", () => {
+        type DirectusSchemaField = {
+            collection?: unknown;
+            field?: unknown;
+            schema?: { is_indexed?: unknown };
+        };
+        const schema = JSON.parse(
+            readFileSync("directus/schema/app-schema.json", "utf8"),
+        ) as { fields?: DirectusSchemaField[] };
+        const indexedFields = new Set(
+            (schema.fields || [])
+                .filter((field) => field.schema?.is_indexed === true)
+                .map(
+                    (field) =>
+                        `${String(field.collection)}.${String(field.field)}`,
+                ),
+        );
+        const requiredIndexes = [
+            "app_file_detach_jobs.status",
+            "app_file_detach_jobs.source_type",
+            "app_file_detach_jobs.source_id",
+            "app_file_detach_jobs.scheduled_at",
+            "app_file_detach_jobs.leased_until",
+            "app_file_references.file_id",
+            "app_file_references.owner_collection",
+            "app_file_references.owner_id",
+            "app_file_references.owner_field",
+            "app_file_references.reference_kind",
+            "app_file_references.owner_user_id",
+            "directus_files.app_owner_user_id",
+            "directus_files.app_lifecycle",
+            "directus_files.app_detached_at",
+            "directus_files.app_quarantined_at",
+            "directus_files.app_deleted_at",
+            "directus_files.app_delete_next_retry_at",
+        ];
+
+        expect(
+            requiredIndexes.filter((field) => !indexedFields.has(field)),
+        ).toEqual([]);
     });
 });

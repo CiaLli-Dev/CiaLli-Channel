@@ -1,6 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+    assertFilesAttachable: vi.fn(),
     createOne: vi.fn(),
     deleteOne: vi.fn(),
     markFilesAttached: vi.fn(),
@@ -8,6 +9,7 @@ const mocks = vi.hoisted(() => ({
     readFileReferencesByFileIds: vi.fn(),
     readManagedFilesByIds: vi.fn(),
     readOwnerFileReferences: vi.fn(),
+    readOwnerSourceReferencedFileIdsFromRepository: vi.fn(),
     replaceOwnerFieldReferences: vi.fn(),
     updateOne: vi.fn(),
     withServiceRepositoryContext: vi.fn(
@@ -26,6 +28,8 @@ vi.mock("@/server/repositories/directus/scope", () => ({
 }));
 
 vi.mock("@/server/repositories/files/file-lifecycle.repository", () => ({
+    assertFilesAttachable: mocks.assertFilesAttachable,
+    FILE_LIFECYCLE_NOT_ATTACHABLE_CODE: "FILE_LIFECYCLE_NOT_ATTACHABLE",
     markFilesAttached: mocks.markFilesAttached,
     markFilesDetached: mocks.markFilesDetached,
     readManagedFilesByIds: mocks.readManagedFilesByIds,
@@ -37,12 +41,18 @@ vi.mock("@/server/repositories/files/file-reference.repository", () => ({
     replaceOwnerFieldReferences: mocks.replaceOwnerFieldReferences,
 }));
 
+vi.mock("@/server/repositories/files/file-cleanup.repository", () => ({
+    readOwnerSourceReferencedFileIdsFromRepository:
+        mocks.readOwnerSourceReferencedFileIdsFromRepository,
+}));
+
 import {
     markResourceReferenceSyncJobSucceeded,
     parseResourceReferenceSyncJobPayload,
     replayResourceReferenceSyncJob,
     resourceLifecycle,
 } from "@/server/files/resource-lifecycle";
+import { AppError } from "@/server/api/errors";
 
 const FILE_KEEP = "11111111-1111-4111-8111-111111111111";
 const FILE_NEW = "22222222-2222-4222-8222-222222222222";
@@ -55,11 +65,13 @@ beforeEach(() => {
         status: "pending",
     });
     mocks.deleteOne.mockResolvedValue(undefined);
+    mocks.assertFilesAttachable.mockResolvedValue(undefined);
     mocks.markFilesAttached.mockResolvedValue(undefined);
     mocks.markFilesDetached.mockResolvedValue(undefined);
     mocks.readFileReferencesByFileIds.mockResolvedValue([]);
     mocks.readManagedFilesByIds.mockResolvedValue([]);
     mocks.readOwnerFileReferences.mockResolvedValue([]);
+    mocks.readOwnerSourceReferencedFileIdsFromRepository.mockResolvedValue([]);
     mocks.replaceOwnerFieldReferences.mockResolvedValue({
         created: 0,
         updated: 0,
@@ -200,6 +212,7 @@ it("does not detach files still referenced by another owner", async () => {
         fileIds: [FILE_OLD],
         ownerUserId: "user-2",
         visibility: "public",
+        allowLifecycleOverride: true,
     });
     expect(result.detachedFileIds).toEqual([]);
 });
@@ -245,6 +258,39 @@ it("enqueues a replayable sync job when the write barrier fails", async () => {
     );
 });
 
+it("rejects non-attachable files before writing references", async () => {
+    mocks.assertFilesAttachable.mockRejectedValueOnce(
+        new AppError(
+            "FILE_LIFECYCLE_NOT_ATTACHABLE",
+            "文件处于待删除或隔离状态，不能直接绑定",
+            409,
+            { fileIds: [FILE_NEW] },
+        ),
+    );
+
+    await expect(
+        resourceLifecycle.syncOwnerReferences({
+            ownerCollection: "app_articles",
+            ownerId: "article-1",
+            ownerUserId: "user-1",
+            visibility: "public",
+            references: [
+                {
+                    ownerField: "body_markdown",
+                    referenceKind: "markdown_asset",
+                    fileIds: [FILE_NEW],
+                },
+            ],
+        }),
+    ).rejects.toMatchObject({
+        code: "FILE_LIFECYCLE_NOT_ATTACHABLE",
+        status: 409,
+    });
+
+    expect(mocks.replaceOwnerFieldReferences).not.toHaveBeenCalled();
+    expect(mocks.createOne).not.toHaveBeenCalled();
+});
+
 it("releases owner resources by writing a release job without deleting live references", async () => {
     mocks.readOwnerFileReferences.mockResolvedValue([
         { id: "ref-1", file_id: FILE_KEEP },
@@ -273,6 +319,39 @@ it("releases owner resources by writing a release job without deleting live refe
         candidateFileIds: [FILE_KEEP, FILE_NEW],
         deletedReferences: 0,
     });
+});
+
+it("includes source-scanned file ids when the owner reference table is incomplete", async () => {
+    mocks.readOwnerFileReferences.mockResolvedValue([
+        { id: "ref-1", file_id: FILE_KEEP },
+    ]);
+    mocks.readOwnerSourceReferencedFileIdsFromRepository.mockResolvedValue([
+        FILE_NEW,
+        FILE_KEEP,
+    ]);
+
+    const result = await resourceLifecycle.releaseOwnerResources({
+        ownerCollection: "app_articles",
+        ownerId: "article-1",
+    });
+
+    expect(
+        mocks.readOwnerSourceReferencedFileIdsFromRepository,
+    ).toHaveBeenCalledWith({
+        ownerCollection: "app_articles",
+        ownerId: "article-1",
+    });
+    expect(mocks.createOne).toHaveBeenCalledWith(
+        "app_file_detach_jobs",
+        expect.objectContaining({
+            status: "pending",
+            source_type: "resource.owner.release:app_articles",
+            source_id: "article-1",
+            candidate_file_ids: [FILE_KEEP, FILE_NEW],
+        }),
+        { fields: ["id", "status"] },
+    );
+    expect(result.candidateFileIds).toEqual([FILE_KEEP, FILE_NEW]);
 });
 
 it("marks empty owner release as skipped", async () => {
@@ -337,6 +416,7 @@ it("restores only quarantined files with live references and fixes owner metadat
         fileIds: [FILE_KEEP],
         ownerUserId: "user-1",
         visibility: "public",
+        allowLifecycleOverride: true,
     });
     expect(result).toEqual({
         requestedFileIds: [FILE_KEEP, FILE_NEW, FILE_OLD],

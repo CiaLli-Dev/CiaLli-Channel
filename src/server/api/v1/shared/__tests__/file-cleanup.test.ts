@@ -47,6 +47,7 @@ vi.mock("@/server/repositories/directus/scope", () => ({
 }));
 
 import {
+    collectAllReferencedDirectusFileIds,
     collectLegacyScannedReferencedDirectusFileIdsForCandidates,
     collectReferencedDirectusFileIds,
     extractDirectusAssetIdsFromMarkdown,
@@ -54,11 +55,17 @@ import {
     normalizeDirectusFileId,
 } from "@/server/api/v1/shared/file-cleanup";
 import {
+    readAllReferencedIdsInMarkdownTargetFromRepository,
+    readAllReferencedIdsInSiteSettingsFromRepository,
+    readAllReferencedIdsInStructuredTargetFromRepository,
     readReferencedIdsInSiteSettingsFromRepository,
     readReferencedIdsInStructuredTargetFromRepository,
     readReferencedIdsInMarkdownTargetFromRepository,
 } from "@/server/repositories/files/file-cleanup.repository";
-import { readReferencedFileIdsFromReferenceTable } from "@/server/repositories/files/file-reference.repository";
+import {
+    readAllReferencedFileIdsFromReferenceTable,
+    readReferencedFileIdsFromReferenceTable,
+} from "@/server/repositories/files/file-reference.repository";
 import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 
 const mockedReadReferencedIdsInSiteSettings = vi.mocked(
@@ -69,6 +76,18 @@ const mockedReadReferencedIdsInStructuredTarget = vi.mocked(
 );
 const mockedReadReferencedIdsInMarkdownTarget = vi.mocked(
     readReferencedIdsInMarkdownTargetFromRepository,
+);
+const mockedReadAllReferencedIdsInSiteSettings = vi.mocked(
+    readAllReferencedIdsInSiteSettingsFromRepository,
+);
+const mockedReadAllReferencedIdsInStructuredTarget = vi.mocked(
+    readAllReferencedIdsInStructuredTargetFromRepository,
+);
+const mockedReadAllReferencedIdsInMarkdownTarget = vi.mocked(
+    readAllReferencedIdsInMarkdownTargetFromRepository,
+);
+const mockedReadAllReferencedFileIdsFromReferenceTable = vi.mocked(
+    readAllReferencedFileIdsFromReferenceTable,
 );
 const mockedReadReferencedFileIdsFromReferenceTable = vi.mocked(
     readReferencedFileIdsFromReferenceTable,
@@ -83,7 +102,13 @@ const UUID_B = "f1e2d3c4-b5a6-4234-8abc-fedcba987654";
 beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.PUBLIC_ASSET_BASE_URL;
+    mockedReadAllReferencedFileIdsFromReferenceTable.mockResolvedValue(
+        new Set(),
+    );
     mockedReadReferencedFileIdsFromReferenceTable.mockResolvedValue(new Set());
+    mockedReadAllReferencedIdsInSiteSettings.mockResolvedValue(new Set());
+    mockedReadAllReferencedIdsInStructuredTarget.mockResolvedValue(new Set());
+    mockedReadAllReferencedIdsInMarkdownTarget.mockResolvedValue(new Set());
     mockedReadReferencedIdsInSiteSettings.mockResolvedValue(new Set());
     mockedReadReferencedIdsInStructuredTarget.mockResolvedValue(new Set());
     mockedReadReferencedIdsInMarkdownTarget.mockResolvedValue(new Set());
@@ -217,5 +242,22 @@ describe("collectReferencedDirectusFileIds", () => {
         await collectReferencedDirectusFileIds([UUID_A]);
 
         expect(mockedWithServiceRepositoryContext).toHaveBeenCalled();
+    });
+
+    it("全量引用读取合并引用表与 legacy 扫描结果", async () => {
+        mockedReadAllReferencedFileIdsFromReferenceTable.mockResolvedValue(
+            new Set([UUID_A]),
+        );
+        mockedReadAllReferencedIdsInMarkdownTarget.mockResolvedValue(
+            new Set([UUID_B]),
+        );
+
+        const referenced = await collectAllReferencedDirectusFileIds();
+
+        expect(referenced).toEqual(new Set([UUID_A, UUID_B]));
+        expect(
+            mockedReadAllReferencedFileIdsFromReferenceTable,
+        ).toHaveBeenCalled();
+        expect(mockedReadAllReferencedIdsInMarkdownTarget).toHaveBeenCalled();
     });
 });

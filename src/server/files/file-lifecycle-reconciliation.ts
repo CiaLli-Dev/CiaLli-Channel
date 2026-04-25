@@ -59,7 +59,11 @@ function classifyManagedFileLifecycle(params: {
     if (params.file.app_lifecycle === "protected") {
         return "protected";
     }
-    if (params.file.app_lifecycle === "deleted") {
+    if (
+        params.file.app_lifecycle === "deleted" ||
+        params.file.app_lifecycle === "deleting" ||
+        params.file.app_lifecycle === "delete_failed"
+    ) {
         return "deleted";
     }
     if (params.referencedFileIds.has(params.file.id)) {
@@ -155,7 +159,10 @@ export async function reconcileManagedFileLifecycle(
     }
 
     const [, restored] = await Promise.all([
-        markFilesAttached({ fileIds: attachedFileIds }),
+        markFilesAttached({
+            fileIds: attachedFileIds,
+            allowLifecycleOverride: true,
+        }),
         resourceLifecycle.restoreQuarantinedFiles({
             fileIds: quarantinedReferencedFileIds,
             requireReference: true,

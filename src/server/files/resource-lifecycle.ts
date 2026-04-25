@@ -3,9 +3,12 @@ import type {
     AppFileReferenceVisibility,
     ResourceReferenceSyncJobPayload,
 } from "@/types/app";
+import { AppError } from "@/server/api/errors";
 import { createOne, updateOne } from "@/server/directus/client";
 import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup-reference-utils";
 import {
+    assertFilesAttachable,
+    FILE_LIFECYCLE_NOT_ATTACHABLE_CODE,
     markFilesAttached,
     markFilesDetached,
     readManagedFilesByIds,
@@ -16,6 +19,7 @@ import {
     replaceOwnerFieldReferences,
     type OwnerFileReferenceRow,
 } from "@/server/repositories/files/file-reference.repository";
+import { readOwnerSourceReferencedFileIdsFromRepository } from "@/server/repositories/files/file-cleanup.repository";
 
 export type ResourceLifecycleReferenceInput = {
     ownerField: string;
@@ -271,6 +275,8 @@ async function syncOwnerReferencesStrict(
         normalized.references.flatMap((reference) => reference.fileIds),
     );
 
+    await assertFilesAttachable(nextFileIds);
+
     for (const reference of normalized.references) {
         await replaceOwnerFieldReferences({
             ownerCollection: normalized.ownerCollection,
@@ -318,6 +324,7 @@ async function syncOwnerReferencesStrict(
             fileIds: [fileId],
             ownerUserId: readRestoreOwnerUserId(fileReferences),
             visibility: readRestoreVisibility(fileReferences),
+            allowLifecycleOverride: true,
         });
     }
 
@@ -342,6 +349,12 @@ async function syncOwnerReferences(
     try {
         return await syncOwnerReferencesStrict(normalized);
     } catch (error) {
+        if (
+            error instanceof AppError &&
+            error.code === FILE_LIFECYCLE_NOT_ATTACHABLE_CODE
+        ) {
+            throw error;
+        }
         try {
             await enqueueResourceReferenceSyncJob(normalized);
             return {
@@ -386,8 +399,17 @@ async function releaseOwnerResources(
         };
     }
 
-    const rows = await readOwnerFileReferences({ ownerCollection, ownerId });
-    const candidateFileIds = readFileIds(rows);
+    const [rows, sourceFileIds] = await Promise.all([
+        readOwnerFileReferences({ ownerCollection, ownerId }),
+        readOwnerSourceReferencedFileIdsFromRepository({
+            ownerCollection,
+            ownerId,
+        }),
+    ]);
+    const candidateFileIds = normalizeFileIds([
+        ...readFileIds(rows),
+        ...sourceFileIds,
+    ]);
     const job = await enqueueOwnerReleaseJob({
         ownerCollection,
         ownerId,
@@ -443,6 +465,7 @@ async function restoreQuarantinedFiles(
             fileIds: [fileId],
             ownerUserId: readRestoreOwnerUserId(fileReferences),
             visibility: readRestoreVisibility(fileReferences),
+            allowLifecycleOverride: true,
         });
         result.restoredFileIds.push(fileId);
     }

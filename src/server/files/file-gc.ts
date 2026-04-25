@@ -5,9 +5,11 @@ import {
     readStaleFileGcCandidatesFromRepository,
 } from "@/server/repositories/files/file-cleanup.repository";
 import {
+    claimFileForDelete,
+    claimFileForQuarantine,
+    markFileDeleteDeadLetter,
+    markFileDeleteRetry,
     markFilesAttached,
-    markFilesDeleted,
-    markFilesQuarantined,
     readManagedFilesByIds,
 } from "@/server/repositories/files/file-lifecycle.repository";
 import { seedFileReferencesWhenEmpty } from "@/server/files/file-reference-shadow";
@@ -17,6 +19,10 @@ const DEFAULT_FILE_GC_RETENTION_HOURS = 168;
 const DEFAULT_FILE_GC_QUARANTINE_DAYS = 7;
 const DEFAULT_FILE_GC_BATCH_SIZE = 200;
 const DEFAULT_FILE_GC_INTERVAL_MS = 900_000;
+const DEFAULT_FILE_GC_DELETE_MAX_ATTEMPTS = 6;
+const FILE_GC_DELETE_LEASE_MS = 15 * 60_000;
+const FILE_GC_DELETE_RETRY_BASE_MS = 15 * 60_000;
+const FILE_GC_DELETE_RETRY_MAX_MS = 24 * 60 * 60_000;
 
 type FileGcPhase = "quarantine" | "delete";
 
@@ -29,6 +35,7 @@ type FileGcResult = {
     recovered: number;
     deleted: number;
     wouldDelete: number;
+    deadLettered: number;
     notFound: number;
     failed: number;
     skippedState: number;
@@ -39,6 +46,7 @@ type FileGcResult = {
     recoveredFileIds: string[];
     deletedFileIds: string[];
     wouldDeleteFileIds: string[];
+    deadLetteredFileIds: string[];
 };
 
 type FileGcOptions = {
@@ -48,6 +56,7 @@ type FileGcOptions = {
 type FileGcCutoffs = {
     detachedBefore: string;
     quarantinedBefore: string;
+    deleteRetryBefore: string;
 };
 
 type FileGcMutableResult = {
@@ -56,6 +65,7 @@ type FileGcMutableResult = {
     recovered: number;
     deleted: number;
     wouldDelete: number;
+    deadLettered: number;
     notFound: number;
     failed: number;
     finalSkippedState: number;
@@ -65,6 +75,7 @@ type FileGcMutableResult = {
     recoveredFileIds: string[];
     deletedFileIds: string[];
     wouldDeleteFileIds: string[];
+    deadLetteredFileIds: string[];
 };
 
 function readPositiveIntegerEnv(
@@ -101,11 +112,31 @@ export function readFileGcBatchSize(): number {
     );
 }
 
+export function readFileGcDeleteMaxAttempts(): number {
+    return readPositiveIntegerEnv(
+        process.env.FILE_GC_DELETE_MAX_ATTEMPTS ||
+            import.meta.env.FILE_GC_DELETE_MAX_ATTEMPTS,
+        DEFAULT_FILE_GC_DELETE_MAX_ATTEMPTS,
+    );
+}
+
 export function readFileGcIntervalMs(): number {
     return readPositiveIntegerEnv(
         process.env.FILE_GC_INTERVAL_MS || import.meta.env.FILE_GC_INTERVAL_MS,
         DEFAULT_FILE_GC_INTERVAL_MS,
     );
+}
+
+function buildDeleteRetryDelayMs(attempts: number): number {
+    const normalizedAttempts = Math.max(1, attempts);
+    return Math.min(
+        FILE_GC_DELETE_RETRY_MAX_MS,
+        FILE_GC_DELETE_RETRY_BASE_MS * 2 ** (normalizedAttempts - 1),
+    );
+}
+
+function buildDeleteLeaseUntilIso(now: Date): string {
+    return new Date(now.getTime() + FILE_GC_DELETE_LEASE_MS).toISOString();
 }
 
 function buildDetachedBeforeIso(now: Date): string {
@@ -128,17 +159,23 @@ type ManagedFileGcState = {
         | "attached"
         | "detached"
         | "quarantined"
+        | "deleting"
         | "deleted"
+        | "delete_failed"
         | "protected"
         | null;
     app_detached_at?: string | null;
     app_quarantined_at?: string | null;
     app_deleted_at?: string | null;
+    app_delete_attempts?: number | null;
+    app_delete_next_retry_at?: string | null;
+    app_delete_last_error?: string | null;
+    app_delete_dead_lettered_at?: string | null;
 };
 
 function readGcPhase(
     row: ManagedFileGcState | undefined,
-    cutoffs: { detachedBefore: string; quarantinedBefore: string },
+    cutoffs: FileGcCutoffs,
 ): FileGcPhase | null {
     if (!row) {
         return null;
@@ -155,14 +192,28 @@ function readGcPhase(
             ? "delete"
             : null;
     }
-    if (row.app_lifecycle === "deleted") {
-        return "delete";
+    if (row.app_lifecycle === "deleted" || row.app_lifecycle === "deleting") {
+        return !row.app_delete_next_retry_at ||
+            row.app_delete_next_retry_at <= cutoffs.deleteRetryBefore
+            ? "delete"
+            : null;
     }
     return null;
 }
 
+function readDeleteAttempts(row: ManagedFileGcState | undefined): number {
+    const attempts = row?.app_delete_attempts;
+    return typeof attempts === "number" && Number.isFinite(attempts)
+        ? Math.max(0, Math.floor(attempts))
+        : 0;
+}
+
 function readAuditLifecycle(row: ManagedFileGcState | undefined): string {
     return row?.app_lifecycle || "unknown";
+}
+
+function readErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
 }
 
 function createEmptyFileGcResult(dryRun: boolean): FileGcResult {
@@ -175,6 +226,7 @@ function createEmptyFileGcResult(dryRun: boolean): FileGcResult {
         recovered: 0,
         deleted: 0,
         wouldDelete: 0,
+        deadLettered: 0,
         notFound: 0,
         failed: 0,
         skippedState: 0,
@@ -185,6 +237,7 @@ function createEmptyFileGcResult(dryRun: boolean): FileGcResult {
         recoveredFileIds: [],
         deletedFileIds: [],
         wouldDeleteFileIds: [],
+        deadLetteredFileIds: [],
     };
 }
 
@@ -195,6 +248,7 @@ function createMutableFileGcResult(): FileGcMutableResult {
         recovered: 0,
         deleted: 0,
         wouldDelete: 0,
+        deadLettered: 0,
         notFound: 0,
         failed: 0,
         finalSkippedState: 0,
@@ -204,6 +258,7 @@ function createMutableFileGcResult(): FileGcMutableResult {
         recoveredFileIds: [],
         deletedFileIds: [],
         wouldDeleteFileIds: [],
+        deadLetteredFileIds: [],
     };
 }
 
@@ -219,6 +274,7 @@ function logFileGcAudit(params: {
         | "recovered"
         | "deleted"
         | "would_delete"
+        | "dead_lettered"
         | "not_found"
         | "failed";
     reason?: string;
@@ -247,33 +303,55 @@ function logFileGcAudit(params: {
     console.info("[file-gc] delete audit", payload);
 }
 
-async function recoverReferencedFileIds(params: {
-    fileIds: string[];
+function recordFileProcessingFailure(params: {
+    fileId: string;
+    dryRun: boolean;
+    cutoffs: FileGcCutoffs;
+    lifecycle: string;
+    state: FileGcMutableResult;
+    reason: string;
+    error: unknown;
+}): void {
+    params.state.failed += 1;
+    logFileGcAudit({
+        fileId: params.fileId,
+        dryRun: params.dryRun,
+        detachedBefore: params.cutoffs.detachedBefore,
+        quarantinedBefore: params.cutoffs.quarantinedBefore,
+        lifecycle: params.lifecycle,
+        outcome: "failed",
+        reason: params.reason,
+        message: readErrorMessage(params.error),
+    });
+}
+
+async function recoverReferencedFileId(params: {
+    fileId: string;
     dryRun: boolean;
     cutoffs: FileGcCutoffs;
     currentLifecycleById: Map<string, ManagedFileGcState>;
     state: FileGcMutableResult;
 }): Promise<void> {
-    if (params.dryRun || params.fileIds.length === 0) {
+    if (params.dryRun) {
         return;
     }
 
-    const quarantinedFileIds = params.fileIds.filter(
-        (fileId) =>
-            params.currentLifecycleById.get(fileId)?.app_lifecycle ===
-            "quarantined",
-    );
-    const attachedFileIds = params.fileIds.filter(
-        (fileId) => !quarantinedFileIds.includes(fileId),
-    );
-    const restored = await resourceLifecycle.restoreQuarantinedFiles({
-        fileIds: quarantinedFileIds,
-        requireReference: true,
-    });
-    const recoveredFileIds = [...attachedFileIds, ...restored.restoredFileIds];
-    if (attachedFileIds.length > 0) {
-        await markFilesAttached({ fileIds: attachedFileIds });
+    const lifecycleRow = params.currentLifecycleById.get(params.fileId);
+    const recoveredFileIds: string[] = [];
+    if (lifecycleRow?.app_lifecycle === "quarantined") {
+        const restored = await resourceLifecycle.restoreQuarantinedFiles({
+            fileIds: [params.fileId],
+            requireReference: true,
+        });
+        recoveredFileIds.push(...restored.restoredFileIds);
+    } else {
+        await markFilesAttached({
+            fileIds: [params.fileId],
+            allowLifecycleOverride: true,
+        });
+        recoveredFileIds.push(params.fileId);
     }
+
     params.state.recovered += recoveredFileIds.length;
     params.state.recoveredFileIds.push(...recoveredFileIds);
 
@@ -289,6 +367,36 @@ async function recoverReferencedFileIds(params: {
             outcome: "recovered",
             reason: "referenced",
         });
+    }
+}
+
+async function recoverReferencedFileIds(params: {
+    fileIds: string[];
+    dryRun: boolean;
+    cutoffs: FileGcCutoffs;
+    currentLifecycleById: Map<string, ManagedFileGcState>;
+    state: FileGcMutableResult;
+}): Promise<void> {
+    if (params.dryRun || params.fileIds.length === 0) {
+        return;
+    }
+
+    for (const fileId of params.fileIds) {
+        try {
+            await recoverReferencedFileId({ ...params, fileId });
+        } catch (error) {
+            recordFileProcessingFailure({
+                fileId,
+                dryRun: params.dryRun,
+                cutoffs: params.cutoffs,
+                lifecycle: readAuditLifecycle(
+                    params.currentLifecycleById.get(fileId),
+                ),
+                state: params.state,
+                reason: "referenced_recovery_failed",
+                error,
+            });
+        }
     }
 }
 
@@ -334,7 +442,15 @@ async function quarantineFile(params: {
     lifecycle: string;
     state: FileGcMutableResult;
 }): Promise<void> {
-    await markFilesQuarantined([params.fileId], params.now.toISOString());
+    const claimed = await claimFileForQuarantine({
+        fileId: params.fileId,
+        detachedBefore: params.cutoffs.detachedBefore,
+        quarantinedAt: params.now.toISOString(),
+    });
+    if (!claimed) {
+        params.state.finalSkippedState += 1;
+        return;
+    }
     params.state.quarantined += 1;
     params.state.quarantinedFileIds.push(params.fileId);
     logFileGcAudit({
@@ -356,15 +472,30 @@ async function deleteFile(params: {
     row: ManagedFileGcState | undefined;
     state: FileGcMutableResult;
 }): Promise<void> {
-    if (params.row?.app_lifecycle !== "deleted") {
-        await markFilesDeleted([params.fileId], params.now.toISOString());
+    const previousAttempts = readDeleteAttempts(params.row);
+    const nowIso = params.now.toISOString();
+    const retryAfter = buildDeleteLeaseUntilIso(params.now);
+
+    const claimed = await claimFileForDelete({
+        fileId: params.fileId,
+        deletedAt: nowIso,
+        retryAfter,
+        quarantinedBefore: params.cutoffs.quarantinedBefore,
+        deleteRetryBefore: params.cutoffs.deleteRetryBefore,
+    });
+    if (!claimed) {
+        params.state.finalSkippedState += 1;
+        return;
     }
 
     const postClaimReferencedFileIds = await collectReferencedDirectusFileIds([
         params.fileId,
     ]);
     if (postClaimReferencedFileIds.has(params.fileId)) {
-        await markFilesAttached({ fileIds: [params.fileId] });
+        await markFilesAttached({
+            fileIds: [params.fileId],
+            allowLifecycleOverride: true,
+        });
         params.state.recovered += 1;
         params.state.recoveredFileIds.push(params.fileId);
         params.state.finalSkippedReferenced += 1;
@@ -409,6 +540,37 @@ async function deleteFile(params: {
         return;
     }
 
+    const attempts = previousAttempts + 1;
+    const maxAttempts = readFileGcDeleteMaxAttempts();
+    if (attempts >= maxAttempts) {
+        await markFileDeleteDeadLetter({
+            fileId: params.fileId,
+            attempts,
+            deadLetteredAt: nowIso,
+            lastError: result.reason,
+        });
+        params.state.deadLettered += 1;
+        params.state.deadLetteredFileIds.push(params.fileId);
+        logFileGcAudit({
+            fileId: params.fileId,
+            dryRun: params.dryRun,
+            detachedBefore: params.cutoffs.detachedBefore,
+            quarantinedBefore: params.cutoffs.quarantinedBefore,
+            lifecycle: params.lifecycle,
+            outcome: "dead_lettered",
+            reason: result.reason,
+        });
+        return;
+    }
+
+    await markFileDeleteRetry({
+        fileId: params.fileId,
+        attempts,
+        nextRetryAt: new Date(
+            params.now.getTime() + buildDeleteRetryDelayMs(attempts),
+        ).toISOString(),
+        lastError: result.reason,
+    });
     params.state.failed += 1;
     logFileGcAudit({
         fileId: params.fileId,
@@ -487,6 +649,31 @@ async function processOrphanFile(params: {
     });
 }
 
+async function processOrphanFileBestEffort(params: {
+    fileId: string;
+    now: Date;
+    dryRun: boolean;
+    cutoffs: FileGcCutoffs;
+    currentLifecycleById: Map<string, ManagedFileGcState>;
+    state: FileGcMutableResult;
+}): Promise<void> {
+    try {
+        await processOrphanFile(params);
+    } catch (error) {
+        recordFileProcessingFailure({
+            fileId: params.fileId,
+            dryRun: params.dryRun,
+            cutoffs: params.cutoffs,
+            lifecycle: readAuditLifecycle(
+                params.currentLifecycleById.get(params.fileId),
+            ),
+            state: params.state,
+            reason: "candidate_processing_failed",
+            error,
+        });
+    }
+}
+
 export async function runFileGcBatch(
     now: Date = new Date(),
     options: FileGcOptions = {},
@@ -495,9 +682,11 @@ export async function runFileGcBatch(
         const dryRun = options.dryRun === true;
         const detachedBefore = buildDetachedBeforeIso(now);
         const quarantinedBefore = buildQuarantinedBeforeIso(now);
+        const deleteRetryBefore = now.toISOString();
         const candidates = await readStaleFileGcCandidatesFromRepository({
             detachedBefore,
             quarantinedBefore,
+            deleteRetryBefore,
             limit: readFileGcBatchSize(),
         });
         const candidateFileIds = candidates
@@ -516,7 +705,11 @@ export async function runFileGcBatch(
         const currentLifecycleById = new Map(
             currentLifecycleRows.map((row) => [row.id, row]),
         );
-        const cutoffs = { detachedBefore, quarantinedBefore };
+        const cutoffs = {
+            detachedBefore,
+            quarantinedBefore,
+            deleteRetryBefore,
+        };
         const activeCandidateFileIds = candidateFileIds.filter((fileId) =>
             Boolean(readGcPhase(currentLifecycleById.get(fileId), cutoffs)),
         );
@@ -539,7 +732,7 @@ export async function runFileGcBatch(
         });
 
         for (const fileId of orphanFileIds) {
-            await processOrphanFile({
+            await processOrphanFileBestEffort({
                 fileId,
                 now,
                 dryRun,
@@ -567,6 +760,7 @@ export async function runFileGcBatch(
             recovered: state.recovered,
             deleted: state.deleted,
             wouldDelete: state.wouldDelete,
+            deadLettered: state.deadLettered,
             notFound: state.notFound,
             failed: state.failed,
             skippedState: skippedState,
@@ -577,6 +771,7 @@ export async function runFileGcBatch(
             recoveredFileIds: state.recoveredFileIds,
             deletedFileIds: state.deletedFileIds,
             wouldDeleteFileIds: state.wouldDeleteFileIds,
+            deadLetteredFileIds: state.deadLetteredFileIds,
         };
     });
 }

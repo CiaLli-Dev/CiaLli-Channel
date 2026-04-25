@@ -1,9 +1,11 @@
 import type { AppFile, AppFileLifecycle } from "@/types/app";
 import type { JsonObject } from "@/types/json";
 
+import { AppError } from "@/server/api/errors";
 import {
     readMany,
     updateDirectusFileMetadata,
+    updateDirectusFilesByFilter,
     updateManyItemsByFilter,
 } from "@/server/directus/client";
 import {
@@ -12,6 +14,31 @@ import {
 } from "@/server/api/v1/shared/file-cleanup-reference-utils";
 
 export type ManagedFileVisibility = "private" | "public";
+
+export const FILE_LIFECYCLE_NOT_ATTACHABLE_CODE =
+    "FILE_LIFECYCLE_NOT_ATTACHABLE";
+
+const NON_ATTACHABLE_LIFECYCLES = new Set<AppFileLifecycle>([
+    "detached",
+    "quarantined",
+    "deleting",
+    "deleted",
+    "delete_failed",
+]);
+
+const MANAGED_FILE_FIELDS = [
+    "id",
+    "date_created",
+    "date_updated",
+    "app_lifecycle",
+    "app_detached_at",
+    "app_quarantined_at",
+    "app_deleted_at",
+    "app_delete_attempts",
+    "app_delete_next_retry_at",
+    "app_delete_last_error",
+    "app_delete_dead_lettered_at",
+] as const;
 
 function normalizeFileIds(values: unknown[]): string[] {
     const normalizedIds = new Set<string>();
@@ -87,6 +114,10 @@ export async function markFilesTemporary(fileIds: string[]): Promise<void> {
             app_detached_at: null,
             app_quarantined_at: null,
             app_deleted_at: null,
+            app_delete_attempts: 0,
+            app_delete_next_retry_at: null,
+            app_delete_last_error: null,
+            app_delete_dead_lettered_at: null,
         },
     });
 }
@@ -96,16 +127,24 @@ export async function markFilesAttached(params: {
     ownerUserId?: string | null;
     visibility?: ManagedFileVisibility;
     title?: string;
+    allowLifecycleOverride?: boolean;
 }): Promise<void> {
     const fileIds = normalizeFileIds(params.fileIds);
     if (fileIds.length === 0) {
         return;
+    }
+    if (params.allowLifecycleOverride !== true) {
+        await assertFilesAttachable(fileIds);
     }
     const lifecyclePayload: JsonObject = {
         app_lifecycle: "attached" satisfies AppFileLifecycle,
         app_detached_at: null,
         app_quarantined_at: null,
         app_deleted_at: null,
+        app_delete_attempts: 0,
+        app_delete_next_retry_at: null,
+        app_delete_last_error: null,
+        app_delete_dead_lettered_at: null,
     };
     if (params.ownerUserId !== undefined) {
         lifecyclePayload.uploaded_by = params.ownerUserId;
@@ -125,6 +164,10 @@ export async function markFilesAttached(params: {
                 app_detached_at?: string | null;
                 app_quarantined_at?: string | null;
                 app_deleted_at?: string | null;
+                app_delete_attempts?: number | null;
+                app_delete_next_retry_at?: string | null;
+                app_delete_last_error?: string | null;
+                app_delete_dead_lettered_at?: string | null;
             }),
             title: params.title?.trim() || undefined,
         });
@@ -135,6 +178,27 @@ export async function markFilesAttached(params: {
         fileIds,
         data: lifecyclePayload,
     });
+}
+
+export async function assertFilesAttachable(fileIds: string[]): Promise<void> {
+    const normalizedIds = normalizeFileIds(fileIds);
+    if (normalizedIds.length === 0) {
+        return;
+    }
+    const files = await readManagedFilesByIds(normalizedIds);
+    const fileById = new Map(files.map((file) => [file.id, file]));
+    const blockedFiles = normalizedIds.filter((fileId) => {
+        const lifecycle = fileById.get(fileId)?.app_lifecycle;
+        return Boolean(lifecycle && NON_ATTACHABLE_LIFECYCLES.has(lifecycle));
+    });
+    if (blockedFiles.length > 0) {
+        throw new AppError(
+            FILE_LIFECYCLE_NOT_ATTACHABLE_CODE,
+            "文件处于待删除或隔离状态，不能直接绑定",
+            409,
+            { fileIds: blockedFiles },
+        );
+    }
 }
 
 export async function markFilesDetached(
@@ -149,6 +213,10 @@ export async function markFilesDetached(
             app_detached_at: detachedAt,
             app_quarantined_at: null,
             app_deleted_at: null,
+            app_delete_attempts: 0,
+            app_delete_next_retry_at: null,
+            app_delete_last_error: null,
+            app_delete_dead_lettered_at: null,
         },
     });
 }
@@ -164,8 +232,46 @@ export async function markFilesQuarantined(
             app_visibility: "private",
             app_quarantined_at: quarantinedAt,
             app_deleted_at: null,
+            app_delete_attempts: 0,
+            app_delete_next_retry_at: null,
+            app_delete_last_error: null,
+            app_delete_dead_lettered_at: null,
         },
     });
+}
+
+export async function claimFileForQuarantine(params: {
+    fileId: string;
+    detachedBefore: string;
+    quarantinedAt: string;
+}): Promise<boolean> {
+    const fileId = normalizeDirectusFileId(params.fileId);
+    if (!fileId) {
+        return false;
+    }
+    const updated = await updateDirectusFilesByFilter({
+        filter: {
+            _and: [
+                { id: { _eq: fileId } },
+                { app_lifecycle: { _eq: "detached" } },
+                { app_detached_at: { _nnull: true } },
+                { app_detached_at: { _lte: params.detachedBefore } },
+            ],
+        } as JsonObject,
+        data: {
+            app_lifecycle: "quarantined",
+            app_visibility: "private",
+            app_quarantined_at: params.quarantinedAt,
+            app_deleted_at: null,
+            app_delete_attempts: 0,
+            app_delete_next_retry_at: null,
+            app_delete_last_error: null,
+            app_delete_dead_lettered_at: null,
+        },
+        limit: 1,
+        fields: ["id"],
+    });
+    return updated.length === 1;
 }
 
 export async function markFilesDeleted(
@@ -178,7 +284,108 @@ export async function markFilesDeleted(
             app_lifecycle: "deleted",
             app_visibility: "private",
             app_deleted_at: deletedAt,
+            app_delete_next_retry_at: null,
+            app_delete_dead_lettered_at: null,
         },
+    });
+}
+
+export async function claimFileForDelete(params: {
+    fileId: string;
+    deletedAt: string;
+    retryAfter: string;
+    quarantinedBefore: string;
+    deleteRetryBefore: string;
+}): Promise<boolean> {
+    const fileId = normalizeDirectusFileId(params.fileId);
+    if (!fileId) {
+        return false;
+    }
+    const retryDueFilter: JsonObject = {
+        _or: [
+            { app_delete_next_retry_at: { _null: true } },
+            {
+                app_delete_next_retry_at: {
+                    _lte: params.deleteRetryBefore,
+                },
+            },
+        ],
+    };
+    const updated = await updateDirectusFilesByFilter({
+        filter: {
+            _and: [
+                { id: { _eq: fileId } },
+                {
+                    _or: [
+                        {
+                            _and: [
+                                { app_lifecycle: { _eq: "quarantined" } },
+                                { app_quarantined_at: { _nnull: true } },
+                                {
+                                    app_quarantined_at: {
+                                        _lte: params.quarantinedBefore,
+                                    },
+                                },
+                            ],
+                        },
+                        {
+                            _and: [
+                                { app_lifecycle: { _eq: "deleted" } },
+                                retryDueFilter,
+                            ],
+                        },
+                        {
+                            _and: [
+                                { app_lifecycle: { _eq: "deleting" } },
+                                retryDueFilter,
+                            ],
+                        },
+                    ],
+                },
+            ],
+        } as JsonObject,
+        data: {
+            app_lifecycle: "deleting",
+            app_visibility: "private",
+            app_deleted_at: params.deletedAt,
+            app_delete_next_retry_at: params.retryAfter,
+            app_delete_dead_lettered_at: null,
+        },
+        limit: 1,
+        fields: ["id"],
+    });
+    return updated.length === 1;
+}
+
+export async function markFileDeleteRetry(params: {
+    fileId: string;
+    attempts: number;
+    nextRetryAt: string;
+    lastError: string;
+}): Promise<void> {
+    await updateDirectusFileMetadata(params.fileId, {
+        app_lifecycle: "deleted",
+        app_visibility: "private",
+        app_delete_attempts: params.attempts,
+        app_delete_next_retry_at: params.nextRetryAt,
+        app_delete_last_error: params.lastError,
+        app_delete_dead_lettered_at: null,
+    });
+}
+
+export async function markFileDeleteDeadLetter(params: {
+    fileId: string;
+    attempts: number;
+    deadLetteredAt: string;
+    lastError: string;
+}): Promise<void> {
+    await updateDirectusFileMetadata(params.fileId, {
+        app_lifecycle: "delete_failed",
+        app_visibility: "private",
+        app_delete_attempts: params.attempts,
+        app_delete_next_retry_at: null,
+        app_delete_last_error: params.lastError,
+        app_delete_dead_lettered_at: params.deadLetteredAt,
     });
 }
 
@@ -191,15 +398,7 @@ export async function readManagedFilesByIds(
     }
     return (await readMany("directus_files", {
         filter: { id: { _in: normalizedIds } } as JsonObject,
-        fields: [
-            "id",
-            "date_created",
-            "date_updated",
-            "app_lifecycle",
-            "app_detached_at",
-            "app_quarantined_at",
-            "app_deleted_at",
-        ],
+        fields: [...MANAGED_FILE_FIELDS],
         limit: Math.max(normalizedIds.length, 1),
     })) as AppFile[];
 }
@@ -211,15 +410,7 @@ export async function readAllManagedFiles(): Promise<AppFile[]> {
 
     while (true) {
         const page = (await readMany("directus_files", {
-            fields: [
-                "id",
-                "date_created",
-                "date_updated",
-                "app_lifecycle",
-                "app_detached_at",
-                "app_quarantined_at",
-                "app_deleted_at",
-            ],
+            fields: [...MANAGED_FILE_FIELDS],
             limit,
             offset,
         })) as AppFile[];

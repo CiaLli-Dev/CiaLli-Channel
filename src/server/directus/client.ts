@@ -695,28 +695,67 @@ export async function uploadDirectusFile(params: {
     };
 }
 
+export type DirectusFileMetadataPayload = {
+    title?: string | null;
+    description?: string | null;
+    filename_download?: string | null;
+    folder?: string | null;
+    uploaded_by?: string | null;
+    modified_by?: string | null;
+    app_owner_user_id?: string | null;
+    app_upload_purpose?: UploadPurpose | null;
+    app_visibility?: "private" | "public" | null;
+    app_lifecycle?: AppFileLifecycle | null;
+    app_detached_at?: string | null;
+    app_quarantined_at?: string | null;
+    app_deleted_at?: string | null;
+    app_delete_attempts?: number | null;
+    app_delete_next_retry_at?: string | null;
+    app_delete_last_error?: string | null;
+    app_delete_dead_lettered_at?: string | null;
+};
+
 export async function updateDirectusFileMetadata(
     id: string,
-    payload: {
-        title?: string | null;
-        description?: string | null;
-        filename_download?: string | null;
-        folder?: string | null;
-        uploaded_by?: string | null;
-        modified_by?: string | null;
-        app_owner_user_id?: string | null;
-        app_upload_purpose?: UploadPurpose | null;
-        app_visibility?: "private" | "public" | null;
-        app_lifecycle?: AppFileLifecycle | null;
-        app_detached_at?: string | null;
-        app_quarantined_at?: string | null;
-        app_deleted_at?: string | null;
-    },
+    payload: DirectusFileMetadataPayload,
 ): Promise<void> {
     await executeDirectusRequest(
         "更新 Directus 文件元数据",
         updateFile(id, payload as never),
     );
+}
+
+export async function updateDirectusFilesByFilter(params: {
+    filter: JsonObject;
+    data: DirectusFileMetadataPayload;
+    limit?: number;
+    fields?: string[];
+}): Promise<Array<{ id: string }>> {
+    const query: { filter: JsonObject; limit?: number } = {
+        filter: params.filter,
+    };
+    if (params.limit !== undefined) {
+        query.limit = params.limit;
+    }
+    const fields =
+        params.fields && params.fields.length > 0 ? params.fields : ["id"];
+    const response = await executeDirectusRequest(
+        "按条件更新 Directus 文件元数据",
+        customEndpoint({
+            path: "/files",
+            method: "PATCH",
+            params: { fields },
+            body: JSON.stringify({
+                query,
+                data: params.data,
+            }) as never,
+        }),
+    );
+
+    return parseItemArrayResponse<Record<string, unknown>>(response)
+        .map((item) => String(item.id ?? "").trim())
+        .filter(Boolean)
+        .map((id) => ({ id }));
 }
 
 export type DeleteDirectusFileResult =

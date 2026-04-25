@@ -27,9 +27,7 @@
         "unarchive_value": "draft",
         "versioning": false
       },
-      "schema": {
-        "name": "ai_prompts"
-      }
+      "schema": { "name": "ai_prompts" }
     },
     {
       "collection": "app_ai_summary_jobs",
@@ -55,65 +53,7 @@
         "unarchive_value": "pending",
         "versioning": false
       },
-      "schema": {
-        "name": "app_ai_summary_jobs"
-      }
-    },
-    {
-      "collection": "app_file_detach_jobs",
-      "meta": {
-        "accountability": "all",
-        "archive_app_filter": true,
-        "archive_field": "status",
-        "archive_value": "skipped",
-        "collapse": "open",
-        "collection": "app_file_detach_jobs",
-        "color": null,
-        "display_template": "{{status}} - {{source_type}}",
-        "group": null,
-        "hidden": false,
-        "icon": "cleaning_services",
-        "item_duplication_fields": null,
-        "note": "Persistent file detach retry queue",
-        "preview_url": null,
-        "singleton": false,
-        "sort": null,
-        "sort_field": "sort",
-        "translations": null,
-        "unarchive_value": "pending",
-        "versioning": false
-      },
-      "schema": {
-        "name": "app_file_detach_jobs"
-      }
-    },
-    {
-      "collection": "app_file_references",
-      "meta": {
-        "accountability": null,
-        "archive_app_filter": false,
-        "archive_field": null,
-        "archive_value": null,
-        "collapse": "open",
-        "collection": "app_file_references",
-        "color": "#6366F1",
-        "display_template": "{{owner_collection}}/{{owner_id}} {{owner_field}} -> {{file_id}}",
-        "group": null,
-        "hidden": true,
-        "icon": "link",
-        "item_duplication_fields": null,
-        "note": "Shadow table of application-level Directus file references for GC comparison",
-        "preview_url": null,
-        "singleton": false,
-        "sort": null,
-        "sort_field": null,
-        "translations": null,
-        "unarchive_value": null,
-        "versioning": false
-      },
-      "schema": {
-        "name": "app_file_references"
-      }
+      "schema": { "name": "app_ai_summary_jobs" }
     },
     {
       "collection": "app_album_photos",
@@ -139,9 +79,7 @@
         "unarchive_value": "published",
         "versioning": false
       },
-      "schema": {
-        "name": "app_album_photos"
-      }
+      "schema": { "name": "app_album_photos" }
     },
     {
       "collection": "app_albums",
@@ -167,9 +105,7 @@
         "unarchive_value": "draft",
         "versioning": false
       },
-      "schema": {
-        "name": "app_albums"
-      }
+      "schema": { "name": "app_albums" }
     },
     {
       "collection": "app_anime_entries",
@@ -195,9 +131,7 @@
         "unarchive_value": "draft",
         "versioning": false
       },
-      "schema": {
-        "name": "app_anime_entries"
-      }
+      "schema": { "name": "app_anime_entries" }
     },
     {
       "collection": "app_article_comment_likes",
@@ -223,9 +157,7 @@
         "unarchive_value": "draft",
         "versioning": false
       },
-      "schema": {
-        "name": "app_article_comment_likes"
-      }
+      "schema": { "name": "app_article_comment_likes" }
     },
     {
       "collection": "app_article_comments",
@@ -251,9 +183,7 @@
         "unarchive_value": "published",
         "versioning": false
       },
-      "schema": {
-        "name": "app_article_comments"
-      }
+      "schema": { "name": "app_article_comments" }
     },
     {
       "collection": "app_article_likes",
@@ -279,9 +209,7 @@
         "unarchive_value": "published",
         "versioning": false
       },
-      "schema": {
-        "name": "app_article_likes"
-      }
+      "schema": { "name": "app_article_likes" }
     },
     {
       "collection": "app_articles",
@@ -307,9 +235,7 @@
         "unarchive_value": "draft",
         "versioning": false
       },
-      "schema": {
-        "name": "app_articles"
-      }
+      "schema": { "name": "app_articles" }
     },
     {
       "collection": "app_diaries",
@@ -335,9 +261,7 @@
         "unarchive_value": "draft",
         "versioning": false
       },
-      "schema": {
-        "name": "app_diaries"
-      }
+      "schema": { "name": "app_diaries" }
     },
     {
       "collection": "app_diary_comment_likes",
@@ -363,9 +287,7 @@
         "unarchive_value": "draft",
         "versioning": false
       },
-      "schema": {
-        "name": "app_diary_comment_likes"
-      }
+      "schema": { "name": "app_diary_comment_likes" }
     },
     {
       "collection": "app_diary_comments",
@@ -391,9 +313,7 @@
         "unarchive_value": "published",
         "versioning": false
       },
-      "schema": {
-        "name": "app_diary_comments"
-      }
+      "schema": { "name": "app_diary_comments" }
     },
     {
       "collection": "app_diary_images",
@@ -419,9 +339,7 @@
         "unarchive_value": "published",
         "versioning": false
       },
-      "schema": {
-        "name": "app_diary_images"
-      }
+      "schema": { "name": "app_diary_images" }
     },
     {
       "collection": "app_diary_likes",
@@ -447,9 +365,59 @@
         "unarchive_value": "draft",
         "versioning": false
       },
-      "schema": {
-        "name": "app_diary_likes"
-      }
+      "schema": { "name": "app_diary_likes" }
+    },
+    {
+      "collection": "app_file_detach_jobs",
+      "meta": {
+        "accountability": "all",
+        "archive_app_filter": true,
+        "archive_field": "status",
+        "archive_value": "skipped",
+        "collapse": "open",
+        "collection": "app_file_detach_jobs",
+        "color": null,
+        "display_template": "{{status}} - {{source_type}}",
+        "group": null,
+        "hidden": false,
+        "icon": "cleaning_services",
+        "item_duplication_fields": null,
+        "note": "Persistent file detach retry queue",
+        "preview_url": null,
+        "singleton": false,
+        "sort": null,
+        "sort_field": "sort",
+        "translations": null,
+        "unarchive_value": "pending",
+        "versioning": false
+      },
+      "schema": { "name": "app_file_detach_jobs" }
+    },
+    {
+      "collection": "app_file_references",
+      "meta": {
+        "accountability": null,
+        "archive_app_filter": false,
+        "archive_field": null,
+        "archive_value": null,
+        "collapse": "open",
+        "collection": "app_file_references",
+        "color": "#6366F1",
+        "display_template": "{{owner_collection}}/{{owner_id}} {{owner_field}} -> {{file_id}}",
+        "group": null,
+        "hidden": true,
+        "icon": "link",
+        "item_duplication_fields": null,
+        "note": "Shadow table of application-level Directus file references for GC comparison",
+        "preview_url": null,
+        "singleton": false,
+        "sort": null,
+        "sort_field": null,
+        "translations": null,
+        "unarchive_value": null,
+        "versioning": false
+      },
+      "schema": { "name": "app_file_references" }
     },
     {
       "collection": "app_friends",
@@ -475,9 +443,7 @@
         "unarchive_value": null,
         "versioning": false
       },
-      "schema": {
-        "name": "app_friends"
-      }
+      "schema": { "name": "app_friends" }
     },
     {
       "collection": "app_site_announcements",
@@ -503,9 +469,7 @@
         "unarchive_value": "draft",
         "versioning": false
       },
-      "schema": {
-        "name": "app_site_announcements"
-      }
+      "schema": { "name": "app_site_announcements" }
     },
     {
       "collection": "app_site_settings",
@@ -531,9 +495,7 @@
         "unarchive_value": "draft",
         "versioning": false
       },
-      "schema": {
-        "name": "app_site_settings"
-      }
+      "schema": { "name": "app_site_settings" }
     },
     {
       "collection": "app_user_profiles",
@@ -559,9 +521,7 @@
         "unarchive_value": "draft",
         "versioning": false
       },
-      "schema": {
-        "name": "app_user_profiles"
-      }
+      "schema": { "name": "app_user_profiles" }
     },
     {
       "collection": "app_user_registration_requests",
@@ -587,9 +547,7 @@
         "unarchive_value": "draft",
         "versioning": false
       },
-      "schema": {
-        "name": "app_user_registration_requests"
-      }
+      "schema": { "name": "app_user_registration_requests" }
     }
   ],
   "fields": [
@@ -601,9 +559,7 @@
         "collection": "ai_prompts",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "date_created",
         "group": null,
         "hidden": true,
@@ -647,9 +603,7 @@
         "collection": "ai_prompts",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "date_updated",
         "group": null,
         "hidden": true,
@@ -781,9 +735,7 @@
         "collection": "ai_prompts",
         "conditions": null,
         "display": "formatted-json-value",
-        "display_options": {
-          "format": "{{ role }} • {{ text }}"
-        },
+        "display_options": { "format": "{{ role }} • {{ text }}" },
         "field": "messages",
         "group": null,
         "hidden": false,
@@ -838,9 +790,7 @@
               "field": "text",
               "meta": {
                 "display": "formatted-value",
-                "display_options": {
-                  "format": true
-                },
+                "display_options": { "format": true },
                 "field": "text",
                 "interface": "input-rich-text-md",
                 "note": "The actual content of the message. You can use {{ curly_braces }} for placeholders that will be replaced with real data.",
@@ -921,18 +871,13 @@
         "collection": "ai_prompts",
         "conditions": null,
         "display": "formatted-value",
-        "display_options": {
-          "font": "monospace"
-        },
+        "display_options": { "font": "monospace" },
         "field": "name",
         "group": null,
         "hidden": false,
         "interface": "input",
         "note": null,
-        "options": {
-          "slug": true,
-          "trim": true
-        },
+        "options": { "slug": true, "trim": true },
         "readonly": false,
         "required": true,
         "searchable": true,
@@ -1150,9 +1095,7 @@
         "hidden": true,
         "interface": "select-dropdown-m2o",
         "note": null,
-        "options": {
-          "template": "{{avatar}} {{first_name}} {{last_name}}"
-        },
+        "options": { "template": "{{avatar}} {{first_name}} {{last_name}}" },
         "readonly": true,
         "required": false,
         "searchable": true,
@@ -1196,9 +1139,7 @@
         "hidden": true,
         "interface": "select-dropdown-m2o",
         "note": null,
-        "options": {
-          "template": "{{avatar}} {{first_name}} {{last_name}}"
-        },
+        "options": { "template": "{{avatar}} {{first_name}} {{last_name}}" },
         "readonly": true,
         "required": false,
         "searchable": true,
@@ -1282,30 +1223,12 @@
         "display": "labels",
         "display_options": {
           "choices": [
-            {
-              "text": "Pending",
-              "value": "pending"
-            },
-            {
-              "text": "Processing",
-              "value": "processing"
-            },
-            {
-              "text": "Succeeded",
-              "value": "succeeded"
-            },
-            {
-              "text": "Failed",
-              "value": "failed"
-            },
-            {
-              "text": "Canceled",
-              "value": "canceled"
-            },
-            {
-              "text": "Skipped",
-              "value": "skipped"
-            }
+            { "text": "Pending", "value": "pending" },
+            { "text": "Processing", "value": "processing" },
+            { "text": "Succeeded", "value": "succeeded" },
+            { "text": "Failed", "value": "failed" },
+            { "text": "Canceled", "value": "canceled" },
+            { "text": "Skipped", "value": "skipped" }
           ]
         },
         "field": "status",
@@ -1315,30 +1238,12 @@
         "note": null,
         "options": {
           "choices": [
-            {
-              "text": "Pending",
-              "value": "pending"
-            },
-            {
-              "text": "Processing",
-              "value": "processing"
-            },
-            {
-              "text": "Succeeded",
-              "value": "succeeded"
-            },
-            {
-              "text": "Failed",
-              "value": "failed"
-            },
-            {
-              "text": "Canceled",
-              "value": "canceled"
-            },
-            {
-              "text": "Skipped",
-              "value": "skipped"
-            }
+            { "text": "Pending", "value": "pending" },
+            { "text": "Processing", "value": "processing" },
+            { "text": "Succeeded", "value": "succeeded" },
+            { "text": "Failed", "value": "failed" },
+            { "text": "Canceled", "value": "canceled" },
+            { "text": "Skipped", "value": "skipped" }
           ]
         },
         "readonly": false,
@@ -1466,9 +1371,7 @@
         "collection": "app_ai_summary_jobs",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "date_created",
         "group": null,
         "hidden": true,
@@ -1556,9 +1459,7 @@
         "collection": "app_ai_summary_jobs",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "date_updated",
         "group": null,
         "hidden": true,
@@ -1602,17 +1503,13 @@
         "collection": "app_ai_summary_jobs",
         "conditions": null,
         "display": "related-values",
-        "display_options": {
-          "template": "{{title}}"
-        },
+        "display_options": { "template": "{{title}}" },
         "field": "article_id",
         "group": null,
         "hidden": false,
         "interface": "select-dropdown-m2o",
         "note": null,
-        "options": {
-          "template": "{{title}}"
-        },
+        "options": { "template": "{{title}}" },
         "readonly": false,
         "required": true,
         "searchable": true,
@@ -1702,22 +1599,10 @@
         "note": null,
         "options": {
           "choices": [
-            {
-              "text": "On Publish",
-              "value": "on_publish"
-            },
-            {
-              "text": "Manual",
-              "value": "manual"
-            },
-            {
-              "text": "History",
-              "value": "history"
-            },
-            {
-              "text": "Regenerate",
-              "value": "regenerate"
-            }
+            { "text": "On Publish", "value": "on_publish" },
+            { "text": "Manual", "value": "manual" },
+            { "text": "History", "value": "history" },
+            { "text": "Regenerate", "value": "regenerate" }
           ]
         },
         "readonly": false,
@@ -2029,18 +1914,9 @@
         "note": null,
         "options": {
           "choices": [
-            {
-              "text": "Short",
-              "value": "short"
-            },
-            {
-              "text": "Medium",
-              "value": "medium"
-            },
-            {
-              "text": "Long",
-              "value": "long"
-            }
+            { "text": "Short", "value": "short" },
+            { "text": "Medium", "value": "medium" },
+            { "text": "Long", "value": "long" }
           ]
         },
         "readonly": false,
@@ -2601,1364 +2477,6 @@
       }
     },
     {
-      "collection": "app_file_detach_jobs",
-      "field": "id",
-      "type": "uuid",
-      "meta": {
-        "collection": "app_file_detach_jobs",
-        "conditions": null,
-        "display": null,
-        "display_options": null,
-        "field": "id",
-        "group": null,
-        "hidden": true,
-        "interface": "input",
-        "note": null,
-        "options": null,
-        "readonly": true,
-        "required": false,
-        "searchable": true,
-        "sort": 1,
-        "special": ["uuid"],
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "full"
-      },
-      "schema": {
-        "name": "id",
-        "table": "app_file_detach_jobs",
-        "data_type": "uuid",
-        "default_value": null,
-        "max_length": null,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": false,
-        "is_unique": true,
-        "is_indexed": false,
-        "is_primary_key": true,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_detach_jobs",
-      "field": "status",
-      "type": "string",
-      "meta": {
-        "collection": "app_file_detach_jobs",
-        "conditions": null,
-        "display": "labels",
-        "display_options": {
-          "choices": [
-            {
-              "text": "Pending",
-              "value": "pending"
-            },
-            {
-              "text": "Processing",
-              "value": "processing"
-            },
-            {
-              "text": "Succeeded",
-              "value": "succeeded"
-            },
-            {
-              "text": "Skipped",
-              "value": "skipped"
-            }
-          ]
-        },
-        "field": "status",
-        "group": null,
-        "hidden": false,
-        "interface": "select-dropdown",
-        "note": null,
-        "options": {
-          "choices": [
-            {
-              "text": "Pending",
-              "value": "pending"
-            },
-            {
-              "text": "Processing",
-              "value": "processing"
-            },
-            {
-              "text": "Succeeded",
-              "value": "succeeded"
-            },
-            {
-              "text": "Skipped",
-              "value": "skipped"
-            }
-          ]
-        },
-        "readonly": false,
-        "required": false,
-        "searchable": true,
-        "sort": 2,
-        "special": null,
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "status",
-        "table": "app_file_detach_jobs",
-        "data_type": "character varying",
-        "default_value": "pending",
-        "max_length": 255,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": false,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_detach_jobs",
-      "field": "source_type",
-      "type": "string",
-      "meta": {
-        "collection": "app_file_detach_jobs",
-        "conditions": null,
-        "display": null,
-        "display_options": null,
-        "field": "source_type",
-        "group": null,
-        "hidden": false,
-        "interface": "input",
-        "note": null,
-        "options": null,
-        "readonly": false,
-        "required": false,
-        "searchable": true,
-        "sort": 3,
-        "special": null,
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "source_type",
-        "table": "app_file_detach_jobs",
-        "data_type": "character varying",
-        "default_value": null,
-        "max_length": 255,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": false,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_detach_jobs",
-      "field": "source_id",
-      "type": "string",
-      "meta": {
-        "collection": "app_file_detach_jobs",
-        "conditions": null,
-        "display": null,
-        "display_options": null,
-        "field": "source_id",
-        "group": null,
-        "hidden": false,
-        "interface": "input",
-        "note": null,
-        "options": null,
-        "readonly": false,
-        "required": false,
-        "searchable": true,
-        "sort": 4,
-        "special": null,
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "source_id",
-        "table": "app_file_detach_jobs",
-        "data_type": "character varying",
-        "default_value": null,
-        "max_length": 255,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": true,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_detach_jobs",
-      "field": "candidate_file_ids",
-      "type": "json",
-      "meta": {
-        "collection": "app_file_detach_jobs",
-        "conditions": null,
-        "display": null,
-        "display_options": null,
-        "field": "candidate_file_ids",
-        "group": null,
-        "hidden": false,
-        "interface": "input-code",
-        "note": null,
-        "options": {
-          "language": "json"
-        },
-        "readonly": false,
-        "required": false,
-        "searchable": true,
-        "sort": 5,
-        "special": ["cast-json"],
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "full"
-      },
-      "schema": {
-        "name": "candidate_file_ids",
-        "table": "app_file_detach_jobs",
-        "data_type": "json",
-        "default_value": null,
-        "max_length": null,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": true,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_detach_jobs",
-      "field": "detached_file_ids",
-      "type": "json",
-      "meta": {
-        "collection": "app_file_detach_jobs",
-        "conditions": null,
-        "display": null,
-        "display_options": null,
-        "field": "detached_file_ids",
-        "group": null,
-        "hidden": false,
-        "interface": "input-code",
-        "note": null,
-        "options": {
-          "language": "json"
-        },
-        "readonly": false,
-        "required": false,
-        "searchable": true,
-        "sort": 6,
-        "special": ["cast-json"],
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "full"
-      },
-      "schema": {
-        "name": "detached_file_ids",
-        "table": "app_file_detach_jobs",
-        "data_type": "json",
-        "default_value": null,
-        "max_length": null,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": true,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_detach_jobs",
-      "field": "skipped_referenced_file_ids",
-      "type": "json",
-      "meta": {
-        "collection": "app_file_detach_jobs",
-        "conditions": null,
-        "display": null,
-        "display_options": null,
-        "field": "skipped_referenced_file_ids",
-        "group": null,
-        "hidden": false,
-        "interface": "input-code",
-        "note": null,
-        "options": {
-          "language": "json"
-        },
-        "readonly": false,
-        "required": false,
-        "searchable": true,
-        "sort": 7,
-        "special": ["cast-json"],
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "full"
-      },
-      "schema": {
-        "name": "skipped_referenced_file_ids",
-        "table": "app_file_detach_jobs",
-        "data_type": "json",
-        "default_value": null,
-        "max_length": null,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": true,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_detach_jobs",
-      "field": "attempts",
-      "type": "integer",
-      "meta": {
-        "collection": "app_file_detach_jobs",
-        "conditions": null,
-        "display": null,
-        "display_options": null,
-        "field": "attempts",
-        "group": null,
-        "hidden": false,
-        "interface": "input",
-        "note": null,
-        "options": null,
-        "readonly": false,
-        "required": false,
-        "searchable": true,
-        "sort": 8,
-        "special": null,
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "attempts",
-        "table": "app_file_detach_jobs",
-        "data_type": "integer",
-        "default_value": 0,
-        "max_length": null,
-        "numeric_precision": 32,
-        "numeric_scale": 0,
-        "is_nullable": false,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_detach_jobs",
-      "field": "scheduled_at",
-      "type": "timestamp",
-      "meta": {
-        "collection": "app_file_detach_jobs",
-        "conditions": null,
-        "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
-        "field": "scheduled_at",
-        "group": null,
-        "hidden": false,
-        "interface": "datetime",
-        "note": null,
-        "options": null,
-        "readonly": false,
-        "required": false,
-        "searchable": true,
-        "sort": 9,
-        "special": null,
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "scheduled_at",
-        "table": "app_file_detach_jobs",
-        "data_type": "timestamp with time zone",
-        "default_value": null,
-        "max_length": null,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": true,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_detach_jobs",
-      "field": "leased_until",
-      "type": "timestamp",
-      "meta": {
-        "collection": "app_file_detach_jobs",
-        "conditions": null,
-        "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
-        "field": "leased_until",
-        "group": null,
-        "hidden": false,
-        "interface": "datetime",
-        "note": null,
-        "options": null,
-        "readonly": false,
-        "required": false,
-        "searchable": true,
-        "sort": 10,
-        "special": null,
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "leased_until",
-        "table": "app_file_detach_jobs",
-        "data_type": "timestamp with time zone",
-        "default_value": null,
-        "max_length": null,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": true,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_detach_jobs",
-      "field": "started_at",
-      "type": "timestamp",
-      "meta": {
-        "collection": "app_file_detach_jobs",
-        "conditions": null,
-        "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
-        "field": "started_at",
-        "group": null,
-        "hidden": false,
-        "interface": "datetime",
-        "note": null,
-        "options": null,
-        "readonly": false,
-        "required": false,
-        "searchable": true,
-        "sort": 11,
-        "special": null,
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "started_at",
-        "table": "app_file_detach_jobs",
-        "data_type": "timestamp with time zone",
-        "default_value": null,
-        "max_length": null,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": true,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_detach_jobs",
-      "field": "finished_at",
-      "type": "timestamp",
-      "meta": {
-        "collection": "app_file_detach_jobs",
-        "conditions": null,
-        "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
-        "field": "finished_at",
-        "group": null,
-        "hidden": false,
-        "interface": "datetime",
-        "note": null,
-        "options": null,
-        "readonly": false,
-        "required": false,
-        "searchable": true,
-        "sort": 12,
-        "special": null,
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "finished_at",
-        "table": "app_file_detach_jobs",
-        "data_type": "timestamp with time zone",
-        "default_value": null,
-        "max_length": null,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": true,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_detach_jobs",
-      "field": "error_code",
-      "type": "string",
-      "meta": {
-        "collection": "app_file_detach_jobs",
-        "conditions": null,
-        "display": null,
-        "display_options": null,
-        "field": "error_code",
-        "group": null,
-        "hidden": false,
-        "interface": "input",
-        "note": null,
-        "options": null,
-        "readonly": false,
-        "required": false,
-        "searchable": true,
-        "sort": 13,
-        "special": null,
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "error_code",
-        "table": "app_file_detach_jobs",
-        "data_type": "character varying",
-        "default_value": null,
-        "max_length": 255,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": true,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_detach_jobs",
-      "field": "error_message",
-      "type": "text",
-      "meta": {
-        "collection": "app_file_detach_jobs",
-        "conditions": null,
-        "display": null,
-        "display_options": null,
-        "field": "error_message",
-        "group": null,
-        "hidden": false,
-        "interface": "input-multiline",
-        "note": null,
-        "options": null,
-        "readonly": false,
-        "required": false,
-        "searchable": true,
-        "sort": 14,
-        "special": null,
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "full"
-      },
-      "schema": {
-        "name": "error_message",
-        "table": "app_file_detach_jobs",
-        "data_type": "text",
-        "default_value": null,
-        "max_length": null,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": true,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_detach_jobs",
-      "field": "sort",
-      "type": "integer",
-      "meta": {
-        "collection": "app_file_detach_jobs",
-        "conditions": null,
-        "display": null,
-        "display_options": null,
-        "field": "sort",
-        "group": null,
-        "hidden": true,
-        "interface": "input",
-        "note": null,
-        "options": null,
-        "readonly": false,
-        "required": false,
-        "searchable": true,
-        "sort": 15,
-        "special": null,
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "sort",
-        "table": "app_file_detach_jobs",
-        "data_type": "integer",
-        "default_value": null,
-        "max_length": null,
-        "numeric_precision": 32,
-        "numeric_scale": 0,
-        "is_nullable": true,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_detach_jobs",
-      "field": "user_created",
-      "type": "uuid",
-      "meta": {
-        "collection": "app_file_detach_jobs",
-        "conditions": null,
-        "display": "user",
-        "display_options": null,
-        "field": "user_created",
-        "group": null,
-        "hidden": true,
-        "interface": "input",
-        "note": null,
-        "options": null,
-        "readonly": true,
-        "required": false,
-        "searchable": true,
-        "sort": 16,
-        "special": ["user-created"],
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "user_created",
-        "table": "app_file_detach_jobs",
-        "data_type": "uuid",
-        "default_value": null,
-        "max_length": null,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": true,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": "directus_users",
-        "foreign_key_column": "id"
-      }
-    },
-    {
-      "collection": "app_file_detach_jobs",
-      "field": "date_created",
-      "type": "timestamp",
-      "meta": {
-        "collection": "app_file_detach_jobs",
-        "conditions": null,
-        "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
-        "field": "date_created",
-        "group": null,
-        "hidden": true,
-        "interface": "input",
-        "note": null,
-        "options": null,
-        "readonly": true,
-        "required": false,
-        "searchable": true,
-        "sort": 17,
-        "special": ["date-created"],
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "date_created",
-        "table": "app_file_detach_jobs",
-        "data_type": "timestamp with time zone",
-        "default_value": "CURRENT_TIMESTAMP",
-        "max_length": null,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": true,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_detach_jobs",
-      "field": "user_updated",
-      "type": "uuid",
-      "meta": {
-        "collection": "app_file_detach_jobs",
-        "conditions": null,
-        "display": "user",
-        "display_options": null,
-        "field": "user_updated",
-        "group": null,
-        "hidden": true,
-        "interface": "input",
-        "note": null,
-        "options": null,
-        "readonly": true,
-        "required": false,
-        "searchable": true,
-        "sort": 18,
-        "special": ["user-updated"],
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "user_updated",
-        "table": "app_file_detach_jobs",
-        "data_type": "uuid",
-        "default_value": null,
-        "max_length": null,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": true,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": "directus_users",
-        "foreign_key_column": "id"
-      }
-    },
-    {
-      "collection": "app_file_detach_jobs",
-      "field": "date_updated",
-      "type": "timestamp",
-      "meta": {
-        "collection": "app_file_detach_jobs",
-        "conditions": null,
-        "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
-        "field": "date_updated",
-        "group": null,
-        "hidden": true,
-        "interface": "input",
-        "note": null,
-        "options": null,
-        "readonly": true,
-        "required": false,
-        "searchable": true,
-        "sort": 19,
-        "special": ["date-updated"],
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "date_updated",
-        "table": "app_file_detach_jobs",
-        "data_type": "timestamp with time zone",
-        "default_value": null,
-        "max_length": null,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": true,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_references",
-      "field": "id",
-      "type": "uuid",
-      "meta": {
-        "collection": "app_file_references",
-        "conditions": null,
-        "display": null,
-        "display_options": null,
-        "field": "id",
-        "group": null,
-        "hidden": true,
-        "interface": "input",
-        "note": null,
-        "options": null,
-        "readonly": true,
-        "required": false,
-        "searchable": true,
-        "sort": 1,
-        "special": ["uuid"],
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "id",
-        "table": "app_file_references",
-        "data_type": "uuid",
-        "default_value": null,
-        "max_length": null,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": false,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": true,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_references",
-      "field": "file_id",
-      "type": "uuid",
-      "meta": {
-        "collection": "app_file_references",
-        "conditions": null,
-        "display": null,
-        "display_options": null,
-        "field": "file_id",
-        "group": null,
-        "hidden": false,
-        "interface": "select-dropdown-m2o",
-        "note": null,
-        "options": null,
-        "readonly": false,
-        "required": true,
-        "searchable": true,
-        "sort": 2,
-        "special": ["m2o"],
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "file_id",
-        "table": "app_file_references",
-        "data_type": "uuid",
-        "default_value": null,
-        "max_length": null,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": false,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": "directus_files",
-        "foreign_key_column": "id"
-      }
-    },
-    {
-      "collection": "app_file_references",
-      "field": "owner_collection",
-      "type": "string",
-      "meta": {
-        "collection": "app_file_references",
-        "conditions": null,
-        "display": null,
-        "display_options": null,
-        "field": "owner_collection",
-        "group": null,
-        "hidden": false,
-        "interface": "input",
-        "note": null,
-        "options": null,
-        "readonly": false,
-        "required": true,
-        "searchable": true,
-        "sort": 3,
-        "special": null,
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "owner_collection",
-        "table": "app_file_references",
-        "data_type": "character varying",
-        "default_value": null,
-        "max_length": 255,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": false,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_references",
-      "field": "owner_id",
-      "type": "string",
-      "meta": {
-        "collection": "app_file_references",
-        "conditions": null,
-        "display": null,
-        "display_options": null,
-        "field": "owner_id",
-        "group": null,
-        "hidden": false,
-        "interface": "input",
-        "note": null,
-        "options": null,
-        "readonly": false,
-        "required": true,
-        "searchable": true,
-        "sort": 4,
-        "special": null,
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "owner_id",
-        "table": "app_file_references",
-        "data_type": "character varying",
-        "default_value": null,
-        "max_length": 255,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": false,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_references",
-      "field": "owner_field",
-      "type": "string",
-      "meta": {
-        "collection": "app_file_references",
-        "conditions": null,
-        "display": null,
-        "display_options": null,
-        "field": "owner_field",
-        "group": null,
-        "hidden": false,
-        "interface": "input",
-        "note": null,
-        "options": null,
-        "readonly": false,
-        "required": true,
-        "searchable": true,
-        "sort": 5,
-        "special": null,
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "owner_field",
-        "table": "app_file_references",
-        "data_type": "character varying",
-        "default_value": null,
-        "max_length": 255,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": false,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_references",
-      "field": "reference_kind",
-      "type": "string",
-      "meta": {
-        "collection": "app_file_references",
-        "conditions": null,
-        "display": null,
-        "display_options": null,
-        "field": "reference_kind",
-        "group": null,
-        "hidden": false,
-        "interface": "select-dropdown",
-        "note": null,
-        "options": {
-          "choices": [
-            {
-              "text": "Structured Field",
-              "value": "structured_field"
-            },
-            {
-              "text": "Markdown Asset",
-              "value": "markdown_asset"
-            },
-            {
-              "text": "Settings Asset",
-              "value": "settings_asset"
-            }
-          ]
-        },
-        "readonly": false,
-        "required": true,
-        "searchable": true,
-        "sort": 6,
-        "special": null,
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "reference_kind",
-        "table": "app_file_references",
-        "data_type": "character varying",
-        "default_value": null,
-        "max_length": 64,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": false,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_references",
-      "field": "owner_user_id",
-      "type": "uuid",
-      "meta": {
-        "collection": "app_file_references",
-        "conditions": null,
-        "display": null,
-        "display_options": null,
-        "field": "owner_user_id",
-        "group": null,
-        "hidden": false,
-        "interface": "select-dropdown-m2o",
-        "note": null,
-        "options": null,
-        "readonly": false,
-        "required": false,
-        "searchable": true,
-        "sort": 7,
-        "special": ["m2o"],
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "owner_user_id",
-        "table": "app_file_references",
-        "data_type": "uuid",
-        "default_value": null,
-        "max_length": null,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": true,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": "directus_users",
-        "foreign_key_column": "id"
-      }
-    },
-    {
-      "collection": "app_file_references",
-      "field": "visibility",
-      "type": "string",
-      "meta": {
-        "collection": "app_file_references",
-        "conditions": null,
-        "display": null,
-        "display_options": null,
-        "field": "visibility",
-        "group": null,
-        "hidden": false,
-        "interface": "select-dropdown",
-        "note": null,
-        "options": {
-          "choices": [
-            {
-              "text": "Private",
-              "value": "private"
-            },
-            {
-              "text": "Public",
-              "value": "public"
-            }
-          ]
-        },
-        "readonly": false,
-        "required": true,
-        "searchable": true,
-        "sort": 8,
-        "special": null,
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "visibility",
-        "table": "app_file_references",
-        "data_type": "character varying",
-        "default_value": "private",
-        "max_length": 32,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": false,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_references",
-      "field": "created_at",
-      "type": "timestamp",
-      "meta": {
-        "collection": "app_file_references",
-        "conditions": null,
-        "display": "datetime",
-        "display_options": null,
-        "field": "created_at",
-        "group": null,
-        "hidden": false,
-        "interface": "datetime",
-        "note": null,
-        "options": null,
-        "readonly": false,
-        "required": false,
-        "searchable": true,
-        "sort": 9,
-        "special": null,
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "created_at",
-        "table": "app_file_references",
-        "data_type": "timestamp with time zone",
-        "default_value": null,
-        "max_length": null,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": false,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
-      "collection": "app_file_references",
-      "field": "updated_at",
-      "type": "timestamp",
-      "meta": {
-        "collection": "app_file_references",
-        "conditions": null,
-        "display": "datetime",
-        "display_options": null,
-        "field": "updated_at",
-        "group": null,
-        "hidden": false,
-        "interface": "datetime",
-        "note": null,
-        "options": null,
-        "readonly": false,
-        "required": false,
-        "searchable": true,
-        "sort": 10,
-        "special": null,
-        "translations": null,
-        "validation": null,
-        "validation_message": null,
-        "width": "half"
-      },
-      "schema": {
-        "name": "updated_at",
-        "table": "app_file_references",
-        "data_type": "timestamp with time zone",
-        "default_value": null,
-        "max_length": null,
-        "numeric_precision": null,
-        "numeric_scale": null,
-        "is_nullable": false,
-        "is_unique": false,
-        "is_indexed": false,
-        "is_primary_key": false,
-        "is_generated": false,
-        "generation_expression": null,
-        "has_auto_increment": false,
-        "foreign_key_table": null,
-        "foreign_key_column": null
-      }
-    },
-    {
       "collection": "app_album_photos",
       "field": "album_id",
       "type": "uuid",
@@ -4458,14 +2976,8 @@
         "note": null,
         "options": {
           "choices": [
-            {
-              "text": "Published",
-              "value": "published"
-            },
-            {
-              "text": "Archived",
-              "value": "archived"
-            }
+            { "text": "Published", "value": "published" },
+            { "text": "Archived", "value": "archived" }
           ]
         },
         "readonly": false,
@@ -5217,14 +3729,8 @@
         "note": null,
         "options": {
           "choices": [
-            {
-              "text": "grid",
-              "value": "grid"
-            },
-            {
-              "text": "masonry",
-              "value": "masonry"
-            }
+            { "text": "grid", "value": "grid" },
+            { "text": "masonry", "value": "masonry" }
           ]
         },
         "readonly": false,
@@ -5448,14 +3954,8 @@
         "note": null,
         "options": {
           "choices": [
-            {
-              "text": "Published",
-              "value": "published"
-            },
-            {
-              "text": "Private",
-              "value": "private"
-            }
+            { "text": "Published", "value": "published" },
+            { "text": "Private", "value": "private" }
           ]
         },
         "readonly": false,
@@ -6295,18 +4795,9 @@
         "note": null,
         "options": {
           "choices": [
-            {
-              "text": "Published",
-              "value": "published"
-            },
-            {
-              "text": "Draft",
-              "value": "draft"
-            },
-            {
-              "text": "Archived",
-              "value": "archived"
-            }
+            { "text": "Published", "value": "published" },
+            { "text": "Draft", "value": "draft" },
+            { "text": "Archived", "value": "archived" }
           ]
         },
         "readonly": false,
@@ -6574,26 +5065,11 @@
         "note": null,
         "options": {
           "choices": [
-            {
-              "text": "watching",
-              "value": "watching"
-            },
-            {
-              "text": "completed",
-              "value": "completed"
-            },
-            {
-              "text": "planned",
-              "value": "planned"
-            },
-            {
-              "text": "onhold",
-              "value": "onhold"
-            },
-            {
-              "text": "dropped",
-              "value": "dropped"
-            }
+            { "text": "watching", "value": "watching" },
+            { "text": "completed", "value": "completed" },
+            { "text": "planned", "value": "planned" },
+            { "text": "onhold", "value": "onhold" },
+            { "text": "dropped", "value": "dropped" }
           ]
         },
         "readonly": false,
@@ -6721,9 +5197,7 @@
         "collection": "app_article_comment_likes",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "date_created",
         "group": null,
         "hidden": true,
@@ -6767,9 +5241,7 @@
         "collection": "app_article_comment_likes",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "date_updated",
         "group": null,
         "hidden": true,
@@ -6994,9 +5466,7 @@
         "hidden": true,
         "interface": "select-dropdown-m2o",
         "note": null,
-        "options": {
-          "template": "{{avatar}} {{first_name}} {{last_name}}"
-        },
+        "options": { "template": "{{avatar}} {{first_name}} {{last_name}}" },
         "readonly": true,
         "required": false,
         "searchable": true,
@@ -7084,9 +5554,7 @@
         "hidden": true,
         "interface": "select-dropdown-m2o",
         "note": null,
-        "options": {
-          "template": "{{avatar}} {{first_name}} {{last_name}}"
-        },
+        "options": { "template": "{{avatar}} {{first_name}} {{last_name}}" },
         "readonly": true,
         "required": false,
         "searchable": true,
@@ -7572,18 +6040,9 @@
         "note": null,
         "options": {
           "choices": [
-            {
-              "text": "Published",
-              "value": "published"
-            },
-            {
-              "text": "Hidden",
-              "value": "hidden"
-            },
-            {
-              "text": "Archived",
-              "value": "archived"
-            }
+            { "text": "Published", "value": "published" },
+            { "text": "Hidden", "value": "hidden" },
+            { "text": "Archived", "value": "archived" }
           ]
         },
         "readonly": false,
@@ -8705,18 +7164,9 @@
         "note": null,
         "options": {
           "choices": [
-            {
-              "text": "Published",
-              "value": "published"
-            },
-            {
-              "text": "Draft",
-              "value": "draft"
-            },
-            {
-              "text": "Archived",
-              "value": "archived"
-            }
+            { "text": "Published", "value": "published" },
+            { "text": "Draft", "value": "draft" },
+            { "text": "Archived", "value": "archived" }
           ]
         },
         "readonly": false,
@@ -8978,18 +7428,9 @@
         "display": "labels",
         "display_options": {
           "choices": [
-            {
-              "text": "None",
-              "value": "none"
-            },
-            {
-              "text": "Manual",
-              "value": "manual"
-            },
-            {
-              "text": "AI",
-              "value": "ai"
-            }
+            { "text": "None", "value": "none" },
+            { "text": "Manual", "value": "manual" },
+            { "text": "AI", "value": "ai" }
           ]
         },
         "field": "summary_source",
@@ -8999,18 +7440,9 @@
         "note": "摘要来源：none/manual/ai。",
         "options": {
           "choices": [
-            {
-              "text": "None",
-              "value": "none"
-            },
-            {
-              "text": "Manual",
-              "value": "manual"
-            },
-            {
-              "text": "AI",
-              "value": "ai"
-            }
+            { "text": "None", "value": "none" },
+            { "text": "Manual", "value": "manual" },
+            { "text": "AI", "value": "ai" }
           ]
         },
         "readonly": false,
@@ -9674,18 +8106,9 @@
         "note": null,
         "options": {
           "choices": [
-            {
-              "text": "Published",
-              "value": "published"
-            },
-            {
-              "text": "Draft",
-              "value": "draft"
-            },
-            {
-              "text": "Archived",
-              "value": "archived"
-            }
+            { "text": "Published", "value": "published" },
+            { "text": "Draft", "value": "draft" },
+            { "text": "Archived", "value": "archived" }
           ]
         },
         "readonly": false,
@@ -9813,9 +8236,7 @@
         "collection": "app_diary_comment_likes",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "date_created",
         "group": null,
         "hidden": true,
@@ -9859,9 +8280,7 @@
         "collection": "app_diary_comment_likes",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "date_updated",
         "group": null,
         "hidden": true,
@@ -10130,9 +8549,7 @@
         "hidden": true,
         "interface": "select-dropdown-m2o",
         "note": null,
-        "options": {
-          "template": "{{avatar}} {{first_name}} {{last_name}}"
-        },
+        "options": { "template": "{{avatar}} {{first_name}} {{last_name}}" },
         "readonly": true,
         "required": false,
         "searchable": true,
@@ -10220,9 +8637,7 @@
         "hidden": true,
         "interface": "select-dropdown-m2o",
         "note": null,
-        "options": {
-          "template": "{{avatar}} {{first_name}} {{last_name}}"
-        },
+        "options": { "template": "{{avatar}} {{first_name}} {{last_name}}" },
         "readonly": true,
         "required": false,
         "searchable": true,
@@ -10708,18 +9123,9 @@
         "note": null,
         "options": {
           "choices": [
-            {
-              "text": "Published",
-              "value": "published"
-            },
-            {
-              "text": "Hidden",
-              "value": "hidden"
-            },
-            {
-              "text": "Archived",
-              "value": "archived"
-            }
+            { "text": "Published", "value": "published" },
+            { "text": "Hidden", "value": "hidden" },
+            { "text": "Archived", "value": "archived" }
           ]
         },
         "readonly": false,
@@ -11295,14 +9701,8 @@
         "note": null,
         "options": {
           "choices": [
-            {
-              "text": "Published",
-              "value": "published"
-            },
-            {
-              "text": "Archived",
-              "value": "archived"
-            }
+            { "text": "Published", "value": "published" },
+            { "text": "Archived", "value": "archived" }
           ]
         },
         "readonly": false,
@@ -11430,9 +9830,7 @@
         "collection": "app_diary_likes",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "date_created",
         "group": null,
         "hidden": true,
@@ -11476,9 +9874,7 @@
         "collection": "app_diary_likes",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "date_updated",
         "group": null,
         "hidden": true,
@@ -11747,9 +10143,7 @@
         "hidden": true,
         "interface": "select-dropdown-m2o",
         "note": null,
-        "options": {
-          "template": "{{avatar}} {{first_name}} {{last_name}}"
-        },
+        "options": { "template": "{{avatar}} {{first_name}} {{last_name}}" },
         "readonly": true,
         "required": false,
         "searchable": true,
@@ -11837,9 +10231,7 @@
         "hidden": true,
         "interface": "select-dropdown-m2o",
         "note": null,
-        "options": {
-          "template": "{{avatar}} {{first_name}} {{last_name}}"
-        },
+        "options": { "template": "{{avatar}} {{first_name}} {{last_name}}" },
         "readonly": true,
         "required": false,
         "searchable": true,
@@ -11867,6 +10259,1307 @@
         "has_auto_increment": false,
         "foreign_key_table": "directus_users",
         "foreign_key_column": "id"
+      }
+    },
+    {
+      "collection": "app_file_detach_jobs",
+      "field": "id",
+      "type": "uuid",
+      "meta": {
+        "collection": "app_file_detach_jobs",
+        "conditions": null,
+        "display": null,
+        "display_options": null,
+        "field": "id",
+        "group": null,
+        "hidden": true,
+        "interface": "input",
+        "note": null,
+        "options": null,
+        "readonly": true,
+        "required": false,
+        "searchable": true,
+        "sort": 1,
+        "special": ["uuid"],
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "full"
+      },
+      "schema": {
+        "name": "id",
+        "table": "app_file_detach_jobs",
+        "data_type": "uuid",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": false,
+        "is_unique": true,
+        "is_indexed": false,
+        "is_primary_key": true,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_detach_jobs",
+      "field": "status",
+      "type": "string",
+      "meta": {
+        "collection": "app_file_detach_jobs",
+        "conditions": null,
+        "display": "labels",
+        "display_options": {
+          "choices": [
+            { "text": "Pending", "value": "pending" },
+            { "text": "Processing", "value": "processing" },
+            { "text": "Succeeded", "value": "succeeded" },
+            { "text": "Skipped", "value": "skipped" }
+          ]
+        },
+        "field": "status",
+        "group": null,
+        "hidden": false,
+        "interface": "select-dropdown",
+        "note": null,
+        "options": {
+          "choices": [
+            { "text": "Pending", "value": "pending" },
+            { "text": "Processing", "value": "processing" },
+            { "text": "Succeeded", "value": "succeeded" },
+            { "text": "Skipped", "value": "skipped" }
+          ]
+        },
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 2,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "status",
+        "table": "app_file_detach_jobs",
+        "data_type": "character varying",
+        "default_value": "pending",
+        "max_length": 255,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": false,
+        "is_unique": false,
+        "is_indexed": true,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_detach_jobs",
+      "field": "source_type",
+      "type": "string",
+      "meta": {
+        "collection": "app_file_detach_jobs",
+        "conditions": null,
+        "display": null,
+        "display_options": null,
+        "field": "source_type",
+        "group": null,
+        "hidden": false,
+        "interface": "input",
+        "note": null,
+        "options": null,
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 3,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "source_type",
+        "table": "app_file_detach_jobs",
+        "data_type": "character varying",
+        "default_value": null,
+        "max_length": 255,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": false,
+        "is_unique": false,
+        "is_indexed": true,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_detach_jobs",
+      "field": "source_id",
+      "type": "string",
+      "meta": {
+        "collection": "app_file_detach_jobs",
+        "conditions": null,
+        "display": null,
+        "display_options": null,
+        "field": "source_id",
+        "group": null,
+        "hidden": false,
+        "interface": "input",
+        "note": null,
+        "options": null,
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 4,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "source_id",
+        "table": "app_file_detach_jobs",
+        "data_type": "character varying",
+        "default_value": null,
+        "max_length": 255,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": true,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_detach_jobs",
+      "field": "candidate_file_ids",
+      "type": "json",
+      "meta": {
+        "collection": "app_file_detach_jobs",
+        "conditions": null,
+        "display": null,
+        "display_options": null,
+        "field": "candidate_file_ids",
+        "group": null,
+        "hidden": false,
+        "interface": "input-code",
+        "note": null,
+        "options": { "language": "json" },
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 5,
+        "special": ["cast-json"],
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "full"
+      },
+      "schema": {
+        "name": "candidate_file_ids",
+        "table": "app_file_detach_jobs",
+        "data_type": "json",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": false,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_detach_jobs",
+      "field": "detached_file_ids",
+      "type": "json",
+      "meta": {
+        "collection": "app_file_detach_jobs",
+        "conditions": null,
+        "display": null,
+        "display_options": null,
+        "field": "detached_file_ids",
+        "group": null,
+        "hidden": false,
+        "interface": "input-code",
+        "note": null,
+        "options": { "language": "json" },
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 6,
+        "special": ["cast-json"],
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "full"
+      },
+      "schema": {
+        "name": "detached_file_ids",
+        "table": "app_file_detach_jobs",
+        "data_type": "json",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": false,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_detach_jobs",
+      "field": "skipped_referenced_file_ids",
+      "type": "json",
+      "meta": {
+        "collection": "app_file_detach_jobs",
+        "conditions": null,
+        "display": null,
+        "display_options": null,
+        "field": "skipped_referenced_file_ids",
+        "group": null,
+        "hidden": false,
+        "interface": "input-code",
+        "note": null,
+        "options": { "language": "json" },
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 7,
+        "special": ["cast-json"],
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "full"
+      },
+      "schema": {
+        "name": "skipped_referenced_file_ids",
+        "table": "app_file_detach_jobs",
+        "data_type": "json",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": false,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_detach_jobs",
+      "field": "attempts",
+      "type": "integer",
+      "meta": {
+        "collection": "app_file_detach_jobs",
+        "conditions": null,
+        "display": null,
+        "display_options": null,
+        "field": "attempts",
+        "group": null,
+        "hidden": false,
+        "interface": "input",
+        "note": null,
+        "options": null,
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 8,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "attempts",
+        "table": "app_file_detach_jobs",
+        "data_type": "integer",
+        "default_value": 0,
+        "max_length": null,
+        "numeric_precision": 32,
+        "numeric_scale": 0,
+        "is_nullable": false,
+        "is_unique": false,
+        "is_indexed": false,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_detach_jobs",
+      "field": "scheduled_at",
+      "type": "timestamp",
+      "meta": {
+        "collection": "app_file_detach_jobs",
+        "conditions": null,
+        "display": "datetime",
+        "display_options": { "relative": true },
+        "field": "scheduled_at",
+        "group": null,
+        "hidden": false,
+        "interface": "datetime",
+        "note": null,
+        "options": null,
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 9,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "scheduled_at",
+        "table": "app_file_detach_jobs",
+        "data_type": "timestamp with time zone",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": true,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_detach_jobs",
+      "field": "leased_until",
+      "type": "timestamp",
+      "meta": {
+        "collection": "app_file_detach_jobs",
+        "conditions": null,
+        "display": "datetime",
+        "display_options": { "relative": true },
+        "field": "leased_until",
+        "group": null,
+        "hidden": false,
+        "interface": "datetime",
+        "note": null,
+        "options": null,
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 10,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "leased_until",
+        "table": "app_file_detach_jobs",
+        "data_type": "timestamp with time zone",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": true,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_detach_jobs",
+      "field": "started_at",
+      "type": "timestamp",
+      "meta": {
+        "collection": "app_file_detach_jobs",
+        "conditions": null,
+        "display": "datetime",
+        "display_options": { "relative": true },
+        "field": "started_at",
+        "group": null,
+        "hidden": false,
+        "interface": "datetime",
+        "note": null,
+        "options": null,
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 11,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "started_at",
+        "table": "app_file_detach_jobs",
+        "data_type": "timestamp with time zone",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": false,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_detach_jobs",
+      "field": "finished_at",
+      "type": "timestamp",
+      "meta": {
+        "collection": "app_file_detach_jobs",
+        "conditions": null,
+        "display": "datetime",
+        "display_options": { "relative": true },
+        "field": "finished_at",
+        "group": null,
+        "hidden": false,
+        "interface": "datetime",
+        "note": null,
+        "options": null,
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 12,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "finished_at",
+        "table": "app_file_detach_jobs",
+        "data_type": "timestamp with time zone",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": false,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_detach_jobs",
+      "field": "error_code",
+      "type": "string",
+      "meta": {
+        "collection": "app_file_detach_jobs",
+        "conditions": null,
+        "display": null,
+        "display_options": null,
+        "field": "error_code",
+        "group": null,
+        "hidden": false,
+        "interface": "input",
+        "note": null,
+        "options": null,
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 13,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "error_code",
+        "table": "app_file_detach_jobs",
+        "data_type": "character varying",
+        "default_value": null,
+        "max_length": 255,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": false,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_detach_jobs",
+      "field": "error_message",
+      "type": "text",
+      "meta": {
+        "collection": "app_file_detach_jobs",
+        "conditions": null,
+        "display": null,
+        "display_options": null,
+        "field": "error_message",
+        "group": null,
+        "hidden": false,
+        "interface": "input-multiline",
+        "note": null,
+        "options": null,
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 14,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "full"
+      },
+      "schema": {
+        "name": "error_message",
+        "table": "app_file_detach_jobs",
+        "data_type": "text",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": false,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_detach_jobs",
+      "field": "sort",
+      "type": "integer",
+      "meta": {
+        "collection": "app_file_detach_jobs",
+        "conditions": null,
+        "display": null,
+        "display_options": null,
+        "field": "sort",
+        "group": null,
+        "hidden": true,
+        "interface": "input",
+        "note": null,
+        "options": null,
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 15,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "sort",
+        "table": "app_file_detach_jobs",
+        "data_type": "integer",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": 32,
+        "numeric_scale": 0,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": false,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_detach_jobs",
+      "field": "user_created",
+      "type": "uuid",
+      "meta": {
+        "collection": "app_file_detach_jobs",
+        "conditions": null,
+        "display": "user",
+        "display_options": null,
+        "field": "user_created",
+        "group": null,
+        "hidden": true,
+        "interface": "input",
+        "note": null,
+        "options": null,
+        "readonly": true,
+        "required": false,
+        "searchable": true,
+        "sort": 16,
+        "special": ["user-created"],
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "user_created",
+        "table": "app_file_detach_jobs",
+        "data_type": "uuid",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": false,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_detach_jobs",
+      "field": "date_created",
+      "type": "timestamp",
+      "meta": {
+        "collection": "app_file_detach_jobs",
+        "conditions": null,
+        "display": "datetime",
+        "display_options": { "relative": true },
+        "field": "date_created",
+        "group": null,
+        "hidden": true,
+        "interface": "input",
+        "note": null,
+        "options": null,
+        "readonly": true,
+        "required": false,
+        "searchable": true,
+        "sort": 17,
+        "special": ["date-created"],
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "date_created",
+        "table": "app_file_detach_jobs",
+        "data_type": "timestamp with time zone",
+        "default_value": "CURRENT_TIMESTAMP",
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": false,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_detach_jobs",
+      "field": "user_updated",
+      "type": "uuid",
+      "meta": {
+        "collection": "app_file_detach_jobs",
+        "conditions": null,
+        "display": "user",
+        "display_options": null,
+        "field": "user_updated",
+        "group": null,
+        "hidden": true,
+        "interface": "input",
+        "note": null,
+        "options": null,
+        "readonly": true,
+        "required": false,
+        "searchable": true,
+        "sort": 18,
+        "special": ["user-updated"],
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "user_updated",
+        "table": "app_file_detach_jobs",
+        "data_type": "uuid",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": false,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_detach_jobs",
+      "field": "date_updated",
+      "type": "timestamp",
+      "meta": {
+        "collection": "app_file_detach_jobs",
+        "conditions": null,
+        "display": "datetime",
+        "display_options": { "relative": true },
+        "field": "date_updated",
+        "group": null,
+        "hidden": true,
+        "interface": "input",
+        "note": null,
+        "options": null,
+        "readonly": true,
+        "required": false,
+        "searchable": true,
+        "sort": 19,
+        "special": ["date-updated"],
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "date_updated",
+        "table": "app_file_detach_jobs",
+        "data_type": "timestamp with time zone",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": false,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_references",
+      "field": "id",
+      "type": "uuid",
+      "meta": {
+        "collection": "app_file_references",
+        "conditions": null,
+        "display": null,
+        "display_options": null,
+        "field": "id",
+        "group": null,
+        "hidden": true,
+        "interface": "input",
+        "note": null,
+        "options": null,
+        "readonly": true,
+        "required": false,
+        "searchable": true,
+        "sort": 1,
+        "special": ["uuid"],
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "id",
+        "table": "app_file_references",
+        "data_type": "uuid",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": false,
+        "is_unique": true,
+        "is_indexed": false,
+        "is_primary_key": true,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_references",
+      "field": "file_id",
+      "type": "uuid",
+      "meta": {
+        "collection": "app_file_references",
+        "conditions": null,
+        "display": null,
+        "display_options": null,
+        "field": "file_id",
+        "group": null,
+        "hidden": false,
+        "interface": "select-dropdown-m2o",
+        "note": null,
+        "options": null,
+        "readonly": false,
+        "required": true,
+        "searchable": true,
+        "sort": 2,
+        "special": ["m2o"],
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "file_id",
+        "table": "app_file_references",
+        "data_type": "uuid",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": false,
+        "is_unique": false,
+        "is_indexed": true,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": "directus_files",
+        "foreign_key_column": "id"
+      }
+    },
+    {
+      "collection": "app_file_references",
+      "field": "owner_collection",
+      "type": "string",
+      "meta": {
+        "collection": "app_file_references",
+        "conditions": null,
+        "display": null,
+        "display_options": null,
+        "field": "owner_collection",
+        "group": null,
+        "hidden": false,
+        "interface": "input",
+        "note": null,
+        "options": null,
+        "readonly": false,
+        "required": true,
+        "searchable": true,
+        "sort": 3,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "owner_collection",
+        "table": "app_file_references",
+        "data_type": "character varying",
+        "default_value": null,
+        "max_length": 255,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": false,
+        "is_unique": false,
+        "is_indexed": true,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_references",
+      "field": "owner_id",
+      "type": "string",
+      "meta": {
+        "collection": "app_file_references",
+        "conditions": null,
+        "display": null,
+        "display_options": null,
+        "field": "owner_id",
+        "group": null,
+        "hidden": false,
+        "interface": "input",
+        "note": null,
+        "options": null,
+        "readonly": false,
+        "required": true,
+        "searchable": true,
+        "sort": 4,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "owner_id",
+        "table": "app_file_references",
+        "data_type": "character varying",
+        "default_value": null,
+        "max_length": 255,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": false,
+        "is_unique": false,
+        "is_indexed": true,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_references",
+      "field": "owner_field",
+      "type": "string",
+      "meta": {
+        "collection": "app_file_references",
+        "conditions": null,
+        "display": null,
+        "display_options": null,
+        "field": "owner_field",
+        "group": null,
+        "hidden": false,
+        "interface": "input",
+        "note": null,
+        "options": null,
+        "readonly": false,
+        "required": true,
+        "searchable": true,
+        "sort": 5,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "owner_field",
+        "table": "app_file_references",
+        "data_type": "character varying",
+        "default_value": null,
+        "max_length": 255,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": false,
+        "is_unique": false,
+        "is_indexed": true,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_references",
+      "field": "reference_kind",
+      "type": "string",
+      "meta": {
+        "collection": "app_file_references",
+        "conditions": null,
+        "display": null,
+        "display_options": null,
+        "field": "reference_kind",
+        "group": null,
+        "hidden": false,
+        "interface": "select-dropdown",
+        "note": null,
+        "options": {
+          "choices": [
+            { "text": "Structured Field", "value": "structured_field" },
+            { "text": "Markdown Asset", "value": "markdown_asset" },
+            { "text": "Settings Asset", "value": "settings_asset" }
+          ]
+        },
+        "readonly": false,
+        "required": true,
+        "searchable": true,
+        "sort": 6,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "reference_kind",
+        "table": "app_file_references",
+        "data_type": "character varying",
+        "default_value": null,
+        "max_length": 64,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": false,
+        "is_unique": false,
+        "is_indexed": true,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_references",
+      "field": "owner_user_id",
+      "type": "uuid",
+      "meta": {
+        "collection": "app_file_references",
+        "conditions": null,
+        "display": null,
+        "display_options": null,
+        "field": "owner_user_id",
+        "group": null,
+        "hidden": false,
+        "interface": "select-dropdown-m2o",
+        "note": null,
+        "options": null,
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 7,
+        "special": ["m2o"],
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "owner_user_id",
+        "table": "app_file_references",
+        "data_type": "uuid",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": true,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": "directus_users",
+        "foreign_key_column": "id"
+      }
+    },
+    {
+      "collection": "app_file_references",
+      "field": "visibility",
+      "type": "string",
+      "meta": {
+        "collection": "app_file_references",
+        "conditions": null,
+        "display": null,
+        "display_options": null,
+        "field": "visibility",
+        "group": null,
+        "hidden": false,
+        "interface": "select-dropdown",
+        "note": null,
+        "options": {
+          "choices": [
+            { "text": "Private", "value": "private" },
+            { "text": "Public", "value": "public" }
+          ]
+        },
+        "readonly": false,
+        "required": true,
+        "searchable": true,
+        "sort": 8,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "visibility",
+        "table": "app_file_references",
+        "data_type": "character varying",
+        "default_value": "private",
+        "max_length": 32,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": false,
+        "is_unique": false,
+        "is_indexed": false,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_references",
+      "field": "created_at",
+      "type": "timestamp",
+      "meta": {
+        "collection": "app_file_references",
+        "conditions": null,
+        "display": "datetime",
+        "display_options": null,
+        "field": "created_at",
+        "group": null,
+        "hidden": false,
+        "interface": "datetime",
+        "note": null,
+        "options": null,
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 9,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "created_at",
+        "table": "app_file_references",
+        "data_type": "timestamp with time zone",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": false,
+        "is_unique": false,
+        "is_indexed": false,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "app_file_references",
+      "field": "updated_at",
+      "type": "timestamp",
+      "meta": {
+        "collection": "app_file_references",
+        "conditions": null,
+        "display": "datetime",
+        "display_options": null,
+        "field": "updated_at",
+        "group": null,
+        "hidden": false,
+        "interface": "datetime",
+        "note": null,
+        "options": null,
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 10,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "updated_at",
+        "table": "app_file_references",
+        "data_type": "timestamp with time zone",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": false,
+        "is_unique": false,
+        "is_indexed": false,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
       }
     },
     {
@@ -12806,9 +12499,7 @@
         "hidden": true,
         "interface": "select-dropdown-m2o",
         "note": null,
-        "options": {
-          "template": "{{avatar}} {{first_name}} {{last_name}}"
-        },
+        "options": { "template": "{{avatar}} {{first_name}} {{last_name}}" },
         "readonly": true,
         "required": false,
         "searchable": true,
@@ -12846,9 +12537,7 @@
         "collection": "app_site_announcements",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "date_created",
         "group": null,
         "hidden": true,
@@ -12898,9 +12587,7 @@
         "hidden": true,
         "interface": "select-dropdown-m2o",
         "note": null,
-        "options": {
-          "template": "{{avatar}} {{first_name}} {{last_name}}"
-        },
+        "options": { "template": "{{avatar}} {{first_name}} {{last_name}}" },
         "readonly": true,
         "required": false,
         "searchable": true,
@@ -12938,9 +12625,7 @@
         "collection": "app_site_announcements",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "date_updated",
         "group": null,
         "hidden": true,
@@ -12984,9 +12669,7 @@
         "collection": "app_site_settings",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "date_created",
         "group": null,
         "hidden": true,
@@ -13030,9 +12713,7 @@
         "collection": "app_site_settings",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "date_updated",
         "group": null,
         "hidden": true,
@@ -13301,9 +12982,7 @@
         "hidden": true,
         "interface": "select-dropdown-m2o",
         "note": null,
-        "options": {
-          "template": "{{avatar}} {{first_name}} {{last_name}}"
-        },
+        "options": { "template": "{{avatar}} {{first_name}} {{last_name}}" },
         "readonly": true,
         "required": false,
         "searchable": true,
@@ -13347,9 +13026,7 @@
         "hidden": true,
         "interface": "select-dropdown-m2o",
         "note": null,
-        "options": {
-          "template": "{{avatar}} {{first_name}} {{last_name}}"
-        },
+        "options": { "template": "{{avatar}} {{first_name}} {{last_name}}" },
         "readonly": true,
         "required": false,
         "searchable": true,
@@ -13395,22 +13072,10 @@
         "note": null,
         "options": {
           "choices": [
-            {
-              "text": "Blue",
-              "value": "blue"
-            },
-            {
-              "text": "Purple",
-              "value": "purple"
-            },
-            {
-              "text": "Teal",
-              "value": "teal"
-            },
-            {
-              "text": "Orange",
-              "value": "orange"
-            }
+            { "text": "Blue", "value": "blue" },
+            { "text": "Purple", "value": "purple" },
+            { "text": "Teal", "value": "teal" },
+            { "text": "Orange", "value": "orange" }
           ]
         },
         "readonly": false,
@@ -13456,9 +13121,7 @@
         "hidden": false,
         "interface": "input-code",
         "note": "Site information menu settings JSON (site/auth/profile).",
-        "options": {
-          "language": "json"
-        },
+        "options": { "language": "json" },
         "readonly": false,
         "required": false,
         "searchable": true,
@@ -13502,9 +13165,7 @@
         "hidden": false,
         "interface": "input-code",
         "note": "Navigation menu settings JSON (navbarTitle/navBar/banner.navbar).",
-        "options": {
-          "language": "json"
-        },
+        "options": { "language": "json" },
         "readonly": false,
         "required": false,
         "searchable": true,
@@ -13548,9 +13209,7 @@
         "hidden": false,
         "interface": "input-code",
         "note": "Home menu settings JSON (wallpaperMode/banner).",
-        "options": {
-          "language": "json"
-        },
+        "options": { "language": "json" },
         "readonly": false,
         "required": false,
         "searchable": true,
@@ -13594,9 +13253,7 @@
         "hidden": false,
         "interface": "input-code",
         "note": "Article menu settings JSON (toc).",
-        "options": {
-          "language": "json"
-        },
+        "options": { "language": "json" },
         "readonly": false,
         "required": false,
         "searchable": true,
@@ -13640,9 +13297,7 @@
         "hidden": false,
         "interface": "input-code",
         "note": "Other menu settings JSON (musicPlayer).",
-        "options": {
-          "language": "json"
-        },
+        "options": { "language": "json" },
         "readonly": false,
         "required": false,
         "searchable": true,
@@ -13812,9 +13467,7 @@
         "collection": "app_user_profiles",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "date_created",
         "group": null,
         "hidden": true,
@@ -13858,9 +13511,7 @@
         "collection": "app_user_profiles",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "date_updated",
         "group": null,
         "hidden": true,
@@ -14394,9 +14045,7 @@
         "hidden": false,
         "interface": "input-code",
         "note": "Social links: [{platform, url, enabled}]",
-        "options": {
-          "language": "json"
-        },
+        "options": { "language": "json" },
         "readonly": false,
         "required": false,
         "searchable": true,
@@ -14571,9 +14220,7 @@
         "hidden": true,
         "interface": "select-dropdown-m2o",
         "note": null,
-        "options": {
-          "template": "{{avatar}} {{first_name}} {{last_name}}"
-        },
+        "options": { "template": "{{avatar}} {{first_name}} {{last_name}}" },
         "readonly": true,
         "required": false,
         "searchable": true,
@@ -14661,9 +14308,7 @@
         "hidden": true,
         "interface": "select-dropdown-m2o",
         "note": null,
-        "options": {
-          "template": "{{avatar}} {{first_name}} {{last_name}}"
-        },
+        "options": { "template": "{{avatar}} {{first_name}} {{last_name}}" },
         "readonly": true,
         "required": false,
         "searchable": true,
@@ -14833,9 +14478,7 @@
         "collection": "app_user_registration_requests",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "date_created",
         "group": null,
         "hidden": true,
@@ -14879,9 +14522,7 @@
         "collection": "app_user_registration_requests",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "date_updated",
         "group": null,
         "hidden": true,
@@ -15256,9 +14897,7 @@
         "collection": "app_user_registration_requests",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "reviewed_at",
         "group": null,
         "hidden": false,
@@ -15611,7 +15250,7 @@
         "numeric_scale": null,
         "is_nullable": true,
         "is_unique": false,
-        "is_indexed": false,
+        "is_indexed": true,
         "is_primary_key": false,
         "is_generated": false,
         "generation_expression": null,
@@ -15636,14 +15275,8 @@
         "note": null,
         "options": {
           "choices": [
-            {
-              "text": "Private",
-              "value": "private"
-            },
-            {
-              "text": "Public",
-              "value": "public"
-            }
+            { "text": "Private", "value": "private" },
+            { "text": "Public", "value": "public" }
           ]
         },
         "readonly": false,
@@ -15691,38 +15324,14 @@
         "note": "上传用途；用于描述业务语义，不参与 GC 决策",
         "options": {
           "choices": [
-            {
-              "text": "Avatar",
-              "value": "avatar"
-            },
-            {
-              "text": "Registration Avatar",
-              "value": "registration-avatar"
-            },
-            {
-              "text": "Favicon",
-              "value": "favicon"
-            },
-            {
-              "text": "Banner",
-              "value": "banner"
-            },
-            {
-              "text": "Diary Image",
-              "value": "diary-image"
-            },
-            {
-              "text": "Album Photo",
-              "value": "album-photo"
-            },
-            {
-              "text": "Article Cover",
-              "value": "article-cover"
-            },
-            {
-              "text": "General",
-              "value": "general"
-            }
+            { "text": "Avatar", "value": "avatar" },
+            { "text": "Registration Avatar", "value": "registration-avatar" },
+            { "text": "Favicon", "value": "favicon" },
+            { "text": "Banner", "value": "banner" },
+            { "text": "Diary Image", "value": "diary-image" },
+            { "text": "Album Photo", "value": "album-photo" },
+            { "text": "Article Cover", "value": "article-cover" },
+            { "text": "General", "value": "general" }
           ]
         },
         "readonly": false,
@@ -15770,30 +15379,14 @@
         "note": "显式文件生命周期；GC 处理 detached/quarantined/deleted 文件",
         "options": {
           "choices": [
-            {
-              "text": "Temporary",
-              "value": "temporary"
-            },
-            {
-              "text": "Attached",
-              "value": "attached"
-            },
-            {
-              "text": "Detached",
-              "value": "detached"
-            },
-            {
-              "text": "Quarantined",
-              "value": "quarantined"
-            },
-            {
-              "text": "Deleted",
-              "value": "deleted"
-            },
-            {
-              "text": "Protected",
-              "value": "protected"
-            }
+            { "text": "Temporary", "value": "temporary" },
+            { "text": "Attached", "value": "attached" },
+            { "text": "Detached", "value": "detached" },
+            { "text": "Quarantined", "value": "quarantined" },
+            { "text": "Deleting", "value": "deleting" },
+            { "text": "Deleted", "value": "deleted" },
+            { "text": "Delete Failed", "value": "delete_failed" },
+            { "text": "Protected", "value": "protected" }
           ]
         },
         "readonly": false,
@@ -15816,7 +15409,7 @@
         "numeric_scale": null,
         "is_nullable": true,
         "is_unique": false,
-        "is_indexed": false,
+        "is_indexed": true,
         "is_primary_key": false,
         "is_generated": false,
         "generation_expression": null,
@@ -15833,9 +15426,7 @@
         "collection": "directus_files",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "app_detached_at",
         "group": null,
         "hidden": true,
@@ -15862,7 +15453,7 @@
         "numeric_scale": null,
         "is_nullable": true,
         "is_unique": false,
-        "is_indexed": false,
+        "is_indexed": true,
         "is_primary_key": false,
         "is_generated": false,
         "generation_expression": null,
@@ -15879,9 +15470,7 @@
         "collection": "directus_files",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "app_quarantined_at",
         "group": null,
         "hidden": true,
@@ -15908,7 +15497,7 @@
         "numeric_scale": null,
         "is_nullable": true,
         "is_unique": false,
-        "is_indexed": false,
+        "is_indexed": true,
         "is_primary_key": false,
         "is_generated": false,
         "generation_expression": null,
@@ -15925,9 +15514,7 @@
         "collection": "directus_files",
         "conditions": null,
         "display": "datetime",
-        "display_options": {
-          "relative": true
-        },
+        "display_options": { "relative": true },
         "field": "app_deleted_at",
         "group": null,
         "hidden": true,
@@ -15946,6 +15533,182 @@
       },
       "schema": {
         "name": "app_deleted_at",
+        "table": "directus_files",
+        "data_type": "timestamp with time zone",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": true,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "directus_files",
+      "field": "app_delete_attempts",
+      "type": "integer",
+      "meta": {
+        "collection": "directus_files",
+        "conditions": null,
+        "display": null,
+        "display_options": null,
+        "field": "app_delete_attempts",
+        "group": null,
+        "hidden": true,
+        "interface": "input",
+        "note": "GC 物理删除失败重试次数",
+        "options": null,
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 8,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "app_delete_attempts",
+        "table": "directus_files",
+        "data_type": "integer",
+        "default_value": 0,
+        "max_length": null,
+        "numeric_precision": 32,
+        "numeric_scale": 0,
+        "is_nullable": false,
+        "is_unique": false,
+        "is_indexed": false,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "directus_files",
+      "field": "app_delete_next_retry_at",
+      "type": "timestamp",
+      "meta": {
+        "collection": "directus_files",
+        "conditions": null,
+        "display": "datetime",
+        "display_options": { "relative": true },
+        "field": "app_delete_next_retry_at",
+        "group": null,
+        "hidden": true,
+        "interface": "datetime",
+        "note": "GC 物理删除失败后的下一次重试时间",
+        "options": null,
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 9,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "app_delete_next_retry_at",
+        "table": "directus_files",
+        "data_type": "timestamp with time zone",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": true,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "directus_files",
+      "field": "app_delete_last_error",
+      "type": "text",
+      "meta": {
+        "collection": "directus_files",
+        "conditions": null,
+        "display": null,
+        "display_options": null,
+        "field": "app_delete_last_error",
+        "group": null,
+        "hidden": true,
+        "interface": "input-multiline",
+        "note": "GC 最近一次物理删除失败原因",
+        "options": null,
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 10,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "full"
+      },
+      "schema": {
+        "name": "app_delete_last_error",
+        "table": "directus_files",
+        "data_type": "text",
+        "default_value": null,
+        "max_length": null,
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "is_nullable": true,
+        "is_unique": false,
+        "is_indexed": false,
+        "is_primary_key": false,
+        "is_generated": false,
+        "generation_expression": null,
+        "has_auto_increment": false,
+        "foreign_key_table": null,
+        "foreign_key_column": null
+      }
+    },
+    {
+      "collection": "directus_files",
+      "field": "app_delete_dead_lettered_at",
+      "type": "timestamp",
+      "meta": {
+        "collection": "directus_files",
+        "conditions": null,
+        "display": "datetime",
+        "display_options": { "relative": true },
+        "field": "app_delete_dead_lettered_at",
+        "group": null,
+        "hidden": true,
+        "interface": "datetime",
+        "note": "GC 物理删除超过最大重试次数后进入 dead-letter 的时间",
+        "options": null,
+        "readonly": false,
+        "required": false,
+        "searchable": true,
+        "sort": 11,
+        "special": null,
+        "translations": null,
+        "validation": null,
+        "validation_message": null,
+        "width": "half"
+      },
+      "schema": {
+        "name": "app_delete_dead_lettered_at",
         "table": "directus_files",
         "data_type": "timestamp with time zone",
         "default_value": null,
@@ -15977,9 +15740,7 @@
         "hidden": false,
         "interface": "input-code",
         "note": null,
-        "options": {
-          "lineWrapping": true
-        },
+        "options": { "lineWrapping": true },
         "readonly": false,
         "required": false,
         "searchable": true,
@@ -16011,56 +15772,6 @@
     }
   ],
   "relations": [
-    {
-      "collection": "app_file_references",
-      "field": "file_id",
-      "related_collection": "directus_files",
-      "meta": {
-        "junction_field": null,
-        "many_collection": "app_file_references",
-        "many_field": "file_id",
-        "one_allowed_collections": null,
-        "one_collection": "directus_files",
-        "one_collection_field": null,
-        "one_deselect_action": "nullify",
-        "one_field": null,
-        "sort_field": null
-      },
-      "schema": {
-        "table": "app_file_references",
-        "column": "file_id",
-        "foreign_key_table": "directus_files",
-        "foreign_key_column": "id",
-        "constraint_name": "app_file_references_file_id_foreign",
-        "on_update": "NO ACTION",
-        "on_delete": "CASCADE"
-      }
-    },
-    {
-      "collection": "app_file_references",
-      "field": "owner_user_id",
-      "related_collection": "directus_users",
-      "meta": {
-        "junction_field": null,
-        "many_collection": "app_file_references",
-        "many_field": "owner_user_id",
-        "one_allowed_collections": null,
-        "one_collection": "directus_users",
-        "one_collection_field": null,
-        "one_deselect_action": "nullify",
-        "one_field": null,
-        "sort_field": null
-      },
-      "schema": {
-        "table": "app_file_references",
-        "column": "owner_user_id",
-        "foreign_key_table": "directus_users",
-        "foreign_key_column": "id",
-        "constraint_name": "app_file_references_owner_user_id_foreign",
-        "on_update": "NO ACTION",
-        "on_delete": "SET NULL"
-      }
-    },
     {
       "collection": "ai_prompts",
       "field": "user_created",
@@ -16809,6 +16520,56 @@
         "constraint_name": "app_diary_likes_user_updated_foreign",
         "on_update": "NO ACTION",
         "on_delete": "NO ACTION"
+      }
+    },
+    {
+      "collection": "app_file_references",
+      "field": "file_id",
+      "related_collection": "directus_files",
+      "meta": {
+        "junction_field": null,
+        "many_collection": "app_file_references",
+        "many_field": "file_id",
+        "one_allowed_collections": null,
+        "one_collection": "directus_files",
+        "one_collection_field": null,
+        "one_deselect_action": "nullify",
+        "one_field": null,
+        "sort_field": null
+      },
+      "schema": {
+        "table": "app_file_references",
+        "column": "file_id",
+        "foreign_key_table": "directus_files",
+        "foreign_key_column": "id",
+        "constraint_name": "app_file_references_file_id_foreign",
+        "on_update": "NO ACTION",
+        "on_delete": "CASCADE"
+      }
+    },
+    {
+      "collection": "app_file_references",
+      "field": "owner_user_id",
+      "related_collection": "directus_users",
+      "meta": {
+        "junction_field": null,
+        "many_collection": "app_file_references",
+        "many_field": "owner_user_id",
+        "one_allowed_collections": null,
+        "one_collection": "directus_users",
+        "one_collection_field": null,
+        "one_deselect_action": "nullify",
+        "one_field": null,
+        "sort_field": null
+      },
+      "schema": {
+        "table": "app_file_references",
+        "column": "owner_user_id",
+        "foreign_key_table": "directus_users",
+        "foreign_key_column": "id",
+        "constraint_name": "app_file_references_owner_user_id_foreign",
+        "on_update": "NO ACTION",
+        "on_delete": "SET NULL"
       }
     },
     {

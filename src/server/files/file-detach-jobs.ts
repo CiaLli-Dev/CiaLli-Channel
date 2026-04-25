@@ -5,6 +5,7 @@ import {
     createOne,
     readMany,
     readOneById,
+    updateMany,
     updateOne,
 } from "@/server/directus/client";
 import { collectReferencedDirectusFileIds } from "@/server/api/v1/shared/file-cleanup";
@@ -123,17 +124,19 @@ function normalizeFileIds(values: unknown[]): string[] {
 }
 
 function buildDuePendingFilter(now: Date): JsonObject {
-    return {
-        _and: [
-            { status: { _eq: "pending" } },
-            {
-                _or: [
-                    { scheduled_at: { _null: true } },
-                    { scheduled_at: { _lte: now.toISOString() } },
-                ],
-            },
-        ],
-    } as JsonObject;
+    return { _and: buildDuePendingClauses(now) } as JsonObject;
+}
+
+function buildDuePendingClauses(now: Date): JsonObject[] {
+    return [
+        { status: { _eq: "pending" } },
+        {
+            _or: [
+                { scheduled_at: { _null: true } },
+                { scheduled_at: { _lte: now.toISOString() } },
+            ],
+        },
+    ];
 }
 
 function buildRetryDelayMs(attempts: number): number {
@@ -251,21 +254,29 @@ async function claimFileDetachJob(params: {
     attempts: number;
     leaseUntilIso: string;
 }): Promise<boolean> {
-    await updateOne("app_file_detach_jobs", params.job.id, {
-        status: "processing",
-        attempts: params.attempts,
-        started_at: params.now.toISOString(),
-        leased_until: params.leaseUntilIso,
-        error_code: null,
-        error_message: null,
-    });
-
-    const claimed = await readFileDetachJob(params.job.id);
-    return (
-        claimed?.status === "processing" &&
-        claimed.attempts === params.attempts &&
-        claimed.leased_until === params.leaseUntilIso
+    const claimed = await updateMany(
+        "app_file_detach_jobs",
+        {
+            filter: {
+                _and: [
+                    { id: { _eq: params.job.id } },
+                    { attempts: { _eq: params.job.attempts } },
+                    ...buildDuePendingClauses(params.now),
+                ],
+            } as JsonObject,
+            limit: 1,
+        },
+        {
+            status: "processing",
+            attempts: params.attempts,
+            started_at: params.now.toISOString(),
+            leased_until: params.leaseUntilIso,
+            error_code: null,
+            error_message: null,
+        },
+        { fields: ["id"] },
     );
+    return claimed.length === 1;
 }
 
 async function releaseOwnerReferencesAfterSourceDeleted(

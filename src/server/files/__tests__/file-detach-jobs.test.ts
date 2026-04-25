@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
     readOneById: vi.fn(),
     replayResourceReferenceSyncJob: vi.fn(),
     seedFileReferencesWhenEmpty: vi.fn(),
+    updateMany: vi.fn(),
     updateOne: vi.fn(),
     withServiceRepositoryContext: vi.fn(
         async (task: () => Promise<unknown>) => await task(),
@@ -22,6 +23,7 @@ vi.mock("@/server/directus/client", () => ({
     createOne: mocks.createOne,
     readMany: mocks.readMany,
     readOneById: mocks.readOneById,
+    updateMany: mocks.updateMany,
     updateOne: mocks.updateOne,
 }));
 
@@ -67,7 +69,8 @@ const FILE_ONE = "11111111-1111-4111-8111-111111111111";
 const FILE_TWO = "22222222-2222-4222-8222-222222222222";
 
 function mockPendingJobClaim(job: Record<string, unknown>, attempts = 1): void {
-    mocks.readMany.mockResolvedValueOnce([job]).mockResolvedValueOnce([
+    mocks.readMany.mockResolvedValueOnce([job]);
+    mocks.updateMany.mockResolvedValueOnce([
         {
             ...job,
             status: "processing",
@@ -101,6 +104,7 @@ beforeEach(() => {
     mocks.seedFileReferencesWhenEmpty.mockResolvedValue(0);
     mocks.readMany.mockResolvedValue([]);
     mocks.readOneById.mockResolvedValue(null);
+    mocks.updateMany.mockResolvedValue([]);
     mocks.updateOne.mockResolvedValue({});
 });
 
@@ -185,13 +189,41 @@ it("detaches only currently unreferenced candidate files", async () => {
         new Date("2026-04-24T00:00:00.000Z"),
     );
 
+    expect(mocks.updateMany).toHaveBeenCalledWith(
+        "app_file_detach_jobs",
+        {
+            filter: {
+                _and: [
+                    { id: { _eq: "job-1" } },
+                    { attempts: { _eq: 0 } },
+                    { status: { _eq: "pending" } },
+                    {
+                        _or: [
+                            { scheduled_at: { _null: true } },
+                            {
+                                scheduled_at: {
+                                    _lte: "2026-04-24T00:00:00.000Z",
+                                },
+                            },
+                        ],
+                    },
+                ],
+            },
+            limit: 1,
+        },
+        expect.objectContaining({
+            status: "processing",
+            attempts: 1,
+            leased_until: "2026-04-24T00:05:00.000Z",
+        }),
+        { fields: ["id"] },
+    );
     expect(mocks.markFilesDetached).toHaveBeenCalledWith(
         [FILE_TWO],
         "2026-04-24T00:00:00.000Z",
     );
     expect(mocks.seedFileReferencesWhenEmpty).toHaveBeenCalledTimes(1);
-    expect(mocks.updateOne).toHaveBeenNthCalledWith(
-        2,
+    expect(mocks.updateOne).toHaveBeenCalledWith(
         "app_file_detach_jobs",
         "job-1",
         expect.objectContaining({
@@ -205,6 +237,34 @@ it("detaches only currently unreferenced candidate files", async () => {
         jobId: "job-1",
         detached: 1,
         skippedReferenced: 1,
+    });
+});
+
+it("skips detach job processing when the atomic claim loses the race", async () => {
+    mocks.readMany.mockResolvedValueOnce([
+        {
+            id: "job-raced",
+            status: "pending",
+            attempts: 0,
+            candidate_file_ids: [FILE_TWO],
+            scheduled_at: "2026-04-24T00:00:00.000Z",
+            leased_until: null,
+        },
+    ]);
+    mocks.updateMany.mockResolvedValueOnce([]);
+
+    const result = await runFileDetachJob(
+        "job-raced",
+        new Date("2026-04-24T00:00:00.000Z"),
+    );
+
+    expect(mocks.markFilesDetached).not.toHaveBeenCalled();
+    expect(mocks.updateOne).not.toHaveBeenCalled();
+    expect(result).toEqual({
+        status: "skipped",
+        jobId: "job-raced",
+        detached: 0,
+        skippedReferenced: 0,
     });
 });
 

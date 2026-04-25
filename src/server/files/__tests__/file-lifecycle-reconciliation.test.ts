@@ -141,6 +141,7 @@ describe("file-lifecycle-reconciliation", () => {
         expect(mocks.seedFileReferencesWhenEmpty).toHaveBeenCalledTimes(1);
         expect(mocks.markFilesAttached).toHaveBeenCalledWith({
             fileIds: ["file-attached"],
+            allowLifecycleOverride: true,
         });
         expect(mocks.restoreQuarantinedFiles).toHaveBeenCalledWith({
             fileIds: ["file-quarantined-referenced"],
@@ -172,6 +173,7 @@ describe("file-lifecycle-reconciliation", () => {
 
         expect(mocks.markFilesAttached).toHaveBeenCalledWith({
             fileIds: [],
+            allowLifecycleOverride: true,
         });
         expect(mocks.markFilesTemporary).toHaveBeenCalledWith([]);
     });
@@ -199,6 +201,7 @@ describe("file-lifecycle-reconciliation", () => {
         );
         expect(mocks.markFilesAttached).toHaveBeenCalledWith({
             fileIds: ["file-attached"],
+            allowLifecycleOverride: true,
         });
     });
 });

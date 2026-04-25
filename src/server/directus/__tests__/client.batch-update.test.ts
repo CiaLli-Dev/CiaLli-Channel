@@ -190,3 +190,53 @@ describe("updateMany", () => {
         );
     });
 });
+
+describe("updateDirectusFilesByFilter", () => {
+    it("uses the files endpoint query mode for conditional metadata updates", async () => {
+        requestMock.mockResolvedValue({ data: [{ id: "file-1" }] });
+
+        const { runWithDirectusServiceAccess, updateDirectusFilesByFilter } =
+            await import("@/server/directus/client");
+
+        const updated = await runWithDirectusServiceAccess(async () =>
+            updateDirectusFilesByFilter({
+                filter: {
+                    _and: [
+                        { id: { _eq: "file-1" } },
+                        { app_lifecycle: { _eq: "quarantined" } },
+                    ],
+                },
+                data: {
+                    app_lifecycle: "deleting",
+                    app_delete_next_retry_at: "2026-04-28T00:15:00.000Z",
+                },
+                limit: 1,
+                fields: ["id"],
+            }),
+        );
+
+        expect(requestMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+                path: "/files",
+                method: "PATCH",
+                params: { fields: ["id"] },
+                body: JSON.stringify({
+                    query: {
+                        filter: {
+                            _and: [
+                                { id: { _eq: "file-1" } },
+                                { app_lifecycle: { _eq: "quarantined" } },
+                            ],
+                        },
+                        limit: 1,
+                    },
+                    data: {
+                        app_lifecycle: "deleting",
+                        app_delete_next_retry_at: "2026-04-28T00:15:00.000Z",
+                    },
+                }),
+            }),
+        );
+        expect(updated).toEqual([{ id: "file-1" }]);
+    });
+});

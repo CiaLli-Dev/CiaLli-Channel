@@ -29,6 +29,7 @@ interface ImportMetaEnv {
     readonly FILE_GC_RETENTION_HOURS?: string;
     readonly FILE_GC_QUARANTINE_DAYS?: string;
     readonly FILE_GC_BATCH_SIZE?: string;
+    readonly FILE_GC_DELETE_MAX_ATTEMPTS?: string;
     readonly FILE_DETACH_JOB_INTERVAL_MS?: string;
     readonly FILE_DETACH_JOB_BATCH_SIZE?: string;
     readonly FILE_DETACH_JOB_LEASE_SECONDS?: string;

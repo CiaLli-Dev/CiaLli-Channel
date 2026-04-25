@@ -35,7 +35,9 @@ export type AppFileLifecycle =
     | "attached"
     | "detached"
     | "quarantined"
+    | "deleting"
     | "deleted"
+    | "delete_failed"
     | "protected";
 export type AppFileReferenceKind =
     | "structured_field"
@@ -406,6 +408,10 @@ export type AppFile = {
     app_detached_at?: string | null;
     app_quarantined_at?: string | null;
     app_deleted_at?: string | null;
+    app_delete_attempts?: number | null;
+    app_delete_next_retry_at?: string | null;
+    app_delete_last_error?: string | null;
+    app_delete_dead_lettered_at?: string | null;
     uploaded_by?: string | { id?: string } | null;
     modified_by?: string | { id?: string } | null;
 };

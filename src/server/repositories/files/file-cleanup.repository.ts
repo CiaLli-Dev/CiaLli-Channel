@@ -44,6 +44,10 @@ type StaleFileGcCandidate = {
     app_detached_at?: string | null;
     app_quarantined_at?: string | null;
     app_deleted_at?: string | null;
+    app_delete_attempts?: number | null;
+    app_delete_next_retry_at?: string | null;
+    app_delete_last_error?: string | null;
+    app_delete_dead_lettered_at?: string | null;
 };
 
 export const STRUCTURED_REFERENCE_TARGETS: StructuredReferenceTarget[] = [
@@ -293,6 +297,108 @@ export async function readAllReferencedIdsInSiteSettingsFromRepository(): Promis
     return referenced;
 }
 
+function normalizeReferenceOwnerText(value: unknown): string {
+    return String(value ?? "").trim();
+}
+
+async function readOwnerSourceReferencedIdsInSiteSettingsFromRepository(
+    ownerId: string,
+    output: Set<string>,
+): Promise<void> {
+    const rows = await readMany("app_site_settings", {
+        filter: {
+            _and: [{ key: { _eq: ownerId } }, { status: { _eq: "published" } }],
+        } as JsonObject,
+        fields: [...SITE_SETTINGS_REFERENCE_FIELDS],
+        sort: ["-date_updated", "-date_created"],
+        limit: 1,
+    });
+    for (const row of rows as Array<Record<string, unknown>>) {
+        for (const field of SITE_SETTINGS_REFERENCE_FIELDS) {
+            collectReferencedAssetIdsFromUnknown(row[field], null, output);
+        }
+    }
+}
+
+async function readOwnerSourceReferencedIdsInStructuredTargetsFromRepository(
+    ownerCollection: string,
+    ownerId: string,
+    output: Set<string>,
+): Promise<void> {
+    const targets = STRUCTURED_REFERENCE_TARGETS.filter(
+        (target) => target.collection === ownerCollection,
+    );
+    for (const target of targets) {
+        const rows = await readMany(target.collection, {
+            filter: { id: { _eq: ownerId } } as JsonObject,
+            fields: ["id", target.field],
+            limit: 1,
+        });
+        for (const row of rows as Array<Record<string, unknown>>) {
+            collectReferencedAssetIdsFromUnknown(
+                row[target.field],
+                null,
+                output,
+            );
+        }
+    }
+}
+
+async function readOwnerSourceReferencedIdsInMarkdownTargetsFromRepository(
+    ownerCollection: string,
+    ownerId: string,
+    output: Set<string>,
+): Promise<void> {
+    const targets = MARKDOWN_REFERENCE_TARGETS.filter(
+        (target) => target.collection === ownerCollection,
+    );
+    for (const target of targets) {
+        const rows = await readMany(target.collection, {
+            filter: { id: { _eq: ownerId } } as JsonObject,
+            fields: ["id", target.field],
+            limit: 1,
+        });
+        for (const row of rows as Array<Record<string, unknown>>) {
+            collectReferencedAssetIdsFromUnknown(
+                row[target.field],
+                null,
+                output,
+                { includeBareUuid: false },
+            );
+        }
+    }
+}
+
+export async function readOwnerSourceReferencedFileIdsFromRepository(params: {
+    ownerCollection: string;
+    ownerId: string;
+}): Promise<string[]> {
+    const ownerCollection = normalizeReferenceOwnerText(params.ownerCollection);
+    const ownerId = normalizeReferenceOwnerText(params.ownerId);
+    if (!ownerCollection || !ownerId) {
+        return [];
+    }
+
+    const referenced = new Set<string>();
+    if (ownerCollection === "app_site_settings") {
+        await readOwnerSourceReferencedIdsInSiteSettingsFromRepository(
+            ownerId,
+            referenced,
+        );
+    }
+    await readOwnerSourceReferencedIdsInStructuredTargetsFromRepository(
+        ownerCollection,
+        ownerId,
+        referenced,
+    );
+    await readOwnerSourceReferencedIdsInMarkdownTargetsFromRepository(
+        ownerCollection,
+        ownerId,
+        referenced,
+    );
+    return [...referenced].sort();
+}
+
 export async function readReferencedIdsInStructuredTargetFromRepository(
     target: StructuredReferenceTarget,
     fileIds: string[],
@@ -468,8 +574,13 @@ function getCandidateCleanupTimestamp(row: StaleFileGcCandidate): string {
     if (row.app_lifecycle === "quarantined") {
         return row.app_quarantined_at || row.date_created || "";
     }
-    if (row.app_lifecycle === "deleted") {
-        return row.app_deleted_at || row.date_created || "";
+    if (row.app_lifecycle === "deleted" || row.app_lifecycle === "deleting") {
+        return (
+            row.app_delete_next_retry_at ||
+            row.app_deleted_at ||
+            row.date_created ||
+            ""
+        );
     }
     return row.date_created || "";
 }
@@ -490,6 +601,7 @@ function sortStaleFileGcCandidates(
 export async function readStaleFileGcCandidatesFromRepository(params: {
     detachedBefore: string;
     quarantinedBefore: string;
+    deleteRetryBefore: string;
     limit: number;
 }): Promise<StaleFileGcCandidate[]> {
     const fields = [
@@ -499,53 +611,91 @@ export async function readStaleFileGcCandidatesFromRepository(params: {
         "app_detached_at",
         "app_quarantined_at",
         "app_deleted_at",
+        "app_delete_attempts",
+        "app_delete_next_retry_at",
+        "app_delete_last_error",
+        "app_delete_dead_lettered_at",
     ];
-    const [detachedRows, quarantinedRows, deletedRows] = await Promise.all([
-        readMany("directus_files", {
-            filter: {
-                _and: [
-                    { app_lifecycle: { _eq: "detached" } },
-                    { app_detached_at: { _nnull: true } },
-                    {
-                        app_detached_at: {
-                            _lte: params.detachedBefore,
+    const [detachedRows, quarantinedRows, deletingRows, deletedRows] =
+        await Promise.all([
+            readMany("directus_files", {
+                filter: {
+                    _and: [
+                        { app_lifecycle: { _eq: "detached" } },
+                        { app_detached_at: { _nnull: true } },
+                        {
+                            app_detached_at: {
+                                _lte: params.detachedBefore,
+                            },
                         },
-                    },
-                ],
-            } as JsonObject,
-            fields,
-            sort: ["app_detached_at", "id"],
-            limit: params.limit,
-        }),
-        readMany("directus_files", {
-            filter: {
-                _and: [
-                    { app_lifecycle: { _eq: "quarantined" } },
-                    { app_quarantined_at: { _nnull: true } },
-                    {
-                        app_quarantined_at: {
-                            _lte: params.quarantinedBefore,
+                    ],
+                } as JsonObject,
+                fields,
+                sort: ["app_detached_at", "id"],
+                limit: params.limit,
+            }),
+            readMany("directus_files", {
+                filter: {
+                    _and: [
+                        { app_lifecycle: { _eq: "quarantined" } },
+                        { app_quarantined_at: { _nnull: true } },
+                        {
+                            app_quarantined_at: {
+                                _lte: params.quarantinedBefore,
+                            },
                         },
-                    },
-                ],
-            } as JsonObject,
-            fields,
-            sort: ["app_quarantined_at", "id"],
-            limit: params.limit,
-        }),
-        readMany("directus_files", {
-            filter: {
-                app_lifecycle: { _eq: "deleted" },
-            } as JsonObject,
-            fields,
-            sort: ["app_deleted_at", "id"],
-            limit: params.limit,
-        }),
-    ]);
+                    ],
+                } as JsonObject,
+                fields,
+                sort: ["app_quarantined_at", "id"],
+                limit: params.limit,
+            }),
+            readMany("directus_files", {
+                filter: {
+                    _and: [
+                        { app_lifecycle: { _eq: "deleting" } },
+                        {
+                            _or: [
+                                { app_delete_next_retry_at: { _null: true } },
+                                {
+                                    app_delete_next_retry_at: {
+                                        _lte: params.deleteRetryBefore,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                } as JsonObject,
+                fields,
+                sort: ["app_delete_next_retry_at", "app_deleted_at", "id"],
+                limit: params.limit,
+            }),
+            readMany("directus_files", {
+                filter: {
+                    _and: [
+                        { app_lifecycle: { _eq: "deleted" } },
+                        {
+                            _or: [
+                                { app_delete_next_retry_at: { _null: true } },
+                                {
+                                    app_delete_next_retry_at: {
+                                        _lte: params.deleteRetryBefore,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                } as JsonObject,
+                fields,
+                sort: ["app_delete_next_retry_at", "app_deleted_at", "id"],
+                limit: params.limit,
+            }),
+        ]);
 
     return sortStaleFileGcCandidates([
         ...(detachedRows as StaleFileGcCandidate[]),
         ...(quarantinedRows as StaleFileGcCandidate[]),
+        ...(deletingRows as StaleFileGcCandidate[]),
         ...(deletedRows as StaleFileGcCandidate[]),
     ]).slice(0, params.limit);
 }

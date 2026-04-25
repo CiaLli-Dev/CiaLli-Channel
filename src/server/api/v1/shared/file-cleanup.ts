@@ -127,9 +127,13 @@ export async function collectReferencedDirectusFileIds(
 export async function collectAllReferencedDirectusFileIds(): Promise<
     Set<string>
 > {
-    return await withServiceRepositoryContext(
-        async () => await readAllReferencedFileIdsFromReferenceTable(),
-    );
+    return await withServiceRepositoryContext(async () => {
+        const [referenceTableIds, legacyScannedIds] = await Promise.all([
+            readAllReferencedFileIdsFromReferenceTable(),
+            collectLegacyScannedReferencedDirectusFileIds(),
+        ]);
+        return new Set([...referenceTableIds, ...legacyScannedIds]);
+    });
 }
 
 export async function collectArticleCommentCleanupCandidates(
