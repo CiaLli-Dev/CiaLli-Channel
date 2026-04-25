@@ -74,7 +74,7 @@ import { url } from "@utils/url-utils";
   import { emitAuthState } from "@/scripts/auth/state";
   import { buildLoginUrl } from "@utils/login-url";
 
-  const API_ME = "/api/auth/me";
+  const API_ME = "/api/auth/me?optional=1";
   const AUTH_ME_RETRY_DELAY_MS = 220;
   type AuthPayload = {
     ok?: boolean;

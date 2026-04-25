@@ -620,7 +620,7 @@ const mobileLinks: NavBarLink[] = desktopLinks
 
   const fetchAuthProfile = async () => {
     try {
-      const response = await fetch("/api/auth/me", {
+      const response = await fetch("/api/auth/me?optional=1", {
         method: "GET",
         credentials: "include",
         headers: { Accept: "application/json" },
