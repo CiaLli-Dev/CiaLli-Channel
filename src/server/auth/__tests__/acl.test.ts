@@ -60,6 +60,21 @@ describe("getAppAccessContext 原生 Directus 权限映射", () => {
         expect(access.isAdmin).toBe(true);
     });
 
+    it("Administrator 角色即使缺少 admin_access claim 也授予管理员权限", async () => {
+        const access = await getAppAccessContext(
+            mockSessionUser({
+                id: "user-1",
+                roleName: DIRECTUS_ROLE_NAME.administrator,
+                isSystemAdmin: false,
+            }),
+        );
+
+        expect(access.permissions.app_role).toBe("admin");
+        expect(access.permissions.can_publish_articles).toBe(true);
+        expect(access.isPlatformAdmin).toBe(true);
+        expect(access.isAdmin).toBe(true);
+    });
+
     it("Member 角色按策略映射能力", async () => {
         const access = await getAppAccessContext(
             mockSessionUser({

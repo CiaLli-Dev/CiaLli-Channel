@@ -68,9 +68,19 @@ function toNotFoundOnAuthError(_err: AppError): Response {
 }
 
 async function isPublicAsset(fileId: string): Promise<boolean> {
-    const file = await withServiceRepositoryContext(
-        async () => await readManagedFileVisibility(fileId),
-    );
+    const file = await withServiceRepositoryContext(async () => {
+        try {
+            return await readManagedFileVisibility(fileId);
+        } catch (error) {
+            if (
+                error instanceof AppError &&
+                (error.status === 403 || error.status === 404)
+            ) {
+                return null;
+            }
+            throw error;
+        }
+    });
 
     return (
         file?.app_visibility === "public" &&

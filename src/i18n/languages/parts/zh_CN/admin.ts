@@ -54,13 +54,12 @@ export const zhCNAdmin: Record<string, string> = {
     [Key.adminAiOverviewFlowStrategy]: "Directus Flow 自动化",
     [Key.adminAiOverviewFlowStrategyHint]:
         "后续会提供统一的自动化入口，方便集中管理各项 AI 能力。",
-    [Key.adminAiPageDescription]:
-        "在这里查看站点 AI 功能与设置规划，目前仅提供说明信息。",
+    [Key.adminAiPageDescription]: "在这里管理站点 AI 功能与连接配置。",
     [Key.adminAiPageIntro]:
-        "你可以先了解站点 AI 功能的规划和入口。当前还不能填写真实配置或保存密钥。",
+        "配置会保存到服务端。出于安全设计，已保存的 API 密钥不会回显，需要更换时重新输入即可。",
     [Key.adminAiPageTitle]: "AI 总配置",
     [Key.adminAiPlaceholderApiBaseUrl]: "未来用于填写 AI 服务地址或网关地址",
-    [Key.adminAiPlaceholderApiKey]: "未来用于填写 API 密钥",
+    [Key.adminAiPlaceholderApiKey]: "留空则保留当前 API 密钥",
     [Key.adminAiPlaceholderAssistantAccount]: "未来用于绑定站内 AI 助手帐号",
     [Key.adminAiPlaceholderFlowName]: "未来用于配置 Directus Flow 名称或 ID",
     [Key.adminAiPlaceholderModel]: "未来用于选择模型或能力模板",

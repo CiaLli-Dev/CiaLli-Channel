@@ -77,6 +77,38 @@ describe("handlePublicAsset", () => {
         expect(mockedReadDirectusAssetResponse).not.toHaveBeenCalled();
     });
 
+    it("文件元数据读取 403/404 统一映射为公开 404", async () => {
+        mockedReadManagedFileVisibility.mockRejectedValue(
+            new AppError("DIRECTUS_FORBIDDEN", "内部权限细节不应外泄", 403),
+        );
+
+        const response = await handlePublicAsset(makeContext(), [
+            "public",
+            "assets",
+            PUBLIC_FILE_ID,
+        ]);
+
+        expect(response.status).toBe(404);
+        expect(mockedReadDirectusAssetResponse).not.toHaveBeenCalled();
+    });
+
+    it("文件元数据读取非权限错误继续抛出", async () => {
+        mockedReadManagedFileVisibility.mockRejectedValue(
+            new AppError("DIRECTUS_ERROR", "upstream unavailable", 502),
+        );
+
+        await expect(
+            handlePublicAsset(makeContext(), [
+                "public",
+                "assets",
+                PUBLIC_FILE_ID,
+            ]),
+        ).rejects.toMatchObject({
+            code: "DIRECTUS_ERROR",
+            status: 502,
+        });
+    });
+
     it("私有文件返回 404，且不请求 Directus asset", async () => {
         mockedReadManagedFileVisibility.mockResolvedValue({
             id: PUBLIC_FILE_ID,

@@ -8,6 +8,7 @@ import {
     customEndpoint,
     deleteFile,
     deleteItem,
+    readFile,
     readItem,
     readItems,
     readFiles,
@@ -315,6 +316,16 @@ export async function readOneById<K extends keyof DirectusSchema>(
                 } as never),
             );
             return user as DirectusSchema[K][number];
+        }
+        if (collection === "directus_files") {
+            const file = await executeDirectusRequest(
+                "读取文件明细",
+                readFile(id, {
+                    fields: query?.fields,
+                    deep: query?.deep,
+                } as never),
+            );
+            return file as DirectusSchema[K][number];
         }
 
         const item = await executeDirectusRequest(

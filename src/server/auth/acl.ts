@@ -16,6 +16,7 @@ import {
 import { toAppProfileView } from "@/server/profile-view";
 import {
     buildPermissionsFromDirectus,
+    isPlatformAdministratorRoleName,
     isSiteAdminRoleName,
 } from "@/server/auth/directus-access";
 import {
@@ -193,7 +194,9 @@ export async function getAppAccessContext(
             policyNames: user.policyNames,
             isPlatformAdmin: user.isSystemAdmin,
         });
-        const isPlatformAdmin = user.isSystemAdmin;
+        const isPlatformAdmin =
+            user.isSystemAdmin ||
+            isPlatformAdministratorRoleName(user.roleName);
         const isSiteAdmin = isSiteAdminRoleName(user.roleName);
         return {
             user,

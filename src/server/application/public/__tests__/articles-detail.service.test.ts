@@ -6,6 +6,7 @@ const {
     cacheSetMock,
     getAuthorBundleMock,
     loadPublicArticleByIdMock,
+    loadPublicArticleByShortIdMock,
     loadPublicArticleBySlugMock,
     readAuthorMock,
     readLatestArticleSummaryJobMock,
@@ -14,6 +15,7 @@ const {
     cacheSetMock: vi.fn(),
     getAuthorBundleMock: vi.fn(),
     loadPublicArticleByIdMock: vi.fn(),
+    loadPublicArticleByShortIdMock: vi.fn(),
     loadPublicArticleBySlugMock: vi.fn(),
     readAuthorMock: vi.fn(),
     readLatestArticleSummaryJobMock: vi.fn(),
@@ -42,6 +44,7 @@ vi.mock("@/server/api/v1/shared/loaders", async (importOriginal) => {
     return {
         ...actual,
         loadPublicArticleById: loadPublicArticleByIdMock,
+        loadPublicArticleByShortId: loadPublicArticleByShortIdMock,
         loadPublicArticleBySlug: loadPublicArticleBySlugMock,
     };
 });
@@ -63,6 +66,7 @@ describe("public/articles.service detail", () => {
         cacheSetMock.mockResolvedValue(undefined);
         getAuthorBundleMock.mockResolvedValue(new Map());
         loadPublicArticleByIdMock.mockResolvedValue(null);
+        loadPublicArticleByShortIdMock.mockResolvedValue(null);
         loadPublicArticleBySlugMock.mockResolvedValue(null);
         readAuthorMock.mockReturnValue({
             id: "author-1",
@@ -124,6 +128,67 @@ describe("public/articles.service detail", () => {
         expect(cacheSetMock).not.toHaveBeenCalledWith(
             "article-detail",
             "article-1",
+            expect.anything(),
+        );
+    });
+
+    it("公开文章详情支持 short_id 并写入 UUID 与 short_id 缓存", async () => {
+        loadPublicArticleByShortIdMock.mockResolvedValue({
+            id: "11111111-1111-4111-8111-111111111111",
+            short_id: "CLduXaJIir1w",
+            author_id: "author-1",
+            status: "published",
+            title: "Hello",
+            slug: null,
+            summary: null,
+            summary_source: "none",
+            summary_generated_at: null,
+            summary_model: null,
+            summary_prompt_version: null,
+            summary_content_hash: null,
+            summary_error: null,
+            ai_summary_enabled: false,
+            body_markdown: "body",
+            cover_file: null,
+            cover_url: null,
+            tags: [],
+            category: null,
+            allow_comments: true,
+            is_public: true,
+            date_created: null,
+            date_updated: null,
+        });
+
+        const context = createMockAPIContext({
+            method: "GET",
+            url: "http://localhost:4321/api/v1/public/articles/CLduXaJIir1w",
+        });
+        const response = await handlePublicArticlesRoute(
+            context as unknown as APIContext,
+            ["public", "articles", "CLduXaJIir1w"],
+        );
+        const body = await parseResponseJson<{
+            item: { id: string; short_id: string };
+        }>(response);
+
+        expect(response.status).toBe(200);
+        expect(loadPublicArticleByIdMock).toHaveBeenCalledWith("CLduXaJIir1w");
+        expect(loadPublicArticleByShortIdMock).toHaveBeenCalledWith(
+            "CLduXaJIir1w",
+        );
+        expect(body.item.short_id).toBe("CLduXaJIir1w");
+        expect(cacheSetMock).toHaveBeenCalledWith(
+            "article-detail",
+            "CLduXaJIir1w",
+            expect.objectContaining({
+                item: expect.objectContaining({
+                    id: "11111111-1111-4111-8111-111111111111",
+                }),
+            }),
+        );
+        expect(cacheSetMock).toHaveBeenCalledWith(
+            "article-detail",
+            "11111111-1111-4111-8111-111111111111",
             expect.anything(),
         );
     });

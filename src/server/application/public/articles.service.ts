@@ -11,6 +11,7 @@ import {
 } from "@/server/api/v1/shared/helpers";
 import {
     loadPublicArticleById,
+    loadPublicArticleByShortId,
     loadPublicArticleBySlug,
 } from "@/server/api/v1/shared/loaders";
 import { parseRouteId } from "@/server/api/v1/shared/parse";
@@ -32,6 +33,7 @@ import {
     normalizeIdentity,
 } from "@/server/application/feed/feed-entry-helpers";
 import { loadProfileByUsernameFromRepository } from "@/server/repositories/profile/profile.repository";
+import { isShortId } from "@/server/utils/short-id";
 import { buildPostUrl } from "@/utils/content-post-helpers";
 import type { DirectusPostEntry } from "@/utils/content-utils";
 
@@ -502,6 +504,37 @@ function shouldBypassArticleDetailCache(url: URL): boolean {
     return url.searchParams.get("bypass_cache") === "1";
 }
 
+async function loadPublicArticleByRouteId(articleId: string) {
+    const articleById = await loadPublicArticleById(articleId);
+    if (articleById) {
+        return articleById;
+    }
+    if (isShortId(articleId)) {
+        return await loadPublicArticleByShortId(articleId);
+    }
+    if (isSpecialArticleSlug(articleId)) {
+        return await loadPublicArticleBySlug(articleId);
+    }
+    return null;
+}
+
+function writeArticleDetailCache(
+    routeId: string,
+    article: NonNullable<
+        Awaited<ReturnType<typeof loadPublicArticleByRouteId>>
+    >,
+    result: unknown,
+): void {
+    void cacheManager.set("article-detail", routeId, result);
+    const normalizedShortId = String(article.short_id ?? "").trim();
+    if (normalizedShortId && normalizedShortId !== routeId) {
+        void cacheManager.set("article-detail", normalizedShortId, result);
+    }
+    if (article.id && article.id !== routeId) {
+        void cacheManager.set("article-detail", article.id, result);
+    }
+}
+
 async function handleArticleDetail(
     context: APIContext,
     segments: string[],
@@ -524,12 +557,7 @@ async function handleArticleDetail(
             }
         }
 
-        const articleById = await loadPublicArticleById(articleId);
-        const article =
-            articleById ||
-            (isSpecialArticleSlug(articleId)
-                ? await loadPublicArticleBySlug(articleId)
-                : null);
+        const article = await loadPublicArticleByRouteId(articleId);
         if (!article) {
             return fail("文章不存在", 404);
         }
@@ -546,7 +574,7 @@ async function handleArticleDetail(
             },
         };
         if (!bypassCache) {
-            void cacheManager.set("article-detail", articleId, result);
+            writeArticleDetailCache(articleId, article, result);
         }
         return ok(
             result,

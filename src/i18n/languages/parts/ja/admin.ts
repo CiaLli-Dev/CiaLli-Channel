@@ -58,13 +58,14 @@ export const jaAdmin: Record<string, string> = {
     [Key.adminAiOverviewFlowStrategyHint]:
         "今後は AI 機能をまとめて管理できる自動化入口を用意します。",
     [Key.adminAiPageDescription]:
-        "サイト全体の AI 機能と設定予定を確認できます。現在は案内のみです。",
+        "サイト全体の AI 機能と接続設定を管理します。",
     [Key.adminAiPageIntro]:
-        "このページでは、サイト全体で使う AI 機能の予定と入口を確認できます。実際の設定や秘密情報の保存はまだ利用できません。",
+        "設定はサーバーに保存されます。保存済みの API キーは安全上表示されないため、変更するときだけ新しいキーを入力してください。",
     [Key.adminAiPageTitle]: "AI 総合設定",
     [Key.adminAiPlaceholderApiBaseUrl]:
         "将来的に AI サービスのエンドポイントやゲートウェイ URL を入力します",
-    [Key.adminAiPlaceholderApiKey]: "将来的にサービスの API キーを入力します",
+    [Key.adminAiPlaceholderApiKey]:
+        "空欄のままなら保存済みの API キーを保持します",
     [Key.adminAiPlaceholderAssistantAccount]:
         "将来的にサイト内 AI アシスタントアカウントを紐付けます",
     [Key.adminAiPlaceholderFlowName]:

@@ -86,7 +86,11 @@ export function resolveAppRole(params: {
     roleName?: string | null;
     isPlatformAdmin: boolean;
 }): AppRole {
-    if (params.isPlatformAdmin || isSiteAdminRoleName(params.roleName)) {
+    if (
+        params.isPlatformAdmin ||
+        isPlatformAdministratorRoleName(params.roleName) ||
+        isSiteAdminRoleName(params.roleName)
+    ) {
         return "admin";
     }
     return "member";

@@ -3,6 +3,7 @@ import type { JsonObject } from "@/types/json";
 import { conflict } from "@/server/api/errors";
 import { cacheManager } from "@/server/cache/manager";
 import { readMany } from "@/server/directus/client";
+import { isUuid } from "@/server/utils/short-id";
 
 import {
     ARTICLE_FIELDS,
@@ -58,11 +59,7 @@ export async function loadPublicArticleByIdFromRepository(
     id: string,
 ): Promise<AppArticle | null> {
     const normalizedId = String(id || "").trim();
-    const isUuid =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-            normalizedId,
-        );
-    if (!isUuid) {
+    if (!isUuid(normalizedId)) {
         return null;
     }
     return await loadPublicArticleWithCache("id", normalizedId);
@@ -111,10 +108,15 @@ export async function loadArticleByShortIdLooseFromRepository(
 export async function loadPublicDiaryByIdFromRepository(
     id: string,
 ): Promise<AppDiary | null> {
+    const normalizedId = String(id || "").trim();
+    if (!isUuid(normalizedId)) {
+        return null;
+    }
+
     const rows = await readMany("app_diaries", {
         filter: {
             _and: [
-                { id: { _eq: id } },
+                { id: { _eq: normalizedId } },
                 { status: { _eq: "published" } },
                 { praviate: { _eq: true } },
             ],
@@ -146,11 +148,7 @@ export async function loadPublicAlbumByIdFromRepository(
     id: string,
 ): Promise<AppAlbum | null> {
     const normalizedId = String(id || "").trim();
-    const isUuid =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-            normalizedId,
-        );
-    if (!isUuid) {
+    if (!isUuid(normalizedId)) {
         return null;
     }
 

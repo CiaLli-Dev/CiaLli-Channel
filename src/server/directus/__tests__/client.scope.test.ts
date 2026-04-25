@@ -18,6 +18,7 @@ vi.mock("@directus/sdk", () => {
         customEndpoint: vi.fn(),
         deleteFile: vi.fn(),
         deleteItem: vi.fn(),
+        readFile: vi.fn(),
         readItem: vi.fn(),
         readItems: vi.fn(() => ({ mocked: true })),
         readFiles: vi.fn(),

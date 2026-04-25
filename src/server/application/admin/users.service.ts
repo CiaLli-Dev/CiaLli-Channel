@@ -86,6 +86,20 @@ const MANAGED_POLICY_NAMES = [
     DIRECTUS_POLICY_NAME.uploadFiles,
 ] as const;
 
+function isInternalServiceAccountEmail(email: unknown): boolean {
+    const normalizedEmail = String(email || "")
+        .trim()
+        .toLowerCase();
+    return (
+        normalizedEmail.startsWith("svc-web-") ||
+        normalizedEmail.startsWith("svc-worker-")
+    );
+}
+
+function isInternalServiceUser(user: AppUser | null | undefined): boolean {
+    return Boolean(user && isInternalServiceAccountEmail(user.email));
+}
+
 type AdminUserRow = {
     user: AppUser;
     profile: AppProfileView | null;
@@ -584,7 +598,8 @@ async function handleUsersList(context: APIContext): Promise<Response> {
         }),
         loadDirectusAccessRegistry(),
     ]);
-    const userIds = users.map((user) => user.id);
+    const visibleUsers = users.filter((user) => !isInternalServiceUser(user));
+    const userIds = visibleUsers.map((user) => user.id);
     const filterByIds =
         userIds.length > 0
             ? ({ user_id: { _in: userIds } } as JsonObject)
@@ -600,7 +615,7 @@ async function handleUsersList(context: APIContext): Promise<Response> {
     }
 
     const items = applyAdminUsersSort({
-        items: users.map((user) => {
+        items: visibleUsers.map((user) => {
             const snapshot = extractSnapshot(user, registry);
             const profile = profileMap.get(user.id) || null;
             return {
@@ -624,7 +639,7 @@ async function handleUsersList(context: APIContext): Promise<Response> {
         items,
         page,
         limit,
-        total: users.length,
+        total: visibleUsers.length,
     });
 }
 
@@ -784,6 +799,13 @@ async function handleUserDelete(
         ]);
         if (!targetUser) {
             return fail("用户不存在", 404);
+        }
+        if (isInternalServiceUser(targetUser)) {
+            return fail(
+                "服务账号由安装器和部署环境维护，不能在用户管理中删除",
+                403,
+                "SERVICE_ACCOUNT_MANAGED_EXTERNALLY",
+            );
         }
 
         const actingSnapshot = extractSnapshot(actingAdminUser, registry);

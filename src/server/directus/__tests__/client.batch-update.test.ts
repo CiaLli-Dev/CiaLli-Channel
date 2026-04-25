@@ -18,6 +18,11 @@ vi.mock("@directus/sdk", () => {
         customEndpoint: vi.fn((request: unknown) => request),
         deleteFile: vi.fn(),
         deleteItem: vi.fn(),
+        readFile: vi.fn((id: string, query?: unknown) => ({
+            path: `/files/${id}`,
+            method: "GET",
+            params: query ?? {},
+        })),
         readItem: vi.fn(),
         readItems: vi.fn(),
         readFiles: vi.fn(),
@@ -144,6 +149,43 @@ describe("updateManyItemsByFilter", () => {
                 data: { user_updated: null },
             }),
         });
+    });
+});
+
+describe("readOneById", () => {
+    it("系统文件集合使用 /files/:id 端点读取，避免走通用 items 接口", async () => {
+        requestMock.mockResolvedValue({
+            id: "file-1",
+            app_visibility: "public",
+            app_lifecycle: "attached",
+        });
+
+        const sdk = await import("@directus/sdk");
+        const { readOneById, runWithDirectusServiceAccess } =
+            await import("@/server/directus/client");
+
+        const result = await runWithDirectusServiceAccess(
+            async () =>
+                await readOneById("directus_files", "file-1", {
+                    fields: ["id", "app_visibility", "app_lifecycle"],
+                }),
+        );
+
+        expect(result).toMatchObject({
+            id: "file-1",
+            app_visibility: "public",
+        });
+        expect(sdk.readFile).toHaveBeenCalledWith("file-1", {
+            fields: ["id", "app_visibility", "app_lifecycle"],
+            deep: undefined,
+        });
+        expect(sdk.readItem).not.toHaveBeenCalled();
+        expect(requestMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+                path: "/files/file-1",
+                method: "GET",
+            }),
+        );
     });
 });
 

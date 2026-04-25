@@ -59,13 +59,13 @@ export const enAdmin: Record<string, string> = {
     [Key.adminAiOverviewFlowStrategyHint]:
         "A unified automation entry point will be added later so you can manage AI workflows in one place.",
     [Key.adminAiPageDescription]:
-        "Review upcoming AI features and settings here. For now, this page is informational only.",
+        "Manage site-wide AI features and connection settings.",
     [Key.adminAiPageIntro]:
-        "This page previews how site-wide AI features will be managed. Real settings and secret storage are not available yet.",
+        "Settings are saved on the server. Saved API keys are hidden by design; enter a new key only when replacing it.",
     [Key.adminAiPageTitle]: "AI Configuration",
     [Key.adminAiPlaceholderApiBaseUrl]:
         "Future field for the AI service endpoint or gateway URL",
-    [Key.adminAiPlaceholderApiKey]: "Future field for the service API key",
+    [Key.adminAiPlaceholderApiKey]: "Leave blank to keep the saved API key",
     [Key.adminAiPlaceholderAssistantAccount]:
         "Future field for the in-site AI assistant account",
     [Key.adminAiPlaceholderFlowName]:

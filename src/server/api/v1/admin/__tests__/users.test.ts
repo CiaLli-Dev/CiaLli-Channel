@@ -234,6 +234,61 @@ describe("GET /admin/users", () => {
         expect(body.items[0]?.profile.username).toBe("alpha");
     });
 
+    it("用户列表过滤安装器生成的内部服务账号", async () => {
+        mockedReadOneById.mockResolvedValueOnce(
+            createDirectusUser({
+                id: "admin-1",
+                role: {
+                    id: "role-site-admin",
+                    name: DIRECTUS_ROLE_NAME.siteAdmin,
+                },
+            }) as never,
+        );
+        mockedListDirectusUsers.mockResolvedValueOnce([
+            createDirectusUser({
+                id: "user-a",
+                email: "a@example.com",
+            }),
+            createDirectusUser({
+                id: "svc-web",
+                email: "svc-web-abc123@example.com",
+            }),
+            createDirectusUser({
+                id: "svc-worker",
+                email: "svc-worker-abc123@example.com",
+            }),
+        ] as never);
+        mockedReadMany.mockResolvedValueOnce([
+            mockProfile({
+                id: "profile-a",
+                user_id: "user-a",
+                username: "alpha",
+            }),
+        ] as never);
+
+        const ctx = createMockAPIContext({
+            method: "GET",
+            url: "http://localhost:4321/api/v1/admin/users?page=1&limit=20",
+            params: {
+                segments: "admin/users",
+            },
+        });
+
+        const response = await handleAdminUsers(ctx as unknown as APIContext, [
+            "users",
+        ]);
+        const body = await parseResponseJson<{
+            items: Array<{ user: { id: string; email: string } }>;
+        }>(response);
+
+        expect(response.status).toBe(200);
+        expect(body.items.map((item) => item.user.id)).toEqual(["user-a"]);
+        expect(mockedReadMany).toHaveBeenCalledWith("app_user_profiles", {
+            filter: { user_id: { _in: ["user-a"] } },
+            limit: 20,
+        });
+    });
+
     it("username 排序在缺失与空字符串场景下保持稳定", async () => {
         mockedReadOneById.mockResolvedValueOnce(
             createDirectusUser({
@@ -577,5 +632,44 @@ describe("DELETE /admin/users/:id", () => {
         expect(
             mockedReleaseOwnerResources.mock.invocationCallOrder.at(-1) ?? 0,
         ).toBeLessThan(mockedDeleteDirectusUser.mock.invocationCallOrder[0]);
+    });
+
+    it("拒绝删除内部服务账号", async () => {
+        const actingAdmin = createDirectusUser({
+            id: "admin-1",
+            email: "admin@example.com",
+            role: {
+                id: "role-site-admin",
+                name: DIRECTUS_ROLE_NAME.siteAdmin,
+            },
+        });
+        const serviceUser = createDirectusUser({
+            id: "svc-web",
+            email: "svc-web-abc123@example.com",
+        });
+
+        mockedReadOneById
+            .mockResolvedValueOnce(actingAdmin as never)
+            .mockResolvedValueOnce(serviceUser as never);
+
+        const ctx = createMockAPIContext({
+            method: "DELETE",
+            url: "http://localhost:4321/api/v1/admin/users/svc-web",
+            params: {
+                segments: "admin/users/svc-web",
+            },
+        });
+
+        const response = await handleAdminUsers(ctx as unknown as APIContext, [
+            "users",
+            "svc-web",
+        ]);
+        const body = await parseResponseJson<{
+            error?: { code?: string };
+        }>(response);
+
+        expect(response.status).toBe(403);
+        expect(body.error?.code).toBe("SERVICE_ACCOUNT_MANAGED_EXTERNALLY");
+        expect(mockedDeleteDirectusUser).not.toHaveBeenCalled();
     });
 });
