@@ -84,6 +84,13 @@ vi.mock("@/server/files/resource-lifecycle", () => ({
             candidateFileIds: [],
             deletedReferences: 0,
         }),
+        restoreQuarantinedFiles: vi.fn().mockResolvedValue({
+            requestedFileIds: [],
+            restoredFileIds: [],
+            skippedMissingFileIds: [],
+            skippedNotQuarantinedFileIds: [],
+            skippedUnreferencedFileIds: [],
+        }),
     },
 }));
 
@@ -120,6 +127,9 @@ const mockedDeleteCollectedCommentTargets = vi.mocked(
 );
 const mockedReleaseOwnerResources = vi.mocked(
     resourceLifecycle.releaseOwnerResources,
+);
+const mockedRestoreQuarantinedFiles = vi.mocked(
+    resourceLifecycle.restoreQuarantinedFiles,
 );
 
 function makeCtx(
@@ -302,6 +312,61 @@ describe("handleAdminContent diaries 权限收敛", () => {
         expect(mockedReleaseOwnerResources).toHaveBeenCalledWith({
             ownerCollection: "app_articles",
             ownerId: "article-1",
+        });
+    });
+
+    it("POST 管理员恢复隔离文件时走生命周期恢复用例", async () => {
+        mockedRestoreQuarantinedFiles.mockResolvedValueOnce({
+            requestedFileIds: ["file-1"],
+            restoredFileIds: ["file-1"],
+            skippedMissingFileIds: [],
+            skippedNotQuarantinedFileIds: [],
+            skippedUnreferencedFileIds: [],
+        });
+
+        const ctx = makeCtx("admin/content/files/file-1/restore", "POST");
+        const response = await handleAdminContent(
+            ctx as unknown as APIContext,
+            ["content", "files", "file-1", "restore"],
+        );
+
+        expect(response.status).toBe(200);
+        expect(mockedRestoreQuarantinedFiles).toHaveBeenCalledWith({
+            fileIds: ["file-1"],
+            requireReference: true,
+        });
+        await expect(
+            parseResponseJson<{ restored: boolean; file_id: string }>(response),
+        ).resolves.toMatchObject({
+            restored: true,
+            file_id: "file-1",
+        });
+    });
+
+    it("POST 管理员恢复无有效引用的隔离文件时返回 409", async () => {
+        mockedRestoreQuarantinedFiles.mockResolvedValueOnce({
+            requestedFileIds: ["file-1"],
+            restoredFileIds: [],
+            skippedMissingFileIds: [],
+            skippedNotQuarantinedFileIds: [],
+            skippedUnreferencedFileIds: ["file-1"],
+        });
+
+        const ctx = makeCtx("admin/content/files/file-1/restore", "POST");
+        const response = await handleAdminContent(
+            ctx as unknown as APIContext,
+            ["content", "files", "file-1", "restore"],
+        );
+
+        expect(response.status).toBe(409);
+        await expect(
+            parseResponseJson<{
+                ok: boolean;
+                error: { message: string };
+            }>(response),
+        ).resolves.toMatchObject({
+            ok: false,
+            error: { message: "文件没有有效引用，已阻止误恢复" },
         });
     });
 });

@@ -6,6 +6,7 @@ import {
     readAllManagedFiles,
 } from "@/server/repositories/files/file-lifecycle.repository";
 import { readFileGcRetentionHours } from "@/server/files/file-gc";
+import { resourceLifecycle } from "@/server/files/resource-lifecycle";
 
 const DEFAULT_FILE_LIFECYCLE_RECONCILE_INTERVAL_MS = 86_400_000;
 
@@ -75,7 +76,9 @@ function classifyManagedFileLifecycle(params: {
 function collectClassifiedFile(params: {
     lifecycle: ClassifiedLifecycle;
     fileId: string;
+    wasQuarantined: boolean;
     attachedFileIds: string[];
+    quarantinedReferencedFileIds: string[];
     detachedFileIds: string[];
     temporaryFileIds: string[];
     counts: {
@@ -85,7 +88,11 @@ function collectClassifiedFile(params: {
     };
 }): void {
     if (params.lifecycle === "attached") {
-        params.attachedFileIds.push(params.fileId);
+        if (params.wasQuarantined) {
+            params.quarantinedReferencedFileIds.push(params.fileId);
+        } else {
+            params.attachedFileIds.push(params.fileId);
+        }
         return;
     }
     if (params.lifecycle === "detached") {
@@ -115,6 +122,7 @@ export async function reconcileManagedFileLifecycle(
     ]);
 
     const attachedFileIds: string[] = [];
+    const quarantinedReferencedFileIds: string[] = [];
     const detachedFileIds: string[] = [];
     const temporaryFileIds: string[] = [];
     const counts = {
@@ -135,15 +143,21 @@ export async function reconcileManagedFileLifecycle(
         collectClassifiedFile({
             lifecycle,
             fileId: file.id,
+            wasQuarantined: file.app_lifecycle === "quarantined",
             attachedFileIds,
+            quarantinedReferencedFileIds,
             detachedFileIds,
             temporaryFileIds,
             counts,
         });
     }
 
-    await Promise.all([
+    const [, restored] = await Promise.all([
         markFilesAttached({ fileIds: attachedFileIds }),
+        resourceLifecycle.restoreQuarantinedFiles({
+            fileIds: quarantinedReferencedFileIds,
+            requireReference: true,
+        }),
         markFilesTemporary(temporaryFileIds),
     ]);
 
@@ -173,7 +187,7 @@ export async function reconcileManagedFileLifecycle(
     }
 
     return {
-        attached: attachedFileIds.length,
+        attached: attachedFileIds.length + restored.restoredFileIds.length,
         detached: detachedFileIds.length,
         temporary: temporaryFileIds.length,
         quarantined: counts.quarantined,

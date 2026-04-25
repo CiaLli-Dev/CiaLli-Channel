@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
     markFilesDetached: vi.fn(),
     markFilesTemporary: vi.fn(),
     readAllManagedFiles: vi.fn(),
+    restoreQuarantinedFiles: vi.fn(),
 }));
 
 vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
@@ -24,6 +25,12 @@ vi.mock("@/server/files/file-gc", () => ({
     readFileGcRetentionHours: vi.fn(() => 24),
 }));
 
+vi.mock("@/server/files/resource-lifecycle", () => ({
+    resourceLifecycle: {
+        restoreQuarantinedFiles: mocks.restoreQuarantinedFiles,
+    },
+}));
+
 import {
     reconcileManagedFileLifecycle,
     readFileLifecycleReconcileIntervalMs,
@@ -39,6 +46,13 @@ describe("file-lifecycle-reconciliation", () => {
         mocks.markFilesDetached.mockResolvedValue(undefined);
         mocks.markFilesTemporary.mockResolvedValue(undefined);
         mocks.readAllManagedFiles.mockResolvedValue([]);
+        mocks.restoreQuarantinedFiles.mockResolvedValue({
+            requestedFileIds: [],
+            restoredFileIds: [],
+            skippedMissingFileIds: [],
+            skippedNotQuarantinedFileIds: [],
+            skippedUnreferencedFileIds: [],
+        });
     });
 
     it("classifies referenced and unreferenced files into managed lifecycle states", async () => {
@@ -106,13 +120,24 @@ describe("file-lifecycle-reconciliation", () => {
                 app_deleted_at: "2026-04-20T00:00:00.000Z",
             },
         ]);
+        mocks.restoreQuarantinedFiles.mockResolvedValueOnce({
+            requestedFileIds: ["file-quarantined-referenced"],
+            restoredFileIds: ["file-quarantined-referenced"],
+            skippedMissingFileIds: [],
+            skippedNotQuarantinedFileIds: [],
+            skippedUnreferencedFileIds: [],
+        });
 
         const result = await reconcileManagedFileLifecycle(
             "2026-04-23T00:00:00.000Z",
         );
 
         expect(mocks.markFilesAttached).toHaveBeenCalledWith({
-            fileIds: ["file-attached", "file-quarantined-referenced"],
+            fileIds: ["file-attached"],
+        });
+        expect(mocks.restoreQuarantinedFiles).toHaveBeenCalledWith({
+            fileIds: ["file-quarantined-referenced"],
+            requireReference: true,
         });
         expect(mocks.markFilesTemporary).toHaveBeenCalledWith([
             "file-temporary",

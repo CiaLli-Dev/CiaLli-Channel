@@ -12,6 +12,20 @@ vi.mock("@/server/directus/client", () => ({
 
 vi.mock("@/server/api/v1/shared/author-cache", () => ({
     getAuthorBundle: vi.fn(),
+    readAuthor: vi.fn(
+        (
+            authorMap: Map<
+                string,
+                { id: string; name: string; username?: string }
+            >,
+            userId: string,
+        ) =>
+            authorMap.get(userId) || {
+                id: userId,
+                name: `user-${userId.slice(0, 8)}`,
+                username: `user-${userId.slice(0, 8)}`,
+            },
+    ),
 }));
 
 vi.mock("@/server/bangumi/service", () => ({

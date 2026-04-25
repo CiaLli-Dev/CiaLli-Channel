@@ -18,6 +18,7 @@ import {
     buildFileReferenceId,
     deleteOwnerReferences,
     readAllReferencedFileIdsFromReferenceTable,
+    readFileReferencesByFileIds,
     replaceOwnerFieldReferences,
 } from "@/server/repositories/files/file-reference.repository";
 
@@ -151,5 +152,46 @@ describe("file-reference.repository", () => {
         await expect(
             readAllReferencedFileIdsFromReferenceTable(),
         ).resolves.toEqual(new Set([FILE_KEEP, FILE_NEW]));
+    });
+
+    it("reads full reference rows for candidate file ids", async () => {
+        mocks.readMany.mockResolvedValueOnce([
+            {
+                id: "ref-1",
+                file_id: FILE_KEEP,
+                owner_collection: "app_articles",
+                owner_id: "article-1",
+                owner_field: "body_markdown",
+                reference_kind: "markdown_asset",
+                owner_user_id: "user-1",
+                visibility: "public",
+            },
+        ]);
+
+        await expect(
+            readFileReferencesByFileIds([FILE_KEEP, FILE_KEEP, "invalid"]),
+        ).resolves.toEqual([
+            expect.objectContaining({
+                id: "ref-1",
+                file_id: FILE_KEEP,
+                owner_user_id: "user-1",
+                visibility: "public",
+            }),
+        ]);
+        expect(mocks.readMany).toHaveBeenCalledWith("app_file_references", {
+            filter: { file_id: { _in: [FILE_KEEP] } },
+            fields: [
+                "id",
+                "file_id",
+                "owner_collection",
+                "owner_id",
+                "owner_field",
+                "reference_kind",
+                "owner_user_id",
+                "visibility",
+            ],
+            limit: 500,
+            offset: 0,
+        });
     });
 });

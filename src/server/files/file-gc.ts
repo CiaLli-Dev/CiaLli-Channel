@@ -10,6 +10,7 @@ import {
     markFilesQuarantined,
     readManagedFilesByIds,
 } from "@/server/repositories/files/file-lifecycle.repository";
+import { resourceLifecycle } from "@/server/files/resource-lifecycle";
 
 const DEFAULT_FILE_GC_RETENTION_HOURS = 168;
 const DEFAULT_FILE_GC_QUARANTINE_DAYS = 7;
@@ -256,11 +257,26 @@ async function recoverReferencedFileIds(params: {
         return;
     }
 
-    await markFilesAttached({ fileIds: params.fileIds });
-    params.state.recovered += params.fileIds.length;
-    params.state.recoveredFileIds.push(...params.fileIds);
+    const quarantinedFileIds = params.fileIds.filter(
+        (fileId) =>
+            params.currentLifecycleById.get(fileId)?.app_lifecycle ===
+            "quarantined",
+    );
+    const attachedFileIds = params.fileIds.filter(
+        (fileId) => !quarantinedFileIds.includes(fileId),
+    );
+    const restored = await resourceLifecycle.restoreQuarantinedFiles({
+        fileIds: quarantinedFileIds,
+        requireReference: true,
+    });
+    const recoveredFileIds = [...attachedFileIds, ...restored.restoredFileIds];
+    if (attachedFileIds.length > 0) {
+        await markFilesAttached({ fileIds: attachedFileIds });
+    }
+    params.state.recovered += recoveredFileIds.length;
+    params.state.recoveredFileIds.push(...recoveredFileIds);
 
-    for (const fileId of params.fileIds) {
+    for (const fileId of recoveredFileIds) {
         logFileGcAudit({
             fileId,
             dryRun: params.dryRun,

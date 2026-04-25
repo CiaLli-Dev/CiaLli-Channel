@@ -304,6 +304,40 @@ export async function readReferencedFileIdsFromReferenceTable(
     }
 }
 
+export async function readFileReferencesByFileIds(
+    candidateFileIds: string[],
+): Promise<OwnerFileReferenceRow[]> {
+    const normalized = normalizeReferenceFileIds(candidateFileIds);
+    if (normalized.length === 0) {
+        return [];
+    }
+
+    const rows: OwnerFileReferenceRow[] = [];
+    let offset = 0;
+    while (true) {
+        const page = (await readMany("app_file_references", {
+            filter: { file_id: { _in: normalized } } as JsonObject,
+            fields: [
+                "id",
+                "file_id",
+                "owner_collection",
+                "owner_id",
+                "owner_field",
+                "reference_kind",
+                "owner_user_id",
+                "visibility",
+            ],
+            limit: REFERENCE_PAGE_SIZE,
+            offset,
+        })) as OwnerFileReferenceRow[];
+        rows.push(...page);
+        if (page.length < REFERENCE_PAGE_SIZE) {
+            return rows;
+        }
+        offset += page.length;
+    }
+}
+
 export async function readAllReferencedFileIdsFromReferenceTable(): Promise<
     Set<string>
 > {

@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
     deleteOne: vi.fn(),
     markFilesAttached: vi.fn(),
     markFilesDetached: vi.fn(),
+    readFileReferencesByFileIds: vi.fn(),
+    readManagedFilesByIds: vi.fn(),
     readOwnerFileReferences: vi.fn(),
     replaceOwnerFieldReferences: vi.fn(),
     updateOne: vi.fn(),
@@ -26,9 +28,11 @@ vi.mock("@/server/repositories/directus/scope", () => ({
 vi.mock("@/server/repositories/files/file-lifecycle.repository", () => ({
     markFilesAttached: mocks.markFilesAttached,
     markFilesDetached: mocks.markFilesDetached,
+    readManagedFilesByIds: mocks.readManagedFilesByIds,
 }));
 
 vi.mock("@/server/repositories/files/file-reference.repository", () => ({
+    readFileReferencesByFileIds: mocks.readFileReferencesByFileIds,
     readOwnerFileReferences: mocks.readOwnerFileReferences,
     replaceOwnerFieldReferences: mocks.replaceOwnerFieldReferences,
 }));
@@ -54,6 +58,8 @@ describe("resourceLifecycle", () => {
         mocks.deleteOne.mockResolvedValue(undefined);
         mocks.markFilesAttached.mockResolvedValue(undefined);
         mocks.markFilesDetached.mockResolvedValue(undefined);
+        mocks.readFileReferencesByFileIds.mockResolvedValue([]);
+        mocks.readManagedFilesByIds.mockResolvedValue([]);
         mocks.readOwnerFileReferences.mockResolvedValue([]);
         mocks.replaceOwnerFieldReferences.mockResolvedValue({
             created: 0,
@@ -245,6 +251,75 @@ describe("resourceLifecycle", () => {
             candidateFileIds: [],
             deletedReferences: 0,
         });
+    });
+
+    it("restores only quarantined files with live references and fixes owner metadata", async () => {
+        mocks.readManagedFilesByIds.mockResolvedValue([
+            {
+                id: FILE_KEEP,
+                app_lifecycle: "quarantined",
+            },
+            {
+                id: FILE_OLD,
+                app_lifecycle: "detached",
+            },
+        ]);
+        mocks.readFileReferencesByFileIds.mockResolvedValue([
+            {
+                id: "ref-1",
+                file_id: FILE_KEEP,
+                owner_collection: "app_articles",
+                owner_id: "article-1",
+                owner_field: "body_markdown",
+                reference_kind: "markdown_asset",
+                owner_user_id: "user-1",
+                visibility: "public",
+            },
+        ]);
+
+        const result = await resourceLifecycle.restoreQuarantinedFiles({
+            fileIds: [FILE_KEEP, FILE_OLD, FILE_NEW],
+            requireReference: true,
+        });
+
+        expect(mocks.readManagedFilesByIds).toHaveBeenCalledWith([
+            FILE_KEEP,
+            FILE_NEW,
+            FILE_OLD,
+        ]);
+        expect(mocks.readFileReferencesByFileIds).toHaveBeenCalledWith([
+            FILE_KEEP,
+            FILE_NEW,
+            FILE_OLD,
+        ]);
+        expect(mocks.markFilesAttached).toHaveBeenCalledWith({
+            fileIds: [FILE_KEEP],
+            ownerUserId: "user-1",
+            visibility: "public",
+        });
+        expect(result).toEqual({
+            requestedFileIds: [FILE_KEEP, FILE_NEW, FILE_OLD],
+            restoredFileIds: [FILE_KEEP],
+            skippedMissingFileIds: [FILE_NEW],
+            skippedNotQuarantinedFileIds: [FILE_OLD],
+            skippedUnreferencedFileIds: [],
+        });
+    });
+
+    it("blocks quarantined restore without a reference by default", async () => {
+        mocks.readManagedFilesByIds.mockResolvedValue([
+            {
+                id: FILE_KEEP,
+                app_lifecycle: "quarantined",
+            },
+        ]);
+
+        const result = await resourceLifecycle.restoreQuarantinedFiles({
+            fileIds: [FILE_KEEP],
+        });
+
+        expect(mocks.markFilesAttached).not.toHaveBeenCalled();
+        expect(result.skippedUnreferencedFileIds).toEqual([FILE_KEEP]);
     });
 
     it("parses and replays resource sync job payloads", async () => {

@@ -8,8 +8,10 @@ import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup-ref
 import {
     markFilesAttached,
     markFilesDetached,
+    readManagedFilesByIds,
 } from "@/server/repositories/files/file-lifecycle.repository";
 import {
+    readFileReferencesByFileIds,
     readOwnerFileReferences,
     replaceOwnerFieldReferences,
     type OwnerFileReferenceRow,
@@ -45,6 +47,19 @@ export type ReleaseOwnerResourcesResult = {
     status: "pending" | "skipped";
     candidateFileIds: string[];
     deletedReferences: number;
+};
+
+export type RestoreQuarantinedFilesInput = {
+    fileIds: string[];
+    requireReference?: boolean;
+};
+
+export type RestoreQuarantinedFilesResult = {
+    requestedFileIds: string[];
+    restoredFileIds: string[];
+    skippedMissingFileIds: string[];
+    skippedNotQuarantinedFileIds: string[];
+    skippedUnreferencedFileIds: string[];
 };
 
 const RESOURCE_REFERENCE_SYNC_SOURCE_TYPE = "resource.references.sync";
@@ -106,6 +121,45 @@ function normalizeSyncInput(
 
 function readFileIds(rows: OwnerFileReferenceRow[]): string[] {
     return normalizeFileIds(rows.map((row) => row.file_id));
+}
+
+function groupReferencesByFileId(
+    rows: OwnerFileReferenceRow[],
+): Map<string, OwnerFileReferenceRow[]> {
+    const grouped = new Map<string, OwnerFileReferenceRow[]>();
+    for (const row of rows) {
+        const fileId = normalizeDirectusFileId(row.file_id);
+        if (!fileId) {
+            continue;
+        }
+        const existing = grouped.get(fileId) || [];
+        existing.push(row);
+        grouped.set(fileId, existing);
+    }
+    return grouped;
+}
+
+function readRestoreOwnerUserId(
+    rows: OwnerFileReferenceRow[],
+): string | null | undefined {
+    for (const row of rows) {
+        const ownerUserId = normalizeOwnerUserId(row.owner_user_id);
+        if (ownerUserId) {
+            return ownerUserId;
+        }
+    }
+    return rows.length > 0 ? null : undefined;
+}
+
+function readRestoreVisibility(
+    rows: OwnerFileReferenceRow[],
+): AppFileReferenceVisibility | undefined {
+    if (rows.length === 0) {
+        return undefined;
+    }
+    return rows.some((row) => row.visibility === "public")
+        ? "public"
+        : "private";
 }
 
 function buildCurrentOwnerFileIds(params: {
@@ -328,6 +382,56 @@ async function releaseOwnerResources(
     };
 }
 
+async function restoreQuarantinedFiles(
+    input: RestoreQuarantinedFilesInput,
+): Promise<RestoreQuarantinedFilesResult> {
+    const requestedFileIds = normalizeFileIds(input.fileIds);
+    const result: RestoreQuarantinedFilesResult = {
+        requestedFileIds,
+        restoredFileIds: [],
+        skippedMissingFileIds: [],
+        skippedNotQuarantinedFileIds: [],
+        skippedUnreferencedFileIds: [],
+    };
+    if (requestedFileIds.length === 0) {
+        return result;
+    }
+
+    const [files, references] = await Promise.all([
+        readManagedFilesByIds(requestedFileIds),
+        readFileReferencesByFileIds(requestedFileIds),
+    ]);
+    const fileById = new Map(files.map((file) => [file.id, file]));
+    const referencesByFileId = groupReferencesByFileId(references);
+
+    for (const fileId of requestedFileIds) {
+        const file = fileById.get(fileId);
+        if (!file) {
+            result.skippedMissingFileIds.push(fileId);
+            continue;
+        }
+        if (file.app_lifecycle !== "quarantined") {
+            result.skippedNotQuarantinedFileIds.push(fileId);
+            continue;
+        }
+
+        const fileReferences = referencesByFileId.get(fileId) || [];
+        if (input.requireReference !== false && fileReferences.length === 0) {
+            result.skippedUnreferencedFileIds.push(fileId);
+            continue;
+        }
+
+        await markFilesAttached({
+            fileIds: [fileId],
+            ownerUserId: readRestoreOwnerUserId(fileReferences),
+            visibility: readRestoreVisibility(fileReferences),
+        });
+        result.restoredFileIds.push(fileId);
+    }
+
+    return result;
+}
+
 export function isResourceReferenceSyncJobSource(sourceType: string): boolean {
     return sourceType === RESOURCE_REFERENCE_SYNC_SOURCE_TYPE;
 }
@@ -415,4 +519,5 @@ export async function markResourceReferenceSyncJobSucceeded(params: {
 export const resourceLifecycle = {
     syncOwnerReferences,
     releaseOwnerResources,
+    restoreQuarantinedFiles,
 };

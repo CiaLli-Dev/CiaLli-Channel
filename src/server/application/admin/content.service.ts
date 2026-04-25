@@ -578,6 +578,37 @@ async function handleContentItem(
     return fail("未找到接口", 404);
 }
 
+async function handleFileRestore(
+    context: APIContext,
+    segments: string[],
+): Promise<Response> {
+    const id = parseRouteId(segments[2]);
+    if (!id) {
+        return fail("参数不完整", 400);
+    }
+    if (context.request.method !== "POST") {
+        return fail("未找到接口", 404);
+    }
+
+    const result = await resourceLifecycle.restoreQuarantinedFiles({
+        fileIds: [id],
+        requireReference: true,
+    });
+    if (result.restoredFileIds.includes(id)) {
+        return ok({ file_id: id, restored: true, result });
+    }
+    if (result.skippedMissingFileIds.includes(id)) {
+        return fail("文件不存在", 404);
+    }
+    if (result.skippedNotQuarantinedFileIds.includes(id)) {
+        return fail("文件不处于隔离状态，不能恢复", 409);
+    }
+    if (result.skippedUnreferencedFileIds.includes(id)) {
+        return fail("文件没有有效引用，已阻止误恢复", 409);
+    }
+    return fail("文件恢复失败", 409);
+}
+
 export async function handleAdminContent(
     context: APIContext,
     segments: string[],
@@ -590,6 +621,14 @@ export async function handleAdminContent(
     return await withUserRepositoryContext(required.accessToken, async () => {
         if (segments.length === 1 && context.request.method === "GET") {
             return handleContentList(context);
+        }
+
+        if (
+            segments.length === 4 &&
+            segments[1] === "files" &&
+            segments[3] === "restore"
+        ) {
+            return handleFileRestore(context, segments);
         }
 
         if (segments.length === 3) {

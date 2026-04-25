@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
     markFilesDeleted: vi.fn(),
     markFilesQuarantined: vi.fn(),
     readManagedFilesByIds: vi.fn(),
+    restoreQuarantinedFiles: vi.fn(),
 }));
 
 vi.mock("@/server/repositories/directus/scope", () => ({
@@ -32,6 +33,12 @@ vi.mock("@/server/repositories/files/file-lifecycle.repository", () => ({
     markFilesDeleted: mocks.markFilesDeleted,
     markFilesQuarantined: mocks.markFilesQuarantined,
     readManagedFilesByIds: mocks.readManagedFilesByIds,
+}));
+
+vi.mock("@/server/files/resource-lifecycle", () => ({
+    resourceLifecycle: {
+        restoreQuarantinedFiles: mocks.restoreQuarantinedFiles,
+    },
 }));
 
 import {
@@ -65,6 +72,13 @@ function resetFileGcMocks(): void {
     mocks.markFilesDeleted.mockResolvedValue(undefined);
     mocks.markFilesQuarantined.mockResolvedValue(undefined);
     mocks.readManagedFilesByIds.mockResolvedValue([]);
+    mocks.restoreQuarantinedFiles.mockResolvedValue({
+        requestedFileIds: [],
+        restoredFileIds: [],
+        skippedMissingFileIds: [],
+        skippedNotQuarantinedFileIds: [],
+        skippedUnreferencedFileIds: [],
+    });
 }
 
 function staleDetachedFile(id: string): {
@@ -229,11 +243,19 @@ describe("file-gc", () => {
         mocks.collectReferencedDirectusFileIds.mockResolvedValue(
             new Set(["file-referenced"]),
         );
+        mocks.restoreQuarantinedFiles.mockResolvedValueOnce({
+            requestedFileIds: ["file-referenced"],
+            restoredFileIds: ["file-referenced"],
+            skippedMissingFileIds: [],
+            skippedNotQuarantinedFileIds: [],
+            skippedUnreferencedFileIds: [],
+        });
 
         const result = await runFileGcBatch(NOW);
 
-        expect(mocks.markFilesAttached).toHaveBeenCalledWith({
+        expect(mocks.restoreQuarantinedFiles).toHaveBeenCalledWith({
             fileIds: ["file-referenced"],
+            requireReference: true,
         });
         expect(mocks.deleteOrphanFileFromRepository).not.toHaveBeenCalled();
         expect(result.recovered).toBe(1);
