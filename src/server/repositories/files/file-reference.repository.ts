@@ -231,15 +231,21 @@ export async function deleteOwnerReferences(params: {
         } as JsonObject);
     }
 
-    const rows = (await readMany("app_file_references", {
-        filter: { _and: conditions } as JsonObject,
-        fields: ["id"],
-        limit: 5000,
-    })) as Array<{ id: string }>;
-    for (const row of rows) {
-        await deleteOne("app_file_references", row.id);
+    let deleted = 0;
+    while (true) {
+        const rows = (await readMany("app_file_references", {
+            filter: { _and: conditions } as JsonObject,
+            fields: ["id"],
+            limit: REFERENCE_PAGE_SIZE,
+        })) as Array<{ id: string }>;
+        for (const row of rows) {
+            await deleteOne("app_file_references", row.id);
+            deleted += 1;
+        }
+        if (rows.length < REFERENCE_PAGE_SIZE) {
+            return deleted;
+        }
     }
-    return rows.length;
 }
 
 export async function readOwnerFileReferences(params: {

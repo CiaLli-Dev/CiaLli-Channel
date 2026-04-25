@@ -1,3 +1,4 @@
+import type { AppFileLifecycle } from "@/types/app";
 import type { JsonObject } from "@/types/json";
 import {
     readOneById,
@@ -10,13 +11,14 @@ import {
 export type ManagedFileVisibilityRecord = {
     id: string;
     app_visibility?: "private" | "public" | null;
+    app_lifecycle?: AppFileLifecycle | null;
 };
 
 export async function readManagedFileVisibility(
     fileId: string,
 ): Promise<ManagedFileVisibilityRecord | null> {
     return (await readOneById("directus_files", fileId, {
-        fields: ["id", "app_visibility"],
+        fields: ["id", "app_visibility", "app_lifecycle"],
     })) as ManagedFileVisibilityRecord | null;
 }
 

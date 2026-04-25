@@ -72,7 +72,11 @@ async function isPublicAsset(fileId: string): Promise<boolean> {
         async () => await readManagedFileVisibility(fileId),
     );
 
-    return file?.app_visibility === "public";
+    return (
+        file?.app_visibility === "public" &&
+        (file.app_lifecycle === "attached" ||
+            file.app_lifecycle === "protected")
+    );
 }
 
 function assertUpstreamOk(response: Response): void {

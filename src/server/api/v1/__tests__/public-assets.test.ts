@@ -45,6 +45,7 @@ describe("handlePublicAsset", () => {
         mockedReadManagedFileVisibility.mockResolvedValue({
             id: PUBLIC_FILE_ID,
             app_visibility: "public",
+            app_lifecycle: "attached",
         });
     });
 
@@ -80,6 +81,7 @@ describe("handlePublicAsset", () => {
         mockedReadManagedFileVisibility.mockResolvedValue({
             id: PUBLIC_FILE_ID,
             app_visibility: "private",
+            app_lifecycle: "attached",
         });
 
         const response = await handlePublicAsset(makeContext(), [
@@ -96,6 +98,7 @@ describe("handlePublicAsset", () => {
         mockedReadManagedFileVisibility.mockResolvedValue({
             id: PUBLIC_FILE_ID,
             app_visibility: null,
+            app_lifecycle: "attached",
         });
 
         const response = await handlePublicAsset(makeContext(), [
@@ -106,6 +109,31 @@ describe("handlePublicAsset", () => {
 
         expect(response.status).toBe(404);
         expect(mockedReadDirectusAssetResponse).not.toHaveBeenCalled();
+    });
+
+    it("公开但未绑定或待删除生命周期返回 404", async () => {
+        for (const lifecycle of [
+            "temporary",
+            "detached",
+            "quarantined",
+            "deleted",
+        ] as const) {
+            mockedReadDirectusAssetResponse.mockClear();
+            mockedReadManagedFileVisibility.mockResolvedValue({
+                id: PUBLIC_FILE_ID,
+                app_visibility: "public",
+                app_lifecycle: lifecycle,
+            });
+
+            const response = await handlePublicAsset(makeContext(), [
+                "public",
+                "assets",
+                PUBLIC_FILE_ID,
+            ]);
+
+            expect(response.status).toBe(404);
+            expect(mockedReadDirectusAssetResponse).not.toHaveBeenCalled();
+        }
     });
 
     it("公开文件才请求上游资源，并保留响应头", async () => {

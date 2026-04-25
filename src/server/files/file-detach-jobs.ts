@@ -1,5 +1,6 @@
 import type { AppFileDetachJob } from "@/types/app";
 import type { JsonObject } from "@/types/json";
+import type { DirectusSchema } from "@/server/directus/schema";
 import {
     createOne,
     readMany,
@@ -10,6 +11,7 @@ import { collectReferencedDirectusFileIds } from "@/server/api/v1/shared/file-cl
 import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup-reference-utils";
 import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 import { markFilesDetached } from "@/server/repositories/files/file-lifecycle.repository";
+import { deleteOwnerReferences } from "@/server/repositories/files/file-reference.repository";
 import { seedFileReferencesWhenEmpty } from "@/server/files/file-reference-shadow";
 import {
     isResourceReferenceSyncJobSource,
@@ -23,17 +25,12 @@ const DEFAULT_FILE_DETACH_JOB_BATCH_SIZE = 50;
 const DEFAULT_FILE_DETACH_JOB_LEASE_SECONDS = 300;
 const MAX_RETRY_DELAY_MS = 60 * 60_000;
 
-type FileDetachJobSourceCollection =
-    | "app_albums"
-    | "app_album_photos"
-    | "app_articles"
-    | "app_article_comments"
-    | "app_diaries"
-    | "app_diary_comments"
-    | "app_diary_images";
+const RESOURCE_OWNER_RELEASE_SOURCE_PREFIX = "resource.owner.release:";
+
+type DetachJobSourceCollection = keyof DirectusSchema;
 
 const SOURCE_COLLECTION_BY_TYPE: Partial<
-    Record<string, FileDetachJobSourceCollection>
+    Record<string, DetachJobSourceCollection>
 > = {
     "admin.album.delete": "app_albums",
     "admin.album-photo.delete": "app_album_photos",
@@ -50,6 +47,21 @@ const SOURCE_COLLECTION_BY_TYPE: Partial<
     "me.diary.delete": "app_diaries",
     "me.diary-image.delete": "app_diary_images",
 };
+
+const OWNER_RELEASE_COLLECTIONS = new Set<DetachJobSourceCollection>([
+    "app_albums",
+    "app_album_photos",
+    "app_articles",
+    "app_article_comments",
+    "app_diaries",
+    "app_diary_comments",
+    "app_diary_images",
+    "app_site_announcements",
+    "app_site_settings",
+    "app_user_profiles",
+    "app_user_registration_requests",
+    "directus_users",
+]);
 
 export type FileDetachJobRunResult = {
     status: "succeeded" | "pending" | "skipped";
@@ -164,6 +176,37 @@ function readJobCandidateFileIds(job: AppFileDetachJob): string[] {
     );
 }
 
+function isOwnerReleaseCollection(
+    collection: string,
+): collection is DetachJobSourceCollection {
+    return OWNER_RELEASE_COLLECTIONS.has(
+        collection as DetachJobSourceCollection,
+    );
+}
+
+function readOwnerReleaseCollection(
+    sourceType: string,
+): DetachJobSourceCollection | null {
+    if (!sourceType.startsWith(RESOURCE_OWNER_RELEASE_SOURCE_PREFIX)) {
+        return null;
+    }
+    const collection = sourceType
+        .slice(RESOURCE_OWNER_RELEASE_SOURCE_PREFIX.length)
+        .trim();
+    return isOwnerReleaseCollection(collection) ? collection : null;
+}
+
+function readSourceCollection(
+    job: AppFileDetachJob,
+): DetachJobSourceCollection | null {
+    const sourceType = String(job.source_type || "");
+    return (
+        readOwnerReleaseCollection(sourceType) ||
+        SOURCE_COLLECTION_BY_TYPE[sourceType] ||
+        null
+    );
+}
+
 async function readFileDetachJob(
     jobId: string,
 ): Promise<AppFileDetachJob | null> {
@@ -190,14 +233,54 @@ async function isDetachJobSourceDeleted(
     if (!job.source_id) {
         return true;
     }
-    const collection = SOURCE_COLLECTION_BY_TYPE[job.source_type];
+    const collection = readSourceCollection(job);
     if (!collection) {
-        return true;
+        return !String(job.source_type || "").startsWith(
+            RESOURCE_OWNER_RELEASE_SOURCE_PREFIX,
+        );
     }
     const row = await readOneById(collection, job.source_id, {
         fields: ["id"],
     });
     return row === null;
+}
+
+async function claimFileDetachJob(params: {
+    job: AppFileDetachJob;
+    now: Date;
+    attempts: number;
+    leaseUntilIso: string;
+}): Promise<boolean> {
+    await updateOne("app_file_detach_jobs", params.job.id, {
+        status: "processing",
+        attempts: params.attempts,
+        started_at: params.now.toISOString(),
+        leased_until: params.leaseUntilIso,
+        error_code: null,
+        error_message: null,
+    });
+
+    const claimed = await readFileDetachJob(params.job.id);
+    return (
+        claimed?.status === "processing" &&
+        claimed.attempts === params.attempts &&
+        claimed.leased_until === params.leaseUntilIso
+    );
+}
+
+async function releaseOwnerReferencesAfterSourceDeleted(
+    job: AppFileDetachJob,
+): Promise<number> {
+    const ownerCollection = readOwnerReleaseCollection(
+        String(job.source_type || ""),
+    );
+    if (!ownerCollection || !job.source_id) {
+        return 0;
+    }
+    return await deleteOwnerReferences({
+        ownerCollection,
+        ownerId: job.source_id,
+    });
 }
 
 export async function enqueueFileDetachJob(input: {
@@ -301,12 +384,30 @@ export async function runFileDetachJob(
         const nowIso = now.toISOString();
         const attempts = job.attempts + 1;
         const candidateFileIds = readJobCandidateFileIds(job);
+        const leaseUntilIso = new Date(
+            now.getTime() + readFileDetachJobLeaseSeconds() * 1_000,
+        ).toISOString();
 
         try {
+            if (
+                !(await claimFileDetachJob({
+                    job,
+                    now,
+                    attempts,
+                    leaseUntilIso,
+                }))
+            ) {
+                return {
+                    status: "skipped",
+                    jobId: job.id,
+                    detached: 0,
+                    skippedReferenced: 0,
+                };
+            }
+
             if (!(await isDetachJobSourceDeleted(job))) {
                 await updateOne("app_file_detach_jobs", job.id, {
                     status: "pending",
-                    attempts,
                     scheduled_at: new Date(
                         now.getTime() + buildRetryDelayMs(attempts),
                     ).toISOString(),
@@ -324,17 +425,6 @@ export async function runFileDetachJob(
                     skippedReferenced: 0,
                 };
             }
-
-            await updateOne("app_file_detach_jobs", job.id, {
-                status: "processing",
-                attempts,
-                started_at: nowIso,
-                leased_until: new Date(
-                    now.getTime() + readFileDetachJobLeaseSeconds() * 1_000,
-                ).toISOString(),
-                error_code: null,
-                error_message: null,
-            });
 
             if (isResourceReferenceSyncJobSource(job.source_type)) {
                 const payload = parseResourceReferenceSyncJobPayload(
@@ -371,6 +461,8 @@ export async function runFileDetachJob(
                     skippedReferenced: 0,
                 };
             }
+
+            await releaseOwnerReferencesAfterSourceDeleted(job);
 
             if (candidateFileIds.length === 0) {
                 await updateOne("app_file_detach_jobs", job.id, {

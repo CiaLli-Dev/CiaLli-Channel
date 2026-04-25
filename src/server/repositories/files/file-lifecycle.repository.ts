@@ -145,6 +145,7 @@ export async function markFilesDetached(
         fileIds,
         data: {
             app_lifecycle: "detached",
+            app_visibility: "private",
             app_detached_at: detachedAt,
             app_quarantined_at: null,
             app_deleted_at: null,
@@ -160,6 +161,7 @@ export async function markFilesQuarantined(
         fileIds,
         data: {
             app_lifecycle: "quarantined",
+            app_visibility: "private",
             app_quarantined_at: quarantinedAt,
             app_deleted_at: null,
         },
@@ -174,6 +176,7 @@ export async function markFilesDeleted(
         fileIds,
         data: {
             app_lifecycle: "deleted",
+            app_visibility: "private",
             app_deleted_at: deletedAt,
         },
     });

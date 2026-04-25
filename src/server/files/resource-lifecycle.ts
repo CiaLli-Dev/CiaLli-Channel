@@ -3,7 +3,7 @@ import type {
     AppFileReferenceVisibility,
     ResourceReferenceSyncJobPayload,
 } from "@/types/app";
-import { createOne, deleteOne, updateOne } from "@/server/directus/client";
+import { createOne, updateOne } from "@/server/directus/client";
 import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup-reference-utils";
 import {
     markFilesAttached,
@@ -372,13 +372,10 @@ async function releaseOwnerResources(
         ownerId,
         candidateFileIds,
     });
-    for (const row of rows) {
-        await deleteOne("app_file_references", row.id);
-    }
     return {
         ...job,
         candidateFileIds,
-        deletedReferences: rows.length,
+        deletedReferences: 0,
     };
 }
 

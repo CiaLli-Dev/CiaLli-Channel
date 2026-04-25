@@ -360,6 +360,26 @@ async function deleteFile(params: {
         await markFilesDeleted([params.fileId], params.now.toISOString());
     }
 
+    const postClaimReferencedFileIds = await collectReferencedDirectusFileIds([
+        params.fileId,
+    ]);
+    if (postClaimReferencedFileIds.has(params.fileId)) {
+        await markFilesAttached({ fileIds: [params.fileId] });
+        params.state.recovered += 1;
+        params.state.recoveredFileIds.push(params.fileId);
+        params.state.finalSkippedReferenced += 1;
+        logFileGcAudit({
+            fileId: params.fileId,
+            dryRun: params.dryRun,
+            detachedBefore: params.cutoffs.detachedBefore,
+            quarantinedBefore: params.cutoffs.quarantinedBefore,
+            lifecycle: params.lifecycle,
+            outcome: "recovered",
+            reason: "referenced_after_delete_claim",
+        });
+        return;
+    }
+
     const result = await deleteOrphanFileFromRepository(params.fileId);
     if (result.ok) {
         params.state.deleted += 1;

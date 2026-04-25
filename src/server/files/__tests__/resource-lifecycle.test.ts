@@ -197,7 +197,7 @@ describe("resourceLifecycle", () => {
         );
     });
 
-    it("releases owner resources by writing a release job before deleting references", async () => {
+    it("releases owner resources by writing a release job without deleting live references", async () => {
         mocks.readOwnerFileReferences.mockResolvedValue([
             { id: "ref-1", file_id: FILE_KEEP },
             { id: "ref-2", file_id: FILE_NEW },
@@ -218,19 +218,12 @@ describe("resourceLifecycle", () => {
             }),
             { fields: ["id", "status"] },
         );
-        expect(mocks.deleteOne).toHaveBeenCalledWith(
-            "app_file_references",
-            "ref-1",
-        );
-        expect(mocks.deleteOne).toHaveBeenCalledWith(
-            "app_file_references",
-            "ref-2",
-        );
+        expect(mocks.deleteOne).not.toHaveBeenCalled();
         expect(result).toEqual({
             jobId: "job-1",
             status: "pending",
             candidateFileIds: [FILE_KEEP, FILE_NEW],
-            deletedReferences: 2,
+            deletedReferences: 0,
         });
     });
 
