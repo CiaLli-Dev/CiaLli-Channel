@@ -35,6 +35,11 @@ vi.mock("@/server/repositories/files/file-cleanup.repository", () => ({
     readAlbumPhotoFileIdsFromRepository: vi.fn(),
 }));
 
+vi.mock("@/server/repositories/files/file-reference.repository", () => ({
+    readAllReferencedFileIdsFromReferenceTable: vi.fn(),
+    readReferencedFileIdsFromReferenceTable: vi.fn(),
+}));
+
 vi.mock("@/server/repositories/directus/scope", () => ({
     withServiceRepositoryContext: vi.fn(
         async (task: () => Promise<unknown>) => await task(),
@@ -52,6 +57,7 @@ import {
     readReferencedIdsInStructuredTargetFromRepository,
     readReferencedIdsInMarkdownTargetFromRepository,
 } from "@/server/repositories/files/file-cleanup.repository";
+import { readReferencedFileIdsFromReferenceTable } from "@/server/repositories/files/file-reference.repository";
 import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 
 const mockedReadReferencedIdsInSiteSettings = vi.mocked(
@@ -63,6 +69,9 @@ const mockedReadReferencedIdsInStructuredTarget = vi.mocked(
 const mockedReadReferencedIdsInMarkdownTarget = vi.mocked(
     readReferencedIdsInMarkdownTargetFromRepository,
 );
+const mockedReadReferencedFileIdsFromReferenceTable = vi.mocked(
+    readReferencedFileIdsFromReferenceTable,
+);
 const mockedWithServiceRepositoryContext = vi.mocked(
     withServiceRepositoryContext,
 );
@@ -73,6 +82,7 @@ const UUID_B = "f1e2d3c4-b5a6-4234-8abc-fedcba987654";
 beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.PUBLIC_ASSET_BASE_URL;
+    mockedReadReferencedFileIdsFromReferenceTable.mockResolvedValue(new Set());
 });
 
 describe("normalizeDirectusFileId", () => {

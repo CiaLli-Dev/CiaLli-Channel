@@ -20,7 +20,6 @@ import { parseJsonBody, parsePagination } from "@/server/api/utils";
 import { validateBody } from "@/server/api/validate";
 import { awaitCacheInvalidations } from "@/server/cache/invalidation";
 import { cacheManager } from "@/server/cache/manager";
-import { enqueueFileDetachJob } from "@/server/files/file-detach-jobs";
 import {
     createOne,
     deleteOne,
@@ -31,20 +30,17 @@ import {
 import { createWithShortId } from "@/server/utils/short-id";
 import type { AppAccess } from "@/server/api/v1/shared";
 import { DIARY_FIELDS, hasOwn, parseRouteId } from "@/server/api/v1/shared";
-import {
-    collectDiaryCommentCleanupCandidates,
-    collectDiaryFileIds,
-    extractDirectusAssetIdsFromMarkdown,
-    normalizeDirectusFileId,
-} from "@/server/api/v1/shared/file-cleanup";
+import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
 import {
     bindFileOwnerToUser,
-    deleteFileReferencesForOwner,
     renderMeMarkdownPreview,
     syncManagedFileBinding,
     syncMarkdownFileLifecycle,
     syncMarkdownFilesToVisibility,
 } from "@/server/api/v1/me/_helpers";
+import { readComments } from "@/server/repositories/comments/comments.repository";
+import { resourceLifecycle } from "@/server/files/resource-lifecycle";
+import { searchIndex } from "@/server/application/shared/search-index";
 
 function buildDiaryFileTitle(
     shortIdValue: unknown,
@@ -571,25 +567,43 @@ async function handleDiaryDelete(
     diaryId: string,
     target: OwnedDiaryRecord,
 ): Promise<Response> {
-    const commentCleanup = await collectDiaryCommentCleanupCandidates(diaryId);
-    const diaryImageFileIds = await collectDiaryFileIds(diaryId);
-    const markdownFileIds = extractDirectusAssetIdsFromMarkdown(
-        String(target.content ?? ""),
-    );
-    await enqueueFileDetachJob({
-        sourceType: "me.diary.delete",
-        sourceId: diaryId,
-        fileValues: [
-            ...markdownFileIds,
-            ...diaryImageFileIds,
-            ...commentCleanup.candidateFileIds,
-        ],
-    });
-    await deleteFileReferencesForOwner({
+    const [imageRows, commentRows] = await Promise.all([
+        readMany("app_diary_images", {
+            filter: { diary_id: { _eq: diaryId } } as JsonObject,
+            fields: ["id"],
+            limit: 5000,
+        }),
+        readComments("app_diary_comments", {
+            filter: { diary_id: { _eq: diaryId } } as JsonObject,
+            fields: ["id"],
+            limit: -1,
+        }),
+    ]);
+    for (const image of imageRows) {
+        await resourceLifecycle.releaseOwnerResources({
+            ownerCollection: "app_diary_images",
+            ownerId: String(image.id),
+        });
+    }
+    for (const comment of commentRows) {
+        await resourceLifecycle.releaseOwnerResources({
+            ownerCollection: "app_diary_comments",
+            ownerId: String(comment.id),
+        });
+        await searchIndex.remove("comment", String(comment.id));
+    }
+    await resourceLifecycle.releaseOwnerResources({
         ownerCollection: "app_diaries",
         ownerId: diaryId,
     });
     await deleteOne("app_diaries", diaryId);
+    await searchIndex.remove("diary", diaryId);
+    console.info("[audit] diary.delete", {
+        diaryId,
+        authorId: target.author_id,
+        releasedImageCount: imageRows.length,
+        releasedCommentCount: commentRows.length,
+    });
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("diary-list"),
@@ -811,12 +825,7 @@ async function handleDiaryImageDelete(
     image: JsonObject,
     diary: JsonObject,
 ): Promise<Response> {
-    await enqueueFileDetachJob({
-        sourceType: "me.diary-image.delete",
-        sourceId: imageId,
-        fileValues: [image.file_id],
-    });
-    await deleteFileReferencesForOwner({
+    await resourceLifecycle.releaseOwnerResources({
         ownerCollection: "app_diary_images",
         ownerId: imageId,
     });

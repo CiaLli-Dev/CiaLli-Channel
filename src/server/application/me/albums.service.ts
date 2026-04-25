@@ -23,7 +23,6 @@ import { parseJsonBody, parsePagination } from "@/server/api/utils";
 import { validateBody } from "@/server/api/validate";
 import { awaitCacheInvalidations } from "@/server/cache/invalidation";
 import { cacheManager } from "@/server/cache/manager";
-import { enqueueFileDetachJob } from "@/server/files/file-detach-jobs";
 import {
     countItems,
     createOne,
@@ -43,16 +42,14 @@ import {
     safeCsv,
     sanitizeSlug,
 } from "@/server/api/v1/shared";
-import {
-    collectAlbumFileIds,
-    normalizeDirectusFileId,
-} from "@/server/api/v1/shared/file-cleanup";
+import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
 import {
     bindFileOwnerToUser,
-    deleteFileReferencesForOwner,
     isSlugUniqueConflict,
     syncManagedFileBinding,
 } from "@/server/api/v1/me/_helpers";
+import { resourceLifecycle } from "@/server/files/resource-lifecycle";
+import { searchIndex } from "@/server/application/shared/search-index";
 
 async function handleAlbumsGet(
     context: APIContext,
@@ -387,18 +384,28 @@ async function handleAlbumDelete(
     id: string,
     target: AppAlbum,
 ): Promise<Response> {
-    const coverFileId = normalizeDirectusFileId(target.cover_file);
-    const photoFileIds = await collectAlbumFileIds(id);
-    await enqueueFileDetachJob({
-        sourceType: "me.album.delete",
-        sourceId: id,
-        fileValues: [...(coverFileId ? [coverFileId] : []), ...photoFileIds],
+    const photoRows = await readMany("app_album_photos", {
+        filter: { album_id: { _eq: id } } as JsonObject,
+        fields: ["id"],
+        limit: 5000,
     });
-    await deleteFileReferencesForOwner({
+    for (const photo of photoRows) {
+        await resourceLifecycle.releaseOwnerResources({
+            ownerCollection: "app_album_photos",
+            ownerId: String(photo.id),
+        });
+    }
+    await resourceLifecycle.releaseOwnerResources({
         ownerCollection: "app_albums",
         ownerId: id,
     });
     await deleteOne("app_albums", id);
+    await searchIndex.remove("album", id);
+    console.info("[audit] album.delete", {
+        albumId: id,
+        authorId: target.author_id,
+        releasedPhotoCount: photoRows.length,
+    });
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("album-list"),
@@ -613,12 +620,7 @@ async function handlePhotoDelete(
     photo: AppAlbumPhoto,
     _ownerUserId: string,
 ): Promise<Response> {
-    await enqueueFileDetachJob({
-        sourceType: "me.album-photo.delete",
-        sourceId: photoId,
-        fileValues: [photo.file_id],
-    });
-    await deleteFileReferencesForOwner({
+    await resourceLifecycle.releaseOwnerResources({
         ownerCollection: "app_album_photos",
         ownerId: photoId,
     });

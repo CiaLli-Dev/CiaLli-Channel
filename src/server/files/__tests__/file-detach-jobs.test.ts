@@ -3,9 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
     collectReferencedDirectusFileIds: vi.fn(),
     createOne: vi.fn(),
+    isResourceReferenceSyncJobSource: vi.fn(),
+    markResourceReferenceSyncJobSucceeded: vi.fn(),
     markFilesDetached: vi.fn(),
+    parseResourceReferenceSyncJobPayload: vi.fn(),
     readMany: vi.fn(),
     readOneById: vi.fn(),
+    replayResourceReferenceSyncJob: vi.fn(),
     updateOne: vi.fn(),
     withServiceRepositoryContext: vi.fn(
         async (task: () => Promise<unknown>) => await task(),
@@ -29,6 +33,15 @@ vi.mock("@/server/repositories/directus/scope", () => ({
 
 vi.mock("@/server/repositories/files/file-lifecycle.repository", () => ({
     markFilesDetached: mocks.markFilesDetached,
+}));
+
+vi.mock("@/server/files/resource-lifecycle", () => ({
+    isResourceReferenceSyncJobSource: mocks.isResourceReferenceSyncJobSource,
+    markResourceReferenceSyncJobSucceeded:
+        mocks.markResourceReferenceSyncJobSucceeded,
+    parseResourceReferenceSyncJobPayload:
+        mocks.parseResourceReferenceSyncJobPayload,
+    replayResourceReferenceSyncJob: mocks.replayResourceReferenceSyncJob,
 }));
 
 import {
@@ -55,7 +68,17 @@ describe("file-detach-jobs", () => {
             status: "pending",
             candidate_file_ids: [],
         });
+        mocks.isResourceReferenceSyncJobSource.mockReturnValue(false);
+        mocks.markResourceReferenceSyncJobSucceeded.mockResolvedValue(
+            undefined,
+        );
         mocks.markFilesDetached.mockResolvedValue(undefined);
+        mocks.parseResourceReferenceSyncJobPayload.mockReturnValue(null);
+        mocks.replayResourceReferenceSyncJob.mockResolvedValue({
+            attachedFileIds: [],
+            detachedFileIds: [],
+            currentFileIds: [],
+        });
         mocks.readMany.mockResolvedValue([]);
         mocks.readOneById.mockResolvedValue(null);
         mocks.updateOne.mockResolvedValue({});
@@ -266,6 +289,58 @@ describe("file-detach-jobs", () => {
             "2026-04-24T00:00:00.000Z",
         );
         expect(result.status).toBe("succeeded");
+    });
+
+    it("replays resource reference sync jobs instead of detaching files", async () => {
+        const payload = {
+            ownerCollection: "app_articles",
+            ownerId: "article-1",
+            ownerUserId: "user-1",
+            visibility: "public",
+            references: [
+                {
+                    ownerField: "body_markdown",
+                    referenceKind: "markdown_asset",
+                    fileIds: [FILE_TWO],
+                },
+            ],
+        };
+        mocks.readMany.mockResolvedValue([
+            {
+                id: "job-sync",
+                status: "pending",
+                source_type: "resource.references.sync",
+                source_id: "article-1",
+                attempts: 0,
+                candidate_file_ids: payload,
+                scheduled_at: "2026-04-24T00:00:00.000Z",
+                leased_until: null,
+            },
+        ]);
+        mocks.isResourceReferenceSyncJobSource.mockReturnValue(true);
+        mocks.parseResourceReferenceSyncJobPayload.mockReturnValue(payload);
+
+        const result = await runFileDetachJob(
+            "job-sync",
+            new Date("2026-04-24T00:00:00.000Z"),
+        );
+
+        expect(mocks.replayResourceReferenceSyncJob).toHaveBeenCalledWith(
+            payload,
+        );
+        expect(
+            mocks.markResourceReferenceSyncJobSucceeded,
+        ).toHaveBeenCalledWith({
+            jobId: "job-sync",
+            nowIso: "2026-04-24T00:00:00.000Z",
+        });
+        expect(mocks.markFilesDetached).not.toHaveBeenCalled();
+        expect(result).toEqual({
+            status: "succeeded",
+            jobId: "job-sync",
+            detached: 0,
+            skippedReferenced: 0,
+        });
     });
 
     it("recovers processing jobs with expired leases", async () => {

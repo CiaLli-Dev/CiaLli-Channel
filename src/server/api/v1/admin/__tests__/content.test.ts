@@ -81,6 +81,23 @@ vi.mock("@/server/files/file-detach-jobs", () => ({
     }),
 }));
 
+vi.mock("@/server/files/resource-lifecycle", () => ({
+    resourceLifecycle: {
+        releaseOwnerResources: vi.fn().mockResolvedValue({
+            jobId: "release-job-1",
+            status: "pending",
+            candidateFileIds: [],
+            deletedReferences: 0,
+        }),
+    },
+}));
+
+vi.mock("@/server/application/shared/search-index", () => ({
+    searchIndex: {
+        remove: vi.fn().mockResolvedValue(undefined),
+    },
+}));
+
 import { requireAdmin } from "@/server/api/v1/shared";
 import {
     deleteOne,
@@ -92,8 +109,7 @@ import {
     collectCommentDeletionTargets,
     deleteCollectedCommentTargets,
 } from "@/server/api/v1/comments-shared";
-import { enqueueFileDetachJob } from "@/server/files/file-detach-jobs";
-import { collectArticleCommentCleanupCandidates } from "@/server/api/v1/shared/file-cleanup";
+import { resourceLifecycle } from "@/server/files/resource-lifecycle";
 import { handleAdminContent } from "@/server/api/v1/admin/content";
 
 const mockedRequireAdmin = vi.mocked(requireAdmin);
@@ -107,9 +123,8 @@ const mockedCollectCommentDeletionTargets = vi.mocked(
 const mockedDeleteCollectedCommentTargets = vi.mocked(
     deleteCollectedCommentTargets,
 );
-const mockedEnqueueFileDetachJob = vi.mocked(enqueueFileDetachJob);
-const mockedCollectArticleCommentCleanupCandidates = vi.mocked(
-    collectArticleCommentCleanupCandidates,
+const mockedReleaseOwnerResources = vi.mocked(
+    resourceLifecycle.releaseOwnerResources,
 );
 
 function makeCtx(
@@ -257,13 +272,10 @@ describe("handleAdminContent diaries 权限收敛", () => {
             "app_article_comments",
             "comment-1",
         );
-        expect(mockedEnqueueFileDetachJob).toHaveBeenCalledWith(
-            expect.objectContaining({
-                sourceType: "admin.article-comment.delete",
-                sourceId: "comment-1",
-                fileValues: ["file-comment"],
-            }),
-        );
+        expect(mockedReleaseOwnerResources).toHaveBeenCalledWith({
+            ownerCollection: "app_article_comments",
+            ownerId: "comment-1",
+        });
         expect(mockedDeleteCollectedCommentTargets).toHaveBeenCalledWith(
             "app_article_comments",
             "comment-1",
@@ -279,10 +291,7 @@ describe("handleAdminContent diaries 权限收敛", () => {
                 "body ![img](/api/v1/assets/file-body) ![img](/api/v1/assets/file-body-2)",
             cover_file: "file-cover",
         } as never);
-        mockedCollectArticleCommentCleanupCandidates.mockResolvedValueOnce({
-            candidateFileIds: ["file-comment"],
-            ownerUserIds: [],
-        });
+        mockedReadMany.mockResolvedValueOnce([]);
 
         const ctx = makeCtx("admin/content/articles/article-1", "DELETE");
         const response = await handleAdminContent(
@@ -295,17 +304,9 @@ describe("handleAdminContent diaries 权限收敛", () => {
             "app_articles",
             "article-1",
         );
-        expect(mockedEnqueueFileDetachJob).toHaveBeenCalledWith(
-            expect.objectContaining({
-                sourceType: "admin.article.delete",
-                sourceId: "article-1",
-                fileValues: expect.arrayContaining([
-                    "file-body",
-                    "file-body-2",
-                    "file-cover",
-                    "file-comment",
-                ]),
-            }),
-        );
+        expect(mockedReleaseOwnerResources).toHaveBeenCalledWith({
+            ownerCollection: "app_articles",
+            ownerId: "article-1",
+        });
     });
 });

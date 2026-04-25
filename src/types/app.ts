@@ -41,6 +41,20 @@ export type AppFileReferenceKind =
     | "settings_asset";
 export type AppFileReferenceVisibility = "private" | "public";
 
+export type ResourceReferenceSyncJobReference = {
+    ownerField: string;
+    referenceKind: AppFileReferenceKind;
+    fileIds: string[];
+};
+
+export type ResourceReferenceSyncJobPayload = {
+    ownerCollection: string;
+    ownerId: string;
+    ownerUserId: string | null;
+    visibility: AppFileReferenceVisibility;
+    references: ResourceReferenceSyncJobReference[];
+};
+
 export type AppPermissionKey =
     | "can_publish_articles"
     | "can_comment_articles"
@@ -157,7 +171,7 @@ export type AppFileDetachJob = {
     status: FileDetachJobStatus;
     source_type: string;
     source_id: string | null;
-    candidate_file_ids: string[] | null;
+    candidate_file_ids: string[] | ResourceReferenceSyncJobPayload | null;
     detached_file_ids: string[] | null;
     skipped_referenced_file_ids: string[] | null;
     attempts: number;

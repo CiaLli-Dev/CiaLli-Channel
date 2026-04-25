@@ -21,15 +21,6 @@ import {
     collectCommentDeletionTargets,
     deleteCollectedCommentTargets,
 } from "@/server/api/v1/comments-shared";
-import { enqueueFileDetachJob } from "@/server/files/file-detach-jobs";
-import {
-    collectAlbumFileIds,
-    collectArticleCommentCleanupCandidates,
-    collectDiaryCommentCleanupCandidates,
-    collectDiaryFileIds,
-    extractDirectusAssetIdsFromMarkdown,
-    normalizeDirectusFileId,
-} from "@/server/api/v1/shared/file-cleanup";
 
 import {
     ADMIN_MODULE_COLLECTION,
@@ -42,7 +33,8 @@ import {
     parseRouteId,
     requireAdmin,
 } from "@/server/api/v1/shared";
-import { deleteOwnerReferences } from "@/server/repositories/files/file-reference.repository";
+import { resourceLifecycle } from "@/server/files/resource-lifecycle";
+import { searchIndex } from "@/server/application/shared/search-index";
 
 function buildDiaryDetailInvalidationTasks(
     id: string,
@@ -205,6 +197,16 @@ async function invalidatePatchCache(
 
 type AdminCollection = (typeof ADMIN_MODULE_COLLECTION)[AdminModuleKey];
 
+async function releaseCollectionOwnerResources(
+    collection: AdminCollection,
+    id: string,
+): Promise<void> {
+    await resourceLifecycle.releaseOwnerResources({
+        ownerCollection: collection,
+        ownerId: id,
+    });
+}
+
 async function handleContentPatch(
     context: APIContext,
     module: AdminModuleKey,
@@ -328,6 +330,7 @@ async function handleContentDelete(
         return await handleAlbumDelete(collection, id, relatedComment);
     }
 
+    await releaseCollectionOwnerResources(collection, id);
     await deleteOne(collection, id);
     await invalidateDeleteCache(
         module,
@@ -346,22 +349,12 @@ async function handleArticleCommentDelete(
         "app_article_comments",
         id,
     );
-    await enqueueFileDetachJob({
-        sourceType: "admin.article-comment.delete",
-        sourceId: id,
-        fileValues: deletedComments.flatMap((deletedComment) =>
-            extractDirectusAssetIdsFromMarkdown(
-                typeof deletedComment.body === "string"
-                    ? deletedComment.body
-                    : null,
-            ),
-        ),
-    });
     for (const deletedComment of deletedComments) {
-        await deleteOwnerReferences({
+        await resourceLifecycle.releaseOwnerResources({
             ownerCollection: "app_article_comments",
             ownerId: deletedComment.id,
         });
+        await searchIndex.remove("comment", deletedComment.id);
     }
     await deleteCollectedCommentTargets(
         "app_article_comments",
@@ -380,22 +373,12 @@ async function handleDiaryCommentDelete(
         "app_diary_comments",
         id,
     );
-    await enqueueFileDetachJob({
-        sourceType: "admin.diary-comment.delete",
-        sourceId: id,
-        fileValues: deletedComments.flatMap((deletedComment) =>
-            extractDirectusAssetIdsFromMarkdown(
-                typeof deletedComment.body === "string"
-                    ? deletedComment.body
-                    : null,
-            ),
-        ),
-    });
     for (const deletedComment of deletedComments) {
-        await deleteOwnerReferences({
+        await resourceLifecycle.releaseOwnerResources({
             ownerCollection: "app_diary_comments",
             ownerId: deletedComment.id,
         });
+        await searchIndex.remove("comment", deletedComment.id);
     }
     await deleteCollectedCommentTargets(
         "app_diary_comments",
@@ -417,27 +400,24 @@ async function handleArticleDelete(
     if (!target) {
         return fail("内容不存在", 404);
     }
-    const commentCleanup = await collectArticleCommentCleanupCandidates(id);
-    const candidateFileIds = new Set<string>([
-        ...extractDirectusAssetIdsFromMarkdown(
-            String(target.body_markdown ?? ""),
-        ),
-        ...commentCleanup.candidateFileIds,
-    ]);
-    const coverFileId = normalizeDirectusFileId(target.cover_file);
-    if (coverFileId) {
-        candidateFileIds.add(coverFileId);
-    }
-    await enqueueFileDetachJob({
-        sourceType: "admin.article.delete",
-        sourceId: id,
-        fileValues: [...candidateFileIds],
+    const commentRows = await readMany("app_article_comments", {
+        filter: { article_id: { _eq: id } } as JsonObject,
+        fields: ["id"],
+        limit: 5000,
     });
-    await deleteOwnerReferences({
+    for (const comment of commentRows) {
+        await resourceLifecycle.releaseOwnerResources({
+            ownerCollection: "app_article_comments",
+            ownerId: String(comment.id),
+        });
+        await searchIndex.remove("comment", String(comment.id));
+    }
+    await resourceLifecycle.releaseOwnerResources({
         ownerCollection: "app_articles",
         ownerId: id,
     });
     await deleteOne(collection, id);
+    await searchIndex.remove("article", id);
     await invalidateDeleteCache("articles", id, null, relatedComment);
     return ok({ id, module: "articles" });
 }
@@ -454,26 +434,37 @@ async function handleDiaryDelete(
     if (!target) {
         return fail("日记不存在", 404);
     }
-    const [commentCleanup, diaryImageFileIds] = await Promise.all([
-        collectDiaryCommentCleanupCandidates(id),
-        collectDiaryFileIds(id),
+    const [commentRows, imageRows] = await Promise.all([
+        readMany("app_diary_comments", {
+            filter: { diary_id: { _eq: id } } as JsonObject,
+            fields: ["id"],
+            limit: 5000,
+        }),
+        readMany("app_diary_images", {
+            filter: { diary_id: { _eq: id } } as JsonObject,
+            fields: ["id"],
+            limit: 5000,
+        }),
     ]);
-    await enqueueFileDetachJob({
-        sourceType: "admin.diary.delete",
-        sourceId: id,
-        fileValues: [
-            ...extractDirectusAssetIdsFromMarkdown(
-                String(target.content ?? ""),
-            ),
-            ...diaryImageFileIds,
-            ...commentCleanup.candidateFileIds,
-        ],
-    });
-    await deleteOwnerReferences({
+    for (const image of imageRows) {
+        await resourceLifecycle.releaseOwnerResources({
+            ownerCollection: "app_diary_images",
+            ownerId: String(image.id),
+        });
+    }
+    for (const comment of commentRows) {
+        await resourceLifecycle.releaseOwnerResources({
+            ownerCollection: "app_diary_comments",
+            ownerId: String(comment.id),
+        });
+        await searchIndex.remove("comment", String(comment.id));
+    }
+    await resourceLifecycle.releaseOwnerResources({
         ownerCollection: "app_diaries",
         ownerId: id,
     });
     await deleteOne(collection, id);
+    await searchIndex.remove("diary", id);
     await invalidateDeleteCache(
         "diaries",
         id,
@@ -494,18 +485,23 @@ async function handleAlbumDelete(
     if (!target) {
         return fail("内容不存在", 404);
     }
-    const photoFileIds = await collectAlbumFileIds(id);
-    const coverFileId = normalizeDirectusFileId(target.cover_file);
-    await enqueueFileDetachJob({
-        sourceType: "admin.album.delete",
-        sourceId: id,
-        fileValues: [...(coverFileId ? [coverFileId] : []), ...photoFileIds],
+    const photoRows = await readMany("app_album_photos", {
+        filter: { album_id: { _eq: id } } as JsonObject,
+        fields: ["id"],
+        limit: 5000,
     });
-    await deleteOwnerReferences({
+    for (const photo of photoRows) {
+        await resourceLifecycle.releaseOwnerResources({
+            ownerCollection: "app_album_photos",
+            ownerId: String(photo.id),
+        });
+    }
+    await resourceLifecycle.releaseOwnerResources({
         ownerCollection: "app_albums",
         ownerId: id,
     });
     await deleteOne(collection, id);
+    await searchIndex.remove("album", id);
     await invalidateDeleteCache("albums", id, null, relatedComment);
     return ok({ id, module: "albums" });
 }

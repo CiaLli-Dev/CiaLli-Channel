@@ -36,11 +36,8 @@ import { withUserRepositoryContext } from "@/server/repositories/directus/scope"
 import { parseJsonBody, parsePagination } from "@/server/api/utils";
 import { invalidateOfficialSidebarCache } from "@/server/api/v1/public-data";
 import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
-import {
-    bindFileOwnerToUser,
-    deleteFileReferencesForOwner,
-    detachManagedFiles,
-} from "@/server/api/v1/me/_helpers";
+import { bindFileOwnerToUser } from "@/server/api/v1/me/_helpers";
+import { resourceLifecycle } from "@/server/files/resource-lifecycle";
 
 import {
     ensureUsernameAvailable,
@@ -408,8 +405,7 @@ async function handleRegistrationRejectOrCancel(
             reject_reason: action === "reject" ? reason : null,
         },
     );
-    await detachManagedFiles([target.avatar_file]);
-    await deleteFileReferencesForOwner({
+    await resourceLifecycle.releaseOwnerResources({
         ownerCollection: "app_user_registration_requests",
         ownerId: target.id,
     });

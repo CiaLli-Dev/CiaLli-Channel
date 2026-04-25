@@ -48,6 +48,16 @@ vi.mock("@/server/api/v1/me/_helpers", () => ({
     }),
 }));
 
+vi.mock("@/server/files/resource-lifecycle", () => ({
+    resourceLifecycle: {
+        syncOwnerReferences: vi.fn().mockResolvedValue({
+            attachedFileIds: [],
+            detachedFileIds: [],
+            currentFileIds: [],
+        }),
+    },
+}));
+
 vi.mock("@/server/markdown/render", () => ({
     renderMarkdown: vi.fn(),
 }));
@@ -74,6 +84,7 @@ import {
 import { renderMarkdown } from "@/server/markdown/render";
 import { handleAdminSettings } from "@/server/api/v1/admin/settings";
 import { detachManagedFiles } from "@/server/api/v1/me/_helpers";
+import { resourceLifecycle } from "@/server/files/resource-lifecycle";
 
 const mockedRequireAdmin = vi.mocked(requireAdmin);
 const mockedGetResolvedSiteSettings = vi.mocked(getResolvedSiteSettings);
@@ -87,6 +98,9 @@ const mockedUpdateOne = vi.mocked(updateOne);
 const mockedUpdateDirectusFileMetadata = vi.mocked(updateDirectusFileMetadata);
 const mockedRenderMarkdown = vi.mocked(renderMarkdown);
 const mockedDetachManagedFiles = vi.mocked(detachManagedFiles);
+const mockedSyncOwnerReferences = vi.mocked(
+    resourceLifecycle.syncOwnerReferences,
+);
 
 function makeCtx(
     path: string,
@@ -560,7 +574,20 @@ describe("handleAdminSettings /site wallpaper lifecycle", () => {
 
         expect(response.status).toBe(200);
         expect(mockedUpdateDirectusFileMetadata).not.toHaveBeenCalled();
-        expect(mockedDetachManagedFiles).toHaveBeenCalledWith([
+        expect(mockedSyncOwnerReferences).toHaveBeenCalledWith(
+            expect.objectContaining({
+                ownerCollection: "app_site_settings",
+                ownerId: "default",
+                references: [
+                    {
+                        ownerField: "settings",
+                        referenceKind: "settings_asset",
+                        fileIds: [],
+                    },
+                ],
+            }),
+        );
+        expect(mockedDetachManagedFiles).not.toHaveBeenCalledWith([
             oldWallpaperFileId,
         ]);
     });
@@ -603,17 +630,23 @@ describe("handleAdminSettings /site wallpaper lifecycle", () => {
         );
 
         expect(response.status).toBe(200);
-        expect(mockedUpdateDirectusFileMetadata).toHaveBeenCalledWith(
-            newWallpaperFileId,
+        expect(mockedSyncOwnerReferences).toHaveBeenCalledWith(
             expect.objectContaining({
-                uploaded_by: "admin-1",
-                app_owner_user_id: "admin-1",
-                app_visibility: "public",
-                app_lifecycle: "attached",
-                app_detached_at: null,
+                ownerCollection: "app_site_settings",
+                ownerId: "default",
+                ownerUserId: "admin-1",
+                visibility: "public",
+                references: [
+                    {
+                        ownerField: "settings",
+                        referenceKind: "settings_asset",
+                        fileIds: [newWallpaperFileId],
+                    },
+                ],
             }),
         );
-        expect(mockedDetachManagedFiles).toHaveBeenCalledWith([]);
+        expect(mockedUpdateDirectusFileMetadata).not.toHaveBeenCalled();
+        expect(mockedDetachManagedFiles).not.toHaveBeenCalled();
     });
 
     it("PATCH /admin/settings/site 用共享提取器识别 settings 文件引用格式", async () => {
@@ -677,23 +710,26 @@ describe("handleAdminSettings /site wallpaper lifecycle", () => {
         );
 
         expect(response.status).toBe(200);
-        expect(mockedUpdateDirectusFileMetadata).toHaveBeenCalledTimes(4);
-        for (const fileId of [
-            newFaviconFileId,
-            newBannerFileId,
-            newIconFileId,
-            newAvatarFileId,
-        ]) {
-            expect(mockedUpdateDirectusFileMetadata).toHaveBeenCalledWith(
-                fileId,
-                expect.objectContaining({
-                    uploaded_by: "admin-1",
-                    app_lifecycle: "attached",
-                    app_detached_at: null,
-                }),
-            );
-        }
-        expect(mockedDetachManagedFiles).toHaveBeenCalledWith([
+        expect(mockedSyncOwnerReferences).toHaveBeenCalledWith(
+            expect.objectContaining({
+                ownerCollection: "app_site_settings",
+                ownerId: "default",
+                references: [
+                    {
+                        ownerField: "settings",
+                        referenceKind: "settings_asset",
+                        fileIds: [
+                            newFaviconFileId,
+                            newBannerFileId,
+                            newIconFileId,
+                            newAvatarFileId,
+                        ],
+                    },
+                ],
+            }),
+        );
+        expect(mockedUpdateDirectusFileMetadata).not.toHaveBeenCalled();
+        expect(mockedDetachManagedFiles).not.toHaveBeenCalledWith([
             oldFaviconFileId,
         ]);
     });

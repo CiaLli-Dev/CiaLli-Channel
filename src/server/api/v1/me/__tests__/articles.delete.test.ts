@@ -83,13 +83,30 @@ vi.mock("@/server/files/file-detach-jobs", () => ({
     }),
 }));
 
+vi.mock("@/server/files/resource-lifecycle", () => ({
+    resourceLifecycle: {
+        releaseOwnerResources: vi.fn().mockResolvedValue({
+            jobId: "release-job-1",
+            status: "pending",
+            candidateFileIds: [],
+            deletedReferences: 0,
+        }),
+    },
+}));
+
+vi.mock("@/server/application/shared/search-index", () => ({
+    searchIndex: {
+        remove: vi.fn().mockResolvedValue(undefined),
+    },
+}));
+
 import {
     deleteDirectusFile,
     deleteOne,
     readMany,
 } from "@/server/directus/client";
 import { extractDirectusAssetIdsFromMarkdown } from "@/server/api/v1/shared/file-cleanup";
-import { enqueueFileDetachJob } from "@/server/files/file-detach-jobs";
+import { resourceLifecycle } from "@/server/files/resource-lifecycle";
 import { handleMeArticles } from "@/server/api/v1/me/articles";
 
 const mockedDeleteDirectusFile = vi.mocked(deleteDirectusFile);
@@ -98,7 +115,9 @@ const mockedReadMany = vi.mocked(readMany);
 const mockedExtractDirectusAssetIdsFromMarkdown = vi.mocked(
     extractDirectusAssetIdsFromMarkdown,
 );
-const mockedEnqueueFileDetachJob = vi.mocked(enqueueFileDetachJob);
+const mockedReleaseOwnerResources = vi.mocked(
+    resourceLifecycle.releaseOwnerResources,
+);
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -107,7 +126,10 @@ beforeEach(() => {
 describe("DELETE /me/articles/:id", () => {
     it("删除成功", async () => {
         const article = mockArticle({ author_id: "user-1", cover_file: null });
-        mockedReadMany.mockResolvedValue([article]);
+        mockedReadMany
+            .mockResolvedValueOnce([article])
+            .mockResolvedValueOnce([])
+            .mockResolvedValueOnce([]);
         mockedDeleteOne.mockResolvedValue(undefined as never);
 
         const ctx = createMockAPIContext({
@@ -124,7 +146,7 @@ describe("DELETE /me/articles/:id", () => {
 
         expect(res.status).toBe(200);
         expect(
-            mockedEnqueueFileDetachJob.mock.invocationCallOrder[0],
+            mockedReleaseOwnerResources.mock.invocationCallOrder[0],
         ).toBeLessThan(mockedDeleteOne.mock.invocationCallOrder[0] ?? 0);
         const body = await parseResponseJson<{
             ok: boolean;
@@ -153,10 +175,12 @@ describe("DELETE /me/articles/:id", () => {
     });
 
     it("outbox 创建失败时不删除业务记录", async () => {
-        mockedReadMany.mockResolvedValue([
-            mockArticle({ id: "article-1", author_id: "user-1" }),
-        ]);
-        mockedEnqueueFileDetachJob.mockRejectedValueOnce(
+        mockedReadMany
+            .mockResolvedValueOnce([
+                mockArticle({ id: "article-1", author_id: "user-1" }),
+            ])
+            .mockResolvedValueOnce([]);
+        mockedReleaseOwnerResources.mockRejectedValueOnce(
             new Error("outbox failed"),
         );
 
@@ -176,13 +200,17 @@ describe("DELETE /me/articles/:id", () => {
     });
 
     it("删除正文时忽略纯文本 UUID", async () => {
-        mockedReadMany.mockResolvedValue([
-            mockArticle({
-                id: "article-1",
-                author_id: "user-1",
-                body_markdown: "victim 6dc1edf9-a1f8-4191-bbe2-0fa6ff02ff69",
-            }),
-        ]);
+        mockedReadMany
+            .mockResolvedValueOnce([
+                mockArticle({
+                    id: "article-1",
+                    author_id: "user-1",
+                    body_markdown:
+                        "victim 6dc1edf9-a1f8-4191-bbe2-0fa6ff02ff69",
+                }),
+            ])
+            .mockResolvedValueOnce([])
+            .mockResolvedValueOnce([]);
         mockedDeleteOne.mockResolvedValue(undefined as never);
         mockedExtractDirectusAssetIdsFromMarkdown.mockReturnValue([]);
 
@@ -199,23 +227,25 @@ describe("DELETE /me/articles/:id", () => {
         );
 
         expect(res.status).toBe(200);
-        expect(mockedEnqueueFileDetachJob).toHaveBeenCalledWith(
-            expect.objectContaining({
-                fileValues: [],
-            }),
-        );
+        expect(mockedReleaseOwnerResources).toHaveBeenCalledWith({
+            ownerCollection: "app_articles",
+            ownerId: "article-1",
+        });
         expect(mockedDeleteDirectusFile).not.toHaveBeenCalled();
     });
 
     it("删除时不会同步触发文件补偿清理", async () => {
         const articleFileId = "11111111-2222-3333-9444-555555555555";
-        mockedReadMany.mockResolvedValue([
-            mockArticle({
-                id: "article-1",
-                author_id: "user-1",
-                body_markdown: `![article](/api/v1/public/assets/${articleFileId})`,
-            }),
-        ]);
+        mockedReadMany
+            .mockResolvedValueOnce([
+                mockArticle({
+                    id: "article-1",
+                    author_id: "user-1",
+                    body_markdown: `![article](/api/v1/public/assets/${articleFileId})`,
+                }),
+            ])
+            .mockResolvedValueOnce([])
+            .mockResolvedValueOnce([]);
         mockedDeleteOne.mockResolvedValue(undefined as never);
         mockedExtractDirectusAssetIdsFromMarkdown.mockReturnValue([
             articleFileId,
@@ -234,11 +264,10 @@ describe("DELETE /me/articles/:id", () => {
         );
 
         expect(res.status).toBe(200);
-        expect(mockedEnqueueFileDetachJob).toHaveBeenCalledWith(
-            expect.objectContaining({
-                fileValues: [articleFileId],
-            }),
-        );
+        expect(mockedReleaseOwnerResources).toHaveBeenCalledWith({
+            ownerCollection: "app_articles",
+            ownerId: "article-1",
+        });
         expect(mockedDeleteDirectusFile).not.toHaveBeenCalled();
     });
 });

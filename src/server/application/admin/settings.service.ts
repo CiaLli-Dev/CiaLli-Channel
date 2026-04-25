@@ -9,12 +9,7 @@ import type {
 import type { JsonObject } from "@/types/json";
 import { resolveSiteThemePreset } from "@/config/theme-presets";
 import { canonicalizeSiteTimeZone } from "@/utils/date-utils";
-import {
-    createOne,
-    readMany,
-    updateDirectusFileMetadata,
-    updateOne,
-} from "@/server/directus/client";
+import { createOne, readMany, updateOne } from "@/server/directus/client";
 import { fail, ok } from "@/server/api/response";
 import { withUserRepositoryContext } from "@/server/repositories/directus/scope";
 import { parseJsonBody } from "@/server/api/utils";
@@ -43,30 +38,11 @@ import { splitSiteSettingsForStorage } from "@/server/site-settings/storage-sect
 
 import { requireAdmin } from "@/server/api/v1/shared";
 import { extractDirectusFileIdsFromUnknown } from "@/server/api/v1/shared/file-cleanup";
-import {
-    detachManagedFiles,
-    syncMarkdownFileLifecycle,
-} from "@/server/api/v1/me/_helpers";
-import { replaceOwnerFieldReferences } from "@/server/repositories/files/file-reference.repository";
+import { syncMarkdownFileLifecycle } from "@/server/api/v1/me/_helpers";
+import { resourceLifecycle } from "@/server/files/resource-lifecycle";
 
 const ABOUT_ARTICLE_SLUG = "about";
 const ABOUT_FALLBACK_TITLE = "关于我们";
-
-async function replaceFileReferencesBestEffort(
-    params: Parameters<typeof replaceOwnerFieldReferences>[0],
-): Promise<void> {
-    try {
-        await replaceOwnerFieldReferences(params);
-    } catch (error) {
-        console.warn("[file-references] settings sync failed", {
-            ownerCollection: params.ownerCollection,
-            ownerId: params.ownerId,
-            ownerField: params.ownerField,
-            referenceKind: params.referenceKind,
-            error: error instanceof Error ? error.message : String(error),
-        });
-    }
-}
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -501,30 +477,21 @@ async function handleAdminSitePatch(
 
     const current = await getResolvedSiteSettings();
     const settings = resolveSiteSettingsPayload(patch, current.settings);
-    const previousFileIds = collectSettingsFileIds(current.settings);
     const nextFileIds = collectSettingsFileIds(settings);
     const { updatedAt } = await upsertSiteSettings(settings);
-    await replaceFileReferencesBestEffort({
+    await resourceLifecycle.syncOwnerReferences({
         ownerCollection: "app_site_settings",
         ownerId: "default",
-        ownerField: "settings",
-        referenceKind: "settings_asset",
-        fileIds: [...nextFileIds],
         ownerUserId: adminUserId,
         visibility: "public",
+        references: [
+            {
+                ownerField: "settings",
+                referenceKind: "settings_asset",
+                fileIds: [...nextFileIds],
+            },
+        ],
     });
-    for (const fileId of nextFileIds) {
-        await updateDirectusFileMetadata(fileId, {
-            uploaded_by: adminUserId,
-            app_owner_user_id: adminUserId,
-            app_visibility: "public",
-            app_lifecycle: "attached",
-            app_detached_at: null,
-        });
-    }
-    await detachManagedFiles(
-        [...previousFileIds].filter((fileId) => !nextFileIds.has(fileId)),
-    );
     await invalidateSiteSettingsCache();
     return ok({
         settings,

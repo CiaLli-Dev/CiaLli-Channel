@@ -13,6 +13,10 @@ import {
     STRUCTURED_REFERENCE_TARGETS,
     MARKDOWN_REFERENCE_TARGETS,
 } from "@/server/repositories/files/file-cleanup.repository";
+import {
+    readAllReferencedFileIdsFromReferenceTable,
+    readReferencedFileIdsFromReferenceTable,
+} from "@/server/repositories/files/file-reference.repository";
 
 export {
     extractDirectusAssetIdsFromMarkdown,
@@ -28,7 +32,7 @@ async function collectReferencedDirectusFileIdsInternal(
         .filter((candidateFileId): candidateFileId is string =>
             Boolean(candidateFileId),
         );
-    const referencedSet = await readReferencedIdsInSiteSettingsFromRepository(
+    const referencedSet = await readReferencedFileIdsFromReferenceTable(
         normalizedCandidateIds,
     );
     const unresolved = normalizedCandidateIds.filter(
@@ -38,25 +42,30 @@ async function collectReferencedDirectusFileIdsInternal(
         return referencedSet;
     }
 
-    const [structuredMatches, markdownMatches] = await Promise.all([
-        Promise.all(
-            STRUCTURED_REFERENCE_TARGETS.map((target) =>
-                readReferencedIdsInStructuredTargetFromRepository(
-                    target,
-                    unresolved,
+    const [siteSettingsMatches, structuredMatches, markdownMatches] =
+        await Promise.all([
+            readReferencedIdsInSiteSettingsFromRepository(unresolved),
+            Promise.all(
+                STRUCTURED_REFERENCE_TARGETS.map((target) =>
+                    readReferencedIdsInStructuredTargetFromRepository(
+                        target,
+                        unresolved,
+                    ),
                 ),
             ),
-        ),
-        Promise.all(
-            MARKDOWN_REFERENCE_TARGETS.map((target) =>
-                readReferencedIdsInMarkdownTargetFromRepository(
-                    target,
-                    unresolved,
+            Promise.all(
+                MARKDOWN_REFERENCE_TARGETS.map((target) =>
+                    readReferencedIdsInMarkdownTargetFromRepository(
+                        target,
+                        unresolved,
+                    ),
                 ),
             ),
-        ),
-    ]);
+        ]);
 
+    for (const id of siteSettingsMatches) {
+        referencedSet.add(id);
+    }
     for (const result of [...structuredMatches, ...markdownMatches]) {
         for (const id of result) {
             referencedSet.add(id);
@@ -64,6 +73,33 @@ async function collectReferencedDirectusFileIdsInternal(
     }
 
     return referencedSet;
+}
+
+async function collectLegacyReferencedDirectusFileIds(): Promise<Set<string>> {
+    const [siteSettingsMatches, structuredMatches, markdownMatches] =
+        await Promise.all([
+            readAllReferencedIdsInSiteSettingsFromRepository(),
+            Promise.all(
+                STRUCTURED_REFERENCE_TARGETS.map((target) =>
+                    readAllReferencedIdsInStructuredTargetFromRepository(
+                        target,
+                    ),
+                ),
+            ),
+            Promise.all(
+                MARKDOWN_REFERENCE_TARGETS.map((target) =>
+                    readAllReferencedIdsInMarkdownTargetFromRepository(target),
+                ),
+            ),
+        ]);
+
+    const referenced = new Set<string>(siteSettingsMatches);
+    for (const result of [...structuredMatches, ...markdownMatches]) {
+        for (const fileId of result) {
+            referenced.add(fileId);
+        }
+    }
+    return referenced;
 }
 
 export async function collectReferencedDirectusFileIds(
@@ -78,32 +114,14 @@ export async function collectAllReferencedDirectusFileIds(): Promise<
     Set<string>
 > {
     return await withServiceRepositoryContext(async () => {
-        const [siteSettingsMatches, structuredMatches, markdownMatches] =
-            await Promise.all([
-                readAllReferencedIdsInSiteSettingsFromRepository(),
-                Promise.all(
-                    STRUCTURED_REFERENCE_TARGETS.map((target) =>
-                        readAllReferencedIdsInStructuredTargetFromRepository(
-                            target,
-                        ),
-                    ),
-                ),
-                Promise.all(
-                    MARKDOWN_REFERENCE_TARGETS.map((target) =>
-                        readAllReferencedIdsInMarkdownTargetFromRepository(
-                            target,
-                        ),
-                    ),
-                ),
-            ]);
-
-        const referenced = new Set<string>(siteSettingsMatches);
-        for (const result of [...structuredMatches, ...markdownMatches]) {
-            for (const fileId of result) {
-                referenced.add(fileId);
-            }
+        const [referenceTableMatches, legacyMatches] = await Promise.all([
+            readAllReferencedFileIdsFromReferenceTable(),
+            collectLegacyReferencedDirectusFileIds(),
+        ]);
+        for (const fileId of legacyMatches) {
+            referenceTableMatches.add(fileId);
         }
-        return referenced;
+        return referenceTableMatches;
     });
 }
 

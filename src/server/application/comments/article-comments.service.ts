@@ -3,7 +3,6 @@ import type { APIContext } from "astro";
 import { assertCan, assertOwnerOrAdmin } from "@/server/auth/acl";
 import { awaitCacheInvalidations } from "@/server/cache/invalidation";
 import { cacheManager } from "@/server/cache/manager";
-import { enqueueFileDetachJob } from "@/server/files/file-detach-jobs";
 import { parseJsonBody } from "@/server/api/utils";
 import { validateBody } from "@/server/api/validate";
 import { CreateCommentSchema, UpdateCommentSchema } from "@/server/api/schemas";
@@ -24,11 +23,11 @@ import {
     validateReplyParent,
 } from "@/server/api/v1/comments-shared";
 import {
-    deleteFileReferencesForOwner,
     syncMarkdownFileLifecycle,
     syncMarkdownFilesToVisibility,
 } from "@/server/api/v1/me/_helpers";
-import { extractDirectusAssetIdsFromMarkdown } from "@/server/api/v1/shared/file-cleanup";
+import { resourceLifecycle } from "@/server/files/resource-lifecycle";
+import { searchIndex } from "@/server/application/shared/search-index";
 
 async function getArticleCommentList(
     context: APIContext,
@@ -200,22 +199,12 @@ async function deleteArticleComment(
         "app_article_comments",
         commentId,
     );
-    await enqueueFileDetachJob({
-        sourceType: "comment.article.delete",
-        sourceId: commentId,
-        fileValues: deletedComments.flatMap((deletedComment) =>
-            extractDirectusAssetIdsFromMarkdown(
-                typeof deletedComment.body === "string"
-                    ? deletedComment.body
-                    : null,
-            ),
-        ),
-    });
     for (const deletedComment of deletedComments) {
-        await deleteFileReferencesForOwner({
+        await resourceLifecycle.releaseOwnerResources({
             ownerCollection: "app_article_comments",
             ownerId: deletedComment.id,
         });
+        await searchIndex.remove("comment", deletedComment.id);
     }
     await deleteCollectedCommentTargets(
         "app_article_comments",

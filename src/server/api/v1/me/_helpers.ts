@@ -9,11 +9,10 @@ import {
     markFilesDetached,
 } from "@/server/repositories/files/file-lifecycle.repository";
 import {
-    deleteOwnerReferences,
-    replaceOwnerFieldReferences,
     type FileReferenceKind,
     type FileReferenceVisibility,
 } from "@/server/repositories/files/file-reference.repository";
+import { resourceLifecycle } from "@/server/files/resource-lifecycle";
 
 import {
     extractDirectusAssetIdsFromMarkdown,
@@ -61,20 +60,36 @@ export async function bindFileOwnerToUser(
     if (!fileId) {
         return;
     }
+    if (reference) {
+        await resourceLifecycle.syncOwnerReferences({
+            ownerCollection: reference.ownerCollection,
+            ownerId: reference.ownerId,
+            ownerUserId: userId ?? null,
+            visibility,
+            references: [
+                {
+                    ownerField: reference.ownerField,
+                    referenceKind: reference.referenceKind,
+                    fileIds: [fileId],
+                },
+            ],
+        });
+        if (title) {
+            await markFilesAttached({
+                fileIds: [fileId],
+                ownerUserId: userId ? userId : undefined,
+                visibility,
+                title,
+            });
+        }
+        return;
+    }
     await markFilesAttached({
         fileIds: [fileId],
         ownerUserId: userId ? userId : undefined,
         visibility,
         title,
     });
-    if (reference) {
-        await syncFileReferencesBestEffort({
-            reference,
-            fileIds: [fileId],
-            ownerUserId: userId,
-            visibility,
-        });
-    }
 }
 
 export type FileReferenceContext = {
@@ -84,30 +99,6 @@ export type FileReferenceContext = {
     referenceKind: FileReferenceKind;
 };
 
-async function syncFileReferencesBestEffort(params: {
-    reference: FileReferenceContext;
-    fileIds: string[];
-    ownerUserId: string | null | undefined;
-    visibility: FileReferenceVisibility;
-}): Promise<void> {
-    try {
-        await replaceOwnerFieldReferences({
-            ...params.reference,
-            fileIds: params.fileIds,
-            ownerUserId: params.ownerUserId,
-            visibility: params.visibility,
-        });
-    } catch (error) {
-        console.warn("[file-references] sync failed", {
-            ownerCollection: params.reference.ownerCollection,
-            ownerId: params.reference.ownerId,
-            ownerField: params.reference.ownerField,
-            referenceKind: params.reference.referenceKind,
-            error: error instanceof Error ? error.message : String(error),
-        });
-    }
-}
-
 export async function deleteFileReferencesForOwner(params: {
     ownerCollection: string;
     ownerId: string;
@@ -115,7 +106,17 @@ export async function deleteFileReferencesForOwner(params: {
     referenceKind?: FileReferenceKind;
 }): Promise<number> {
     try {
-        return await deleteOwnerReferences(params);
+        if (params.ownerField || params.referenceKind) {
+            console.warn(
+                "[file-references] field-scoped delete is deprecated; releasing owner",
+                params,
+            );
+        }
+        const result = await resourceLifecycle.releaseOwnerResources({
+            ownerCollection: params.ownerCollection,
+            ownerId: params.ownerId,
+        });
+        return result.deletedReferences;
     } catch (error) {
         console.warn("[file-references] delete failed", {
             ...params,
@@ -132,19 +133,27 @@ export async function syncMarkdownFilesToVisibility(
     reference?: FileReferenceContext,
 ): Promise<string[]> {
     const fileIds = extractDirectusAssetIdsFromMarkdown(markdown);
+    if (reference) {
+        await resourceLifecycle.syncOwnerReferences({
+            ownerCollection: reference.ownerCollection,
+            ownerId: reference.ownerId,
+            ownerUserId: userId,
+            visibility,
+            references: [
+                {
+                    ownerField: reference.ownerField,
+                    referenceKind: reference.referenceKind,
+                    fileIds,
+                },
+            ],
+        });
+        return fileIds;
+    }
     await markFilesAttached({
         fileIds,
         ownerUserId: userId,
         visibility,
     });
-    if (reference) {
-        await syncFileReferencesBestEffort({
-            reference,
-            fileIds,
-            ownerUserId: userId,
-            visibility,
-        });
-    }
     return fileIds;
 }
 
@@ -189,6 +198,30 @@ export async function syncManagedFileBinding(params: {
         previousFileIds: [params.previousFileValue],
         nextFileIds: [params.nextFileValue],
     });
+    if (params.reference) {
+        await resourceLifecycle.syncOwnerReferences({
+            ownerCollection: params.reference.ownerCollection,
+            ownerId: params.reference.ownerId,
+            ownerUserId: params.userId ?? null,
+            visibility: params.visibility,
+            references: [
+                {
+                    ownerField: params.reference.ownerField,
+                    referenceKind: params.reference.referenceKind,
+                    fileIds: diff.nextFileIds,
+                },
+            ],
+        });
+        if (params.title) {
+            await markFilesAttached({
+                fileIds: diff.nextFileIds,
+                ownerUserId: params.userId ? params.userId : undefined,
+                visibility: params.visibility,
+                title: params.title,
+            });
+        }
+        return diff;
+    }
     await markFilesAttached({
         fileIds: diff.nextFileIds,
         ownerUserId: params.userId ? params.userId : undefined,
@@ -199,14 +232,6 @@ export async function syncManagedFileBinding(params: {
         diff.detachedFileIds,
         params.detachedAt || new Date().toISOString(),
     );
-    if (params.reference) {
-        await syncFileReferencesBestEffort({
-            reference: params.reference,
-            fileIds: diff.nextFileIds,
-            ownerUserId: params.userId,
-            visibility: params.visibility,
-        });
-    }
     return diff;
 }
 
@@ -226,6 +251,22 @@ export async function syncMarkdownFileLifecycle(params: {
         previousMarkdown: params.previousMarkdown,
         nextMarkdown: params.nextMarkdown,
     });
+    if (params.reference) {
+        await resourceLifecycle.syncOwnerReferences({
+            ownerCollection: params.reference.ownerCollection,
+            ownerId: params.reference.ownerId,
+            ownerUserId: params.userId ?? null,
+            visibility: params.visibility,
+            references: [
+                {
+                    ownerField: params.reference.ownerField,
+                    referenceKind: params.reference.referenceKind,
+                    fileIds: diff.nextFileIds,
+                },
+            ],
+        });
+        return diff;
+    }
     await markFilesAttached({
         fileIds: diff.nextFileIds,
         ownerUserId: params.userId ? params.userId : undefined,
@@ -235,13 +276,5 @@ export async function syncMarkdownFileLifecycle(params: {
         diff.detachedFileIds,
         params.detachedAt || new Date().toISOString(),
     );
-    if (params.reference) {
-        await syncFileReferencesBestEffort({
-            reference: params.reference,
-            fileIds: diff.nextFileIds,
-            ownerUserId: params.userId,
-            visibility: params.visibility,
-        });
-    }
     return diff;
 }

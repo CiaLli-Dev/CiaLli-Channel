@@ -30,6 +30,18 @@ export type FileReferenceInput = FileReferenceOwner & {
     visibility: FileReferenceVisibility;
 };
 
+export type OwnerFileReferenceRow = Pick<
+    AppFileReference,
+    | "id"
+    | "file_id"
+    | "owner_collection"
+    | "owner_id"
+    | "owner_field"
+    | "reference_kind"
+    | "owner_user_id"
+    | "visibility"
+>;
+
 const REFERENCE_PAGE_SIZE = 500;
 
 function toNormalizedText(value: string): string {
@@ -228,6 +240,36 @@ export async function deleteOwnerReferences(params: {
         await deleteOne("app_file_references", row.id);
     }
     return rows.length;
+}
+
+export async function readOwnerFileReferences(params: {
+    ownerCollection: string;
+    ownerId: string;
+}): Promise<OwnerFileReferenceRow[]> {
+    const ownerCollection = toNormalizedText(params.ownerCollection);
+    const ownerId = toNormalizedText(params.ownerId);
+    if (!ownerCollection || !ownerId) {
+        return [];
+    }
+    return (await readMany("app_file_references", {
+        filter: {
+            _and: [
+                { owner_collection: { _eq: ownerCollection } },
+                { owner_id: { _eq: ownerId } },
+            ],
+        } as JsonObject,
+        fields: [
+            "id",
+            "file_id",
+            "owner_collection",
+            "owner_id",
+            "owner_field",
+            "reference_kind",
+            "owner_user_id",
+            "visibility",
+        ],
+        limit: 5000,
+    })) as OwnerFileReferenceRow[];
 }
 
 export async function readReferencedFileIdsFromReferenceTable(

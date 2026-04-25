@@ -17,7 +17,9 @@ const mocks = vi.hoisted(() => ({
     registrationEmailExists: vi.fn(),
     registrationHasPendingConflict: vi.fn(),
     registrationUsernameExists: vi.fn(),
+    releaseOwnerResources: vi.fn(),
     setRegistrationRequestAvatar: vi.fn(),
+    syncOwnerReferences: vi.fn(),
 }));
 
 vi.mock("@/server/application/uploads/upload.service", () => ({
@@ -42,6 +44,13 @@ vi.mock("@/server/auth/username", () => ({
 vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
     normalizeDirectusFileId: (value: unknown) =>
         String(value || "").trim() || null,
+}));
+
+vi.mock("@/server/files/resource-lifecycle", () => ({
+    resourceLifecycle: {
+        releaseOwnerResources: mocks.releaseOwnerResources,
+        syncOwnerReferences: mocks.syncOwnerReferences,
+    },
 }));
 
 vi.mock(
@@ -76,6 +85,17 @@ describe("public-registration.service", () => {
         mocks.registrationEmailExists.mockResolvedValue(false);
         mocks.registrationUsernameExists.mockResolvedValue(false);
         mocks.registrationHasPendingConflict.mockResolvedValue(false);
+        mocks.releaseOwnerResources.mockResolvedValue({
+            jobId: "release-job-1",
+            status: "pending",
+            candidateFileIds: [],
+            deletedReferences: 0,
+        });
+        mocks.syncOwnerReferences.mockResolvedValue({
+            attachedFileIds: [],
+            detachedFileIds: [],
+            currentFileIds: [],
+        });
         mocks.loadDirectusAccessRegistry.mockResolvedValue({
             roleIdByName: new Map([["member", "role-member"]]),
         });
@@ -151,6 +171,12 @@ describe("public-registration.service", () => {
             requestId: "request-1",
             avatarFileId: "file-1",
         });
+        expect(mocks.syncOwnerReferences).toHaveBeenCalledWith(
+            expect.objectContaining({
+                ownerCollection: "app_user_registration_requests",
+                ownerId: "request-1",
+            }),
+        );
         expect(result).toMatchObject({
             id: "request-1",
             avatar_file: "file-1",
@@ -195,6 +221,10 @@ describe("public-registration.service", () => {
         expect(mocks.cancelPendingRegistration).toHaveBeenCalledWith({
             requestId: "request-1",
             reviewedAt: expect.any(String),
+        });
+        expect(mocks.releaseOwnerResources).toHaveBeenCalledWith({
+            ownerCollection: "app_user_registration_requests",
+            ownerId: "request-1",
         });
         expect(mocks.deleteRegistrationAvatarFile).not.toHaveBeenCalled();
     });

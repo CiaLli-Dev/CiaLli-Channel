@@ -21,7 +21,6 @@ import { validateBody } from "@/server/api/validate";
 import { enqueueAndTriggerArticleSummaryJob } from "@/server/ai-summary/dispatch";
 import { awaitCacheInvalidations } from "@/server/cache/invalidation";
 import { cacheManager } from "@/server/cache/manager";
-import { enqueueFileDetachJob } from "@/server/files/file-detach-jobs";
 import {
     createOne,
     deleteOne,
@@ -38,19 +37,17 @@ import {
     safeCsv,
     toSpecialArticleSlug,
 } from "@/server/api/v1/shared";
-import {
-    collectArticleCommentCleanupCandidates,
-    extractDirectusAssetIdsFromMarkdown,
-    normalizeDirectusFileId,
-} from "@/server/api/v1/shared/file-cleanup";
+import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
 import {
     bindFileOwnerToUser,
-    deleteFileReferencesForOwner,
     renderMeMarkdownPreview,
     syncManagedFileBinding,
     syncMarkdownFileLifecycle,
     syncMarkdownFilesToVisibility,
 } from "@/server/api/v1/me/_helpers";
+import { readComments } from "@/server/repositories/comments/comments.repository";
+import { resourceLifecycle } from "@/server/files/resource-lifecycle";
+import { searchIndex } from "@/server/application/shared/search-index";
 
 type OwnedArticleRecord = JsonObject & {
     id: string;
@@ -845,26 +842,38 @@ async function handleArticleDelete(
     target: OwnedArticleRecord,
 ): Promise<Response> {
     const id = target.id;
-    const candidateFileIds = new Set<string>([
-        ...extractDirectusAssetIdsFromMarkdown(
-            String(target.body_markdown ?? ""),
-        ),
-    ]);
-    const coverFileId = normalizeDirectusFileId(target.cover_file);
-    if (coverFileId) {
-        candidateFileIds.add(coverFileId);
-    }
-    const commentCleanup = await collectArticleCommentCleanupCandidates(id);
-    await enqueueFileDetachJob({
-        sourceType: "me.article.delete",
-        sourceId: id,
-        fileValues: [...candidateFileIds, ...commentCleanup.candidateFileIds],
+    const commentRows = await readComments("app_article_comments", {
+        filter: { article_id: { _eq: id } } as JsonObject,
+        fields: ["id"],
+        limit: -1,
     });
-    await deleteFileReferencesForOwner({
+    for (const comment of commentRows) {
+        await resourceLifecycle.releaseOwnerResources({
+            ownerCollection: "app_article_comments",
+            ownerId: String(comment.id),
+        });
+        await searchIndex.remove("comment", String(comment.id));
+    }
+    await resourceLifecycle.releaseOwnerResources({
         ownerCollection: "app_articles",
         ownerId: id,
     });
+    const summaryJobs = await readMany("app_ai_summary_jobs", {
+        filter: { article_id: { _eq: id } } as JsonObject,
+        fields: ["id"],
+        limit: 5000,
+    });
+    for (const job of summaryJobs) {
+        await deleteOne("app_ai_summary_jobs", String(job.id));
+    }
     await deleteOne("app_articles", id);
+    await searchIndex.remove("article", id);
+    console.info("[audit] article.delete", {
+        articleId: id,
+        authorId: target.author_id,
+        releasedCommentCount: commentRows.length,
+        deletedSummaryJobCount: summaryJobs.length,
+    });
     await awaitCacheInvalidations(
         [
             cacheManager.invalidateByDomain("article-list"),

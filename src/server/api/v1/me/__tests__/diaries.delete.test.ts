@@ -59,18 +59,37 @@ vi.mock("@/server/files/file-detach-jobs", () => ({
     }),
 }));
 
+vi.mock("@/server/files/resource-lifecycle", () => ({
+    resourceLifecycle: {
+        releaseOwnerResources: vi.fn().mockResolvedValue({
+            jobId: "release-job-1",
+            status: "pending",
+            candidateFileIds: [],
+            deletedReferences: 0,
+        }),
+    },
+}));
+
+vi.mock("@/server/application/shared/search-index", () => ({
+    searchIndex: {
+        remove: vi.fn().mockResolvedValue(undefined),
+    },
+}));
+
 import {
     deleteDirectusFile,
     deleteOne,
     readMany,
 } from "@/server/directus/client";
-import { enqueueFileDetachJob } from "@/server/files/file-detach-jobs";
+import { resourceLifecycle } from "@/server/files/resource-lifecycle";
 import { handleMeDiaries } from "@/server/api/v1/me/diaries";
 
 const mockedDeleteDirectusFile = vi.mocked(deleteDirectusFile);
 const mockedDeleteOne = vi.mocked(deleteOne);
 const mockedReadMany = vi.mocked(readMany);
-const mockedEnqueueFileDetachJob = vi.mocked(enqueueFileDetachJob);
+const mockedReleaseOwnerResources = vi.mocked(
+    resourceLifecycle.releaseOwnerResources,
+);
 
 function makeDiary(overrides: Record<string, unknown> = {}) {
     return {
@@ -93,7 +112,10 @@ beforeEach(() => {
 
 describe("DELETE /me/diaries/:id", () => {
     it("删除时会合并正文、图片与关联评论中的资源候选", async () => {
-        mockedReadMany.mockResolvedValue([makeDiary()] as never);
+        mockedReadMany
+            .mockResolvedValueOnce([makeDiary()] as never)
+            .mockResolvedValueOnce([{ id: "image-1" }] as never)
+            .mockResolvedValueOnce([{ id: "comment-1" }] as never);
         mockedDeleteOne.mockResolvedValue(undefined as never);
 
         const ctx = createMockAPIContext({
@@ -109,13 +131,20 @@ describe("DELETE /me/diaries/:id", () => {
         );
 
         expect(response.status).toBe(200);
-        expect(mockedEnqueueFileDetachJob).toHaveBeenCalledWith(
-            expect.objectContaining({
-                fileValues: ["content-file", "image-file", "comment-file"],
-            }),
-        );
+        expect(mockedReleaseOwnerResources).toHaveBeenCalledWith({
+            ownerCollection: "app_diary_images",
+            ownerId: "image-1",
+        });
+        expect(mockedReleaseOwnerResources).toHaveBeenCalledWith({
+            ownerCollection: "app_diary_comments",
+            ownerId: "comment-1",
+        });
+        expect(mockedReleaseOwnerResources).toHaveBeenCalledWith({
+            ownerCollection: "app_diaries",
+            ownerId: "diary-1",
+        });
         expect(
-            mockedEnqueueFileDetachJob.mock.invocationCallOrder[0],
+            mockedReleaseOwnerResources.mock.invocationCallOrder[0],
         ).toBeLessThan(mockedDeleteOne.mock.invocationCallOrder[0] ?? 0);
         expect(mockedDeleteDirectusFile).not.toHaveBeenCalled();
     });

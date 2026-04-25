@@ -66,9 +66,10 @@ import {
 import { invalidateAuthorCache } from "@/server/api/v1/shared/author-cache";
 import {
     bindFileOwnerToUser,
-    detachManagedFiles,
     syncManagedFileBinding,
 } from "@/server/api/v1/me/_helpers";
+import { resourceLifecycle } from "@/server/files/resource-lifecycle";
+import { searchIndex } from "@/server/application/shared/search-index";
 import {
     clearBlockingUserReferences,
     loadReferencedFilesByUser,
@@ -811,12 +812,9 @@ async function handleUserDelete(
         ]);
 
         for (const profile of profiles) {
-            await detachManagedFiles([profile.header_file]).catch((error) => {
-                console.warn(
-                    "[admin/users] 标记 profile header 文件为 detached 失败, profileId:",
-                    profile.id,
-                    error,
-                );
+            await resourceLifecycle.releaseOwnerResources({
+                ownerCollection: "app_user_profiles",
+                ownerId: profile.id,
             });
             await deleteOne("app_user_profiles", profile.id).catch((error) => {
                 console.warn(
@@ -824,6 +822,12 @@ async function handleUserDelete(
                     profile.id,
                     error,
                 );
+            });
+        }
+        for (const request of registrationRequests) {
+            await resourceLifecycle.releaseOwnerResources({
+                ownerCollection: "app_user_registration_requests",
+                ownerId: request.id,
             });
         }
         await nullifyRegistrationRequestAvatars(registrationRequests).catch(
@@ -838,14 +842,17 @@ async function handleUserDelete(
         const remainingFiles = await loadReferencedFilesByUser(userId);
         await nullifyReferencedFileOwnership(remainingFiles, userId);
         await clearBlockingUserReferences(userId);
-        await detachManagedFiles([targetUser.avatar]).catch((error) => {
-            console.warn(
-                "[admin/users] 标记用户头像文件为 detached 失败, userId:",
-                userId,
-                error,
-            );
+        await resourceLifecycle.releaseOwnerResources({
+            ownerCollection: "directus_users",
+            ownerId: userId,
         });
         await deleteDirectusUser(userId);
+        await searchIndex.remove("user", userId);
+        console.info("[audit] user.delete", {
+            userId,
+            profileCount: profiles.length,
+            registrationRequestCount: registrationRequests.length,
+        });
         invalidateAuthorCache(userId);
         invalidateOfficialSidebarCache();
         invalidateDirectusAccessRegistry();

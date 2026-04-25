@@ -1,0 +1,418 @@
+import type {
+    AppFileReferenceKind,
+    AppFileReferenceVisibility,
+    ResourceReferenceSyncJobPayload,
+} from "@/types/app";
+import { createOne, deleteOne, updateOne } from "@/server/directus/client";
+import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup-reference-utils";
+import {
+    markFilesAttached,
+    markFilesDetached,
+} from "@/server/repositories/files/file-lifecycle.repository";
+import {
+    readOwnerFileReferences,
+    replaceOwnerFieldReferences,
+    type OwnerFileReferenceRow,
+} from "@/server/repositories/files/file-reference.repository";
+
+export type ResourceLifecycleReferenceInput = {
+    ownerField: string;
+    referenceKind: AppFileReferenceKind;
+    fileIds: string[];
+};
+
+export type SyncOwnerReferencesInput = {
+    ownerCollection: string;
+    ownerId: string;
+    ownerUserId?: string | null;
+    visibility: AppFileReferenceVisibility;
+    references: ResourceLifecycleReferenceInput[];
+};
+
+export type SyncOwnerReferencesResult = {
+    attachedFileIds: string[];
+    detachedFileIds: string[];
+    currentFileIds: string[];
+};
+
+export type ReleaseOwnerResourcesInput = {
+    ownerCollection: string;
+    ownerId: string;
+};
+
+export type ReleaseOwnerResourcesResult = {
+    jobId: string;
+    status: "pending" | "skipped";
+    candidateFileIds: string[];
+    deletedReferences: number;
+};
+
+const RESOURCE_REFERENCE_SYNC_SOURCE_TYPE = "resource.references.sync";
+
+function normalizeText(value: unknown): string {
+    return String(value ?? "").trim();
+}
+
+function normalizeOwnerUserId(value: unknown): string | null {
+    if (typeof value === "string") {
+        return value.trim() || null;
+    }
+    if (value && typeof value === "object") {
+        return normalizeOwnerUserId((value as { id?: unknown }).id);
+    }
+    return null;
+}
+
+function normalizeFileIds(values: unknown[]): string[] {
+    const fileIds = new Set<string>();
+    for (const value of values) {
+        const fileId = normalizeDirectusFileId(value);
+        if (fileId) {
+            fileIds.add(fileId);
+        }
+    }
+    return [...fileIds].sort();
+}
+
+function buildReferenceKey(reference: {
+    ownerField: string;
+    referenceKind: AppFileReferenceKind;
+}): string {
+    return `${reference.ownerField}\u001f${reference.referenceKind}`;
+}
+
+function normalizeSyncInput(
+    input: SyncOwnerReferencesInput,
+): ResourceReferenceSyncJobPayload | null {
+    const ownerCollection = normalizeText(input.ownerCollection);
+    const ownerId = normalizeText(input.ownerId);
+    if (!ownerCollection || !ownerId) {
+        return null;
+    }
+    return {
+        ownerCollection,
+        ownerId,
+        ownerUserId: normalizeOwnerUserId(input.ownerUserId),
+        visibility: input.visibility,
+        references: input.references
+            .map((reference) => ({
+                ownerField: normalizeText(reference.ownerField),
+                referenceKind: reference.referenceKind,
+                fileIds: normalizeFileIds(reference.fileIds),
+            }))
+            .filter((reference) => reference.ownerField),
+    };
+}
+
+function readFileIds(rows: OwnerFileReferenceRow[]): string[] {
+    return normalizeFileIds(rows.map((row) => row.file_id));
+}
+
+function buildCurrentOwnerFileIds(params: {
+    previousRows: OwnerFileReferenceRow[];
+    updatedReferenceKeys: Set<string>;
+    nextFileIds: string[];
+}): string[] {
+    const current = new Set<string>(params.nextFileIds);
+    for (const row of params.previousRows) {
+        if (
+            params.updatedReferenceKeys.has(
+                buildReferenceKey({
+                    ownerField: row.owner_field,
+                    referenceKind: row.reference_kind,
+                }),
+            )
+        ) {
+            continue;
+        }
+        const fileId = normalizeDirectusFileId(row.file_id);
+        if (fileId) {
+            current.add(fileId);
+        }
+    }
+    return [...current].sort();
+}
+
+function diffRemovedFileIds(params: {
+    previousFileIds: string[];
+    currentFileIds: string[];
+}): string[] {
+    const current = new Set(params.currentFileIds);
+    return params.previousFileIds.filter((fileId) => !current.has(fileId));
+}
+
+async function enqueueResourceReferenceSyncJob(
+    payload: ResourceReferenceSyncJobPayload,
+): Promise<string> {
+    const now = new Date().toISOString();
+    const created = await createOne(
+        "app_file_detach_jobs",
+        {
+            status: "pending",
+            source_type: RESOURCE_REFERENCE_SYNC_SOURCE_TYPE,
+            source_id: payload.ownerId,
+            candidate_file_ids: payload,
+            detached_file_ids: [],
+            skipped_referenced_file_ids: [],
+            attempts: 0,
+            scheduled_at: now,
+            leased_until: null,
+            started_at: null,
+            finished_at: null,
+            error_code: null,
+            error_message: null,
+        },
+        { fields: ["id"] },
+    );
+    return created.id;
+}
+
+async function enqueueOwnerReleaseJob(params: {
+    ownerCollection: string;
+    ownerId: string;
+    candidateFileIds: string[];
+}): Promise<{ jobId: string; status: "pending" | "skipped" }> {
+    const now = new Date().toISOString();
+    const status = params.candidateFileIds.length > 0 ? "pending" : "skipped";
+    const created = await createOne(
+        "app_file_detach_jobs",
+        {
+            status,
+            source_type: `resource.owner.release:${params.ownerCollection}`,
+            source_id: params.ownerId,
+            candidate_file_ids: params.candidateFileIds,
+            detached_file_ids: [],
+            skipped_referenced_file_ids: [],
+            attempts: 0,
+            scheduled_at: status === "pending" ? now : null,
+            leased_until: null,
+            started_at: null,
+            finished_at: status === "skipped" ? now : null,
+            error_code: null,
+            error_message: null,
+        },
+        { fields: ["id", "status"] },
+    );
+    return { jobId: created.id, status };
+}
+
+async function syncOwnerReferencesStrict(
+    input: SyncOwnerReferencesInput,
+): Promise<SyncOwnerReferencesResult> {
+    const normalized = normalizeSyncInput(input);
+    if (!normalized) {
+        return {
+            attachedFileIds: [],
+            detachedFileIds: [],
+            currentFileIds: [],
+        };
+    }
+
+    const previousRows = await readOwnerFileReferences(normalized);
+    const previousFileIds = readFileIds(previousRows);
+    const updatedReferenceKeys = new Set(
+        normalized.references.map((reference) => buildReferenceKey(reference)),
+    );
+    const nextFileIds = normalizeFileIds(
+        normalized.references.flatMap((reference) => reference.fileIds),
+    );
+
+    for (const reference of normalized.references) {
+        await replaceOwnerFieldReferences({
+            ownerCollection: normalized.ownerCollection,
+            ownerId: normalized.ownerId,
+            ownerField: reference.ownerField,
+            referenceKind: reference.referenceKind,
+            fileIds: reference.fileIds,
+            ownerUserId: normalized.ownerUserId,
+            visibility: normalized.visibility,
+        });
+    }
+
+    const currentFileIds = buildCurrentOwnerFileIds({
+        previousRows,
+        updatedReferenceKeys,
+        nextFileIds,
+    });
+    const detachedFileIds = diffRemovedFileIds({
+        previousFileIds,
+        currentFileIds,
+    });
+
+    await markFilesAttached({
+        fileIds: nextFileIds,
+        ownerUserId: normalized.ownerUserId,
+        visibility: normalized.visibility,
+    });
+    await markFilesDetached(detachedFileIds, new Date().toISOString());
+
+    return {
+        attachedFileIds: nextFileIds,
+        detachedFileIds,
+        currentFileIds,
+    };
+}
+
+async function syncOwnerReferences(
+    input: SyncOwnerReferencesInput,
+): Promise<SyncOwnerReferencesResult> {
+    const normalized = normalizeSyncInput(input);
+    if (!normalized) {
+        return {
+            attachedFileIds: [],
+            detachedFileIds: [],
+            currentFileIds: [],
+        };
+    }
+    try {
+        return await syncOwnerReferencesStrict(normalized);
+    } catch (error) {
+        try {
+            await enqueueResourceReferenceSyncJob(normalized);
+            return {
+                attachedFileIds: normalizeFileIds(
+                    normalized.references.flatMap(
+                        (reference) => reference.fileIds,
+                    ),
+                ),
+                detachedFileIds: [],
+                currentFileIds: [],
+            };
+        } catch (enqueueError) {
+            console.error(
+                "[resource-lifecycle] sync compensation enqueue failed",
+                {
+                    ownerCollection: normalized.ownerCollection,
+                    ownerId: normalized.ownerId,
+                    error:
+                        enqueueError instanceof Error
+                            ? enqueueError.message
+                            : String(enqueueError),
+                    originalError:
+                        error instanceof Error ? error.message : String(error),
+                },
+            );
+            throw error;
+        }
+    }
+}
+
+async function releaseOwnerResources(
+    input: ReleaseOwnerResourcesInput,
+): Promise<ReleaseOwnerResourcesResult> {
+    const ownerCollection = normalizeText(input.ownerCollection);
+    const ownerId = normalizeText(input.ownerId);
+    if (!ownerCollection || !ownerId) {
+        return {
+            jobId: "",
+            status: "skipped",
+            candidateFileIds: [],
+            deletedReferences: 0,
+        };
+    }
+
+    const rows = await readOwnerFileReferences({ ownerCollection, ownerId });
+    const candidateFileIds = readFileIds(rows);
+    const job = await enqueueOwnerReleaseJob({
+        ownerCollection,
+        ownerId,
+        candidateFileIds,
+    });
+    for (const row of rows) {
+        await deleteOne("app_file_references", row.id);
+    }
+    return {
+        ...job,
+        candidateFileIds,
+        deletedReferences: rows.length,
+    };
+}
+
+export function isResourceReferenceSyncJobSource(sourceType: string): boolean {
+    return sourceType === RESOURCE_REFERENCE_SYNC_SOURCE_TYPE;
+}
+
+export function parseResourceReferenceSyncJobPayload(
+    value: unknown,
+): ResourceReferenceSyncJobPayload | null {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return null;
+    }
+    const candidate = value as {
+        ownerCollection?: unknown;
+        ownerId?: unknown;
+        ownerUserId?: unknown;
+        visibility?: unknown;
+        references?: unknown;
+    };
+    if (
+        candidate.visibility !== "private" &&
+        candidate.visibility !== "public"
+    ) {
+        return null;
+    }
+    if (!Array.isArray(candidate.references)) {
+        return null;
+    }
+    return normalizeSyncInput({
+        ownerCollection: normalizeText(candidate.ownerCollection),
+        ownerId: normalizeText(candidate.ownerId),
+        ownerUserId: normalizeOwnerUserId(candidate.ownerUserId),
+        visibility: candidate.visibility,
+        references: candidate.references.flatMap((reference) => {
+            if (
+                !reference ||
+                typeof reference !== "object" ||
+                Array.isArray(reference)
+            ) {
+                return [];
+            }
+            const row = reference as {
+                ownerField?: unknown;
+                referenceKind?: unknown;
+                fileIds?: unknown;
+            };
+            if (
+                row.referenceKind !== "structured_field" &&
+                row.referenceKind !== "markdown_asset" &&
+                row.referenceKind !== "settings_asset"
+            ) {
+                return [];
+            }
+            return [
+                {
+                    ownerField: normalizeText(row.ownerField),
+                    referenceKind: row.referenceKind,
+                    fileIds: Array.isArray(row.fileIds) ? row.fileIds : [],
+                },
+            ];
+        }),
+    });
+}
+
+export async function replayResourceReferenceSyncJob(
+    payload: ResourceReferenceSyncJobPayload,
+): Promise<SyncOwnerReferencesResult> {
+    return await syncOwnerReferencesStrict(payload);
+}
+
+export async function markResourceReferenceSyncJobSucceeded(params: {
+    jobId: string;
+    nowIso: string;
+}): Promise<void> {
+    await updateOne("app_file_detach_jobs", params.jobId, {
+        status: "succeeded",
+        scheduled_at: null,
+        leased_until: null,
+        finished_at: params.nowIso,
+        detached_file_ids: [],
+        skipped_referenced_file_ids: [],
+        error_code: null,
+        error_message: null,
+    });
+}
+
+export const resourceLifecycle = {
+    syncOwnerReferences,
+    releaseOwnerResources,
+};

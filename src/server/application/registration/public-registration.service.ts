@@ -19,11 +19,8 @@ import {
     clearRegistrationRequestCookie,
     normalizeRegistrationRequestId,
 } from "@/server/auth/registration-request-cookie";
-import {
-    deleteFileReferencesForOwner,
-    detachManagedFiles,
-    syncManagedFileBinding,
-} from "@/server/api/v1/me/_helpers";
+import { syncManagedFileBinding } from "@/server/api/v1/me/_helpers";
+import { resourceLifecycle } from "@/server/files/resource-lifecycle";
 import {
     cancelPendingRegistration,
     createPendingRegistrationUser,
@@ -390,8 +387,7 @@ export async function cancelPublicRegistration(params: {
         requestId: params.requestId,
         reviewedAt: new Date().toISOString(),
     });
-    await detachManagedFiles([target.avatar_file]);
-    await deleteFileReferencesForOwner({
+    await resourceLifecycle.releaseOwnerResources({
         ownerCollection: "app_user_registration_requests",
         ownerId: params.requestId,
     });

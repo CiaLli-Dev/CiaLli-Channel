@@ -86,6 +86,23 @@ vi.mock("@/server/api/v1/me/_helpers", () => ({
     }),
 }));
 
+vi.mock("@/server/files/resource-lifecycle", () => ({
+    resourceLifecycle: {
+        releaseOwnerResources: vi.fn().mockResolvedValue({
+            jobId: "release-job-1",
+            status: "pending",
+            candidateFileIds: [],
+            deletedReferences: 0,
+        }),
+    },
+}));
+
+vi.mock("@/server/application/shared/search-index", () => ({
+    searchIndex: {
+        remove: vi.fn().mockResolvedValue(undefined),
+    },
+}));
+
 import { requireAdmin } from "@/server/api/v1/shared";
 import { loadDirectusAccessRegistry } from "@/server/auth/directus-registry";
 import {
@@ -97,12 +114,12 @@ import {
 } from "@/server/directus/client";
 import { handleAdminUsers } from "@/server/api/v1/admin/users";
 import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
+import { resourceLifecycle } from "@/server/files/resource-lifecycle";
 import {
     clearBlockingUserReferences,
     loadReferencedFilesByUser,
     nullifyReferencedFileOwnership,
 } from "@/server/api/v1/admin/users-helpers";
-import { detachManagedFiles } from "@/server/api/v1/me/_helpers";
 
 const mockedRequireAdmin = vi.mocked(requireAdmin);
 const mockedLoadDirectusAccessRegistry = vi.mocked(loadDirectusAccessRegistry);
@@ -119,7 +136,9 @@ const mockedNullifyReferencedFileOwnership = vi.mocked(
     nullifyReferencedFileOwnership,
 );
 const mockedNormalizeDirectusFileId = vi.mocked(normalizeDirectusFileId);
-const mockedDetachManagedFiles = vi.mocked(detachManagedFiles);
+const mockedReleaseOwnerResources = vi.mocked(
+    resourceLifecycle.releaseOwnerResources,
+);
 
 function createDirectusUser(overrides: Partial<AppUser> = {}): AppUser {
     return {
@@ -515,8 +534,18 @@ describe("DELETE /admin/users/:id", () => {
             limit: 10,
             fields: ["id", "header_file"],
         });
-        expect(mockedDetachManagedFiles).toHaveBeenCalledWith(["file-header"]);
-        expect(mockedDetachManagedFiles).toHaveBeenCalledWith(["file-avatar"]);
+        expect(mockedReleaseOwnerResources).toHaveBeenCalledWith({
+            ownerCollection: "app_user_profiles",
+            ownerId: "profile-2",
+        });
+        expect(mockedReleaseOwnerResources).toHaveBeenCalledWith({
+            ownerCollection: "app_user_registration_requests",
+            ownerId: "request-2",
+        });
+        expect(mockedReleaseOwnerResources).toHaveBeenCalledWith({
+            ownerCollection: "directus_users",
+            ownerId: "user-2",
+        });
         expect(mockedNullifyReferencedFileOwnership).toHaveBeenCalledWith(
             [
                 {
@@ -541,7 +570,7 @@ describe("DELETE /admin/users/:id", () => {
             mockedClearBlockingUserReferences.mock.invocationCallOrder[0],
         ).toBeLessThan(mockedDeleteDirectusUser.mock.invocationCallOrder[0]);
         expect(
-            mockedDetachManagedFiles.mock.invocationCallOrder.at(-1) ?? 0,
+            mockedReleaseOwnerResources.mock.invocationCallOrder.at(-1) ?? 0,
         ).toBeLessThan(mockedDeleteDirectusUser.mock.invocationCallOrder[0]);
     });
 });

@@ -10,6 +10,12 @@ import { collectReferencedDirectusFileIds } from "@/server/api/v1/shared/file-cl
 import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup-reference-utils";
 import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 import { markFilesDetached } from "@/server/repositories/files/file-lifecycle.repository";
+import {
+    isResourceReferenceSyncJobSource,
+    markResourceReferenceSyncJobSucceeded,
+    parseResourceReferenceSyncJobPayload,
+    replayResourceReferenceSyncJob,
+} from "@/server/files/resource-lifecycle";
 
 const DEFAULT_FILE_DETACH_JOB_INTERVAL_MS = 60_000;
 const DEFAULT_FILE_DETACH_JOB_BATCH_SIZE = 50;
@@ -328,6 +334,42 @@ export async function runFileDetachJob(
                 error_code: null,
                 error_message: null,
             });
+
+            if (isResourceReferenceSyncJobSource(job.source_type)) {
+                const payload = parseResourceReferenceSyncJobPayload(
+                    job.candidate_file_ids,
+                );
+                if (!payload) {
+                    await updateOne("app_file_detach_jobs", job.id, {
+                        status: "skipped",
+                        scheduled_at: null,
+                        leased_until: null,
+                        finished_at: nowIso,
+                        detached_file_ids: [],
+                        skipped_referenced_file_ids: [],
+                        error_code: "INVALID_PAYLOAD",
+                        error_message:
+                            "resource reference sync job payload 无效",
+                    });
+                    return {
+                        status: "skipped",
+                        jobId: job.id,
+                        detached: 0,
+                        skippedReferenced: 0,
+                    };
+                }
+                await replayResourceReferenceSyncJob(payload);
+                await markResourceReferenceSyncJobSucceeded({
+                    jobId: job.id,
+                    nowIso,
+                });
+                return {
+                    status: "succeeded",
+                    jobId: job.id,
+                    detached: 0,
+                    skippedReferenced: 0,
+                };
+            }
 
             if (candidateFileIds.length === 0) {
                 await updateOne("app_file_detach_jobs", job.id, {
