@@ -6,6 +6,7 @@ import {
     readAllManagedFiles,
 } from "@/server/repositories/files/file-lifecycle.repository";
 import { readFileGcRetentionHours } from "@/server/files/file-gc";
+import { seedFileReferencesWhenEmpty } from "@/server/files/file-reference-shadow";
 import { resourceLifecycle } from "@/server/files/resource-lifecycle";
 
 const DEFAULT_FILE_LIFECYCLE_RECONCILE_INTERVAL_MS = 86_400_000;
@@ -116,6 +117,7 @@ export async function reconcileManagedFileLifecycle(
     deleted: number;
     protected: number;
 }> {
+    await seedFileReferencesWhenEmpty();
     const [referencedFileIds, files] = await Promise.all([
         collectAllReferencedDirectusFileIds(),
         readAllManagedFiles(),

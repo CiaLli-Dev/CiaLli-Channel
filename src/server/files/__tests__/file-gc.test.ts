@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
     markFilesQuarantined: vi.fn(),
     readManagedFilesByIds: vi.fn(),
     restoreQuarantinedFiles: vi.fn(),
+    seedFileReferencesWhenEmpty: vi.fn(),
 }));
 
 vi.mock("@/server/repositories/directus/scope", () => ({
@@ -33,6 +34,10 @@ vi.mock("@/server/repositories/files/file-lifecycle.repository", () => ({
     markFilesDeleted: mocks.markFilesDeleted,
     markFilesQuarantined: mocks.markFilesQuarantined,
     readManagedFilesByIds: mocks.readManagedFilesByIds,
+}));
+
+vi.mock("@/server/files/file-reference-shadow", () => ({
+    seedFileReferencesWhenEmpty: mocks.seedFileReferencesWhenEmpty,
 }));
 
 vi.mock("@/server/files/resource-lifecycle", () => ({
@@ -72,6 +77,7 @@ function resetFileGcMocks(): void {
     mocks.markFilesDeleted.mockResolvedValue(undefined);
     mocks.markFilesQuarantined.mockResolvedValue(undefined);
     mocks.readManagedFilesByIds.mockResolvedValue([]);
+    mocks.seedFileReferencesWhenEmpty.mockResolvedValue(0);
     mocks.restoreQuarantinedFiles.mockResolvedValue({
         requestedFileIds: [],
         restoredFileIds: [],
@@ -143,6 +149,7 @@ describe("file-gc", () => {
             quarantinedBefore: QUARANTINED_BEFORE,
             limit: 200,
         });
+        expect(mocks.seedFileReferencesWhenEmpty).toHaveBeenCalledTimes(1);
         expect(mocks.markFilesQuarantined).toHaveBeenCalledWith(
             ["file-orphan"],
             NOW.toISOString(),
@@ -280,6 +287,26 @@ describe("file-gc", () => {
         expect(mocks.markFilesQuarantined).not.toHaveBeenCalled();
         expect(result.recovered).toBe(1);
         expect(result.skippedReferenced).toBe(1);
+    });
+
+    it("uses the reference table result after migration backfill", async () => {
+        const file = staleDetachedFile("file-table-orphan");
+        mocks.readStaleFileGcCandidatesFromRepository.mockResolvedValue([file]);
+        mocks.readManagedFilesByIds.mockResolvedValue([file]);
+        mocks.seedFileReferencesWhenEmpty.mockResolvedValue(5);
+        mocks.collectReferencedDirectusFileIds.mockResolvedValue(new Set());
+
+        const result = await runFileGcBatch(NOW);
+
+        expect(mocks.seedFileReferencesWhenEmpty).toHaveBeenCalledTimes(1);
+        expect(mocks.collectReferencedDirectusFileIds).toHaveBeenCalledWith([
+            "file-table-orphan",
+        ]);
+        expect(mocks.markFilesQuarantined).toHaveBeenCalledWith(
+            ["file-table-orphan"],
+            NOW.toISOString(),
+        );
+        expect(result.quarantined).toBe(1);
     });
 
     it("skips current lifecycle rows that are not GC eligible", async () => {

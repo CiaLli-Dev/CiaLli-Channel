@@ -10,6 +10,7 @@ import {
     markFilesQuarantined,
     readManagedFilesByIds,
 } from "@/server/repositories/files/file-lifecycle.repository";
+import { seedFileReferencesWhenEmpty } from "@/server/files/file-reference-shadow";
 import { resourceLifecycle } from "@/server/files/resource-lifecycle";
 
 const DEFAULT_FILE_GC_RETENTION_HOURS = 168;
@@ -487,6 +488,7 @@ export async function runFileGcBatch(
             return createEmptyFileGcResult(dryRun);
         }
 
+        await seedFileReferencesWhenEmpty();
         const [referencedFileIds, currentLifecycleRows] = await Promise.all([
             collectReferencedDirectusFileIds(candidateFileIds),
             readManagedFilesByIds(candidateFileIds),

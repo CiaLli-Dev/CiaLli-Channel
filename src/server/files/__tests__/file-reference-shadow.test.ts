@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({
     withServiceRepositoryContext: vi.fn(
         async (task: () => Promise<unknown>) => await task(),
     ),
-    collectAllReferencedDirectusFileIds: vi.fn(),
+    collectLegacyScannedReferencedDirectusFileIds: vi.fn(),
     countFileReferencesFromRepository: vi.fn(),
     readAllReferencedFileIdsFromReferenceTable: vi.fn(),
     replaceOwnerFieldReferences: vi.fn(),
@@ -16,8 +16,8 @@ vi.mock("@/server/repositories/directus/scope", () => ({
 }));
 
 vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
-    collectAllReferencedDirectusFileIds:
-        mocks.collectAllReferencedDirectusFileIds,
+    collectLegacyScannedReferencedDirectusFileIds:
+        mocks.collectLegacyScannedReferencedDirectusFileIds,
 }));
 
 vi.mock("@/server/repositories/files/file-reference.repository", () => ({
@@ -48,7 +48,9 @@ describe("file-reference-shadow", () => {
         vi.spyOn(console, "info").mockImplementation(() => undefined);
         vi.spyOn(console, "error").mockImplementation(() => undefined);
         mocks.countFileReferencesFromRepository.mockResolvedValue(1);
-        mocks.collectAllReferencedDirectusFileIds.mockResolvedValue(new Set());
+        mocks.collectLegacyScannedReferencedDirectusFileIds.mockResolvedValue(
+            new Set(),
+        );
         mocks.readAllReferencedFileIdsFromReferenceTable.mockResolvedValue(
             new Set(),
         );
@@ -66,7 +68,7 @@ describe("file-reference-shadow", () => {
     });
 
     it("logs matched when legacy and table file ids agree", async () => {
-        mocks.collectAllReferencedDirectusFileIds.mockResolvedValue(
+        mocks.collectLegacyScannedReferencedDirectusFileIds.mockResolvedValue(
             new Set([FILE_COVER]),
         );
         mocks.readAllReferencedFileIdsFromReferenceTable.mockResolvedValue(
@@ -90,7 +92,7 @@ describe("file-reference-shadow", () => {
     });
 
     it("logs mismatch samples without throwing", async () => {
-        mocks.collectAllReferencedDirectusFileIds.mockResolvedValue(
+        mocks.collectLegacyScannedReferencedDirectusFileIds.mockResolvedValue(
             new Set([FILE_LEGACY]),
         );
         mocks.readAllReferencedFileIdsFromReferenceTable.mockResolvedValue(

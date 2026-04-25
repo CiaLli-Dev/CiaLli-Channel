@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
     readMany: vi.fn(),
     readOneById: vi.fn(),
     replayResourceReferenceSyncJob: vi.fn(),
+    seedFileReferencesWhenEmpty: vi.fn(),
     updateOne: vi.fn(),
     withServiceRepositoryContext: vi.fn(
         async (task: () => Promise<unknown>) => await task(),
@@ -33,6 +34,10 @@ vi.mock("@/server/repositories/directus/scope", () => ({
 
 vi.mock("@/server/repositories/files/file-lifecycle.repository", () => ({
     markFilesDetached: mocks.markFilesDetached,
+}));
+
+vi.mock("@/server/files/file-reference-shadow", () => ({
+    seedFileReferencesWhenEmpty: mocks.seedFileReferencesWhenEmpty,
 }));
 
 vi.mock("@/server/files/resource-lifecycle", () => ({
@@ -79,6 +84,7 @@ describe("file-detach-jobs", () => {
             detachedFileIds: [],
             currentFileIds: [],
         });
+        mocks.seedFileReferencesWhenEmpty.mockResolvedValue(0);
         mocks.readMany.mockResolvedValue([]);
         mocks.readOneById.mockResolvedValue(null);
         mocks.updateOne.mockResolvedValue({});
@@ -171,6 +177,7 @@ describe("file-detach-jobs", () => {
             [FILE_TWO],
             "2026-04-24T00:00:00.000Z",
         );
+        expect(mocks.seedFileReferencesWhenEmpty).toHaveBeenCalledTimes(1);
         expect(mocks.updateOne).toHaveBeenNthCalledWith(
             2,
             "app_file_detach_jobs",

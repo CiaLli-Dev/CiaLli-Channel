@@ -24,7 +24,7 @@ export {
     normalizeDirectusFileId,
 } from "@/server/api/v1/shared/file-cleanup-reference-utils";
 
-async function collectReferencedDirectusFileIdsInternal(
+async function collectReferenceTableDirectusFileIds(
     candidateFileIds: string[],
 ): Promise<Set<string>> {
     const normalizedCandidateIds = [...new Set(candidateFileIds)]
@@ -32,50 +32,14 @@ async function collectReferencedDirectusFileIdsInternal(
         .filter((candidateFileId): candidateFileId is string =>
             Boolean(candidateFileId),
         );
-    const referencedSet = await readReferencedFileIdsFromReferenceTable(
+    return await readReferencedFileIdsFromReferenceTable(
         normalizedCandidateIds,
     );
-    const unresolved = normalizedCandidateIds.filter(
-        (id) => !referencedSet.has(id),
-    );
-    if (unresolved.length === 0) {
-        return referencedSet;
-    }
-
-    const [siteSettingsMatches, structuredMatches, markdownMatches] =
-        await Promise.all([
-            readReferencedIdsInSiteSettingsFromRepository(unresolved),
-            Promise.all(
-                STRUCTURED_REFERENCE_TARGETS.map((target) =>
-                    readReferencedIdsInStructuredTargetFromRepository(
-                        target,
-                        unresolved,
-                    ),
-                ),
-            ),
-            Promise.all(
-                MARKDOWN_REFERENCE_TARGETS.map((target) =>
-                    readReferencedIdsInMarkdownTargetFromRepository(
-                        target,
-                        unresolved,
-                    ),
-                ),
-            ),
-        ]);
-
-    for (const id of siteSettingsMatches) {
-        referencedSet.add(id);
-    }
-    for (const result of [...structuredMatches, ...markdownMatches]) {
-        for (const id of result) {
-            referencedSet.add(id);
-        }
-    }
-
-    return referencedSet;
 }
 
-async function collectLegacyReferencedDirectusFileIds(): Promise<Set<string>> {
+export async function collectLegacyScannedReferencedDirectusFileIds(): Promise<
+    Set<string>
+> {
     const [siteSettingsMatches, structuredMatches, markdownMatches] =
         await Promise.all([
             readAllReferencedIdsInSiteSettingsFromRepository(),
@@ -102,27 +66,64 @@ async function collectLegacyReferencedDirectusFileIds(): Promise<Set<string>> {
     return referenced;
 }
 
+export async function collectLegacyScannedReferencedDirectusFileIdsForCandidates(
+    candidateFileIds: string[],
+): Promise<Set<string>> {
+    const normalizedCandidateIds = [...new Set(candidateFileIds)]
+        .map((candidateFileId) => normalizeDirectusFileId(candidateFileId))
+        .filter((candidateFileId): candidateFileId is string =>
+            Boolean(candidateFileId),
+        );
+    if (normalizedCandidateIds.length === 0) {
+        return new Set();
+    }
+
+    const [siteSettingsMatches, structuredMatches, markdownMatches] =
+        await Promise.all([
+            readReferencedIdsInSiteSettingsFromRepository(
+                normalizedCandidateIds,
+            ),
+            Promise.all(
+                STRUCTURED_REFERENCE_TARGETS.map((target) =>
+                    readReferencedIdsInStructuredTargetFromRepository(
+                        target,
+                        normalizedCandidateIds,
+                    ),
+                ),
+            ),
+            Promise.all(
+                MARKDOWN_REFERENCE_TARGETS.map((target) =>
+                    readReferencedIdsInMarkdownTargetFromRepository(
+                        target,
+                        normalizedCandidateIds,
+                    ),
+                ),
+            ),
+        ]);
+
+    const referenced = new Set<string>(siteSettingsMatches);
+    for (const result of [...structuredMatches, ...markdownMatches]) {
+        for (const fileId of result) {
+            referenced.add(fileId);
+        }
+    }
+    return referenced;
+}
+
 export async function collectReferencedDirectusFileIds(
     candidateFileIds: string[],
 ): Promise<Set<string>> {
     return await withServiceRepositoryContext(async () =>
-        collectReferencedDirectusFileIdsInternal(candidateFileIds),
+        collectReferenceTableDirectusFileIds(candidateFileIds),
     );
 }
 
 export async function collectAllReferencedDirectusFileIds(): Promise<
     Set<string>
 > {
-    return await withServiceRepositoryContext(async () => {
-        const [referenceTableMatches, legacyMatches] = await Promise.all([
-            readAllReferencedFileIdsFromReferenceTable(),
-            collectLegacyReferencedDirectusFileIds(),
-        ]);
-        for (const fileId of legacyMatches) {
-            referenceTableMatches.add(fileId);
-        }
-        return referenceTableMatches;
-    });
+    return await withServiceRepositoryContext(
+        async () => await readAllReferencedFileIdsFromReferenceTable(),
+    );
 }
 
 export async function collectArticleCommentCleanupCandidates(

@@ -47,6 +47,7 @@ vi.mock("@/server/repositories/directus/scope", () => ({
 }));
 
 import {
+    collectLegacyScannedReferencedDirectusFileIdsForCandidates,
     collectReferencedDirectusFileIds,
     extractDirectusAssetIdsFromMarkdown,
     extractDirectusFileIdsFromUnknown,
@@ -159,19 +160,14 @@ describe("extractDirectusFileIdsFromUnknown", () => {
 });
 
 describe("collectReferencedDirectusFileIds", () => {
-    it("会把文章正文中的合法资源 URL 计入引用", async () => {
+    it("只从 app_file_references 判定候选文件是否仍被引用", async () => {
+        mockedReadReferencedFileIdsFromReferenceTable.mockResolvedValue(
+            new Set([UUID_A]),
+        );
         mockedReadReferencedIdsInSiteSettings.mockResolvedValue(new Set());
         mockedReadReferencedIdsInStructuredTarget.mockResolvedValue(new Set());
-        mockedReadReferencedIdsInMarkdownTarget.mockImplementation(
-            async (target) => {
-                if (
-                    target.collection === "app_articles" &&
-                    target.field === "body_markdown"
-                ) {
-                    return new Set([UUID_A]);
-                }
-                return new Set();
-            },
+        mockedReadReferencedIdsInMarkdownTarget.mockResolvedValue(
+            new Set([UUID_B]),
         );
 
         const referenced = await collectReferencedDirectusFileIds([
@@ -181,9 +177,13 @@ describe("collectReferencedDirectusFileIds", () => {
 
         expect(referenced.has(UUID_A)).toBe(true);
         expect(referenced.has(UUID_B)).toBe(false);
+        expect(mockedReadReferencedIdsInMarkdownTarget).not.toHaveBeenCalled();
+        expect(
+            mockedReadReferencedFileIdsFromReferenceTable,
+        ).toHaveBeenCalledWith([UUID_A, UUID_B]);
     });
 
-    it("会把 anime 条目的 cover_file 计入结构化引用", async () => {
+    it("保留 legacy 候选扫描作为回填和校验工具", async () => {
         mockedReadReferencedIdsInSiteSettings.mockResolvedValue(new Set());
         mockedReadReferencedIdsInStructuredTarget.mockImplementation(
             async (target) => {
@@ -198,10 +198,11 @@ describe("collectReferencedDirectusFileIds", () => {
         );
         mockedReadReferencedIdsInMarkdownTarget.mockResolvedValue(new Set());
 
-        const referenced = await collectReferencedDirectusFileIds([
-            UUID_A,
-            UUID_B,
-        ]);
+        const referenced =
+            await collectLegacyScannedReferencedDirectusFileIdsForCandidates([
+                UUID_A,
+                UUID_B,
+            ]);
 
         expect(referenced.has(UUID_A)).toBe(false);
         expect(referenced.has(UUID_B)).toBe(true);

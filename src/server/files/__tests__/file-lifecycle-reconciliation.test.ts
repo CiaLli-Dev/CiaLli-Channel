@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
     markFilesTemporary: vi.fn(),
     readAllManagedFiles: vi.fn(),
     restoreQuarantinedFiles: vi.fn(),
+    seedFileReferencesWhenEmpty: vi.fn(),
 }));
 
 vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
@@ -23,6 +24,10 @@ vi.mock("@/server/repositories/files/file-lifecycle.repository", () => ({
 
 vi.mock("@/server/files/file-gc", () => ({
     readFileGcRetentionHours: vi.fn(() => 24),
+}));
+
+vi.mock("@/server/files/file-reference-shadow", () => ({
+    seedFileReferencesWhenEmpty: mocks.seedFileReferencesWhenEmpty,
 }));
 
 vi.mock("@/server/files/resource-lifecycle", () => ({
@@ -46,6 +51,7 @@ describe("file-lifecycle-reconciliation", () => {
         mocks.markFilesDetached.mockResolvedValue(undefined);
         mocks.markFilesTemporary.mockResolvedValue(undefined);
         mocks.readAllManagedFiles.mockResolvedValue([]);
+        mocks.seedFileReferencesWhenEmpty.mockResolvedValue(0);
         mocks.restoreQuarantinedFiles.mockResolvedValue({
             requestedFileIds: [],
             restoredFileIds: [],
@@ -132,6 +138,7 @@ describe("file-lifecycle-reconciliation", () => {
             "2026-04-23T00:00:00.000Z",
         );
 
+        expect(mocks.seedFileReferencesWhenEmpty).toHaveBeenCalledTimes(1);
         expect(mocks.markFilesAttached).toHaveBeenCalledWith({
             fileIds: ["file-attached"],
         });
@@ -167,5 +174,31 @@ describe("file-lifecycle-reconciliation", () => {
             fileIds: [],
         });
         expect(mocks.markFilesTemporary).toHaveBeenCalledWith([]);
+    });
+
+    it("runs migration backfill before reading the runtime reference truth", async () => {
+        mocks.seedFileReferencesWhenEmpty.mockResolvedValue(2);
+        mocks.collectAllReferencedDirectusFileIds.mockResolvedValue(
+            new Set(["file-attached"]),
+        );
+        mocks.readAllManagedFiles.mockResolvedValue([
+            {
+                id: "file-attached",
+                date_created: "2026-04-20T00:00:00.000Z",
+                date_updated: null,
+                app_lifecycle: "temporary",
+                app_detached_at: null,
+            },
+        ]);
+
+        await reconcileManagedFileLifecycle("2026-04-23T00:00:00.000Z");
+
+        expect(mocks.seedFileReferencesWhenEmpty).toHaveBeenCalledTimes(1);
+        expect(mocks.collectAllReferencedDirectusFileIds).toHaveBeenCalledTimes(
+            1,
+        );
+        expect(mocks.markFilesAttached).toHaveBeenCalledWith({
+            fileIds: ["file-attached"],
+        });
     });
 });

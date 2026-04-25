@@ -1,5 +1,5 @@
 import type { JsonObject } from "@/types/json";
-import { collectAllReferencedDirectusFileIds } from "@/server/api/v1/shared/file-cleanup";
+import { collectLegacyScannedReferencedDirectusFileIds } from "@/server/api/v1/shared/file-cleanup";
 import {
     collectReferencedAssetIdsFromUnknown,
     MARKDOWN_REFERENCE_TARGETS,
@@ -305,7 +305,7 @@ export async function runFileReferenceShadowComparison(): Promise<{
     return await withServiceRepositoryContext(async () => {
         const seeded = await seedFileReferencesWhenEmpty();
         const [legacyFileIds, tableFileIds] = await Promise.all([
-            collectAllReferencedDirectusFileIds(),
+            collectLegacyScannedReferencedDirectusFileIds(),
             readAllReferencedFileIdsFromReferenceTable(),
         ]);
         const missingInTable = diffSets(legacyFileIds, tableFileIds);

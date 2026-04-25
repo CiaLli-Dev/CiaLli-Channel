@@ -10,6 +10,7 @@ import { collectReferencedDirectusFileIds } from "@/server/api/v1/shared/file-cl
 import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup-reference-utils";
 import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 import { markFilesDetached } from "@/server/repositories/files/file-lifecycle.repository";
+import { seedFileReferencesWhenEmpty } from "@/server/files/file-reference-shadow";
 import {
     isResourceReferenceSyncJobSource,
     markResourceReferenceSyncJobSucceeded,
@@ -388,6 +389,7 @@ export async function runFileDetachJob(
                 };
             }
 
+            await seedFileReferencesWhenEmpty();
             const referencedFileIds =
                 await collectReferencedDirectusFileIds(candidateFileIds);
             const skippedReferencedFileIds = candidateFileIds.filter((fileId) =>
