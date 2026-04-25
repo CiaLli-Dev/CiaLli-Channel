@@ -4,17 +4,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createAdminAccess } from "@/__tests__/helpers/mock-access";
 import { createMockAPIContext } from "@/__tests__/helpers/mock-api-context";
 
-vi.mock("@/server/api/v1/shared", async (importOriginal) => {
-    const actual =
-        await importOriginal<typeof import("@/server/api/v1/shared")>();
-    return {
-        ...actual,
-        requireAccess: vi.fn(),
-        invalidateArticleInteractionAggregate: vi
-            .fn()
-            .mockResolvedValue(undefined),
-    };
-});
+vi.mock("@/server/api/v1/shared/auth", () => ({
+    requireAccess: vi.fn(),
+}));
+
+vi.mock("@/server/api/v1/shared/article-interaction", () => ({
+    invalidateArticleInteractionAggregate: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock("@/server/directus/client", () => ({
     createOne: vi.fn(),
@@ -58,7 +54,7 @@ vi.mock("@/server/api/v1/me/_helpers", () => ({
     syncMarkdownFilesToVisibility: vi.fn().mockResolvedValue([]),
 }));
 
-import { requireAccess } from "@/server/api/v1/shared";
+import { requireAccess } from "@/server/api/v1/shared/auth";
 import {
     deleteDirectusFile,
     readOneById,

@@ -28,11 +28,8 @@ import {
 
 import type { AuthorBundleItem } from "./shared/author-cache";
 import { getAuthorBundle } from "./shared/author-cache";
-import {
-    excludeSpecialArticleSlugFilter,
-    filterPublicStatus,
-    safeCsv,
-} from "./shared";
+import { filterPublicStatus } from "./shared/auth";
+import { excludeSpecialArticleSlugFilter, safeCsv } from "./shared/helpers";
 
 // ---------------------------------------------------------------------------
 // 过滤条件生成
@@ -405,16 +402,3 @@ export type PaginatedResult<T> = {
     limit: number;
     total: number;
 };
-
-// ---------------------------------------------------------------------------
-// 相册列表与详情（委托给 public-data-album-helpers）
-// ---------------------------------------------------------------------------
-
-export type {
-    AlbumDetail,
-    UserAlbumListOptions,
-} from "./public-data-album-helpers";
-export {
-    loadUserAlbumDetailHelper,
-    loadUserAlbumListHelper,
-} from "./public-data-album-helpers";

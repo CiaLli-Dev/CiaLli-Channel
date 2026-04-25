@@ -2,7 +2,10 @@ import {
     buildDirectusAssetUrl,
     buildPublicAssetUrl,
 } from "@/server/directus-auth";
-import type { AuthorBundleItem } from "@/server/api/v1/shared/author-cache";
+import {
+    createFallbackAuthorBundle,
+    type AuthorBundleItem,
+} from "@/server/api/v1/shared/author-cache";
 import type { AppArticle, AppDiaryImage } from "@/types/app";
 import {
     resolveArticleDisplayTitle,
@@ -26,25 +29,16 @@ export function toSafeDate(value: Date | string | null | undefined): Date {
     return parsed;
 }
 
-function toFallbackAuthor(userId: string): AuthorBundleItem {
-    const normalized = normalizeIdentity(userId);
-    const shortId = (normalized || "user").slice(0, 8);
-    const username = `user-${shortId}`;
-    return {
-        id: normalized,
-        name: username,
-        display_name: username,
-        username,
-    };
-}
-
 function readAuthorFromMap(
     authorMap: FeedAuthorMap,
     userId: string,
 ): AuthorBundleItem {
     const normalizedUserId = normalizeIdentity(userId);
     return (
-        authorMap.get(normalizedUserId) || toFallbackAuthor(normalizedUserId)
+        authorMap.get(normalizedUserId) ||
+        createFallbackAuthorBundle(normalizedUserId, {
+            includeDisplayName: true,
+        })
     );
 }
 

@@ -3,8 +3,8 @@ import type { APIContext } from "astro";
 import { fail } from "@/server/api/response";
 import { withUserRepositoryContext } from "@/server/repositories/directus/scope";
 
-import { requireAccess } from "../shared";
-import type { AppAccess } from "../shared";
+import { requireAccess } from "../shared/auth";
+import type { AppAccess } from "../shared/types";
 import { handleMeProfile } from "./profile";
 import { handleMePrivacy, handleMePermissions } from "./privacy";
 import {

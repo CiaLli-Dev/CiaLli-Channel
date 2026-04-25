@@ -9,14 +9,9 @@ import {
 import type { AppUser } from "@/types/app";
 import { DIRECTUS_ROLE_NAME } from "@/server/auth/directus-access";
 
-vi.mock("@/server/api/v1/shared", async (importOriginal) => {
-    const actual =
-        await importOriginal<typeof import("@/server/api/v1/shared")>();
-    return {
-        ...actual,
-        requireAdmin: vi.fn(),
-    };
-});
+vi.mock("@/server/api/v1/shared/auth", () => ({
+    requireAdmin: vi.fn(),
+}));
 
 vi.mock("@/server/directus/client", () => ({
     createOne: vi.fn(),
@@ -103,7 +98,7 @@ vi.mock("@/server/application/shared/search-index", () => ({
     },
 }));
 
-import { requireAdmin } from "@/server/api/v1/shared";
+import { requireAdmin } from "@/server/api/v1/shared/auth";
 import { loadDirectusAccessRegistry } from "@/server/auth/directus-registry";
 import {
     deleteDirectusUser,

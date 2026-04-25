@@ -35,13 +35,9 @@ import {
     createWithShortId,
     isUniqueConstraintError,
 } from "@/server/utils/short-id";
-import type { AppAccess } from "@/server/api/v1/shared";
-import {
-    hasOwn,
-    parseRouteId,
-    safeCsv,
-    sanitizeSlug,
-} from "@/server/api/v1/shared";
+import type { AppAccess } from "@/server/api/v1/shared/types";
+import { hasOwn, safeCsv, sanitizeSlug } from "@/server/api/v1/shared/helpers";
+import { parseRouteId } from "@/server/api/v1/shared/parse";
 import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
 import {
     bindFileOwnerToUser,

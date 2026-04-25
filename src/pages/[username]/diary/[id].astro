@@ -20,13 +20,15 @@ import { getResolvedSiteSettings } from "@/server/site-settings/service";
 import {
   loadProfileForViewerByUserId,
   loadUserDiaryDetail,
-  readAuthor,
   loadPublicProfileByUserId,
   profileToSidebarData,
 } from "@/server/api/v1/public-data";
 import type { DiaryDetail } from "@/server/api/v1/public-data";
-import { getAuthorBundle } from "@/server/api/v1/shared/author-cache";
-import { loadDiaryInteractionSnapshot } from "@/server/api/v1/shared";
+import {
+  getAuthorBundle,
+  readAuthor,
+} from "@/server/api/v1/shared/author-cache";
+import { loadDiaryInteractionSnapshot } from "@/server/api/v1/shared/diary-interaction";
 import {
   loadDiaryDetailViewData,
   resolveDiaryDetailCacheControl,

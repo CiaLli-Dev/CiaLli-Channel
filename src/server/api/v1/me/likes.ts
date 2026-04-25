@@ -7,7 +7,7 @@ import {
     handleMyDiaryLikes,
 } from "@/server/application/me/likes.service";
 
-import type { AppAccess } from "../shared";
+import type { AppAccess } from "../shared/types";
 
 export async function handleMeArticleLikes(
     context: APIContext,

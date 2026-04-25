@@ -5,7 +5,7 @@ import {
     handleMyPrivacy,
 } from "@/server/application/me/privacy.service";
 
-import type { AppAccess } from "../shared";
+import type { AppAccess } from "../shared/types";
 
 export async function handleMePrivacy(
     context: APIContext,

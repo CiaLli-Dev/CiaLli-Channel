@@ -1,9 +1,7 @@
 import type { JsonObject } from "@/types/json";
 import type { AppDiaryImage } from "@/types/app";
-import {
-    DIARY_FIELDS,
-    excludeSpecialArticleSlugFilter,
-} from "@/server/api/v1/shared";
+import { DIARY_FIELDS } from "@/server/api/v1/shared/constants";
+import { excludeSpecialArticleSlugFilter } from "@/server/api/v1/shared/helpers";
 import { getAuthorBundle } from "@/server/api/v1/shared/author-cache";
 import { cacheManager } from "@/server/cache/manager";
 import { hashParams } from "@/server/cache/key-utils";

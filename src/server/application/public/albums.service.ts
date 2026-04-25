@@ -6,18 +6,19 @@ import { hashParams } from "@/server/cache/key-utils";
 import { countItems, readMany } from "@/server/directus/client";
 import { fail, ok } from "@/server/api/response";
 import { parsePagination } from "@/server/api/utils";
+import { filterPublicStatus } from "@/server/api/v1/shared/auth";
+import { safeCsv } from "@/server/api/v1/shared/helpers";
+import { loadPublicAlbumById } from "@/server/api/v1/shared/loaders";
+import { parseRouteId } from "@/server/api/v1/shared/parse";
 import {
-    filterPublicStatus,
-    loadPublicAlbumById,
-    parseRouteId,
-    safeCsv,
-} from "@/server/api/v1/shared";
-import { getAuthorBundle } from "@/server/api/v1/shared/author-cache";
-import {
-    loadProfileByUsername,
-    normalizeAuthorHandle,
+    getAuthorBundle,
     readAuthor,
-} from "@/server/api/v1/public/_helpers";
+} from "@/server/api/v1/shared/author-cache";
+import { loadProfileByUsernameFromRepository } from "@/server/repositories/profile/profile.repository";
+
+function normalizeAuthorHandle(value: string): string {
+    return value.trim().replace(/^@+/, "").toLowerCase();
+}
 
 export async function handlePublicAlbumsRoute(
     context: APIContext,
@@ -39,7 +40,8 @@ export async function handlePublicAlbumsRoute(
 
         const andFilters: JsonObject[] = [filterPublicStatus()];
         if (authorHandle) {
-            const profile = await loadProfileByUsername(authorHandle);
+            const profile =
+                await loadProfileByUsernameFromRepository(authorHandle);
             if (!profile?.user_id) {
                 return ok({
                     items: [],

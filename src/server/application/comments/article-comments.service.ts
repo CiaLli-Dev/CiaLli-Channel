@@ -8,10 +8,8 @@ import { validateBody } from "@/server/api/validate";
 import { CreateCommentSchema, UpdateCommentSchema } from "@/server/api/schemas";
 import { fail, ok } from "@/server/api/response";
 import { createOne, readOneById, updateOne } from "@/server/directus/client";
-import {
-    invalidateArticleInteractionAggregate,
-    requireAccess,
-} from "@/server/api/v1/shared";
+import { invalidateArticleInteractionAggregate } from "@/server/api/v1/shared/article-interaction";
+import { requireAccess } from "@/server/api/v1/shared/auth";
 import {
     buildCommentUpdatePayload,
     buildDecoratedCommentTree,

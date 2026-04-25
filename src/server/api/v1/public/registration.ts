@@ -22,7 +22,8 @@ import {
     rateLimitResponse,
 } from "@/server/security/rate-limit";
 
-import { parseRouteId, toDirectusAssetQuery } from "../shared";
+import { toDirectusAssetQuery } from "../shared/helpers";
+import { parseRouteId } from "../shared/parse";
 
 function assertRegisterEnabled(context: APIContext): void {
     const enabled = Boolean(

@@ -19,6 +19,28 @@ export type AuthorBundleItem = {
     avatar_url?: string;
 };
 
+export function createFallbackAuthorBundle(
+    userId: string,
+    options: { emptySeed?: string; includeDisplayName?: boolean } = {},
+): AuthorBundleItem {
+    const normalized = String(userId || "").trim();
+    const shortId = (normalized || options.emptySeed || "user").slice(0, 8);
+    const username = `user-${shortId}`;
+    return {
+        id: normalized,
+        name: username,
+        ...(options.includeDisplayName ? { display_name: username } : {}),
+        username,
+    };
+}
+
+export function readAuthor(
+    authorMap: Map<string, AuthorBundleItem>,
+    userId: string,
+): AuthorBundleItem {
+    return authorMap.get(userId) || createFallbackAuthorBundle(userId);
+}
+
 function computeDisplayName(
     user?: Partial<AppUser> | null,
 ): string | undefined {

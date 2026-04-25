@@ -7,9 +7,8 @@ import {
 } from "@/__tests__/helpers/mock-api-context";
 import { defaultSiteSettings } from "@/config";
 
-vi.mock("@/server/api/v1/shared", () => ({
+vi.mock("@/server/api/v1/shared/auth", () => ({
     requireAdmin: vi.fn(),
-    nowIso: vi.fn(() => "2026-02-17T00:00:00.000Z"),
 }));
 
 vi.mock("@/server/site-settings/service", () => ({
@@ -69,7 +68,7 @@ vi.mock("@/server/cache/manager", () => ({
     },
 }));
 
-import { requireAdmin } from "@/server/api/v1/shared";
+import { requireAdmin } from "@/server/api/v1/shared/auth";
 import {
     getResolvedSiteSettings,
     invalidateSiteSettingsCache,

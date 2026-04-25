@@ -25,14 +25,13 @@ import {
 import {
     ADMIN_MODULE_COLLECTION,
     DIARY_FIELDS,
-    type AdminModuleKey,
-    hasOwn,
-    invalidateArticleInteractionAggregate,
-    invalidateDiaryInteractionAggregate,
-    parseBodyTextField,
-    parseRouteId,
-    requireAdmin,
-} from "@/server/api/v1/shared";
+} from "@/server/api/v1/shared/constants";
+import type { AdminModuleKey } from "@/server/api/v1/shared/types";
+import { hasOwn } from "@/server/api/v1/shared/helpers";
+import { requireAdmin } from "@/server/api/v1/shared/auth";
+import { invalidateArticleInteractionAggregate } from "@/server/api/v1/shared/article-interaction";
+import { invalidateDiaryInteractionAggregate } from "@/server/api/v1/shared/diary-interaction";
+import { parseBodyTextField, parseRouteId } from "@/server/api/v1/shared/parse";
 import { resourceLifecycle } from "@/server/files/resource-lifecycle";
 import { searchIndex } from "@/server/application/shared/search-index";
 

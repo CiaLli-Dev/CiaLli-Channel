@@ -39,14 +39,13 @@ import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
 import { bindFileOwnerToUser } from "@/server/api/v1/me/_helpers";
 import { resourceLifecycle } from "@/server/files/resource-lifecycle";
 
+import { requireAdmin } from "@/server/api/v1/shared/auth";
+import { ensureUsernameAvailable } from "@/server/api/v1/shared/loaders";
 import {
-    ensureUsernameAvailable,
     normalizeAppRole,
     normalizeRegistrationRequestStatus,
-    parseBodyTextField,
-    parseRouteId,
-    requireAdmin,
-} from "@/server/api/v1/shared";
+} from "@/server/api/v1/shared/normalize";
+import { parseBodyTextField, parseRouteId } from "@/server/api/v1/shared/parse";
 import { invalidateAuthorCache } from "@/server/api/v1/shared/author-cache";
 
 const REGISTRATION_REASON_MAX_LENGTH = 500;

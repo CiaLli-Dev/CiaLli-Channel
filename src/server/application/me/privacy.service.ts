@@ -5,7 +5,7 @@ import { parseJsonBody } from "@/server/api/utils";
 import { validateBody } from "@/server/api/validate";
 import { UpdatePrivacySchema } from "@/server/api/schemas";
 import { updateOne } from "@/server/directus/client";
-import type { AppAccess } from "@/server/api/v1/shared";
+import type { AppAccess } from "@/server/api/v1/shared/types";
 
 export async function handleMyPrivacy(
     context: APIContext,

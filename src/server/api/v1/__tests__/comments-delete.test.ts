@@ -28,9 +28,12 @@ vi.mock("@/server/markdown/render", () => ({
     renderMarkdown: vi.fn().mockResolvedValue("<p>preview</p>"),
 }));
 
-vi.mock("@/server/api/v1/shared", () => ({
-    buildCommentTree: vi.fn(),
+vi.mock("@/server/api/v1/shared/auth", () => ({
     requireAccess: vi.fn(),
+}));
+
+vi.mock("@/server/api/v1/shared/comments", () => ({
+    buildCommentTree: vi.fn(),
 }));
 
 vi.mock("@/server/api/v1/shared/author-cache", () => ({

@@ -10,7 +10,8 @@ import {
     withUserRepositoryContext,
 } from "@/server/repositories/directus/scope";
 
-import { parseRouteId, requireAccess } from "./shared";
+import { requireAccess } from "./shared/auth";
+import { parseRouteId } from "./shared/parse";
 import { handleCommentPreview } from "./comments-shared";
 
 export async function handleArticleComments(

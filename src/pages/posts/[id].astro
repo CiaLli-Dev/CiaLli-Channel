@@ -21,21 +21,20 @@ import {
   buildDirectusAssetUrl,
   buildPublicAssetUrl,
 } from "@/server/directus-auth";
+import { isSpecialArticleSlug, safeCsv } from "@/server/api/v1/shared/helpers";
+import { loadArticleInteractionSnapshot } from "@/server/api/v1/shared/article-interaction";
 import {
-  loadArticleInteractionSnapshot,
-  isSpecialArticleSlug,
   loadArticleByShortIdLoose,
   loadArticleBySlugLoose,
   loadPublicArticleByShortId,
   loadPublicArticleBySlug,
-  safeCsv,
-} from "@/server/api/v1/shared";
+} from "@/server/api/v1/shared/loaders";
 import { isShortId } from "@/server/utils/short-id";
-import { getAuthorBundle } from "@/server/api/v1/shared/author-cache";
 import {
-  loadPublicProfileByUserId,
+  getAuthorBundle,
   readAuthor,
-} from "@/server/api/v1/public-data";
+} from "@/server/api/v1/shared/author-cache";
+import { loadPublicProfileByUserId } from "@/server/api/v1/public-data";
 import {
   loadProfileForViewerByUserId,
   profileToSidebarData,

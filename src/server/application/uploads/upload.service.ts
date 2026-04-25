@@ -10,7 +10,7 @@ import {
 } from "@/server/security/file-validation";
 import { sanitizeImage } from "@/server/security/image-sanitize";
 import { uploadManagedFile } from "@/server/repositories/uploads/upload.repository";
-import type { AppAccess } from "@/server/api/v1/shared";
+import type { AppAccess } from "@/server/api/v1/shared/types";
 
 const VALID_PURPOSES = new Set<string>(Object.keys(UPLOAD_LIMITS));
 

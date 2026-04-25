@@ -15,15 +15,17 @@ import {
     readOneById,
     updateOne,
 } from "@/server/directus/client";
-import type { AppAccess } from "@/server/api/v1/shared";
+import { DIARY_FIELDS } from "@/server/api/v1/shared/constants";
 import {
-    DIARY_FIELDS,
     invalidateArticleInteractionAggregate,
     invalidateArticleInteractionViewerState,
+} from "@/server/api/v1/shared/article-interaction";
+import {
     invalidateDiaryInteractionAggregate,
     invalidateDiaryInteractionViewerState,
-    parseRouteId,
-} from "@/server/api/v1/shared";
+} from "@/server/api/v1/shared/diary-interaction";
+import { parseRouteId } from "@/server/api/v1/shared/parse";
+import type { AppAccess } from "@/server/api/v1/shared/types";
 
 const ArticleLikeSchema = z.object({
     article_id: z.string().min(1, "缺少文章 ID"),

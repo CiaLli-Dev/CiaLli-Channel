@@ -1,7 +1,7 @@
 import type { APIContext } from "astro";
 import { handleMyArticles } from "@/server/application/me/articles.service";
 
-import type { AppAccess } from "../shared";
+import type { AppAccess } from "../shared/types";
 
 export async function handleMeArticles(
     context: APIContext,

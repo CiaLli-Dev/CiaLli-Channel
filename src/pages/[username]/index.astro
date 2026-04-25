@@ -20,11 +20,11 @@ import type {
   ContentLoadResult,
   UserHomeData,
 } from "@/server/api/v1/public-data";
+import { isSpecialArticleSlug } from "@/server/api/v1/shared/helpers";
 import {
-  isSpecialArticleSlug,
   loadPublicArticleByShortId,
   loadPublicArticleBySlug,
-} from "@/server/api/v1/shared";
+} from "@/server/api/v1/shared/loaders";
 import { runWithDirectusPublicAccess } from "@/server/directus/client";
 import { getResolvedSiteSettings } from "@/server/site-settings/service";
 import { isShortId } from "@/server/utils/short-id";

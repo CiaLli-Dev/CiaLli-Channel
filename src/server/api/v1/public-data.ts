@@ -11,35 +11,37 @@ import type {
     BangumiCollectionStatus,
 } from "@/server/bangumi/types";
 import {
+    listUserAlbumsFromRepository,
     listUserDiariesFromRepository,
+    loadAlbumPhotosForAlbumFromRepository,
     loadDiaryImagesForDiaryFromRepository,
     loadDiaryImagesForIdsFromRepository,
+    loadOwnedAlbumByShortIdFromRepository,
     loadOwnedDiaryByShortIdFromRepository,
     loadProfileViewByUsernameFromRepository,
 } from "@/server/repositories/public/public-data.repository";
+import { loadProfileByUsernameFromRepository } from "@/server/repositories/profile/profile.repository";
 import { isShortId } from "@/server/utils/short-id";
 
 import type { AuthorBundleItem } from "./shared/author-cache";
-import { getAuthorBundle } from "./shared/author-cache";
-import { loadPublicDiaryByShortId } from "./shared";
+import { getAuthorBundle, readAuthor } from "./shared/author-cache";
 import {
+    loadPublicAlbumByShortId,
+    loadPublicDiaryByShortId,
+} from "./shared/loaders";
+import {
+    albumFilters,
     buildOwnerData,
     diaryFilters,
     fetchDiaryCommentCountMap,
     fetchDiaryLikeCountMap,
     loadBangumiListForProfile,
     loadHomeDataInParallel,
-    loadUserAlbumDetailHelper,
-    loadUserAlbumListHelper,
     parsePaginationParams,
     safeCsv,
     type ContentLoadResult,
     type ViewerOptions,
 } from "./public-data-helpers";
-
-// ---------------------------------------------------------------------------
-// Re-exports：保持向后兼容的导出接口
-// ---------------------------------------------------------------------------
 
 export {
     invalidateOfficialSidebarCache,
@@ -50,7 +52,6 @@ export {
     profileToSidebarData,
 } from "./public-data-helpers";
 
-// Re-export types for backward compatibility
 export type { ContentLoadResult, ViewerOptions } from "./public-data-helpers";
 
 type PublicProfile = Omit<AppProfileView, "bangumi_access_token_encrypted">;
@@ -63,23 +64,6 @@ async function loadProfileByUsername(
     username: string,
 ): Promise<AppProfileView | null> {
     return await loadProfileViewByUsernameFromRepository(username);
-}
-
-function toAuthorFallback(userId: string): AuthorBundleItem {
-    const normalized = String(userId || "").trim();
-    const shortId = (normalized || "user").slice(0, 8);
-    return {
-        id: normalized,
-        name: `user-${shortId}`,
-        username: `user-${shortId}`,
-    };
-}
-
-export function readAuthor(
-    authorMap: Map<string, AuthorBundleItem>,
-    userId: string,
-): AuthorBundleItem {
-    return authorMap.get(userId) || toAuthorFallback(userId);
 }
 
 /**
@@ -382,7 +366,39 @@ export async function loadUserAlbumList(
         PaginatedResult<AppAlbum & { tags: string[]; author: AuthorBundleItem }>
     >
 > {
-    return loadUserAlbumListHelper(username, options, readAuthor);
+    const profile = await loadProfileByUsernameFromRepository(username);
+    if (!profile) {
+        return { status: "not_found" };
+    }
+    if (!profile.profile_public) {
+        return { status: "permission_denied", reason: "profile_not_public" };
+    }
+    if (!profile.show_albums_on_profile) {
+        return { status: "permission_denied", reason: "albums_not_public" };
+    }
+
+    const { page, limit, offset } = parsePaginationParams(
+        options.page,
+        options.limit,
+        100,
+    );
+    const [{ rows, total }, authorMap] = await Promise.all([
+        listUserAlbumsFromRepository({
+            userId: profile.user_id,
+            filters: albumFilters(false),
+            limit,
+            offset,
+        }),
+        getAuthorBundle([profile.user_id]),
+    ]);
+
+    const items = rows.map((row) => ({
+        ...row,
+        tags: safeCsv(row.tags),
+        author: readAuthor(authorMap, row.author_id),
+    }));
+
+    return { status: "ok", data: { items, page, limit, total } };
 }
 
 export type AlbumDetail = AppAlbum & {
@@ -396,5 +412,45 @@ export async function loadUserAlbumDetail(
     albumId: string,
     options?: ViewerOptions,
 ): Promise<ContentLoadResult<AlbumDetail>> {
-    return loadUserAlbumDetailHelper(username, albumId, options, readAuthor);
+    const profile = await loadProfileByUsernameFromRepository(username);
+    if (!profile) {
+        return { status: "not_found" };
+    }
+    const isOwnerViewing =
+        Boolean(options?.viewerId) && options?.viewerId === profile.user_id;
+    if (!isOwnerViewing && !profile.profile_public) {
+        return { status: "permission_denied", reason: "profile_not_public" };
+    }
+    if (!isOwnerViewing && !profile.show_albums_on_profile) {
+        return { status: "permission_denied", reason: "albums_not_public" };
+    }
+
+    if (!isShortId(albumId)) {
+        return { status: "not_found" };
+    }
+
+    const album = isOwnerViewing
+        ? await loadOwnedAlbumByShortIdFromRepository(albumId)
+        : await loadPublicAlbumByShortId(albumId);
+    if (!album || album.author_id !== profile.user_id) {
+        return { status: "not_found" };
+    }
+
+    const [photos, authorMap] = await Promise.all([
+        loadAlbumPhotosForAlbumFromRepository(album.id, isOwnerViewing),
+        getAuthorBundle([profile.user_id]),
+    ]);
+
+    return {
+        status: "ok",
+        data: {
+            ...album,
+            tags: safeCsv(album.tags),
+            author: readAuthor(authorMap, album.author_id),
+            photos: photos.map((photo) => ({
+                ...photo,
+                tags: safeCsv(photo.tags),
+            })),
+        },
+    };
 }

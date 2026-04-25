@@ -1,17 +1,8 @@
+import { createFallbackAuthorBundle } from "./author-cache";
 import type { AuthorBundleItem } from "./author-cache";
 import type { CommentRecord, CommentTreeNode } from "./types";
 
 const COMMENT_BODY_BASE64_PREFIX = "__DC_UTF8_B64__:";
-
-function createFallbackAuthor(userId: string): AuthorBundleItem {
-    const normalizedId = String(userId || "").trim();
-    const suffix = (normalizedId || "unknown").slice(0, 8);
-    return {
-        id: normalizedId,
-        name: `user-${suffix}`,
-        username: `user-${suffix}`,
-    };
-}
 
 function decodeLegacyCommentBody(input: string | null | undefined): string {
     const text = String(input || "");
@@ -53,7 +44,9 @@ export function buildCommentTree(
             author_id: comment.author_id,
             author:
                 authorMap.get(comment.author_id) ||
-                createFallbackAuthor(comment.author_id),
+                createFallbackAuthorBundle(comment.author_id, {
+                    emptySeed: "unknown",
+                }),
             like_count: 0,
             liked_by_viewer: false,
             replies: [],

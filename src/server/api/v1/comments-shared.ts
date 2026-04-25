@@ -23,8 +23,9 @@ import {
     readViewerCommentLikes,
 } from "@/server/repositories/comments/comments.repository";
 
-import { buildCommentTree, requireAccess } from "./shared";
-import type { CommentRecord, CommentTreeNode } from "./shared";
+import { requireAccess } from "./shared/auth";
+import { buildCommentTree } from "./shared/comments";
+import type { CommentRecord, CommentTreeNode } from "./shared/types";
 import { getAuthorBundle } from "./shared/author-cache";
 
 export type { CommentRecord, CommentTreeNode };

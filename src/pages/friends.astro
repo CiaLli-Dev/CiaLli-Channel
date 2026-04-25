@@ -5,8 +5,8 @@ import { renderMarkdown } from "@/server/markdown/render";
 import {
   loadPublicArticleBySlug,
   loadPublicFriends,
-  safeCsv,
-} from "@/server/api/v1/shared";
+} from "@/server/api/v1/shared/loaders";
+import { safeCsv } from "@/server/api/v1/shared/helpers";
 import { buildPublicAssetUrl } from "@/server/directus-auth";
 import { runWithDirectusServiceAccess } from "@/server/directus/client";
 // import Icon from "../components/misc/Icon.astro";

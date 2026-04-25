@@ -15,7 +15,7 @@ vi.mock("@/server/application/uploads/upload.service", () => ({
     ),
 }));
 
-vi.mock("@/server/api/v1/shared", () => ({
+vi.mock("@/server/api/v1/shared/auth", () => ({
     requireAccess: mocks.requireAccess,
 }));
 

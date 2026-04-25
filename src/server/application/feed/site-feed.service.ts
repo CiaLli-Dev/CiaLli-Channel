@@ -1,9 +1,7 @@
 import type { JsonObject } from "@/types/json";
 import { getAuthorBundle } from "@/server/api/v1/shared/author-cache";
-import {
-    excludeSpecialArticleSlugFilter,
-    filterPublicStatus,
-} from "@/server/api/v1/shared";
+import { filterPublicStatus } from "@/server/api/v1/shared/auth";
+import { excludeSpecialArticleSlugFilter } from "@/server/api/v1/shared/helpers";
 import {
     readMany,
     runWithDirectusServiceAccess,

@@ -3,7 +3,7 @@ import type { APIContext } from "astro";
 import { parseJsonBody } from "@/server/api/utils";
 import { validateBody } from "@/server/api/validate";
 import { fail, ok } from "@/server/api/response";
-import { requireAdmin } from "@/server/api/v1/shared";
+import { requireAdmin } from "@/server/api/v1/shared/auth";
 import { AdminAiSettingsUpdateSchema } from "@/server/api/schemas";
 import { invalidateSiteSettingsCache } from "@/server/site-settings/service";
 import {

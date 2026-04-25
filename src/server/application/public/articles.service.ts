@@ -3,16 +3,21 @@ import type { APIContext } from "astro";
 import type { JsonObject } from "@/types/json";
 import { fail, ok } from "@/server/api/response";
 import { parsePagination } from "@/server/api/utils";
+import { filterPublicStatus } from "@/server/api/v1/shared/auth";
 import {
     excludeSpecialArticleSlugFilter,
-    filterPublicStatus,
     isSpecialArticleSlug,
+    safeCsv,
+} from "@/server/api/v1/shared/helpers";
+import {
     loadPublicArticleById,
     loadPublicArticleBySlug,
-    parseRouteId,
-    safeCsv,
-} from "@/server/api/v1/shared";
-import { getAuthorBundle } from "@/server/api/v1/shared/author-cache";
+} from "@/server/api/v1/shared/loaders";
+import { parseRouteId } from "@/server/api/v1/shared/parse";
+import {
+    getAuthorBundle,
+    readAuthor,
+} from "@/server/api/v1/shared/author-cache";
 import { cacheManager } from "@/server/cache/manager";
 import { hashParams } from "@/server/cache/key-utils";
 import {
@@ -26,14 +31,9 @@ import {
     buildArticleFeedEntry,
     normalizeIdentity,
 } from "@/server/application/feed/feed-entry-helpers";
+import { loadProfileByUsernameFromRepository } from "@/server/repositories/profile/profile.repository";
 import { buildPostUrl } from "@/utils/content-post-helpers";
 import type { DirectusPostEntry } from "@/utils/content-utils";
-
-import {
-    loadProfileByUsername,
-    normalizeAuthorHandle,
-    readAuthor,
-} from "@/server/api/v1/public/_helpers";
 
 const DEFAULT_PUBLIC_ARTICLE_LIST_LIMIT = 20;
 const MAX_PUBLIC_ARTICLE_LIST_LIMIT = 20;
@@ -94,6 +94,10 @@ function normalizeListQueryValue(
     return normalized || null;
 }
 
+function normalizeAuthorHandle(value: string): string {
+    return value.trim().replace(/^@+/, "").toLowerCase();
+}
+
 function buildPublicArticleCacheKey(input: PublicArticleListInput): string {
     return hashParams({
         page: input.page,
@@ -132,7 +136,9 @@ async function buildArticleListFilters(input: {
     const andFilters: JsonObject[] = buildPublicArticleBaseFilters();
 
     if (input.authorHandle) {
-        const profile = await loadProfileByUsername(input.authorHandle);
+        const profile = await loadProfileByUsernameFromRepository(
+            input.authorHandle,
+        );
         if (!profile?.user_id) {
             return {
                 filters: andFilters,

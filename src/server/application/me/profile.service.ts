@@ -15,8 +15,9 @@ import {
     UpdateProfileSchema,
     type UpdateProfileInput,
 } from "@/server/api/schemas";
-import type { AppAccess } from "@/server/api/v1/shared";
-import { hasOwn, parseProfileBioField } from "@/server/api/v1/shared";
+import { hasOwn } from "@/server/api/v1/shared/helpers";
+import { parseProfileBioField } from "@/server/api/v1/shared/parse";
+import type { AppAccess } from "@/server/api/v1/shared/types";
 import { invalidateAuthorCache } from "@/server/api/v1/shared/author-cache";
 import { invalidateOfficialSidebarCache } from "@/server/api/v1/public-data";
 import {

@@ -7,7 +7,8 @@ import { withServiceRepositoryContext } from "@/server/repositories/directus/sco
 import { readManagedFileVisibility } from "@/server/repositories/files/file-metadata.repository";
 import { isUuid } from "@/server/utils/short-id";
 
-import { parseRouteId, toDirectusAssetQuery } from "../shared";
+import { toDirectusAssetQuery } from "../shared/helpers";
+import { parseRouteId } from "../shared/parse";
 
 function buildResponseHeaders(upstreamResponse: Response): Headers {
     const headers = new Headers();

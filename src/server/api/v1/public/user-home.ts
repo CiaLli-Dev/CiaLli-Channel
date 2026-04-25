@@ -18,7 +18,7 @@ import {
     loadUserHomeData,
     type ContentLoadResult,
 } from "../public-data";
-import { parseRouteId } from "../shared";
+import { parseRouteId } from "../shared/parse";
 
 type ModuleKey = "home" | "bangumi" | "diary" | "albums";
 const USER_HOME_PUBLIC_EDGE_CACHE_CONTROL =

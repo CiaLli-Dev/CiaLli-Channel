@@ -43,10 +43,8 @@ describe("server/redis/namespace", () => {
     it("生产环境固定使用 prod namespace", async () => {
         process.env.NODE_ENV = "production";
 
-        const { getRedisNamespace, getRedisNamespaceOrThrow } =
-            await import("@/server/redis/namespace");
+        const { getRedisNamespace } = await import("@/server/redis/namespace");
 
         expect(getRedisNamespace()).toBe("prod");
-        expect(getRedisNamespaceOrThrow()).toBe("prod");
     });
 });

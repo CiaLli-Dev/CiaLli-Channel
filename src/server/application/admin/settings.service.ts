@@ -36,7 +36,7 @@ import {
 } from "@/server/site-settings/service";
 import { splitSiteSettingsForStorage } from "@/server/site-settings/storage-sections";
 
-import { requireAdmin } from "@/server/api/v1/shared";
+import { requireAdmin } from "@/server/api/v1/shared/auth";
 import { extractDirectusFileIdsFromUnknown } from "@/server/api/v1/shared/file-cleanup";
 import { syncMarkdownFileLifecycle } from "@/server/api/v1/me/_helpers";
 import { resourceLifecycle } from "@/server/files/resource-lifecycle";

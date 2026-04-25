@@ -8,11 +8,9 @@ import { validateBody } from "@/server/api/validate";
 import { CreateCommentSchema, UpdateCommentSchema } from "@/server/api/schemas";
 import { fail, ok } from "@/server/api/response";
 import { readOneById, updateOne } from "@/server/directus/client";
-import {
-    DIARY_FIELDS,
-    invalidateDiaryInteractionAggregate,
-    requireAccess,
-} from "@/server/api/v1/shared";
+import { requireAccess } from "@/server/api/v1/shared/auth";
+import { DIARY_FIELDS } from "@/server/api/v1/shared/constants";
+import { invalidateDiaryInteractionAggregate } from "@/server/api/v1/shared/diary-interaction";
 import {
     buildCommentUpdatePayload,
     buildDecoratedCommentTree,

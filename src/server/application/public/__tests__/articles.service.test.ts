@@ -38,13 +38,11 @@ vi.mock("@/server/directus/client", () => ({
 
 vi.mock("@/server/api/v1/shared/author-cache", () => ({
     getAuthorBundle: getAuthorBundleMock,
+    readAuthor: readAuthorMock,
 }));
 
-vi.mock("@/server/api/v1/public/_helpers", () => ({
-    loadProfileByUsername: loadProfileByUsernameMock,
-    normalizeAuthorHandle: (value: string) =>
-        value.trim().replace(/^@+/, "").toLowerCase(),
-    readAuthor: readAuthorMock,
+vi.mock("@/server/repositories/profile/profile.repository", () => ({
+    loadProfileByUsernameFromRepository: loadProfileByUsernameMock,
 }));
 
 import {

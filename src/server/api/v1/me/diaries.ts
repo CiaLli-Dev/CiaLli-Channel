@@ -4,7 +4,8 @@ import {
     handleMyDiaryImages,
 } from "@/server/application/me/diaries.service";
 
-import type { AppAccess } from "../shared";
+import type { AppAccess } from "../shared/types";
+
 export async function handleMeDiaryImages(
     context: APIContext,
     access: AppAccess,

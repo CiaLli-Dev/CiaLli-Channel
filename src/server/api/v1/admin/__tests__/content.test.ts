@@ -6,14 +6,9 @@ import {
     parseResponseJson,
 } from "@/__tests__/helpers/mock-api-context";
 
-vi.mock("@/server/api/v1/shared", async (importOriginal) => {
-    const actual =
-        await importOriginal<typeof import("@/server/api/v1/shared")>();
-    return {
-        ...actual,
-        requireAdmin: vi.fn(),
-    };
-});
+vi.mock("@/server/api/v1/shared/auth", () => ({
+    requireAdmin: vi.fn(),
+}));
 
 vi.mock("@/server/directus/client", () => ({
     deleteOne: vi.fn(),
@@ -98,7 +93,7 @@ vi.mock("@/server/application/shared/search-index", () => ({
     },
 }));
 
-import { requireAdmin } from "@/server/api/v1/shared";
+import { requireAdmin } from "@/server/api/v1/shared/auth";
 import {
     deleteOne,
     readMany,

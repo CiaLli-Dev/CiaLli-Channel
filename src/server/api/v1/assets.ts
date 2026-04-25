@@ -8,7 +8,9 @@ import {
     withUserRepositoryContext,
 } from "@/server/repositories/directus/scope";
 
-import { parseRouteId, toDirectusAssetQuery, requireAccess } from "./shared";
+import { requireAccess } from "./shared/auth";
+import { toDirectusAssetQuery } from "./shared/helpers";
+import { parseRouteId } from "./shared/parse";
 
 function buildResponseHeaders(upstreamResponse: Response): Headers {
     const headers = new Headers();

@@ -54,15 +54,15 @@ import {
 import { invalidateOfficialSidebarCache } from "@/server/api/v1/public-data";
 import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
 
+import { requireAdmin } from "@/server/api/v1/shared/auth";
+import { DEFAULT_LIST_LIMIT } from "@/server/api/v1/shared/constants";
+import { hasOwn } from "@/server/api/v1/shared/helpers";
+import { ensureUsernameAvailable } from "@/server/api/v1/shared/loaders";
+import { normalizeAppRole } from "@/server/api/v1/shared/normalize";
 import {
-    DEFAULT_LIST_LIMIT,
-    ensureUsernameAvailable,
-    hasOwn,
-    normalizeAppRole,
-    parseRouteId,
     parseProfileBioField,
-    requireAdmin,
-} from "@/server/api/v1/shared";
+    parseRouteId,
+} from "@/server/api/v1/shared/parse";
 import { invalidateAuthorCache } from "@/server/api/v1/shared/author-cache";
 import {
     bindFileOwnerToUser,

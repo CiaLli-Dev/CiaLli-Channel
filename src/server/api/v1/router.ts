@@ -22,7 +22,11 @@ import { handleAuthenticatedAsset } from "./assets";
 import { handleArticleComments, handleDiaryComments } from "./comments";
 import { handleMe } from "./me";
 import { handlePublic, handleUserHome } from "./public";
-import { assertSameOrigin, isWriteMethod, parseSegments } from "./shared";
+import {
+    assertSameOrigin,
+    isWriteMethod,
+    parseSegments,
+} from "./shared/routing";
 import { handleUploads } from "./uploads";
 
 /** 根据路由前缀和方法映射限流分类 */

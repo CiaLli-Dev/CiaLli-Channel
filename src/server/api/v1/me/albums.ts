@@ -5,7 +5,7 @@ import {
     handleMyAlbums,
 } from "@/server/application/me/albums.service";
 
-import type { AppAccess } from "../shared";
+import type { AppAccess } from "../shared/types";
 
 export async function handleMeAlbumPhotos(
     context: APIContext,

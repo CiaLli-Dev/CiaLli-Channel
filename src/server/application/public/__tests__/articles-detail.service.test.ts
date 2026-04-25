@@ -33,15 +33,12 @@ vi.mock("@/server/directus/client", () => ({
 
 vi.mock("@/server/api/v1/shared/author-cache", () => ({
     getAuthorBundle: getAuthorBundleMock,
-}));
-
-vi.mock("@/server/api/v1/public/_helpers", () => ({
     readAuthor: readAuthorMock,
 }));
 
-vi.mock("@/server/api/v1/shared", async (importOriginal) => {
+vi.mock("@/server/api/v1/shared/loaders", async (importOriginal) => {
     const actual =
-        await importOriginal<typeof import("@/server/api/v1/shared")>();
+        await importOriginal<typeof import("@/server/api/v1/shared/loaders")>();
     return {
         ...actual,
         loadPublicArticleById: loadPublicArticleByIdMock,

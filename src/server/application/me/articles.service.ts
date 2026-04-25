@@ -29,14 +29,14 @@ import {
 } from "@/server/directus/client";
 import { canTransitionArticleStatus } from "@/server/domain/article/article.rules";
 import { createWithShortId } from "@/server/utils/short-id";
-import type { AppAccess } from "@/server/api/v1/shared";
+import type { AppAccess } from "@/server/api/v1/shared/types";
+import { ARTICLE_FIELDS } from "@/server/api/v1/shared/constants";
 import {
-    ARTICLE_FIELDS,
     hasOwn,
-    parseRouteId,
     safeCsv,
     toSpecialArticleSlug,
-} from "@/server/api/v1/shared";
+} from "@/server/api/v1/shared/helpers";
+import { parseRouteId } from "@/server/api/v1/shared/parse";
 import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
 import {
     bindFileOwnerToUser,

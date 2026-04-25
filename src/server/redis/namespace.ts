@@ -42,10 +42,6 @@ export function getRedisNamespace(): string {
     return getRedisNamespaceResolution().namespace;
 }
 
-export function getRedisNamespaceOrThrow(): string {
-    return getRedisNamespaceResolution().namespace;
-}
-
 export function prefixRedisKey(rawKey: string): string {
     const normalizedRawKey = String(rawKey || "")
         .trim()
@@ -54,5 +50,5 @@ export function prefixRedisKey(rawKey: string): string {
         throw internal("Redis 键不能为空");
     }
 
-    return `${REDIS_KEY_ROOT}:${getRedisNamespaceOrThrow()}:${normalizedRawKey}`;
+    return `${REDIS_KEY_ROOT}:${getRedisNamespace()}:${normalizedRawKey}`;
 }

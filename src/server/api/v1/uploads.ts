@@ -6,7 +6,7 @@ import {
 } from "@/server/application/uploads/upload.service";
 import { fail, ok } from "@/server/api/response";
 
-import { requireAccess } from "./shared";
+import { requireAccess } from "./shared/auth";
 
 export async function handleUploads(context: APIContext): Promise<Response> {
     if (context.request.method !== "POST") {

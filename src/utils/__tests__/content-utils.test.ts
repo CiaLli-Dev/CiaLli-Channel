@@ -1,10 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { mockArticle } from "@/__tests__/helpers/mock-data";
-import {
-    excludeSpecialArticleSlugFilter,
-    filterPublicStatus,
-} from "@/server/api/v1/shared";
+import { filterPublicStatus } from "@/server/api/v1/shared/auth";
+import { excludeSpecialArticleSlugFilter } from "@/server/api/v1/shared/helpers";
 
 const { readManyMock } = vi.hoisted(() => ({
     readManyMock: vi.fn(),

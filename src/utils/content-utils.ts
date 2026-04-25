@@ -1,9 +1,7 @@
 import type { AppArticle } from "@/types/app";
 import type { JsonObject } from "@/types/json";
-import {
-    excludeSpecialArticleSlugFilter,
-    filterPublicStatus,
-} from "@/server/api/v1/shared";
+import { filterPublicStatus } from "@/server/api/v1/shared/auth";
+import { excludeSpecialArticleSlugFilter } from "@/server/api/v1/shared/helpers";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 

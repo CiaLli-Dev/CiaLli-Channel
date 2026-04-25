@@ -4,7 +4,8 @@ import type { JsonObject } from "@/types/json";
 import { countItems, readMany } from "@/server/directus/client";
 import { fail, ok } from "@/server/api/response";
 import { parsePagination } from "@/server/api/utils";
-import { FRIEND_FIELDS, safeCsv } from "@/server/api/v1/shared";
+import { FRIEND_FIELDS } from "@/server/api/v1/shared/constants";
+import { safeCsv } from "@/server/api/v1/shared/helpers";
 
 export async function handlePublicFriendsRoute(
     context: APIContext,
