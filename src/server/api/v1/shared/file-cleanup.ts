@@ -113,9 +113,15 @@ export async function collectLegacyScannedReferencedDirectusFileIdsForCandidates
 export async function collectReferencedDirectusFileIds(
     candidateFileIds: string[],
 ): Promise<Set<string>> {
-    return await withServiceRepositoryContext(async () =>
-        collectReferenceTableDirectusFileIds(candidateFileIds),
-    );
+    return await withServiceRepositoryContext(async () => {
+        const [referenceTableIds, legacyScannedIds] = await Promise.all([
+            collectReferenceTableDirectusFileIds(candidateFileIds),
+            collectLegacyScannedReferencedDirectusFileIdsForCandidates(
+                candidateFileIds,
+            ),
+        ]);
+        return new Set([...referenceTableIds, ...legacyScannedIds]);
+    });
 }
 
 export async function collectAllReferencedDirectusFileIds(): Promise<

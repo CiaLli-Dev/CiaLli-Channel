@@ -109,6 +109,7 @@ import {
 } from "@/server/directus/client";
 import { handleAdminUsers } from "@/server/api/v1/admin/users";
 import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
+import { syncManagedFileBinding } from "@/server/api/v1/me/_helpers";
 import { resourceLifecycle } from "@/server/files/resource-lifecycle";
 import {
     clearBlockingUserReferences,
@@ -131,6 +132,7 @@ const mockedNullifyReferencedFileOwnership = vi.mocked(
     nullifyReferencedFileOwnership,
 );
 const mockedNormalizeDirectusFileId = vi.mocked(normalizeDirectusFileId);
+const mockedSyncManagedFileBinding = vi.mocked(syncManagedFileBinding);
 const mockedReleaseOwnerResources = vi.mocked(
     resourceLifecycle.releaseOwnerResources,
 );
@@ -533,9 +535,17 @@ describe("DELETE /admin/users/:id", () => {
             ownerCollection: "app_user_profiles",
             ownerId: "profile-2",
         });
-        expect(mockedReleaseOwnerResources).toHaveBeenCalledWith({
-            ownerCollection: "app_user_registration_requests",
-            ownerId: "request-2",
+        expect(mockedSyncManagedFileBinding).toHaveBeenCalledWith({
+            previousFileValue: "file-referenced",
+            nextFileValue: null,
+            userId: "user-2",
+            visibility: "private",
+            reference: {
+                ownerCollection: "app_user_registration_requests",
+                ownerId: "request-2",
+                ownerField: "avatar_file",
+                referenceKind: "structured_field",
+            },
         });
         expect(mockedReleaseOwnerResources).toHaveBeenCalledWith({
             ownerCollection: "directus_users",

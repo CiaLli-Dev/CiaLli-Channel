@@ -212,7 +212,7 @@ describe("public-registration.service", () => {
         );
     });
 
-    it("cancels registration without deleting the bound avatar file inline", async () => {
+    it("cancels registration by clearing the avatar field reference", async () => {
         await cancelPublicRegistration({
             requestId: "request-1",
             cookieRequestId: "request-1",
@@ -222,10 +222,22 @@ describe("public-registration.service", () => {
             requestId: "request-1",
             reviewedAt: expect.any(String),
         });
-        expect(mocks.releaseOwnerResources).toHaveBeenCalledWith({
-            ownerCollection: "app_user_registration_requests",
-            ownerId: "request-1",
-        });
+        expect(mocks.releaseOwnerResources).not.toHaveBeenCalled();
+        expect(mocks.syncOwnerReferences).toHaveBeenCalledWith(
+            expect.objectContaining({
+                ownerCollection: "app_user_registration_requests",
+                ownerId: "request-1",
+                ownerUserId: "pending-user-1",
+                visibility: "private",
+                references: [
+                    {
+                        ownerField: "avatar_file",
+                        referenceKind: "structured_field",
+                        fileIds: [],
+                    },
+                ],
+            }),
+        );
         expect(mocks.deleteRegistrationAvatarFile).not.toHaveBeenCalled();
     });
 

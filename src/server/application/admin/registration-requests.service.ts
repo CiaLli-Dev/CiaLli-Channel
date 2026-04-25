@@ -36,8 +36,10 @@ import { withUserRepositoryContext } from "@/server/repositories/directus/scope"
 import { parseJsonBody, parsePagination } from "@/server/api/utils";
 import { invalidateOfficialSidebarCache } from "@/server/api/v1/public-data";
 import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
-import { bindFileOwnerToUser } from "@/server/api/v1/me/_helpers";
-import { resourceLifecycle } from "@/server/files/resource-lifecycle";
+import {
+    bindFileOwnerToUser,
+    syncManagedFileBinding,
+} from "@/server/api/v1/me/_helpers";
 
 import { requireAdmin } from "@/server/api/v1/shared/auth";
 import { ensureUsernameAvailable } from "@/server/api/v1/shared/loaders";
@@ -404,9 +406,17 @@ async function handleRegistrationRejectOrCancel(
             reject_reason: action === "reject" ? reason : null,
         },
     );
-    await resourceLifecycle.releaseOwnerResources({
-        ownerCollection: "app_user_registration_requests",
-        ownerId: target.id,
+    await syncManagedFileBinding({
+        previousFileValue: target.avatar_file,
+        nextFileValue: null,
+        userId: pendingUserId || null,
+        visibility: "private",
+        reference: {
+            ownerCollection: "app_user_registration_requests",
+            ownerId: target.id,
+            ownerField: "avatar_file",
+            referenceKind: "structured_field",
+        },
     });
     return ok({ item: updated });
 }

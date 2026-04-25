@@ -20,7 +20,6 @@ import {
     normalizeRegistrationRequestId,
 } from "@/server/auth/registration-request-cookie";
 import { syncManagedFileBinding } from "@/server/api/v1/me/_helpers";
-import { resourceLifecycle } from "@/server/files/resource-lifecycle";
 import {
     cancelPendingRegistration,
     createPendingRegistrationUser,
@@ -387,9 +386,17 @@ export async function cancelPublicRegistration(params: {
         requestId: params.requestId,
         reviewedAt: new Date().toISOString(),
     });
-    await resourceLifecycle.releaseOwnerResources({
-        ownerCollection: "app_user_registration_requests",
-        ownerId: params.requestId,
+    await syncManagedFileBinding({
+        previousFileValue: target.avatar_file,
+        nextFileValue: null,
+        userId: pendingUserId || null,
+        visibility: "private",
+        reference: {
+            ownerCollection: "app_user_registration_requests",
+            ownerId: params.requestId,
+            ownerField: "avatar_file",
+            referenceKind: "structured_field",
+        },
     });
     return updated;
 }

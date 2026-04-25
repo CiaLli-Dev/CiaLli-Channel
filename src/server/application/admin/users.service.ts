@@ -825,9 +825,17 @@ async function handleUserDelete(
             });
         }
         for (const request of registrationRequests) {
-            await resourceLifecycle.releaseOwnerResources({
-                ownerCollection: "app_user_registration_requests",
-                ownerId: request.id,
+            await syncManagedFileBinding({
+                previousFileValue: request.avatar_file,
+                nextFileValue: null,
+                userId,
+                visibility: "private",
+                reference: {
+                    ownerCollection: "app_user_registration_requests",
+                    ownerId: request.id,
+                    ownerField: "avatar_file",
+                    referenceKind: "structured_field",
+                },
             });
         }
         await nullifyRegistrationRequestAvatars(registrationRequests).catch(

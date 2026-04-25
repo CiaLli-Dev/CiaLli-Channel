@@ -298,11 +298,32 @@ async function syncOwnerReferencesStrict(
         ownerUserId: normalized.ownerUserId,
         visibility: normalized.visibility,
     });
-    await markFilesDetached(detachedFileIds, new Date().toISOString());
+
+    const remainingDetachedReferences =
+        await readFileReferencesByFileIds(detachedFileIds);
+    const remainingReferencesByFileId = groupReferencesByFileId(
+        remainingDetachedReferences,
+    );
+    const globallyDetachedFileIds = detachedFileIds.filter(
+        (fileId) => !remainingReferencesByFileId.has(fileId),
+    );
+    const stillReferencedFileIds = detachedFileIds.filter((fileId) =>
+        remainingReferencesByFileId.has(fileId),
+    );
+
+    await markFilesDetached(globallyDetachedFileIds, new Date().toISOString());
+    for (const fileId of stillReferencedFileIds) {
+        const fileReferences = remainingReferencesByFileId.get(fileId) || [];
+        await markFilesAttached({
+            fileIds: [fileId],
+            ownerUserId: readRestoreOwnerUserId(fileReferences),
+            visibility: readRestoreVisibility(fileReferences),
+        });
+    }
 
     return {
         attachedFileIds: nextFileIds,
-        detachedFileIds,
+        detachedFileIds: globallyDetachedFileIds,
         currentFileIds,
     };
 }

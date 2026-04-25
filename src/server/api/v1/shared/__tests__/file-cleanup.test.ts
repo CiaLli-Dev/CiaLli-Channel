@@ -84,6 +84,9 @@ beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.PUBLIC_ASSET_BASE_URL;
     mockedReadReferencedFileIdsFromReferenceTable.mockResolvedValue(new Set());
+    mockedReadReferencedIdsInSiteSettings.mockResolvedValue(new Set());
+    mockedReadReferencedIdsInStructuredTarget.mockResolvedValue(new Set());
+    mockedReadReferencedIdsInMarkdownTarget.mockResolvedValue(new Set());
 });
 
 describe("normalizeDirectusFileId", () => {
@@ -160,12 +163,10 @@ describe("extractDirectusFileIdsFromUnknown", () => {
 });
 
 describe("collectReferencedDirectusFileIds", () => {
-    it("只从 app_file_references 判定候选文件是否仍被引用", async () => {
+    it("合并 app_file_references 与 legacy 字段扫描结果", async () => {
         mockedReadReferencedFileIdsFromReferenceTable.mockResolvedValue(
             new Set([UUID_A]),
         );
-        mockedReadReferencedIdsInSiteSettings.mockResolvedValue(new Set());
-        mockedReadReferencedIdsInStructuredTarget.mockResolvedValue(new Set());
         mockedReadReferencedIdsInMarkdownTarget.mockResolvedValue(
             new Set([UUID_B]),
         );
@@ -176,8 +177,8 @@ describe("collectReferencedDirectusFileIds", () => {
         ]);
 
         expect(referenced.has(UUID_A)).toBe(true);
-        expect(referenced.has(UUID_B)).toBe(false);
-        expect(mockedReadReferencedIdsInMarkdownTarget).not.toHaveBeenCalled();
+        expect(referenced.has(UUID_B)).toBe(true);
+        expect(mockedReadReferencedIdsInMarkdownTarget).toHaveBeenCalled();
         expect(
             mockedReadReferencedFileIdsFromReferenceTable,
         ).toHaveBeenCalledWith([UUID_A, UUID_B]);
