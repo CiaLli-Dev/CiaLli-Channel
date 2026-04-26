@@ -120,6 +120,9 @@ export const enContent: Record<string, string> = {
         "After creating the album, you will enter edit mode automatically.",
     [Key.contentAlbumTitleLabel]: "Album Title",
     [Key.contentAlbumTitlePlaceholder]: "Enter album title",
+    [Key.contentAlbumTitleRequired]: "Please enter an album title",
+    [Key.contentAlbumTitleTooLong]:
+        "Album title is too long (max {max} characters; CJK characters count as 2)",
     [Key.contentAlbumCreateSubmit]: "Create Album",
     [Key.contentDiaryCreateTitle]: "Write Something",
     [Key.contentDiaryCreateDescription]: "Create a new diary entry",

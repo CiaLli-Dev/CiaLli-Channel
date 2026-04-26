@@ -3,6 +3,8 @@
  */
 import * as z from "zod";
 
+import { normalizeExternalImageUrl } from "@/utils/external-image-policy";
+
 import {
     type AlbumLayout,
     type AppStatus,
@@ -16,6 +18,26 @@ import {
     TagsDefaultSchema,
     TagsSchema,
 } from "./common";
+
+const AlbumExternalImageUrlSchema: z.ZodType<OptionalString> = z
+    .string()
+    .transform((value, context): string | null => {
+        const trimmed = value.trim();
+        if (!trimmed) {
+            return null;
+        }
+        const normalized = normalizeExternalImageUrl(trimmed);
+        if (normalized) {
+            return normalized;
+        }
+        context.addIssue({
+            code: "custom",
+            message: "图片链接仅支持 http/https 协议",
+        });
+        return z.NEVER;
+    })
+    .nullable()
+    .optional();
 
 export type CreateAlbumInput = {
     title: string;
@@ -83,7 +105,7 @@ export const CreateAlbumSchema: z.ZodType<CreateAlbumInput> = z.object({
     slug: OptionalStringSchema,
     description: OptionalStringSchema,
     cover_file: OptionalStringSchema,
-    cover_url: OptionalStringSchema,
+    cover_url: AlbumExternalImageUrlSchema,
     date: OptionalStringSchema,
     location: OptionalStringSchema,
     tags: TagsDefaultSchema,
@@ -101,7 +123,7 @@ export const UpdateAlbumSchema: z.ZodType<UpdateAlbumInput> = z
         slug: OptionalStringSchema,
         description: OptionalStringSchema,
         cover_file: OptionalStringSchema,
-        cover_url: OptionalStringSchema,
+        cover_url: AlbumExternalImageUrlSchema,
         date: OptionalStringSchema,
         location: OptionalStringSchema,
         tags: TagsSchema,
@@ -117,7 +139,7 @@ export const UpdateAlbumSchema: z.ZodType<UpdateAlbumInput> = z
 export const CreateAlbumPhotoSchema: z.ZodType<CreateAlbumPhotoInput> =
     z.object({
         file_id: OptionalStringSchema,
-        image_url: OptionalStringSchema,
+        image_url: AlbumExternalImageUrlSchema,
         title: OptionalStringSchema,
         description: OptionalStringSchema,
         tags: TagsDefaultSchema,
@@ -133,7 +155,7 @@ export const CreateAlbumPhotoSchema: z.ZodType<CreateAlbumPhotoInput> =
 export const UpdateAlbumPhotoSchema: z.ZodType<UpdateAlbumPhotoInput> = z
     .object({
         file_id: OptionalStringSchema,
-        image_url: OptionalStringSchema,
+        image_url: AlbumExternalImageUrlSchema,
         title: OptionalStringSchema,
         description: OptionalStringSchema,
         tags: TagsSchema,

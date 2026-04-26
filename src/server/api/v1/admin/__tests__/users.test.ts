@@ -6,7 +6,7 @@ import {
     createMockAPIContext,
     parseResponseJson,
 } from "@/__tests__/helpers/mock-api-context";
-import type { AppUser } from "@/types/app";
+import type { AppPermissions, AppUser } from "@/types/app";
 import { DIRECTUS_ROLE_NAME } from "@/server/auth/directus-access";
 
 vi.mock("@/server/api/v1/shared/auth", () => ({
@@ -449,6 +449,80 @@ describe("GET /admin/users", () => {
             "member-1",
             "member-2",
         ]);
+    });
+});
+
+describe("GET /admin/users platform admin snapshot", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockedRequireAdmin.mockResolvedValue({
+            access: {
+                isAdmin: true,
+                user: mockSessionUser({ id: "admin-1" }),
+            },
+            accessToken: "admin-access-token",
+        } as never);
+        mockedLoadDirectusAccessRegistry.mockResolvedValue({
+            policyNameById: new Map<string, string>(),
+            policyIdByName: new Map<string, string>(),
+            roleIdByName: new Map<string, string>(),
+        } as never);
+        mockedListDirectusUserPolicyAssignments.mockResolvedValue(new Map());
+    });
+
+    it("识别安装器创建的 CiaLli Administrator 为平台管理员", async () => {
+        mockedReadOneById.mockResolvedValueOnce(
+            createDirectusUser({
+                id: "admin-1",
+                role: {
+                    id: "role-site-admin",
+                    name: DIRECTUS_ROLE_NAME.siteAdmin,
+                },
+            }) as never,
+        );
+        mockedListDirectusUsers.mockResolvedValueOnce([
+            createDirectusUser({
+                id: "platform-admin",
+                email: "platform-admin@example.com",
+                role: {
+                    id: "role-cialli-admin",
+                    name: DIRECTUS_ROLE_NAME.administrator,
+                },
+            }),
+        ] as never);
+        mockedReadMany.mockResolvedValueOnce([] as never);
+
+        const ctx = createMockAPIContext({
+            method: "GET",
+            url: "http://localhost:4321/api/v1/admin/users?page=1&limit=20",
+            params: {
+                segments: "admin/users",
+            },
+        });
+
+        const response = await handleAdminUsers(ctx as unknown as APIContext, [
+            "users",
+        ]);
+        const body = await parseResponseJson<{
+            items: Array<{
+                is_platform_admin: boolean;
+                is_site_admin: boolean;
+                permissions: AppPermissions;
+            }>;
+        }>(response);
+
+        expect(response.status).toBe(200);
+        expect(body.items[0]?.is_platform_admin).toBe(true);
+        expect(body.items[0]?.is_site_admin).toBe(false);
+        expect(body.items[0]?.permissions).toEqual({
+            app_role: "admin",
+            can_publish_articles: true,
+            can_comment_articles: true,
+            can_manage_diaries: true,
+            can_comment_diaries: true,
+            can_manage_albums: true,
+            can_upload_files: true,
+        });
     });
 });
 

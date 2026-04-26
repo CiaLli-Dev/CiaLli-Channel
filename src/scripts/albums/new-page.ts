@@ -1,7 +1,9 @@
-import I18nKey from "@i18n/i18nKey";
-import { t } from "@/scripts/shared/i18n-runtime";
-import { getCsrfToken } from "@/utils/csrf";
 import { navigate } from "astro:transitions/client";
+
+import I18nKey from "@i18n/i18nKey";
+import { t, tFmt } from "@/scripts/shared/i18n-runtime";
+import { ALBUM_TITLE_MAX, weightedCharLength } from "@/constants/text-limits";
+import { getCsrfToken } from "@/utils/csrf";
 
 type AlbumNewRuntimeWindow = Window &
     typeof globalThis & {
@@ -32,17 +34,6 @@ type AlbumCreateResponse = {
         message?: string;
     };
 };
-
-const ALBUM_TITLE_MAX = 20;
-const CJK_RE = /[\u2E80-\u9FFF\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFFEF]/;
-
-function wordLength(value: string): number {
-    let count = 0;
-    for (const char of value) {
-        count += CJK_RE.test(char) ? 2 : 1;
-    }
-    return count;
-}
 
 function resolveUsername(form: HTMLFormElement): string {
     const fromDataset = String(form.dataset.username || "").trim();
@@ -82,9 +73,13 @@ export function initAlbumNewPage(): void {
         if (!titleInput || !counterElement) {
             return;
         }
-        const length = wordLength(titleInput.value);
+        const length = weightedCharLength(titleInput.value);
         counterElement.textContent = `${length} / ${ALBUM_TITLE_MAX}`;
         counterElement.className = `text-xs mt-1 block ${length > ALBUM_TITLE_MAX ? "text-red-500" : "text-50"}`;
+    };
+
+    const setTitleInvalid = (invalid: boolean): void => {
+        titleInput?.setAttribute("aria-invalid", invalid ? "true" : "false");
     };
 
     const showError = (message: string): void => {
@@ -156,13 +151,22 @@ export function initAlbumNewPage(): void {
     const validateTitle = (): string | null => {
         const title = titleInput?.value.trim() || "";
         if (!title) {
-            showError(t(I18nKey.contentAlbumTitlePlaceholder));
+            setTitleInvalid(true);
+            showError(t(I18nKey.contentAlbumTitleRequired));
+            titleInput?.focus();
             return null;
         }
-        if (wordLength(title) > ALBUM_TITLE_MAX) {
-            showError(`Title too long (max ${ALBUM_TITLE_MAX})`);
+        if (weightedCharLength(title) > ALBUM_TITLE_MAX) {
+            setTitleInvalid(true);
+            showError(
+                tFmt(I18nKey.contentAlbumTitleTooLong, {
+                    max: ALBUM_TITLE_MAX,
+                }),
+            );
+            titleInput?.focus();
             return null;
         }
+        setTitleInvalid(false);
         return title;
     };
 
@@ -219,6 +223,7 @@ export function initAlbumNewPage(): void {
         async (event) => {
             event.preventDefault();
             errorElement?.classList.add("hidden");
+            setTitleInvalid(false);
 
             const title = validateTitle();
             if (!title) {

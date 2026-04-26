@@ -1,4 +1,5 @@
 import { getCsrfToken } from "@/utils/csrf";
+import { normalizeExternalImageUrl } from "@/utils/external-image-policy";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -166,7 +167,7 @@ export function parsePhotoItem(raw: unknown): PhotoItem | null {
     return {
         id,
         file_id: toOptionalText(record.file_id),
-        image_url: toOptionalText(record.image_url),
+        image_url: normalizeExternalImageUrl(toOptionalText(record.image_url)),
         title: toOptionalText(record.title),
         description: toOptionalText(record.description),
         tags: toTagsArray(record.tags),
@@ -531,13 +532,17 @@ export async function processExternalQueueHelper(
             throw new Error(`保存失败：相册最多 ${ALBUM_PHOTO_MAX} 张照片`);
         }
         const pending = externalQueue[i];
+        const imageUrl = normalizeExternalImageUrl(pending.url);
+        if (!imageUrl) {
+            throw new Error("保存失败：请输入有效的 http/https 图片链接");
+        }
         onProgress(
             steps,
             totalSteps,
             `写入外链图片 ${i + 1}/${externalQueue.length}...`,
         );
         const photo = await addPhotoToAlbum(albumId, {
-            image_url: pending.url,
+            image_url: imageUrl,
         });
         onPhotoAdded(photo);
         currentPhotoCount += 1;

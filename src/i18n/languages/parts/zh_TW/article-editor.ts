@@ -52,6 +52,8 @@ export const zhTWArticleEditor: Record<string, string> = {
     [Key.articleEditorSaveFailedRetry]: "儲存失敗，請重試",
     [Key.articleEditorSavingData]: "正在儲存資料...",
     [Key.articleEditorSavingTitle]: "儲存中",
+    [Key.articleEditorBodyRequired]: "請填寫正文",
+    [Key.articleEditorTitleRequired]: "請填寫標題",
     [Key.articleEditorTitleBodyRequired]: "請填寫標題與正文",
     [Key.articleEditorTitleMaxLength]: "標題不可超過 {max} 個字元",
     [Key.articleEditorToolbarBoldPlaceholder]: "請輸入粗體內容",

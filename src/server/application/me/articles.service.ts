@@ -315,6 +315,7 @@ async function handleArticlesCreate(
     assertCan(access, "can_publish_articles");
     const body = await parseJsonBody(context.request);
     const input = validateBody(CreateArticleSchema, body);
+    assertArticlePublishable(input);
 
     const specialSlug = toSpecialArticleSlug(input.slug);
     const articlePayload = {

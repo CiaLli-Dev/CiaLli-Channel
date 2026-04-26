@@ -68,6 +68,8 @@ export const jaArticleEditor: Record<string, string> = {
         "保存に失敗しました。再試行してください",
     [Key.articleEditorSavingData]: "データを保存しています...",
     [Key.articleEditorSavingTitle]: "保存中",
+    [Key.articleEditorBodyRequired]: "本文を入力してください",
+    [Key.articleEditorTitleRequired]: "タイトルを入力してください",
     [Key.articleEditorTitleBodyRequired]: "タイトルと本文を入力してください",
     [Key.articleEditorTitleMaxLength]:
         "タイトルは {max} 文字以内で入力してください",

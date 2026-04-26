@@ -60,16 +60,37 @@ vi.mock("@/server/files/file-detach-jobs", () => ({
     }),
 }));
 
-import { readOneById, updateOne } from "@/server/directus/client";
+import {
+    countItems,
+    createOne,
+    readMany,
+    readOneById,
+    updateOne,
+} from "@/server/directus/client";
 import { handleMeAlbumPhotos, handleMeAlbums } from "@/server/api/v1/me/albums";
 
+const VALID_ALBUM_ID = "11111111-2222-4333-8444-555555555555";
+const VALID_PHOTO_ID = "22222222-3333-4444-8555-666666666666";
+const MISSING_ALBUM_ID = "00000000-0000-4000-8000-000000000000";
+
+type ErrorResponse = {
+    ok: false;
+    error: {
+        code: string;
+        message: string;
+    };
+};
+
+const mockedReadMany = vi.mocked(readMany);
 const mockedReadOneById = vi.mocked(readOneById);
 const mockedUpdateOne = vi.mocked(updateOne);
+const mockedCountItems = vi.mocked(countItems);
+const mockedCreateOne = vi.mocked(createOne);
 
 function createAlbum(overrides: Partial<AppAlbum> = {}): AppAlbum {
     return {
-        id: "album-1",
-        short_id: "album-1",
+        id: VALID_ALBUM_ID,
+        short_id: "CLalbum0001",
         author_id: "user-1",
         status: "published",
         title: "Album",
@@ -94,9 +115,9 @@ function createAlbumPhoto(
     overrides: Partial<AppAlbumPhoto> = {},
 ): AppAlbumPhoto {
     return {
-        id: "photo-1",
+        id: VALID_PHOTO_ID,
         status: "published",
-        album_id: "album-1",
+        album_id: VALID_ALBUM_ID,
         file_id: null,
         image_url: null,
         title: "Photo",
@@ -113,6 +134,96 @@ function createAlbumPhoto(
     };
 }
 
+describe("GET /me/albums/:id", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it("非法相册 ID 返回 400 且不读取 Directus", async () => {
+        const ctx = createMockAPIContext({
+            method: "GET",
+            url: "http://localhost:4321/api/v1/me/albums/not-a-uuid",
+        });
+        const access = createMemberAccess();
+
+        const response = await handleMeAlbums(
+            ctx as unknown as APIContext,
+            access,
+            ["albums", "not-a-uuid"],
+        );
+
+        const body = await parseResponseJson<ErrorResponse>(response);
+        expect(response.status).toBe(400);
+        expect(body.error.code).toBe("ALBUM_ID_INVALID");
+        expect(body.error.message).toBe("非法相册 ID");
+        expect(mockedReadMany).not.toHaveBeenCalled();
+        expect(mockedReadOneById).not.toHaveBeenCalled();
+        expect(mockedUpdateOne).not.toHaveBeenCalled();
+    });
+
+    it("合法 UUID 但相册不存在时返回 404 且不外泄 Directus 403", async () => {
+        mockedReadMany.mockResolvedValueOnce([] as never);
+        const ctx = createMockAPIContext({
+            method: "GET",
+            url: `http://localhost:4321/api/v1/me/albums/${MISSING_ALBUM_ID}`,
+        });
+        const access = createMemberAccess();
+
+        const response = await handleMeAlbums(
+            ctx as unknown as APIContext,
+            access,
+            ["albums", MISSING_ALBUM_ID],
+        );
+
+        const body = await parseResponseJson<ErrorResponse>(response);
+        expect(response.status).toBe(404);
+        expect(body.error.code).toBe("ALBUM_NOT_FOUND");
+        expect(body.error.message).toBe("相册不存在");
+        expect(JSON.stringify(body)).not.toContain("DIRECTUS_FORBIDDEN");
+        expect(mockedReadOneById).not.toHaveBeenCalled();
+        expect(mockedUpdateOne).not.toHaveBeenCalled();
+    });
+
+    it("合法 UUID 详情先通过列表查询相册，找到后再读取照片", async () => {
+        const album = createAlbum();
+        const photo = createAlbumPhoto();
+        mockedReadMany
+            .mockResolvedValueOnce([album] as never)
+            .mockResolvedValueOnce([photo] as never);
+        const ctx = createMockAPIContext({
+            method: "GET",
+            url: `http://localhost:4321/api/v1/me/albums/${VALID_ALBUM_ID}`,
+        });
+        const access = createMemberAccess();
+
+        const response = await handleMeAlbums(
+            ctx as unknown as APIContext,
+            access,
+            ["albums", VALID_ALBUM_ID],
+        );
+
+        const body = await parseResponseJson<{
+            ok: boolean;
+            item: { id: string };
+            photos: Array<{ id: string }>;
+        }>(response);
+        expect(response.status).toBe(200);
+        expect(body.ok).toBe(true);
+        expect(body.item.id).toBe(VALID_ALBUM_ID);
+        expect(body.photos).toHaveLength(1);
+        expect(mockedReadMany).toHaveBeenNthCalledWith(1, "app_albums", {
+            filter: { id: { _eq: VALID_ALBUM_ID } },
+            limit: 1,
+        });
+        expect(mockedReadMany).toHaveBeenNthCalledWith(2, "app_album_photos", {
+            filter: { album_id: { _eq: VALID_ALBUM_ID } },
+            sort: ["sort", "-date_created"],
+            limit: 200,
+        });
+        expect(mockedReadOneById).not.toHaveBeenCalled();
+    });
+});
+
 describe("PATCH /me/albums/:id", () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -120,7 +231,7 @@ describe("PATCH /me/albums/:id", () => {
 
     it("仅更新标题时不会隐式清空 tags", async () => {
         const album = createAlbum();
-        mockedReadOneById.mockResolvedValueOnce(album as never);
+        mockedReadMany.mockResolvedValueOnce([album] as never);
         mockedUpdateOne.mockResolvedValue({
             ...album,
             title: "Updated Album",
@@ -128,7 +239,7 @@ describe("PATCH /me/albums/:id", () => {
 
         const ctx = createMockAPIContext({
             method: "PATCH",
-            url: "http://localhost:4321/api/v1/me/albums/album-1",
+            url: `http://localhost:4321/api/v1/me/albums/${VALID_ALBUM_ID}`,
             body: {
                 title: "Updated Album",
             },
@@ -138,13 +249,17 @@ describe("PATCH /me/albums/:id", () => {
         const response = await handleMeAlbums(
             ctx as unknown as APIContext,
             access,
-            ["albums", "album-1"],
+            ["albums", VALID_ALBUM_ID],
         );
 
         expect(response.status).toBe(200);
-        expect(mockedUpdateOne).toHaveBeenCalledWith("app_albums", "album-1", {
-            title: "Updated Album",
-        });
+        expect(mockedUpdateOne).toHaveBeenCalledWith(
+            "app_albums",
+            VALID_ALBUM_ID,
+            {
+                title: "Updated Album",
+            },
+        );
 
         const body = await parseResponseJson<{
             ok: boolean;
@@ -174,7 +289,7 @@ describe("PATCH /me/albums/:albumId/photos/:photoId", () => {
 
         const ctx = createMockAPIContext({
             method: "PATCH",
-            url: "http://localhost:4321/api/v1/me/albums/album-1/photos/photo-1",
+            url: `http://localhost:4321/api/v1/me/albums/${VALID_ALBUM_ID}/photos/${VALID_PHOTO_ID}`,
             body: {
                 title: "Updated Photo",
             },
@@ -184,13 +299,13 @@ describe("PATCH /me/albums/:albumId/photos/:photoId", () => {
         const response = await handleMeAlbumPhotos(
             ctx as unknown as APIContext,
             access,
-            ["albums", "album-1", "photos", "photo-1"],
+            ["albums", VALID_ALBUM_ID, "photos", VALID_PHOTO_ID],
         );
 
         expect(response.status).toBe(200);
         expect(mockedUpdateOne).toHaveBeenCalledWith(
             "app_album_photos",
-            "photo-1",
+            VALID_PHOTO_ID,
             { title: "Updated Photo" },
         );
 
@@ -200,5 +315,137 @@ describe("PATCH /me/albums/:albumId/photos/:photoId", () => {
         }>(response);
         expect(body.ok).toBe(true);
         expect(body.item.title).toBe("Updated Photo");
+    });
+
+    it("拒绝非法外链图片 URL 且不更新照片", async () => {
+        const photo = createAlbumPhoto();
+        const album = createAlbum();
+        mockedReadOneById
+            .mockResolvedValueOnce(photo as never)
+            .mockResolvedValueOnce(album as never);
+
+        const ctx = createMockAPIContext({
+            method: "PATCH",
+            url: `http://localhost:4321/api/v1/me/albums/${VALID_ALBUM_ID}/photos/${VALID_PHOTO_ID}`,
+            body: {
+                image_url: "not-a-url",
+            },
+        });
+        const access = createMemberAccess();
+
+        await expect(
+            handleMeAlbumPhotos(ctx as unknown as APIContext, access, [
+                "albums",
+                VALID_ALBUM_ID,
+                "photos",
+                VALID_PHOTO_ID,
+            ]),
+        ).rejects.toMatchObject({
+            status: 400,
+            code: "VALIDATION_ERROR",
+            message: expect.stringContaining("图片链接仅支持 http/https 协议"),
+        });
+        expect(mockedUpdateOne).not.toHaveBeenCalled();
+    });
+
+    it("更新外链图片 URL 时会裁剪空白", async () => {
+        const photo = createAlbumPhoto();
+        const album = createAlbum();
+        mockedReadOneById
+            .mockResolvedValueOnce(photo as never)
+            .mockResolvedValueOnce(album as never)
+            .mockResolvedValueOnce(album as never);
+        mockedUpdateOne.mockResolvedValue({
+            ...photo,
+            image_url: "https://example.com/photo.jpg",
+        } as never);
+
+        const ctx = createMockAPIContext({
+            method: "PATCH",
+            url: `http://localhost:4321/api/v1/me/albums/${VALID_ALBUM_ID}/photos/${VALID_PHOTO_ID}`,
+            body: {
+                image_url: " https://example.com/photo.jpg ",
+            },
+        });
+        const access = createMemberAccess();
+
+        const response = await handleMeAlbumPhotos(
+            ctx as unknown as APIContext,
+            access,
+            ["albums", VALID_ALBUM_ID, "photos", VALID_PHOTO_ID],
+        );
+
+        expect(response.status).toBe(200);
+        expect(mockedUpdateOne).toHaveBeenCalledWith(
+            "app_album_photos",
+            VALID_PHOTO_ID,
+            { image_url: "https://example.com/photo.jpg" },
+        );
+    });
+});
+
+describe("POST /me/albums/:albumId/photos", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it("拒绝非法外链图片 URL 且不创建照片", async () => {
+        mockedReadOneById.mockResolvedValueOnce(createAlbum() as never);
+        mockedCountItems.mockResolvedValueOnce(0);
+
+        const ctx = createMockAPIContext({
+            method: "POST",
+            url: `http://localhost:4321/api/v1/me/albums/${VALID_ALBUM_ID}/photos`,
+            body: {
+                image_url: "not-a-url",
+            },
+        });
+        const access = createMemberAccess();
+
+        await expect(
+            handleMeAlbumPhotos(ctx as unknown as APIContext, access, [
+                "albums",
+                VALID_ALBUM_ID,
+                "photos",
+            ]),
+        ).rejects.toMatchObject({
+            status: 400,
+            code: "VALIDATION_ERROR",
+            message: expect.stringContaining("图片链接仅支持 http/https 协议"),
+        });
+        expect(mockedCreateOne).not.toHaveBeenCalled();
+    });
+
+    it("创建外链图片时会裁剪空白", async () => {
+        mockedReadOneById.mockResolvedValueOnce(createAlbum() as never);
+        mockedCountItems.mockResolvedValueOnce(0);
+        mockedCreateOne.mockResolvedValueOnce(
+            createAlbumPhoto({
+                image_url: "https://example.com/photo.jpg",
+            }) as never,
+        );
+
+        const ctx = createMockAPIContext({
+            method: "POST",
+            url: `http://localhost:4321/api/v1/me/albums/${VALID_ALBUM_ID}/photos`,
+            body: {
+                image_url: " https://example.com/photo.jpg ",
+            },
+        });
+        const access = createMemberAccess();
+
+        const response = await handleMeAlbumPhotos(
+            ctx as unknown as APIContext,
+            access,
+            ["albums", VALID_ALBUM_ID, "photos"],
+        );
+
+        expect(response.status).toBe(200);
+        expect(mockedCreateOne).toHaveBeenCalledWith(
+            "app_album_photos",
+            expect.objectContaining({
+                image_url: "https://example.com/photo.jpg",
+            }),
+        );
     });
 });

@@ -20,7 +20,7 @@ import { url } from "@utils/url-utils";
   >
     <a
       id="auth-account"
-      href={url("/__user__")}
+      href={url("/me")}
       class="flex items-center justify-center w-8 h-8 rounded-md overflow-hidden bg-black/5 dark:bg-white/10"
       aria-label="Account Settings"
       title="账户设置"
@@ -71,39 +71,25 @@ import { url } from "@utils/url-utils";
 </style>
 
 <script>
-  import { emitAuthState } from "@/scripts/auth/state";
+  import {
+    getAuthState,
+    refreshAuthState,
+    subscribeAuthState,
+    type AuthState,
+  } from "@/scripts/auth/state";
   import { buildLoginUrl } from "@utils/login-url";
 
-  const API_ME = "/api/auth/me?optional=1";
-  const AUTH_ME_RETRY_DELAY_MS = 220;
-  type AuthPayload = {
-    ok?: boolean;
-    isAdmin?: boolean;
-    is_admin?: boolean;
-    user?: {
-      id?: string;
-      username?: string;
-      name?: string;
-      email?: string;
-      avatarUrl?: string;
+  type AuthStatusRuntimeWindow = Window &
+    typeof globalThis & {
+      __cialliAuthStatusBound?: boolean;
     };
+
+  type AuthDisplayUser = {
+    name: string;
+    avatarUrl: string;
   };
 
-  let initTask: Promise<void> | null = null;
-
-  function publishAuthState(
-    isLoggedIn: boolean,
-    isAdmin: boolean,
-    userId: string,
-    username: string,
-  ) {
-    emitAuthState({
-      isLoggedIn,
-      isAdmin,
-      userId: userId || "",
-      username: username || "",
-    });
-  }
+  const runtimeWindow = window as AuthStatusRuntimeWindow;
 
   function applyAvatarState(
     avatarEl: HTMLImageElement | null,
@@ -129,15 +115,14 @@ import { url } from "@utils/url-utils";
     avatarEl: HTMLImageElement | null,
     iconEl: Element | null,
     adminEl: Element,
-    user: AuthPayload["user"],
+    user: AuthDisplayUser,
     isAdmin: boolean,
   ): void {
     loginEl.classList.add("hidden");
     userEl.classList.remove("hidden");
     userEl.classList.add("flex");
-    userNameEl.textContent =
-      user?.name || user?.username || user?.email || "Member";
-    applyAvatarState(avatarEl, iconEl, user?.avatarUrl);
+    userNameEl.textContent = user.name;
+    applyAvatarState(avatarEl, iconEl, user.avatarUrl);
     if (isAdmin) {
       adminEl.classList.add("auth-admin-visible");
     } else {
@@ -180,41 +165,37 @@ import { url } from "@utils/url-utils";
       "auth-user-avatar",
     ) as HTMLImageElement | null;
     const iconEl = document.getElementById("auth-user-icon");
-    return { loginEl, userEl, userNameEl, avatarEl, iconEl, adminEl };
+    return {
+      loginEl,
+      userEl,
+      userNameEl,
+      avatarEl,
+      iconEl,
+      adminEl,
+    };
   }
 
-  type AuthInfo = {
-    userId: string;
-    username: string;
-    isLoggedIn: boolean;
-    isAdmin: boolean;
-    user: AuthPayload["user"];
-  };
-
-  function extractAuthInfo(state: AuthPayload | null): AuthInfo {
-    const userId = state?.user?.id ? String(state.user.id) : "";
-    const username = state?.user?.username ? String(state.user.username) : "";
-    const user = state?.user;
-    const isLoggedIn = Boolean(userId);
-    const adminFlag = state?.isAdmin ?? state?.is_admin ?? false;
-    const isAdmin = Boolean(isLoggedIn && adminFlag);
-    return { userId, username, isLoggedIn, isAdmin, user };
+  function resolveDisplayUser(state: AuthState): AuthDisplayUser {
+    return {
+      name:
+        state.displayName ||
+        state.username ||
+        state.email ||
+        (state.userId ? `user-${state.userId.slice(0, 8)}` : "Member"),
+      avatarUrl: state.avatarUrl || "",
+    };
   }
 
-  function setAuthState(state: AuthPayload | null): void {
-    const info = extractAuthInfo(state);
-    const { userId, username, isLoggedIn, isAdmin, user } = info;
-
+  function applyAuthStatusState(state: AuthState): void {
     const els = queryAuthElements();
     if (!els) {
-      publishAuthState(isLoggedIn, isAdmin, userId, username);
       return;
     }
 
     const { loginEl, userEl, userNameEl, avatarEl, iconEl, adminEl } = els;
     loginEl.setAttribute("href", buildLoginUrl());
 
-    if (isLoggedIn && user) {
+    if (state.isLoggedIn) {
       applyLoggedInState(
         loginEl,
         userEl,
@@ -222,79 +203,46 @@ import { url } from "@utils/url-utils";
         avatarEl,
         iconEl,
         adminEl,
-        user,
-        isAdmin,
+        resolveDisplayUser(state),
+        state.isAdmin,
       );
-      publishAuthState(isLoggedIn, isAdmin, userId, username);
       return;
     }
 
     applyLoggedOutState(loginEl, userEl, userNameEl, avatarEl, iconEl, adminEl);
-    publishAuthState(false, false, "", "");
   }
 
-  async function refreshAuthState() {
-    const load = async () => {
-      const response = await fetch(API_ME, {
-        method: "GET",
-        credentials: "include",
-        headers: { Accept: "application/json" },
-        cache: "no-store",
+  function bindAvatarFallback(): void {
+    const avatarEl = document.getElementById(
+      "auth-user-avatar",
+    ) as HTMLImageElement | null;
+    const iconEl = document.getElementById("auth-user-icon");
+
+    if (avatarEl && iconEl && !avatarEl.dataset.bound) {
+      avatarEl.dataset.bound = "1";
+      avatarEl.addEventListener("error", () => {
+        avatarEl.removeAttribute("src");
+        avatarEl.classList.add("hidden");
+        iconEl.classList.remove("hidden");
       });
-      const data = await response.json().catch(() => null);
-      return { response, data };
-    };
-
-    try {
-      let { response, data } = await load();
-      if ((!response.ok || !data?.ok) && response.status === 401) {
-        await new Promise((resolve) =>
-          window.setTimeout(resolve, AUTH_ME_RETRY_DELAY_MS),
-        );
-        ({ response, data } = await load());
-      }
-      if (!response.ok || !data?.ok) {
-        setAuthState(null);
-        return;
-      }
-      setAuthState({ ...data, isAdmin: Boolean(data?.is_admin) });
-    } catch (error) {
-      console.error("Failed to load auth state:", error);
-      setAuthState(null);
     }
   }
 
-  async function initAuthStatus() {
-    if (initTask) {
-      await initTask;
-      return;
-    }
-    initTask = (async () => {
-      const avatarEl = document.getElementById(
-        "auth-user-avatar",
-      ) as HTMLImageElement | null;
-      const iconEl = document.getElementById("auth-user-icon");
+  function initAuthStatus(): void {
+    bindAvatarFallback();
+    applyAuthStatusState(getAuthState());
+    void refreshAuthState();
+  }
 
-      if (avatarEl && iconEl && !avatarEl.dataset.bound) {
-        avatarEl.dataset.bound = "1";
-        avatarEl.addEventListener("error", () => {
-          avatarEl.removeAttribute("src");
-          avatarEl.classList.add("hidden");
-          iconEl.classList.remove("hidden");
-        });
-      }
-
-      await refreshAuthState();
-    })();
-    try {
-      await initTask;
-    } finally {
-      initTask = null;
-    }
+  if (!runtimeWindow.__cialliAuthStatusBound) {
+    runtimeWindow.__cialliAuthStatusBound = true;
+    subscribeAuthState((state) => {
+      applyAuthStatusState(state);
+    });
+    document.addEventListener("astro:after-swap", initAuthStatus);
   }
 
   initAuthStatus();
-  document.addEventListener("astro:after-swap", initAuthStatus);
 </script>
 
 <style>

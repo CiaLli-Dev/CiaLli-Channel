@@ -72,7 +72,7 @@ const resolveRole = (
     if (typeof rawRole === "object" && rawRole) {
         const roleName = getStr((rawRole as UnknownRecord).name);
         if (roleName) {
-            if (roleName === "Administrator") {
+            if (isPlatformAdmin) {
                 return {
                     label: roleName,
                     badgeClass: PLATFORM_ADMIN_ROLE_BADGE_CLASS,
@@ -89,7 +89,7 @@ const resolveRole = (
     }
     if (typeof rawRole === "string" && getStr(rawRole)) {
         const roleName = getStr(rawRole);
-        if (roleName === "Administrator") {
+        if (isPlatformAdmin) {
             return {
                 label: roleName,
                 badgeClass: PLATFORM_ADMIN_ROLE_BADGE_CLASS,

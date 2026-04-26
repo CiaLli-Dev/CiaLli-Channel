@@ -4,7 +4,8 @@ import type { AppUser } from "@/types/app";
 export const DIRECTUS_ROLE_NAME = {
     member: "Member",
     siteAdmin: "Site Admin",
-    administrator: "Administrator",
+    administrator: "CiaLli Administrator",
+    legacyAdministrator: "Administrator",
 } as const;
 
 export const DIRECTUS_POLICY_NAME = {
@@ -105,7 +106,11 @@ export function resolveAppRole(params: {
 export function isPlatformAdministratorRoleName(
     roleName: string | null | undefined,
 ): boolean {
-    return String(roleName || "").trim() === DIRECTUS_ROLE_NAME.administrator;
+    const normalizedRoleName = String(roleName || "").trim();
+    return (
+        normalizedRoleName === DIRECTUS_ROLE_NAME.administrator ||
+        normalizedRoleName === DIRECTUS_ROLE_NAME.legacyAdministrator
+    );
 }
 
 export function buildPermissionsFromDirectus(params: {

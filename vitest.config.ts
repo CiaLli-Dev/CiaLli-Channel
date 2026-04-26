@@ -20,6 +20,9 @@ const securityTests = [
     "src/server/security/**/__tests__/**/*.test.ts",
 ];
 const clientTests = [
+    "src/scripts/__tests__/album-new-page.test.ts",
+    "src/scripts/__tests__/auth-nav-routing.test.ts",
+    "src/scripts/__tests__/auth-state.test.ts",
     "src/scripts/__tests__/mermaid-interaction.dom.test.ts",
     "src/scripts/__tests__/overlay-dialog.test.ts",
     "src/scripts/__tests__/owner-gate.test.ts",
@@ -45,6 +48,10 @@ const structuredProjectTests = [
 export default defineConfig({
     resolve: {
         alias: {
+            "astro:transitions/client": resolve(
+                projectRootDir,
+                "src/__tests__/mocks/astro-transitions-client.ts",
+            ),
             "@": resolve(projectRootDir, "src"),
             "@components": resolve(projectRootDir, "src/components"),
             "@assets": resolve(projectRootDir, "src/assets"),

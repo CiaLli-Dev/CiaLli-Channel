@@ -112,6 +112,9 @@ export const zhTWContent: Record<string, string> = {
         "建立後會自動進入編輯模式，可上傳照片與設定封面。",
     [Key.contentAlbumTitleLabel]: "相簿標題",
     [Key.contentAlbumTitlePlaceholder]: "輸入相簿標題",
+    [Key.contentAlbumTitleRequired]: "請輸入相簿標題",
+    [Key.contentAlbumTitleTooLong]:
+        "相簿標題過長（最多 {max} 字元，中文算 2 字元）",
     [Key.contentAlbumCreateSubmit]: "建立相簿",
     [Key.contentDiaryCreateTitle]: "寫點什麼",
     [Key.contentDiaryCreateDescription]: "新增一篇日記",

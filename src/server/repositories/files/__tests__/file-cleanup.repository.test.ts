@@ -15,6 +15,7 @@ import {
     readAllReferencedIdsInSiteSettingsFromRepository,
     readOwnerSourceReferencedFileIdsFromRepository,
     readReferencedIdsInSiteSettingsFromRepository,
+    readReferencedIdsInStructuredTargetFromRepository,
     readStaleFileGcCandidatesFromRepository,
 } from "@/server/repositories/files/file-cleanup.repository";
 
@@ -333,5 +334,36 @@ describe("file-cleanup.repository", () => {
         expect(
             requiredIndexes.filter((field) => !indexedFields.has(field)),
         ).toEqual([]);
+    });
+});
+
+describe("file-cleanup.repository reference scan errors", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mocks.readMany.mockResolvedValue([]);
+    });
+
+    it("skips inaccessible legacy reference targets during candidate scans", async () => {
+        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+        mocks.readMany.mockRejectedValue(
+            new Error(
+                'FORBIDDEN:You don\'t have permission to access collection "app_anime_entries" or it does not exist.',
+            ),
+        );
+
+        const result = await readReferencedIdsInStructuredTargetFromRepository(
+            { collection: "app_anime_entries", field: "cover_file" },
+            [UUID_A],
+        );
+
+        expect(result).toEqual(new Set());
+        expect(warnSpy).toHaveBeenCalledWith(
+            "[file-cleanup] skip reference scan target",
+            expect.objectContaining({
+                collection: "app_anime_entries",
+                field: "cover_file",
+            }),
+        );
+        warnSpy.mockRestore();
     });
 });

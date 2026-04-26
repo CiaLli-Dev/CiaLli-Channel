@@ -51,6 +51,8 @@ export const zhCNArticleEditor: Record<string, string> = {
     [Key.articleEditorSaveFailedRetry]: "保存失败，请重试",
     [Key.articleEditorSavingData]: "正在保存数据...",
     [Key.articleEditorSavingTitle]: "保存中",
+    [Key.articleEditorBodyRequired]: "请填写正文",
+    [Key.articleEditorTitleRequired]: "请填写标题",
     [Key.articleEditorTitleBodyRequired]: "请填写标题和正文",
     [Key.articleEditorTitleMaxLength]: "标题不能超过 {max} 个字符",
     [Key.articleEditorToolbarBoldPlaceholder]: "请输入加粗内容",

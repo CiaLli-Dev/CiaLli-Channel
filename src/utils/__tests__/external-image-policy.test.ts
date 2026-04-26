@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    normalizeExternalImageUrl,
     normalizeExternalImageRequestAttributes,
     readExternalImageRequestAttributesFromElement,
     resolveExternalImageRequestAttributes,
@@ -83,5 +84,35 @@ describe("resolveExternalImageRequestAttributes", () => {
                 crossOrigin: "use-credentials",
             }),
         ).toEqual({});
+    });
+});
+
+describe("normalizeExternalImageUrl", () => {
+    it("接受绝对 http/https 图片链接并裁剪空白", () => {
+        expect(
+            normalizeExternalImageUrl(" https://example.com/image.png "),
+        ).toBe("https://example.com/image.png");
+        expect(
+            normalizeExternalImageUrl(
+                "https://cdn.example.com/resource?id=1&size=large",
+            ),
+        ).toBe("https://cdn.example.com/resource?id=1&size=large");
+        expect(normalizeExternalImageUrl("http://localhost:4321/image")).toBe(
+            "http://localhost:4321/image",
+        );
+    });
+
+    it("拒绝非绝对 http/https 图片链接", () => {
+        expect(normalizeExternalImageUrl("not-a-url")).toBeNull();
+        expect(normalizeExternalImageUrl("/relative.jpg")).toBeNull();
+        expect(normalizeExternalImageUrl("//example.com/image.jpg")).toBeNull();
+        expect(normalizeExternalImageUrl("javascript:alert('xss')")).toBeNull();
+        expect(
+            normalizeExternalImageUrl("data:image/png;base64,AAAA"),
+        ).toBeNull();
+        expect(
+            normalizeExternalImageUrl("blob:https://example.com/image"),
+        ).toBeNull();
+        expect(normalizeExternalImageUrl("")).toBeNull();
     });
 });

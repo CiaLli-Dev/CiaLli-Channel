@@ -65,6 +65,8 @@ export const enArticleEditor: Record<string, string> = {
     [Key.articleEditorSaveFailedRetry]: "Save failed. Please try again",
     [Key.articleEditorSavingData]: "Saving data...",
     [Key.articleEditorSavingTitle]: "Saving",
+    [Key.articleEditorBodyRequired]: "Please enter content",
+    [Key.articleEditorTitleRequired]: "Please enter title",
     [Key.articleEditorTitleBodyRequired]: "Please enter title and content",
     [Key.articleEditorTitleMaxLength]:
         "Title must be no longer than {max} characters",

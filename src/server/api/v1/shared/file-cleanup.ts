@@ -15,6 +15,7 @@ import {
 } from "@/server/repositories/files/file-cleanup.repository";
 import {
     readAllReferencedFileIdsFromReferenceTable,
+    readFileReferencesByFileIds,
     readReferencedFileIdsFromReferenceTable,
 } from "@/server/repositories/files/file-reference.repository";
 
@@ -35,6 +36,36 @@ async function collectReferenceTableDirectusFileIds(
     return await readReferencedFileIdsFromReferenceTable(
         normalizedCandidateIds,
     );
+}
+
+async function collectReferenceTableDirectusFileIdsExcludingOwner(
+    candidateFileIds: string[],
+    owner: { ownerCollection: string; ownerId: string },
+): Promise<Set<string>> {
+    const normalizedCandidateIds = [...new Set(candidateFileIds)]
+        .map((candidateFileId) => normalizeDirectusFileId(candidateFileId))
+        .filter((candidateFileId): candidateFileId is string =>
+            Boolean(candidateFileId),
+        );
+    const found = new Set<string>();
+    if (normalizedCandidateIds.length === 0) {
+        return found;
+    }
+
+    const rows = await readFileReferencesByFileIds(normalizedCandidateIds);
+    for (const row of rows) {
+        if (
+            row.owner_collection === owner.ownerCollection &&
+            row.owner_id === owner.ownerId
+        ) {
+            continue;
+        }
+        const fileId = normalizeDirectusFileId(row.file_id);
+        if (fileId) {
+            found.add(fileId);
+        }
+    }
+    return found;
 }
 
 export async function collectLegacyScannedReferencedDirectusFileIds(): Promise<
@@ -116,6 +147,24 @@ export async function collectReferencedDirectusFileIds(
     return await withServiceRepositoryContext(async () => {
         const [referenceTableIds, legacyScannedIds] = await Promise.all([
             collectReferenceTableDirectusFileIds(candidateFileIds),
+            collectLegacyScannedReferencedDirectusFileIdsForCandidates(
+                candidateFileIds,
+            ),
+        ]);
+        return new Set([...referenceTableIds, ...legacyScannedIds]);
+    });
+}
+
+export async function collectReferencedDirectusFileIdsExcludingOwner(
+    candidateFileIds: string[],
+    owner: { ownerCollection: string; ownerId: string },
+): Promise<Set<string>> {
+    return await withServiceRepositoryContext(async () => {
+        const [referenceTableIds, legacyScannedIds] = await Promise.all([
+            collectReferenceTableDirectusFileIdsExcludingOwner(
+                candidateFileIds,
+                owner,
+            ),
             collectLegacyScannedReferencedDirectusFileIdsForCandidates(
                 candidateFileIds,
             ),

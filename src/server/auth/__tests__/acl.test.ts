@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { mockProfile, mockSessionUser } from "@/__tests__/helpers/mock-data";
 import {
+    buildPermissionsFromDirectus,
     DIRECTUS_POLICY_NAME,
     DIRECTUS_ROLE_NAME,
+    isPlatformAdministratorRoleName,
 } from "@/server/auth/directus-access";
 
 vi.mock("@/server/directus/client", () => ({
@@ -58,6 +60,31 @@ describe("getAppAccessContext 原生 Directus 权限映射", () => {
         expect(access.permissions.app_role).toBe("admin");
         expect(access.isPlatformAdmin).toBe(true);
         expect(access.isAdmin).toBe(true);
+    });
+
+    it("兼容 legacy Administrator 角色名作为平台管理员", () => {
+        expect(isPlatformAdministratorRoleName("Administrator")).toBe(true);
+    });
+
+    it("CiaLli Administrator 角色映射为全权限 admin", () => {
+        const permissions = buildPermissionsFromDirectus({
+            roleName: DIRECTUS_ROLE_NAME.administrator,
+            policyNames: [],
+            isPlatformAdmin: false,
+        });
+
+        expect(isPlatformAdministratorRoleName("CiaLli Administrator")).toBe(
+            true,
+        );
+        expect(permissions).toEqual({
+            app_role: "admin",
+            can_publish_articles: true,
+            can_comment_articles: true,
+            can_manage_diaries: true,
+            can_comment_diaries: true,
+            can_manage_albums: true,
+            can_upload_files: true,
+        });
     });
 
     it("Administrator 角色即使缺少 admin_access claim 也授予管理员权限", async () => {

@@ -71,6 +71,7 @@ const mockedDeleteDirectusFile = vi.mocked(deleteDirectusFile);
 const mockedReadOneById = vi.mocked(readOneById);
 const mockedUpdateOne = vi.mocked(updateOne);
 const mockedSyncMarkdownFileLifecycle = vi.mocked(syncMarkdownFileLifecycle);
+const COMMENT_ID = "11111111-2222-4333-8444-555555555555";
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -83,14 +84,14 @@ beforeEach(() => {
 describe("handleArticleComments PATCH", () => {
     it("管理员代编辑评论时沿用评论作者作为文件 owner", async () => {
         mockedReadOneById.mockResolvedValue({
-            id: "comment-1",
+            id: COMMENT_ID,
             article_id: "article-1",
             author_id: "comment-author",
             body: "old body",
             is_public: true,
         } as never);
         mockedUpdateOne.mockResolvedValue({
-            id: "comment-1",
+            id: COMMENT_ID,
             article_id: "article-1",
             author_id: "comment-author",
             body: "new body",
@@ -99,7 +100,7 @@ describe("handleArticleComments PATCH", () => {
 
         const ctx = createMockAPIContext({
             method: "PATCH",
-            url: "http://localhost:4321/api/v1/articles/comments/comment-1",
+            url: `http://localhost:4321/api/v1/articles/comments/${COMMENT_ID}`,
             body: {
                 body: "new body",
             },
@@ -107,7 +108,7 @@ describe("handleArticleComments PATCH", () => {
 
         const response = await handleArticleComments(
             ctx as unknown as APIContext,
-            ["articles", "comments", "comment-1"],
+            ["articles", "comments", COMMENT_ID],
         );
 
         expect(response.status).toBe(200);
@@ -118,7 +119,7 @@ describe("handleArticleComments PATCH", () => {
             visibility: "public",
             reference: {
                 ownerCollection: "app_article_comments",
-                ownerId: "comment-1",
+                ownerId: COMMENT_ID,
                 ownerField: "body",
                 referenceKind: "markdown_asset",
             },

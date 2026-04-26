@@ -15,7 +15,7 @@ import {
     listDirectusRoles,
     readMany,
 } from "@/server/directus/client";
-import { DIRECTUS_ROLE_NAME } from "@/server/auth/directus-access";
+import { isPlatformAdministratorRoleName } from "@/server/auth/directus-access";
 import { toAppProfileView } from "@/server/profile-view";
 import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 
@@ -86,10 +86,8 @@ export async function loadProfileViewByFilterFromRepository(
 export async function loadAdministratorSidebarFallbackSourceFromRepository(): Promise<AdministratorSidebarFallbackSource | null> {
     return await withServiceRepositoryContext(async () => {
         const roles = await listDirectusRoles().catch(() => []);
-        const administratorRole = roles.find(
-            (role) =>
-                String(role.name || "").trim() ===
-                DIRECTUS_ROLE_NAME.administrator,
+        const administratorRole = roles.find((role) =>
+            isPlatformAdministratorRoleName(role.name),
         );
         const administratorUserIds = Array.from(
             new Set(

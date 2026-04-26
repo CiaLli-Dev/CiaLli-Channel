@@ -112,6 +112,9 @@ export const zhCNContent: Record<string, string> = {
         "创建相册后将自动进入编辑模式。你可以上传照片、设置相册封面等。",
     [Key.contentAlbumTitleLabel]: "相册标题",
     [Key.contentAlbumTitlePlaceholder]: "输入相册标题",
+    [Key.contentAlbumTitleRequired]: "请输入相册标题",
+    [Key.contentAlbumTitleTooLong]:
+        "相册标题过长（最多 {max} 字符，中文算 2 字符）",
     [Key.contentAlbumCreateSubmit]: "创建相册",
     [Key.contentDiaryCreateTitle]: "写点什么",
     [Key.contentDiaryCreateDescription]: "记录一篇新的日记",

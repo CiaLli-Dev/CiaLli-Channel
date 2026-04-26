@@ -1,16 +1,19 @@
 import type { APIContext } from "astro";
 
+import type { AppDiary } from "@/types/app";
 import { assertCan, assertOwnerOrAdmin } from "@/server/auth/acl";
 import { awaitCacheInvalidations } from "@/server/cache/invalidation";
 import { cacheManager } from "@/server/cache/manager";
 import { parseJsonBody } from "@/server/api/utils";
 import { validateBody } from "@/server/api/validate";
 import { CreateCommentSchema, UpdateCommentSchema } from "@/server/api/schemas";
+import { AppError } from "@/server/api/errors";
 import { fail, ok } from "@/server/api/response";
 import { readOneById, updateOne } from "@/server/directus/client";
 import { requireAccess } from "@/server/api/v1/shared/auth";
-import { DIARY_FIELDS } from "@/server/api/v1/shared/constants";
 import { invalidateDiaryInteractionAggregate } from "@/server/api/v1/shared/diary-interaction";
+import { loadPublicDiaryByIdFromRepository } from "@/server/repositories/public/loaders.repository";
+import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 import {
     buildCommentUpdatePayload,
     buildDecoratedCommentTree,
@@ -28,6 +31,24 @@ import {
 } from "@/server/api/v1/me/_helpers";
 import { resourceLifecycle } from "@/server/files/resource-lifecycle";
 import { searchIndex } from "@/server/application/shared/search-index";
+
+async function loadVisibleDiaryForComments(
+    diaryId: string,
+): Promise<AppDiary | null> {
+    return await withServiceRepositoryContext(async () => {
+        try {
+            return await loadPublicDiaryByIdFromRepository(diaryId);
+        } catch (error) {
+            if (
+                error instanceof AppError &&
+                (error.status === 403 || error.status === 404)
+            ) {
+                return null;
+            }
+            throw error;
+        }
+    });
+}
 
 function buildDiaryDetailInvalidationTasks(
     id: string,
@@ -71,14 +92,9 @@ async function getDiaryCommentList(
     context: APIContext,
     diaryId: string,
 ): Promise<Response> {
-    const diary = await readOneById("app_diaries", diaryId, {
-        fields: [...DIARY_FIELDS],
-    });
+    const diary = await loadVisibleDiaryForComments(diaryId);
     if (!diary) {
         return fail("日记不存在", 404);
-    }
-    if (!(diary.status === "published" && diary.praviate === true)) {
-        return fail("日记不可见", 404);
     }
 
     const pagination = parseCommentPagination(context.url);
@@ -115,11 +131,9 @@ async function createDiaryCommentForEntry(
     const access = required.access;
     assertCan(access, "can_comment_diaries");
 
-    const diary = await readOneById("app_diaries", diaryId, {
-        fields: [...DIARY_FIELDS],
-    });
+    const diary = await loadVisibleDiaryForComments(diaryId);
     if (!diary) {
-        return fail("日记不存在", 404);
+        return fail("日记不存在或不可见", 404);
     }
     if (!diary.allow_comments) {
         return fail("该日记已关闭评论", 403);

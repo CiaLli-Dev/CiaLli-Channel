@@ -127,8 +127,26 @@ export function getApiMessage(
     fallback: string,
 ): string {
     const error = data?.error as Record<string, unknown> | undefined;
+    const fallbackMessage =
+        toStringValue(fallback) || t(I18nKey.articleEditorSaveFailedRetry);
     const message = toStringValue(error?.message);
-    return message || fallback;
+    if (!message) {
+        return fallbackMessage;
+    }
+    if (toStringValue(error?.code) === "VALIDATION_ERROR") {
+        const hasTitleError = /\btitle\s*:/.test(message);
+        const hasBodyError = /\bbody_markdown\s*:/.test(message);
+        if (hasTitleError && hasBodyError) {
+            return t(I18nKey.articleEditorTitleBodyRequired);
+        }
+        if (hasTitleError) {
+            return t(I18nKey.articleEditorTitleRequired);
+        }
+        if (hasBodyError) {
+            return t(I18nKey.articleEditorBodyRequired);
+        }
+    }
+    return message;
 }
 
 export function extractUploadFileId(

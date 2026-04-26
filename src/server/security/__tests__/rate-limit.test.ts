@@ -96,11 +96,11 @@ describe("security/rate-limit", () => {
         expect(redis.incrementFixedWindow).toHaveBeenCalledTimes(1);
     });
 
-    it("registration-submit uses the hourly registration bucket", async () => {
+    it("registration-submit uses a short-window submission attempt bucket", async () => {
         const redis = {
             incrementFixedWindow: vi.fn().mockResolvedValue({
                 current: 1,
-                ttlSeconds: 3600,
+                ttlSeconds: 60,
             }),
         };
         getRedisConfigMock.mockReturnValue({
@@ -114,12 +114,12 @@ describe("security/rate-limit", () => {
             applyRateLimit("127.0.0.1", "registration-submit"),
         ).resolves.toEqual({
             ok: true,
-            remaining: 4,
+            remaining: 19,
             resetAt: expect.any(Number),
         });
         expect(redis.incrementFixedWindow).toHaveBeenCalledWith(
-            "cialli:dev:local:rl:registration-submit:ip:127.0.0.1",
-            3600,
+            "cialli:dev:local:rl:registration-submit:v2:ip:127.0.0.1",
+            60,
         );
     });
 

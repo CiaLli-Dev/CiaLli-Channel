@@ -34,9 +34,9 @@ const CATEGORY_CONFIG: Record<RateLimitCategory, CategoryConfig> = {
         prefix: "rl:registration-check",
     },
     "registration-submit": {
-        limit: 5,
-        windowSeconds: 60 * 60,
-        prefix: "rl:registration-submit",
+        limit: 20,
+        windowSeconds: 60,
+        prefix: "rl:registration-submit:v2",
     },
     "registration-avatar": {
         limit: 10,

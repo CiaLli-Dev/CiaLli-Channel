@@ -311,9 +311,7 @@ function extractSnapshot(
         roleName,
         policyIds,
         policyNames,
-        isPlatformAdmin:
-            isPlatformAdministratorRoleName(roleName) ||
-            policyNames.includes(DIRECTUS_ROLE_NAME.administrator),
+        isPlatformAdmin: isPlatformAdministratorRoleName(roleName),
     };
 }
 

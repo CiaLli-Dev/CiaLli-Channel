@@ -32,6 +32,19 @@ function parseHttpUrl(input: string): URL | null {
     }
 }
 
+export function normalizeExternalImageUrl(
+    value: string | null | undefined,
+): string | null {
+    if (typeof value !== "string") {
+        return null;
+    }
+    const normalized = value.trim();
+    if (!normalized) {
+        return null;
+    }
+    return parseHttpUrl(normalized) ? normalized : null;
+}
+
 function hasHostnameSuffix(
     hostname: string,
     suffixes: readonly string[],

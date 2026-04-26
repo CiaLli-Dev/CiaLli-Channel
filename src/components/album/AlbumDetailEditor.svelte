@@ -11,6 +11,7 @@
     type ProgressTaskHandle,
   } from "@/scripts/shared/progress-overlay-manager";
   import { navigateToPage } from "@/utils/navigation-utils";
+  import { normalizeExternalImageUrl } from "@/utils/external-image-policy";
   import {
     UPLOAD_LIMITS,
     UPLOAD_LIMIT_LABELS,
@@ -350,8 +351,11 @@
   }
 
   function addExternalPhoto(): void {
-    const url = externalUrl.trim();
-    if (!url) return;
+    const url = normalizeExternalImageUrl(externalUrl);
+    if (!url) {
+      flash("请输入有效的 http/https 图片链接");
+      return;
+    }
     if (totalPhotoCount() >= ALBUM_PHOTO_MAX) {
       flash(`添加失败：相册最多 ${ALBUM_PHOTO_MAX} 张照片`);
       return;

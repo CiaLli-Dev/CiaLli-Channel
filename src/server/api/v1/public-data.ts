@@ -21,6 +21,10 @@ import {
     loadProfileViewByUsernameFromRepository,
 } from "@/server/repositories/public/public-data.repository";
 import { loadProfileByUsernameFromRepository } from "@/server/repositories/profile/profile.repository";
+import {
+    normalizeAlbumCoverUrl,
+    normalizeAlbumPhotoImageUrl,
+} from "@/server/application/albums/external-image-fields";
 import { isShortId } from "@/server/utils/short-id";
 
 import type { AuthorBundleItem } from "./shared/author-cache";
@@ -160,7 +164,7 @@ export async function loadUserHomeData(
             diaries,
             bangumi,
             albums: albums.map((item) => ({
-                ...item,
+                ...normalizeAlbumCoverUrl(item),
                 tags: safeCsv(item.tags),
             })),
         },
@@ -393,7 +397,7 @@ export async function loadUserAlbumList(
     ]);
 
     const items = rows.map((row) => ({
-        ...row,
+        ...normalizeAlbumCoverUrl(row),
         tags: safeCsv(row.tags),
         author: readAuthor(authorMap, row.author_id),
     }));
@@ -444,11 +448,11 @@ export async function loadUserAlbumDetail(
     return {
         status: "ok",
         data: {
-            ...album,
+            ...normalizeAlbumCoverUrl(album),
             tags: safeCsv(album.tags),
             author: readAuthor(authorMap, album.author_id),
             photos: photos.map((photo) => ({
-                ...photo,
+                ...normalizeAlbumPhotoImageUrl(photo),
                 tags: safeCsv(photo.tags),
             })),
         },

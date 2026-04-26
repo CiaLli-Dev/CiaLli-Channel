@@ -370,312 +370,45 @@ const mobileLinks: NavBarLink[] = desktopLinks
 
 <script>
   import {
-    emitAuthState,
     getAuthState,
+    refreshAuthState,
     subscribeAuthState,
     type AuthState,
   } from "@/scripts/auth/state";
+  import {
+    AUTH_PROTECTED_TARGET_ATTR,
+    clearAuthProtectedLink,
+    isPublishPathname,
+    parseInternalTarget,
+    updateUserRouteLinks,
+    type InternalTarget,
+  } from "@/scripts/auth/nav-routing";
   import { showAuthRequiredDialog } from "@/scripts/shared/dialogs";
 
   const navbarLinksContainer = document.getElementById(
     "navbar-links-container",
   );
-  const AUTH_PROTECTED_TARGET_ATTR = "data-auth-target-href";
   const MOBILE_NAV_OPEN_CLASS = "is-open";
 
-  const normalizePathname = (pathname: string): string => {
-    const normalized = pathname.replace(/\/+$/, "");
-    return normalized === "" ? "/" : normalized;
-  };
+  type NavbarRuntimeWindow = Window &
+    typeof globalThis & {
+      __cialliNavbarAuthBound?: boolean;
+      __cialliMobileNavBound?: boolean;
+    };
 
-  const isPublishPathname = (pathname: string): boolean => {
-    const normalizedPath = normalizePathname(pathname);
-    return (
-      normalizedPath === "/posts/new" ||
-      /^\/posts\/[^/]+\/edit$/.test(normalizedPath)
-    );
-  };
+  const runtimeWindow = window as NavbarRuntimeWindow;
 
-  type InternalTarget = {
-    pathname: string;
-    search: string;
-    hash: string;
-  };
-
-  const parseInternalTarget = (href: string): InternalTarget | null => {
-    if (!href.startsWith("/")) {
-      return null;
-    }
-
-    try {
-      const parsed = new URL(href, window.location.origin);
-      return {
-        pathname: normalizePathname(parsed.pathname),
-        search: parsed.search,
-        hash: parsed.hash,
-      };
-    } catch {
-      const [pathAndSearch, hashPart = ""] = href.split("#", 2);
-      const [pathPart, searchPart = ""] = pathAndSearch.split("?", 2);
-      return {
-        pathname: normalizePathname(pathPart || "/"),
-        search: searchPart ? `?${searchPart}` : "",
-        hash: hashPart ? `#${hashPart}` : "",
-      };
-    }
-  };
-
-  const setAuthProtectedLink = (
-    anchor: HTMLAnchorElement,
-    targetHref: string,
-  ): void => {
-    anchor.setAttribute(AUTH_PROTECTED_TARGET_ATTR, targetHref);
-    anchor.setAttribute("href", "#");
-    anchor.setAttribute("data-needs-login", "");
-  };
-
-  const clearAuthProtectedLink = (
-    anchor: HTMLAnchorElement,
-    href: string,
-  ): void => {
-    anchor.setAttribute("href", href);
-    anchor.removeAttribute("data-needs-login");
-    anchor.removeAttribute(AUTH_PROTECTED_TARGET_ATTR);
-  };
-
-  const resolveUserSegmentPath = (
-    pathname: string,
-    cleanUsername: string,
-  ): string => {
-    const segments = pathname.split("/").filter(Boolean);
-    const resolved = segments
-      .map((segment) => (segment === "__user__" ? cleanUsername : segment))
-      .join("/");
-    return `/${resolved}`;
-  };
-
-  const updatePublishLink = (
-    anchor: HTMLAnchorElement,
-    pathname: string,
-    search: string,
-    hash: string,
-    isLoggedIn: boolean,
-  ): void => {
-    const publishHref = `${pathname}${search}${hash}`;
-    if (isLoggedIn) {
-      clearAuthProtectedLink(anchor, publishHref);
-    } else {
-      setAuthProtectedLink(anchor, publishHref);
-    }
-  };
-
-  const updateUserPlaceholderLink = (
-    anchor: HTMLAnchorElement,
-    pathname: string,
-    search: string,
-    hash: string,
-    cleanUsername: string,
-    isLoggedIn: boolean,
-  ): void => {
-    if (cleanUsername) {
-      const resolvedPath = resolveUserSegmentPath(pathname, cleanUsername);
-      clearAuthProtectedLink(anchor, `${resolvedPath}${search}${hash}`);
-    } else if (!isLoggedIn) {
-      setAuthProtectedLink(anchor, `${pathname}${search}${hash}`);
-    } else {
-      clearAuthProtectedLink(anchor, "/me");
-    }
-  };
-
-  const updateMeHashLink = (
-    anchor: HTMLAnchorElement,
-    pathname: string,
-    search: string,
-    hash: string,
-    hashLower: string,
-    cleanUsername: string,
-    isLoggedIn: boolean,
-  ): void => {
-    const meHashTargets = ["bangumi", "diary", "albums"];
-    if (!meHashTargets.includes(hashLower)) return;
-    if (cleanUsername) {
-      clearAuthProtectedLink(anchor, `/${cleanUsername}/${hashLower}`);
-    } else if (!isLoggedIn) {
-      setAuthProtectedLink(anchor, `${pathname}${search}${hash}`);
-    } else {
-      clearAuthProtectedLink(anchor, "/me");
-    }
-  };
-
-  const updateProtectedMeRouteLink = (
-    anchor: HTMLAnchorElement,
-    pathname: string,
-    search: string,
-    hash: string,
-    isLoggedIn: boolean,
-  ): void => {
-    const targetHref = `${pathname}${search}${hash}`;
-    if (isLoggedIn) {
-      clearAuthProtectedLink(anchor, targetHref);
-      return;
-    }
-    setAuthProtectedLink(anchor, targetHref);
-  };
-
-  const updateLegacyLink = (
-    anchor: HTMLAnchorElement,
-    pathname: string,
-    cleanUsername: string,
-    isLoggedIn: boolean,
-  ): void => {
-    const target = pathname.replace(/^\//, "");
-    if (cleanUsername) {
-      clearAuthProtectedLink(anchor, `/${cleanUsername}/${target}`);
-    } else if (!isLoggedIn) {
-      setAuthProtectedLink(anchor, `/${target}`);
-    } else {
-      clearAuthProtectedLink(anchor, "/me");
-    }
-  };
-
-  const updateAnchorForAuth = (
-    anchor: HTMLAnchorElement,
-    cleanUsername: string,
-    isLoggedIn: boolean,
-  ): void => {
-    const rawHref = anchor.getAttribute("href") || "";
-    const targetHref =
-      anchor.getAttribute(AUTH_PROTECTED_TARGET_ATTR) || rawHref;
-    const parsedTarget = parseInternalTarget(targetHref);
-    if (!parsedTarget) return;
-
-    const { pathname, search, hash } = parsedTarget;
-
-    if (isPublishPathname(pathname)) {
-      updatePublishLink(anchor, pathname, search, hash, isLoggedIn);
-      return;
-    }
-
-    const hasUserPlaceholder = pathname
-      .split("/")
-      .filter(Boolean)
-      .includes("__user__");
-
-    if (hasUserPlaceholder) {
-      updateUserPlaceholderLink(
-        anchor,
-        pathname,
-        search,
-        hash,
-        cleanUsername,
-        isLoggedIn,
-      );
-      return;
-    }
-
-    const hashLower = hash.replace(/^#/, "").trim().toLowerCase();
-    if (pathname === "/me") {
-      // /me#bangumi 等入口要按公开个人页改写；裸 /me 则保持私有账户设置路由，
-      // 未登录时统一走 data-needs-login，避免先进页再被脚本重定向到登录页。
-      if (hashLower) {
-        updateMeHashLink(
-          anchor,
-          pathname,
-          search,
-          hash,
-          hashLower,
-          cleanUsername,
-          isLoggedIn,
-        );
-        if (["bangumi", "diary", "albums"].includes(hashLower)) {
-          return;
-        }
-      }
-      updateProtectedMeRouteLink(anchor, pathname, search, hash, isLoggedIn);
-      return;
-    }
-
-    if (pathname === "/me/homepage") {
-      updateProtectedMeRouteLink(anchor, pathname, search, hash, isLoggedIn);
-      return;
-    }
-
-    const legacyTarget = ["/bangumi", "/diary", "/albums"];
-    if (!legacyTarget.includes(pathname)) return;
-    updateLegacyLink(anchor, pathname, cleanUsername, isLoggedIn);
-  };
-
-  const updateUserRouteLinks = (
-    username: string,
-    isLoggedIn: boolean,
-  ): void => {
-    const cleanUsername = String(username || "").trim();
-    const anchors = Array.from(
-      document.querySelectorAll<HTMLAnchorElement>("a[href]"),
-    );
-    anchors.forEach((anchor) => {
-      updateAnchorForAuth(anchor, cleanUsername, isLoggedIn);
+  const applyAuthRouting = (state: AuthState | null | undefined): void => {
+    updateUserRouteLinks({
+      username: String(state?.username || "").trim(),
+      isLoggedIn: Boolean(state?.isLoggedIn),
     });
   };
 
-  const fetchAuthProfile = async () => {
-    try {
-      const response = await fetch("/api/auth/me?optional=1", {
-        method: "GET",
-        credentials: "include",
-        headers: { Accept: "application/json" },
-        cache: "no-store",
-      });
-      const data = await response.json().catch(() => null);
-      if (!response.ok || !data?.ok) {
-        return { ok: false, username: "", isAdmin: false, userId: "" };
-      }
-      return {
-        ok: true,
-        username: String(data?.user?.username || "").trim(),
-        isAdmin: Boolean(data?.is_admin || data?.isAdmin),
-        userId: String(data?.user?.id || "").trim(),
-      };
-    } catch (error) {
-      console.warn("[navbar] failed to load username:", error);
-      return { ok: false, username: "", isAdmin: false, userId: "" };
-    }
-  };
-
-  const applyAuthRouting = async (
-    state: AuthState | null | undefined,
-  ): Promise<void> => {
-    let username = String(state?.username || "").trim();
-    let isLoggedIn = Boolean(state?.isLoggedIn);
-
-    // 先使用当前已知状态立即更新链接行为，避免等待鉴权接口期间出现竞态
-    updateUserRouteLinks(username, isLoggedIn);
-
-    if (!username) {
-      const profile = await fetchAuthProfile();
-      if (profile.ok) {
-        username = profile.username;
-        isLoggedIn = true;
-        emitAuthState({
-          isLoggedIn: true,
-          isAdmin: profile.isAdmin,
-          userId: profile.userId,
-          username,
-        });
-      }
-    }
-    updateUserRouteLinks(username, isLoggedIn);
-  };
-
-  const initialAuth = getAuthState();
-  applyAuthRouting(initialAuth);
-  subscribeAuthState((state) => {
-    applyAuthRouting(state);
-  });
-
-  document.addEventListener("astro:after-swap", () => {
+  const syncAuthRouting = (): void => {
     applyAuthRouting(getAuthState());
-  });
+    void refreshAuthState();
+  };
 
   const isModifiedClick = (e: MouseEvent): boolean => {
     return (
@@ -739,7 +472,16 @@ const mobileLinks: NavBarLink[] = desktopLinks
     }
   };
 
-  document.addEventListener("click", handleNavClick, true);
+  if (!runtimeWindow.__cialliNavbarAuthBound) {
+    runtimeWindow.__cialliNavbarAuthBound = true;
+    subscribeAuthState((state) => {
+      applyAuthRouting(state);
+    });
+    document.addEventListener("astro:after-swap", syncAuthRouting);
+    document.addEventListener("click", handleNavClick, true);
+  }
+
+  syncAuthRouting();
 
   const setMobileNavOpen = (open: boolean): void => {
     const drawer = document.getElementById("mobile-nav-drawer");
@@ -764,10 +506,10 @@ const mobileLinks: NavBarLink[] = desktopLinks
   };
 
   const bindMobileNav = (): void => {
-    if (document.documentElement.dataset.mobileNavBound === "1") {
+    if (runtimeWindow.__cialliMobileNavBound) {
       return;
     }
-    document.documentElement.dataset.mobileNavBound = "1";
+    runtimeWindow.__cialliMobileNavBound = true;
 
     document.addEventListener("click", (event) => {
       const target = event.target;

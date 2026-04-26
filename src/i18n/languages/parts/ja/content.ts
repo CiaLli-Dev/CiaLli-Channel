@@ -124,6 +124,9 @@ export const jaContent: Record<string, string> = {
         "作成後は自動で編集モードになります。写真のアップロードやカバー設定ができます。",
     [Key.contentAlbumTitleLabel]: "アルバムタイトル",
     [Key.contentAlbumTitlePlaceholder]: "アルバムタイトルを入力",
+    [Key.contentAlbumTitleRequired]: "アルバムタイトルを入力してください",
+    [Key.contentAlbumTitleTooLong]:
+        "アルバムタイトルが長すぎます（最大 {max} 文字、CJK 文字は 2 文字としてカウント）",
     [Key.contentAlbumCreateSubmit]: "アルバムを作成",
     [Key.contentDiaryCreateTitle]: "ひとことを書く",
     [Key.contentDiaryCreateDescription]: "新しい日記を作成",

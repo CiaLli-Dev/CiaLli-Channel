@@ -1,15 +1,19 @@
 import type { APIContext } from "astro";
 
+import type { AppArticle } from "@/types/app";
 import { assertCan, assertOwnerOrAdmin } from "@/server/auth/acl";
 import { awaitCacheInvalidations } from "@/server/cache/invalidation";
 import { cacheManager } from "@/server/cache/manager";
 import { parseJsonBody } from "@/server/api/utils";
 import { validateBody } from "@/server/api/validate";
 import { CreateCommentSchema, UpdateCommentSchema } from "@/server/api/schemas";
+import { AppError } from "@/server/api/errors";
 import { fail, ok } from "@/server/api/response";
 import { createOne, readOneById, updateOne } from "@/server/directus/client";
 import { invalidateArticleInteractionAggregate } from "@/server/api/v1/shared/article-interaction";
 import { requireAccess } from "@/server/api/v1/shared/auth";
+import { loadPublicArticleByIdFromRepository } from "@/server/repositories/public/loaders.repository";
+import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 import {
     buildCommentUpdatePayload,
     buildDecoratedCommentTree,
@@ -27,16 +31,31 @@ import {
 import { resourceLifecycle } from "@/server/files/resource-lifecycle";
 import { searchIndex } from "@/server/application/shared/search-index";
 
+async function loadVisibleArticleForComments(
+    articleId: string,
+): Promise<AppArticle | null> {
+    return await withServiceRepositoryContext(async () => {
+        try {
+            return await loadPublicArticleByIdFromRepository(articleId);
+        } catch (error) {
+            if (
+                error instanceof AppError &&
+                (error.status === 403 || error.status === 404)
+            ) {
+                return null;
+            }
+            throw error;
+        }
+    });
+}
+
 async function getArticleCommentList(
     context: APIContext,
     articleId: string,
 ): Promise<Response> {
-    const article = await readOneById("app_articles", articleId);
+    const article = await loadVisibleArticleForComments(articleId);
     if (!article) {
         return fail("文章不存在", 404);
-    }
-    if (!(article.status === "published" && article.is_public)) {
-        return fail("文章不可见", 404);
     }
 
     const pagination = parseCommentPagination(context.url);
@@ -73,11 +92,8 @@ async function createArticleComment(
     const access = required.access;
     assertCan(access, "can_comment_articles");
 
-    const article = await readOneById("app_articles", articleId);
+    const article = await loadVisibleArticleForComments(articleId);
     if (!article) {
-        return fail("文章不存在", 404);
-    }
-    if (!(article.status === "published" && article.is_public)) {
         return fail("文章不存在或不可见", 404);
     }
     if (!article.allow_comments) {

@@ -302,6 +302,26 @@ function normalizeReferenceOwnerText(value: unknown): string {
     return String(value ?? "").trim();
 }
 
+function isSkippableReferenceScanError(error: unknown): boolean {
+    const message = error instanceof Error ? error.message : String(error);
+    return /forbidden|permission|does not exist|not found/i.test(message);
+}
+
+function warnSkippedReferenceScan(params: {
+    collection: string;
+    field: string;
+    error: unknown;
+}): void {
+    console.warn("[file-cleanup] skip reference scan target", {
+        collection: params.collection,
+        field: params.field,
+        error:
+            params.error instanceof Error
+                ? params.error.message
+                : String(params.error),
+    });
+}
+
 async function readOwnerSourceReferencedIdsInSiteSettingsFromRepository(
     ownerId: string,
     output: Set<string>,
@@ -408,25 +428,35 @@ export async function readReferencedIdsInStructuredTargetFromRepository(
     if (fileIds.length === 0) {
         return found;
     }
-    let offset = 0;
-    while (true) {
-        const rows = await readMany(target.collection, {
-            filter: { [target.field]: { _in: fileIds } } as JsonObject,
-            fields: [target.field],
-            limit: REFERENCE_PAGE_SIZE,
-            offset,
-        });
-        const list = rows as Array<Record<string, unknown>>;
-        for (const row of list) {
-            const fileId = normalizeDirectusFileId(row[target.field]);
-            if (fileId) {
-                found.add(fileId);
+    try {
+        let offset = 0;
+        while (true) {
+            const rows = await readMany(target.collection, {
+                filter: { [target.field]: { _in: fileIds } } as JsonObject,
+                fields: [target.field],
+                limit: REFERENCE_PAGE_SIZE,
+                offset,
+            });
+            const list = rows as Array<Record<string, unknown>>;
+            for (const row of list) {
+                const fileId = normalizeDirectusFileId(row[target.field]);
+                if (fileId) {
+                    found.add(fileId);
+                }
             }
+            if (
+                list.length < REFERENCE_PAGE_SIZE ||
+                found.size >= fileIds.length
+            ) {
+                break;
+            }
+            offset += list.length;
         }
-        if (list.length < REFERENCE_PAGE_SIZE || found.size >= fileIds.length) {
-            break;
+    } catch (error) {
+        if (!isSkippableReferenceScanError(error)) {
+            throw error;
         }
-        offset += list.length;
+        warnSkippedReferenceScan({ ...target, error });
     }
     return found;
 }
@@ -435,24 +465,31 @@ export async function readAllReferencedIdsInStructuredTargetFromRepository(
     target: StructuredReferenceTarget,
 ): Promise<Set<string>> {
     const found = new Set<string>();
-    let offset = 0;
-    while (true) {
-        const rows = await readMany(target.collection, {
-            fields: [target.field],
-            limit: REFERENCE_PAGE_SIZE,
-            offset,
-        });
-        const list = rows as Array<Record<string, unknown>>;
-        for (const row of list) {
-            const fileId = normalizeDirectusFileId(row[target.field]);
-            if (fileId) {
-                found.add(fileId);
+    try {
+        let offset = 0;
+        while (true) {
+            const rows = await readMany(target.collection, {
+                fields: [target.field],
+                limit: REFERENCE_PAGE_SIZE,
+                offset,
+            });
+            const list = rows as Array<Record<string, unknown>>;
+            for (const row of list) {
+                const fileId = normalizeDirectusFileId(row[target.field]);
+                if (fileId) {
+                    found.add(fileId);
+                }
             }
+            if (list.length < REFERENCE_PAGE_SIZE) {
+                break;
+            }
+            offset += list.length;
         }
-        if (list.length < REFERENCE_PAGE_SIZE) {
-            break;
+    } catch (error) {
+        if (!isSkippableReferenceScanError(error)) {
+            throw error;
         }
-        offset += list.length;
+        warnSkippedReferenceScan({ ...target, error });
     }
     return found;
 }
@@ -467,29 +504,36 @@ export async function readReferencedIdsInMarkdownTargetFromRepository(
         return found;
     }
 
-    let offset = 0;
-    while (true) {
-        const rows = await readMany(target.collection, {
-            fields: [target.field],
-            limit: REFERENCE_PAGE_SIZE,
-            offset,
-        });
-        const list = rows as Array<Record<string, unknown>>;
-        for (const row of list) {
-            collectReferencedAssetIdsFromUnknown(
-                row[target.field],
-                candidateSet,
-                found,
-                { includeBareUuid: false },
-            );
-            if (found.size >= candidateSet.size) {
-                return found;
+    try {
+        let offset = 0;
+        while (true) {
+            const rows = await readMany(target.collection, {
+                fields: [target.field],
+                limit: REFERENCE_PAGE_SIZE,
+                offset,
+            });
+            const list = rows as Array<Record<string, unknown>>;
+            for (const row of list) {
+                collectReferencedAssetIdsFromUnknown(
+                    row[target.field],
+                    candidateSet,
+                    found,
+                    { includeBareUuid: false },
+                );
+                if (found.size >= candidateSet.size) {
+                    return found;
+                }
             }
+            if (list.length < REFERENCE_PAGE_SIZE) {
+                break;
+            }
+            offset += list.length;
         }
-        if (list.length < REFERENCE_PAGE_SIZE) {
-            break;
+    } catch (error) {
+        if (!isSkippableReferenceScanError(error)) {
+            throw error;
         }
-        offset += list.length;
+        warnSkippedReferenceScan({ ...target, error });
     }
     return found;
 }
@@ -498,26 +542,33 @@ export async function readAllReferencedIdsInMarkdownTargetFromRepository(
     target: MarkdownReferenceTarget,
 ): Promise<Set<string>> {
     const found = new Set<string>();
-    let offset = 0;
-    while (true) {
-        const rows = await readMany(target.collection, {
-            fields: [target.field],
-            limit: REFERENCE_PAGE_SIZE,
-            offset,
-        });
-        const list = rows as Array<Record<string, unknown>>;
-        for (const row of list) {
-            collectReferencedAssetIdsFromUnknown(
-                row[target.field],
-                null,
-                found,
-                { includeBareUuid: false },
-            );
+    try {
+        let offset = 0;
+        while (true) {
+            const rows = await readMany(target.collection, {
+                fields: [target.field],
+                limit: REFERENCE_PAGE_SIZE,
+                offset,
+            });
+            const list = rows as Array<Record<string, unknown>>;
+            for (const row of list) {
+                collectReferencedAssetIdsFromUnknown(
+                    row[target.field],
+                    null,
+                    found,
+                    { includeBareUuid: false },
+                );
+            }
+            if (list.length < REFERENCE_PAGE_SIZE) {
+                break;
+            }
+            offset += list.length;
         }
-        if (list.length < REFERENCE_PAGE_SIZE) {
-            break;
+    } catch (error) {
+        if (!isSkippableReferenceScanError(error)) {
+            throw error;
         }
-        offset += list.length;
+        warnSkippedReferenceScan({ ...target, error });
     }
     return found;
 }

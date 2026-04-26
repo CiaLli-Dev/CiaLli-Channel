@@ -5,6 +5,10 @@ import { cacheManager } from "@/server/cache/manager";
 import { hashParams } from "@/server/cache/key-utils";
 import { countItems, readMany } from "@/server/directus/client";
 import { fail, ok } from "@/server/api/response";
+import {
+    normalizeAlbumCoverUrl,
+    normalizeAlbumPhotoImageUrl,
+} from "@/server/application/albums/external-image-fields";
 import { parsePagination } from "@/server/api/utils";
 import { filterPublicStatus } from "@/server/api/v1/shared/auth";
 import { safeCsv } from "@/server/api/v1/shared/helpers";
@@ -69,7 +73,7 @@ export async function handlePublicAlbumsRoute(
         const authorMap = await getAuthorBundle(authorIds);
 
         const items = rows.map((row) => ({
-            ...row,
+            ...normalizeAlbumCoverUrl(row),
             tags: safeCsv(row.tags),
             author: readAuthor(authorMap, row.author_id),
         }));
@@ -110,11 +114,11 @@ export async function handlePublicAlbumsRoute(
 
         const result = {
             item: {
-                ...album,
+                ...normalizeAlbumCoverUrl(album),
                 tags: safeCsv(album.tags),
                 author: readAuthor(authorMap, album.author_id),
                 photos: photos.map((photo) => ({
-                    ...photo,
+                    ...normalizeAlbumPhotoImageUrl(photo),
                     tags: safeCsv(photo.tags),
                 })),
             },

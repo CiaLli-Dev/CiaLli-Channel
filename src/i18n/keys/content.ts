@@ -105,6 +105,8 @@ export enum ContentKey {
     contentAlbumCreateHint = "contentAlbumCreateHint",
     contentAlbumTitleLabel = "contentAlbumTitleLabel",
     contentAlbumTitlePlaceholder = "contentAlbumTitlePlaceholder",
+    contentAlbumTitleRequired = "contentAlbumTitleRequired",
+    contentAlbumTitleTooLong = "contentAlbumTitleTooLong",
     contentAlbumCreateSubmit = "contentAlbumCreateSubmit",
     contentDiaryCreateTitle = "contentDiaryCreateTitle",
     contentDiaryCreateDescription = "contentDiaryCreateDescription",

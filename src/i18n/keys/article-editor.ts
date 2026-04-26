@@ -45,6 +45,8 @@ export enum ArticleEditorKey {
     articleEditorSaveFailedRetry = "articleEditorSaveFailedRetry",
     articleEditorSavingData = "articleEditorSavingData",
     articleEditorSavingTitle = "articleEditorSavingTitle",
+    articleEditorBodyRequired = "articleEditorBodyRequired",
+    articleEditorTitleRequired = "articleEditorTitleRequired",
     articleEditorTitleBodyRequired = "articleEditorTitleBodyRequired",
     articleEditorTitleMaxLength = "articleEditorTitleMaxLength",
     articleEditorToolbarBoldPlaceholder = "articleEditorToolbarBoldPlaceholder",

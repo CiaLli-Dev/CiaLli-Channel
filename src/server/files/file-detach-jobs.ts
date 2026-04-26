@@ -7,11 +7,17 @@ import {
     updateMany,
     updateOne,
 } from "@/server/directus/client";
-import { collectReferencedDirectusFileIds } from "@/server/api/v1/shared/file-cleanup";
+import {
+    collectReferencedDirectusFileIds,
+    collectReferencedDirectusFileIdsExcludingOwner,
+} from "@/server/api/v1/shared/file-cleanup";
 import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup-reference-utils";
 import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 import { markFilesDetached } from "@/server/repositories/files/file-lifecycle.repository";
-import { deleteOwnerReferences } from "@/server/repositories/files/file-reference.repository";
+import {
+    deleteOwnerReferences,
+    readOwnerFileReferences,
+} from "@/server/repositories/files/file-reference.repository";
 import { seedFileReferencesWhenEmpty } from "@/server/files/file-reference-shadow";
 import {
     isResourceReferenceSyncJobSource,
@@ -198,6 +204,19 @@ function readOwnerReleaseCollection(
     return isOwnerReleaseCollection(collection) ? collection : null;
 }
 
+function readOwnerReleaseSource(
+    job: AppFileDetachJob,
+): { ownerCollection: DetachJobSourceCollection; ownerId: string } | null {
+    const ownerCollection = readOwnerReleaseCollection(
+        String(job.source_type || ""),
+    );
+    const ownerId = String(job.source_id || "").trim();
+    if (!ownerCollection || !ownerId) {
+        return null;
+    }
+    return { ownerCollection, ownerId };
+}
+
 function readSourceCollection(
     job: AppFileDetachJob,
 ): DetachJobSourceCollection | null {
@@ -280,19 +299,31 @@ async function claimFileDetachJob(params: {
     return claimed.length === 1;
 }
 
-async function releaseOwnerReferencesAfterSourceDeleted(
+async function deleteOwnerReferencesAfterSourceDeleted(
     job: AppFileDetachJob,
-): Promise<number> {
-    const ownerCollection = readOwnerReleaseCollection(
-        String(job.source_type || ""),
-    );
-    if (!ownerCollection || !job.source_id) {
-        return 0;
+): Promise<void> {
+    const owner = readOwnerReleaseSource(job);
+    if (!owner) {
+        return;
     }
-    return await deleteOwnerReferences({
-        ownerCollection,
-        ownerId: job.source_id,
+    await deleteOwnerReferences({
+        ownerCollection: owner.ownerCollection,
+        ownerId: owner.ownerId,
     });
+}
+
+async function readOwnerReferenceFileIds(
+    job: AppFileDetachJob,
+): Promise<string[]> {
+    const owner = readOwnerReleaseSource(job);
+    if (!owner) {
+        return [];
+    }
+    const rows = await readOwnerFileReferences({
+        ownerCollection: owner.ownerCollection,
+        ownerId: owner.ownerId,
+    });
+    return normalizeFileIds(rows.map((row) => row.file_id));
 }
 
 export async function enqueueFileDetachJob(input: {
@@ -395,7 +426,7 @@ export async function runFileDetachJob(
 
         const nowIso = now.toISOString();
         const attempts = job.attempts + 1;
-        const candidateFileIds = readJobCandidateFileIds(job);
+        let candidateFileIds = readJobCandidateFileIds(job);
         const leaseUntilIso = new Date(
             now.getTime() + readFileDetachJobLeaseSeconds() * 1_000,
         ).toISOString();
@@ -474,7 +505,12 @@ export async function runFileDetachJob(
                 };
             }
 
-            await releaseOwnerReferencesAfterSourceDeleted(job);
+            const ownerReleaseSource = readOwnerReleaseSource(job);
+            const ownerReferenceFileIds = await readOwnerReferenceFileIds(job);
+            candidateFileIds = normalizeFileIds([
+                ...candidateFileIds,
+                ...ownerReferenceFileIds,
+            ]);
 
             if (candidateFileIds.length === 0) {
                 await updateOne("app_file_detach_jobs", job.id, {
@@ -494,14 +530,20 @@ export async function runFileDetachJob(
             }
 
             await seedFileReferencesWhenEmpty();
-            const referencedFileIds =
-                await collectReferencedDirectusFileIds(candidateFileIds);
+            const referencedFileIds = ownerReleaseSource
+                ? await collectReferencedDirectusFileIdsExcludingOwner(
+                      candidateFileIds,
+                      ownerReleaseSource,
+                  )
+                : await collectReferencedDirectusFileIds(candidateFileIds);
             const skippedReferencedFileIds = candidateFileIds.filter((fileId) =>
                 referencedFileIds.has(fileId),
             );
             const detachedFileIds = candidateFileIds.filter(
                 (fileId) => !referencedFileIds.has(fileId),
             );
+
+            await deleteOwnerReferencesAfterSourceDeleted(job);
 
             if (detachedFileIds.length > 0) {
                 await markFilesDetached(detachedFileIds, nowIso);

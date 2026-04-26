@@ -24,6 +24,10 @@ import { validateBody } from "@/server/api/validate";
 import { awaitCacheInvalidations } from "@/server/cache/invalidation";
 import { cacheManager } from "@/server/cache/manager";
 import {
+    normalizeAlbumCoverUrl,
+    normalizeAlbumPhotoImageUrl,
+} from "@/server/application/albums/external-image-fields";
+import {
     countItems,
     createOne,
     deleteOne,
@@ -34,6 +38,7 @@ import {
 import {
     createWithShortId,
     isUniqueConstraintError,
+    isUuid,
 } from "@/server/utils/short-id";
 import type { AppAccess } from "@/server/api/v1/shared/types";
 import { hasOwn, safeCsv, sanitizeSlug } from "@/server/api/v1/shared/helpers";
@@ -61,11 +66,34 @@ async function handleAlbumsGet(
         offset,
     });
     return ok({
-        items: rows.map((row) => ({ ...row, tags: safeCsv(row.tags) })),
+        items: rows.map((row) =>
+            normalizeAlbumCoverUrl({ ...row, tags: safeCsv(row.tags) }),
+        ),
         page,
         limit,
         total: rows.length,
     });
+}
+
+type ParsedAlbumRouteId = { id: string } | { response: Response };
+
+function parseAlbumRouteId(input: string | undefined): ParsedAlbumRouteId {
+    const id = parseRouteId(input);
+    if (!id) {
+        return { response: fail("缺少相册 ID", 400, "ALBUM_ID_MISSING") };
+    }
+    if (!isUuid(id)) {
+        return { response: fail("非法相册 ID", 400, "ALBUM_ID_INVALID") };
+    }
+    return { id };
+}
+
+async function loadVisibleAlbumById(id: string): Promise<AppAlbum | null> {
+    const rows = await readMany("app_albums", {
+        filter: { id: { _eq: id } } as JsonObject,
+        limit: 1,
+    });
+    return rows[0] ?? null;
 }
 
 async function createAlbumWithSlugRetry(
@@ -162,7 +190,12 @@ async function handleAlbumsPost(
         [cacheManager.invalidateByDomain("album-list")],
         { label: "me/albums#create" },
     );
-    return ok({ item: { ...created, tags: safeCsv(created?.tags) } });
+    return ok({
+        item: normalizeAlbumCoverUrl({
+            ...created,
+            tags: safeCsv(created?.tags),
+        }),
+    });
 }
 
 async function handleAlbumGet(id: string, target: AppAlbum): Promise<Response> {
@@ -174,9 +207,9 @@ async function handleAlbumGet(id: string, target: AppAlbum): Promise<Response> {
         limit: 200,
     });
     return ok({
-        item: { ...target, tags: safeCsv(target.tags) },
+        item: normalizeAlbumCoverUrl({ ...target, tags: safeCsv(target.tags) }),
         photos: photos.map((photo) => ({
-            ...photo,
+            ...normalizeAlbumPhotoImageUrl(photo),
             tags: safeCsv(photo.tags),
         })),
     });
@@ -292,7 +325,12 @@ async function handleAlbumPatch(
         ],
         { label: "me/albums#patch" },
     );
-    return ok({ item: { ...updated, tags: safeCsv(updated.tags) } });
+    return ok({
+        item: normalizeAlbumCoverUrl({
+            ...updated,
+            tags: safeCsv(updated.tags),
+        }),
+    });
 }
 
 async function syncAlbumCoverVisibility(params: {
@@ -427,24 +465,24 @@ export async function handleMyAlbums(
     }
 
     if (segments.length === 2) {
-        const id = parseRouteId(segments[1]);
-        if (!id) {
-            return fail("缺少相册 ID", 400);
+        const parsed = parseAlbumRouteId(segments[1]);
+        if ("response" in parsed) {
+            return parsed.response;
         }
-        const target = await readOneById("app_albums", id);
+        const target = await loadVisibleAlbumById(parsed.id);
         if (!target) {
-            return fail("相册不存在", 404);
+            return fail("相册不存在", 404, "ALBUM_NOT_FOUND");
         }
         assertOwnerOrAdmin(access, target.author_id);
 
         if (context.request.method === "GET") {
-            return await handleAlbumGet(id, target);
+            return await handleAlbumGet(parsed.id, target);
         }
         if (context.request.method === "PATCH") {
-            return await handleAlbumPatch(context, access, id, target);
+            return await handleAlbumPatch(context, access, parsed.id, target);
         }
         if (context.request.method === "DELETE") {
-            return await handleAlbumDelete(id, target);
+            return await handleAlbumDelete(parsed.id, target);
         }
     }
 
@@ -506,7 +544,12 @@ async function handlePhotoPost(
         [cacheManager.invalidate("album-detail", albumId)],
         { label: "me/album-photos#create" },
     );
-    return ok({ item: { ...created, tags: safeCsv(created.tags) } });
+    return ok({
+        item: {
+            ...normalizeAlbumPhotoImageUrl(created),
+            tags: safeCsv(created.tags),
+        },
+    });
 }
 
 function buildPhotoPatchPayload(
@@ -608,7 +651,12 @@ async function handlePhotoPatch(
         [cacheManager.invalidate("album-detail", photo.album_id)],
         { label: "me/album-photos#patch" },
     );
-    return ok({ item: { ...updated, tags: safeCsv(updated.tags) } });
+    return ok({
+        item: {
+            ...normalizeAlbumPhotoImageUrl(updated),
+            tags: safeCsv(updated.tags),
+        },
+    });
 }
 
 async function handlePhotoDelete(

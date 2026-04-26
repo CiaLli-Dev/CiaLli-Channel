@@ -2,12 +2,14 @@ import { beforeEach, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
     collectReferencedDirectusFileIds: vi.fn(),
+    collectReferencedDirectusFileIdsExcludingOwner: vi.fn(),
     createOne: vi.fn(),
     deleteOwnerReferences: vi.fn(),
     isResourceReferenceSyncJobSource: vi.fn(),
     markResourceReferenceSyncJobSucceeded: vi.fn(),
     markFilesDetached: vi.fn(),
     parseResourceReferenceSyncJobPayload: vi.fn(),
+    readOwnerFileReferences: vi.fn(),
     readMany: vi.fn(),
     readOneById: vi.fn(),
     replayResourceReferenceSyncJob: vi.fn(),
@@ -29,6 +31,8 @@ vi.mock("@/server/directus/client", () => ({
 
 vi.mock("@/server/api/v1/shared/file-cleanup", () => ({
     collectReferencedDirectusFileIds: mocks.collectReferencedDirectusFileIds,
+    collectReferencedDirectusFileIdsExcludingOwner:
+        mocks.collectReferencedDirectusFileIdsExcludingOwner,
 }));
 
 vi.mock("@/server/repositories/directus/scope", () => ({
@@ -41,6 +45,7 @@ vi.mock("@/server/repositories/files/file-lifecycle.repository", () => ({
 
 vi.mock("@/server/repositories/files/file-reference.repository", () => ({
     deleteOwnerReferences: mocks.deleteOwnerReferences,
+    readOwnerFileReferences: mocks.readOwnerFileReferences,
 }));
 
 vi.mock("@/server/files/file-reference-shadow", () => ({
@@ -86,6 +91,9 @@ beforeEach(() => {
     delete process.env.FILE_DETACH_JOB_BATCH_SIZE;
     delete process.env.FILE_DETACH_JOB_LEASE_SECONDS;
     mocks.collectReferencedDirectusFileIds.mockResolvedValue(new Set());
+    mocks.collectReferencedDirectusFileIdsExcludingOwner.mockResolvedValue(
+        new Set(),
+    );
     mocks.createOne.mockResolvedValue({
         id: "job-1",
         status: "pending",
@@ -96,6 +104,7 @@ beforeEach(() => {
     mocks.markResourceReferenceSyncJobSucceeded.mockResolvedValue(undefined);
     mocks.markFilesDetached.mockResolvedValue(undefined);
     mocks.parseResourceReferenceSyncJobPayload.mockReturnValue(null);
+    mocks.readOwnerFileReferences.mockResolvedValue([]);
     mocks.replayResourceReferenceSyncJob.mockResolvedValue({
         attachedFileIds: [],
         detachedFileIds: [],
@@ -398,6 +407,55 @@ it("deletes owner references only after a resource owner release source is gone"
         "2026-04-24T00:00:00.000Z",
     );
     expect(result.status).toBe("succeeded");
+});
+
+it("hydrates owner release candidates from stale owner references before deleting them", async () => {
+    mockPendingJobClaim({
+        id: "job-release",
+        status: "pending",
+        source_type: "resource.owner.release:app_articles",
+        source_id: "article-1",
+        attempts: 0,
+        candidate_file_ids: [],
+        scheduled_at: "2026-04-24T00:00:00.000Z",
+        leased_until: null,
+    });
+    mocks.readOwnerFileReferences.mockResolvedValue([
+        { id: "ref-1", file_id: FILE_TWO },
+    ]);
+
+    const result = await runFileDetachJob(
+        "job-release",
+        new Date("2026-04-24T00:00:00.000Z"),
+    );
+
+    expect(mocks.readOwnerFileReferences).toHaveBeenCalledWith({
+        ownerCollection: "app_articles",
+        ownerId: "article-1",
+    });
+    expect(mocks.deleteOwnerReferences).toHaveBeenCalledWith({
+        ownerCollection: "app_articles",
+        ownerId: "article-1",
+    });
+    expect(mocks.markFilesDetached).toHaveBeenCalledWith(
+        [FILE_TWO],
+        "2026-04-24T00:00:00.000Z",
+    );
+    expect(mocks.updateOne).toHaveBeenLastCalledWith(
+        "app_file_detach_jobs",
+        "job-release",
+        expect.objectContaining({
+            status: "succeeded",
+            detached_file_ids: [FILE_TWO],
+            skipped_referenced_file_ids: [],
+        }),
+    );
+    expect(result).toEqual({
+        status: "succeeded",
+        jobId: "job-release",
+        detached: 1,
+        skippedReferenced: 0,
+    });
 });
 
 it("keeps unknown owner release source types pending", async () => {

@@ -385,8 +385,17 @@ export function validateSubmitForm(
     if (targetStatus !== "published") {
         return { valid: true, canReuseEncryptedBody };
     }
-    if (!title || (!bodyMarkdown && !canReuseEncryptedBody)) {
+    const bodyMissing = !bodyMarkdown && !canReuseEncryptedBody;
+    if (!title && bodyMissing) {
         ui.setSubmitError(t(I18nKey.articleEditorTitleBodyRequired));
+        return { valid: false, canReuseEncryptedBody };
+    }
+    if (!title) {
+        ui.setSubmitError(t(I18nKey.articleEditorTitleRequired));
+        return { valid: false, canReuseEncryptedBody };
+    }
+    if (bodyMissing) {
+        ui.setSubmitError(t(I18nKey.articleEditorBodyRequired));
         return { valid: false, canReuseEncryptedBody };
     }
 

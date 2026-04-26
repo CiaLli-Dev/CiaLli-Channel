@@ -7,6 +7,7 @@ import {
     parseResponseJson,
 } from "@/__tests__/helpers/mock-api-context";
 import { mockArticle } from "@/__tests__/helpers/mock-data";
+import type { AppError } from "@/server/api/errors";
 
 // ── mock 依赖 ──
 
@@ -198,6 +199,52 @@ describe("POST /me/articles", () => {
                 "articles",
             ]),
         ).rejects.toThrow();
+    });
+
+    it("标题为空白时创建发布文章失败且错误文案非空", async () => {
+        const ctx = createMockAPIContext({
+            method: "POST",
+            url: "http://localhost:4321/api/v1/me/articles",
+            body: {
+                title: "   ",
+                body_markdown: "正文",
+            },
+        });
+        const access = createMemberAccess();
+
+        await expect(
+            handleMeArticles(ctx as unknown as APIContext, access, [
+                "articles",
+            ]),
+        ).rejects.toMatchObject({
+            status: 400,
+            code: "VALIDATION_ERROR",
+            message: expect.stringContaining("标题必填"),
+        } satisfies Partial<AppError>);
+        expect(mockedCreateWithShortId).not.toHaveBeenCalled();
+    });
+
+    it("正文为空白时创建发布文章失败且错误文案非空", async () => {
+        const ctx = createMockAPIContext({
+            method: "POST",
+            url: "http://localhost:4321/api/v1/me/articles",
+            body: {
+                title: "标题",
+                body_markdown: "   ",
+            },
+        });
+        const access = createMemberAccess();
+
+        await expect(
+            handleMeArticles(ctx as unknown as APIContext, access, [
+                "articles",
+            ]),
+        ).rejects.toMatchObject({
+            status: 400,
+            code: "VALIDATION_ERROR",
+            message: expect.stringContaining("正文必填"),
+        } satisfies Partial<AppError>);
+        expect(mockedCreateWithShortId).not.toHaveBeenCalled();
     });
 });
 
@@ -818,7 +865,11 @@ describe("PATCH /me/articles/:id publish validation and file cleanup", () => {
                 "articles",
                 "draft-1",
             ]),
-        ).rejects.toThrow();
+        ).rejects.toMatchObject({
+            status: 400,
+            code: "VALIDATION_ERROR",
+            message: expect.any(String),
+        } satisfies Partial<AppError>);
     });
 
     it("正文纯文本 UUID 不会进入回收候选", async () => {

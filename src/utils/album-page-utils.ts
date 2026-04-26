@@ -8,6 +8,7 @@ import {
     ALBUM_GRID_WIDTH,
     ALBUM_GRID_HEIGHT,
 } from "@/constants/image";
+import { normalizeExternalImageUrl } from "@/utils/external-image-policy";
 
 export function resolveAlbumCoverUrl(
     item: {
@@ -17,8 +18,9 @@ export function resolveAlbumCoverUrl(
     },
     privateAccess = false,
 ): string | null {
-    if (item.cover_url) {
-        return item.cover_url;
+    const coverUrl = normalizeExternalImageUrl(item.cover_url);
+    if (coverUrl) {
+        return coverUrl;
     }
     if (item.cover_file) {
         const buildAssetUrl = privateAccess
@@ -84,8 +86,9 @@ export function resolvePhotoUrl(
     layout: "grid" | "masonry",
     privateAccess = false,
 ): string | null {
-    if (photo.image_url) {
-        return photo.image_url;
+    const imageUrl = normalizeExternalImageUrl(photo.image_url);
+    if (imageUrl) {
+        return imageUrl;
     }
     if (photo.file_id) {
         const buildAssetUrl = privateAccess
@@ -112,8 +115,9 @@ export function resolvePhotoPreviewUrl(
     },
     privateAccess = false,
 ): string | null {
-    if (photo.image_url) {
-        return photo.image_url;
+    const imageUrl = normalizeExternalImageUrl(photo.image_url);
+    if (imageUrl) {
+        return imageUrl;
     }
     if (photo.file_id) {
         const buildAssetUrl = privateAccess
