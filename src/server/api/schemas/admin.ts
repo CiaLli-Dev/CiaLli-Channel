@@ -426,7 +426,7 @@ export const AdminAiSettingsUpdateSchema: z.ZodType<AdminAiSettingsUpdateInput> 
                 validateAiBaseUrlForCurrentEnvironment(value.baseUrl);
             } catch (error) {
                 context.addIssue({
-                    code: z.ZodIssueCode.custom,
+                    code: "custom",
                     message:
                         error instanceof Error
                             ? error.message

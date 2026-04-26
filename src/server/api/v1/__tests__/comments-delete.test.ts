@@ -8,6 +8,9 @@ vi.mock("@/server/directus/client", () => ({
     deleteDirectusFile: vi.fn(),
     readMany: vi.fn(),
     readOneById: vi.fn(),
+    runWithDirectusServiceAccess: vi.fn(
+        async (task: () => Promise<unknown>) => await task(),
+    ),
 }));
 
 vi.mock("@/server/api/v1/shared/file-cleanup", () => ({

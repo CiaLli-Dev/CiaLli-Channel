@@ -38,7 +38,11 @@ function failWhenProcessedFileTooLarge(
     }
 
     const label = UPLOAD_LIMIT_LABELS[purpose];
-    return fail(`处理后的文件过大，最大允许 ${label}`, 413);
+    return fail(
+        `处理后的文件过大，最大允许 ${label}`,
+        413,
+        "UPLOAD_FILE_TOO_LARGE",
+    );
 }
 
 function toIcoBufferFromPngBuffer(pngBuffer: Buffer): Buffer {
@@ -128,7 +132,11 @@ async function processUploadBuffer(params: {
     } catch {
         return {
             ok: false,
-            response: fail("图片处理失败，请检查文件是否损坏", 422),
+            response: fail(
+                "图片处理失败，请检查文件是否损坏",
+                422,
+                "IMAGE_PROCESSING_FAILED",
+            ),
         };
     }
 
@@ -162,7 +170,11 @@ async function processUploadBuffer(params: {
             );
             return {
                 ok: false,
-                response: fail("站点图标转换失败", 400),
+                response: fail(
+                    "站点图标转换失败",
+                    400,
+                    "IMAGE_CONVERSION_FAILED",
+                ),
             };
         }
     }
@@ -213,7 +225,11 @@ export async function createManagedUpload(params: {
     const maxSize = UPLOAD_LIMITS[params.authorization.purpose];
     const label = UPLOAD_LIMIT_LABELS[params.authorization.purpose];
     if (params.file.size > maxSize) {
-        return fail(`文件过大，最大允许 ${label}`, 413);
+        return fail(
+            `文件过大，最大允许 ${label}`,
+            413,
+            "UPLOAD_FILE_TOO_LARGE",
+        );
     }
 
     if (params.authorization.purpose !== "registration-avatar") {

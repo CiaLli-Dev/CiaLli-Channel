@@ -94,7 +94,7 @@ function saveSessionUserToCache(accessToken: string, user: SessionUser): void {
     );
 }
 
-function invalidateSessionUserCache(accessToken: string): void {
+export function invalidateSessionUserCache(accessToken: string): void {
     const normalizedToken = String(accessToken || "").trim();
     if (!normalizedToken) {
         return;

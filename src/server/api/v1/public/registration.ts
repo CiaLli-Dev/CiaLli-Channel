@@ -232,7 +232,11 @@ export async function handlePublicRegistrationCheck(
         context.url.searchParams.get("username") || "",
     ).trim();
     if (!emailRaw && !usernameRaw) {
-        return fail("至少提供邮箱或用户名", 400);
+        return fail(
+            "至少提供邮箱或用户名",
+            400,
+            "REGISTRATION_CHECK_QUERY_REQUIRED",
+        );
     }
 
     return ok(

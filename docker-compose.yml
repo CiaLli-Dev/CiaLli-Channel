@@ -6,6 +6,7 @@ services:
         condition: service_started
     environment:
       APP_PUBLIC_BASE_URL: ${APP_PUBLIC_BASE_URL:-http://localhost}
+      CADDY_ADDITIONAL_SITE_ADDRESS: ${CADDY_ADDITIONAL_SITE_ADDRESS:-}
     ports:
       - "80:80"
       - "443:443"

@@ -28,7 +28,6 @@ import {
 } from "@/server/auth/username";
 import {
     deleteDirectusUser,
-    deleteOne,
     listDirectusUserPolicyAssignments,
     listDirectusUsers,
     readMany,
@@ -857,42 +856,41 @@ async function handleUserDelete(
             targetIsPlatformAdmin: targetSnapshot.isPlatformAdmin,
         });
 
-        const [profiles, registrationRequests] = await Promise.all([
-            readMany("app_user_profiles", {
-                filter: { user_id: { _eq: userId } } as JsonObject,
-                limit: 10,
-                fields: ["id", "header_file"],
-            }),
-            readMany("app_user_registration_requests", {
-                filter: {
-                    _or: [
-                        { approved_user_id: { _eq: userId } },
-                        { pending_user_id: { _eq: userId } },
-                    ],
-                } as JsonObject,
-                limit: 200,
-                fields: ["id", "avatar_file"],
-            }),
-        ]);
+        const [profiles, registrationRequests, remainingFiles] =
+            await Promise.all([
+                readMany("app_user_profiles", {
+                    filter: { user_id: { _eq: userId } } as JsonObject,
+                    limit: 10,
+                    fields: ["id", "header_file"],
+                }),
+                readMany("app_user_registration_requests", {
+                    filter: {
+                        _or: [
+                            { approved_user_id: { _eq: userId } },
+                            { pending_user_id: { _eq: userId } },
+                        ],
+                    } as JsonObject,
+                    limit: 200,
+                    fields: ["id", "avatar_file"],
+                }),
+                loadReferencedFilesByUser(userId),
+            ]);
+
+        await clearBlockingUserReferences(userId);
+        await nullifyReferencedFileOwnership(remainingFiles, userId);
+        await deleteDirectusUser(userId);
 
         for (const profile of profiles) {
             await resourceLifecycle.releaseOwnerResources({
                 ownerCollection: "app_user_profiles",
                 ownerId: profile.id,
             });
-            await deleteOne("app_user_profiles", profile.id).catch((error) => {
-                console.warn(
-                    "[admin/users] 删除 profile 失败, profileId:",
-                    profile.id,
-                    error,
-                );
-            });
         }
         for (const request of registrationRequests) {
             await syncManagedFileBinding({
                 previousFileValue: request.avatar_file,
                 nextFileValue: null,
-                userId,
+                userId: null,
                 visibility: "private",
                 reference: {
                     ownerCollection: "app_user_registration_requests",
@@ -911,14 +909,10 @@ async function handleUserDelete(
                 );
             },
         );
-        const remainingFiles = await loadReferencedFilesByUser(userId);
-        await nullifyReferencedFileOwnership(remainingFiles, userId);
-        await clearBlockingUserReferences(userId);
         await resourceLifecycle.releaseOwnerResources({
             ownerCollection: "directus_users",
             ownerId: userId,
         });
-        await deleteDirectusUser(userId);
         await searchIndex.remove("user", userId);
         console.info("[audit] user.delete", {
             userId,

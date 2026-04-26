@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { APIContext } from "astro";
 
-import { createMockAPIContext } from "@/__tests__/helpers/mock-api-context";
+import {
+    createMockAPIContext,
+    parseResponseJson,
+} from "@/__tests__/helpers/mock-api-context";
 
 const mocks = vi.hoisted(() => ({
     createManagedUpload: vi.fn(),
@@ -44,6 +47,36 @@ describe("handleUploads", () => {
         const response = await handleUploads(context);
 
         expect(response.status).toBe(400);
+        await expect(parseResponseJson(response)).resolves.toMatchObject({
+            error: {
+                code: "UNSUPPORTED_UPLOAD_PURPOSE",
+                message: "不支持的上传用途",
+            },
+        });
+        expect(mocks.requireAccess).not.toHaveBeenCalled();
+        expect(mocks.createManagedUpload).not.toHaveBeenCalled();
+    });
+
+    it("returns stable error code when upload file is missing", async () => {
+        const formData = new FormData();
+        formData.append("purpose", "avatar");
+
+        const context = createMockAPIContext({
+            method: "POST",
+            url: "http://localhost:4321/api/v1/uploads",
+            params: { segments: "uploads" },
+            formData,
+        }) as unknown as APIContext;
+
+        const response = await handleUploads(context);
+
+        expect(response.status).toBe(400);
+        await expect(parseResponseJson(response)).resolves.toMatchObject({
+            error: {
+                code: "UPLOAD_FILE_REQUIRED",
+                message: "缺少上传文件",
+            },
+        });
         expect(mocks.requireAccess).not.toHaveBeenCalled();
         expect(mocks.createManagedUpload).not.toHaveBeenCalled();
     });

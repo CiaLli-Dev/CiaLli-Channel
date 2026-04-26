@@ -1,13 +1,27 @@
 import type { APIContext } from "astro";
 
-import type { AppProfile, AppProfileView } from "@/types/app";
+import type {
+    AppFile,
+    AppFileLifecycle,
+    AppProfile,
+    AppProfileView,
+} from "@/types/app";
 import type { JsonObject } from "@/types/json";
 import { updateProfileUsername } from "@/server/auth/acl";
+import {
+    getSessionAccessToken,
+    invalidateSessionUserCache,
+} from "@/server/auth/session";
 import { validateDisplayName } from "@/server/auth/username";
 import { encryptBangumiAccessToken } from "@/server/bangumi/token";
 import { normalizeBangumiId } from "@/server/bangumi/username";
 import { toAppProfileView } from "@/server/profile-view";
-import { updateDirectusUser, updateOne } from "@/server/directus/client";
+import {
+    readOneById,
+    updateDirectusUser,
+    updateOne,
+} from "@/server/directus/client";
+import { AppError } from "@/server/api/errors";
 import { fail, ok } from "@/server/api/response";
 import { parseJsonBody } from "@/server/api/utils";
 import { validateBody } from "@/server/api/validate";
@@ -20,12 +34,42 @@ import { parseProfileBioField } from "@/server/api/v1/shared/parse";
 import type { AppAccess } from "@/server/api/v1/shared/types";
 import { invalidateAuthorCache } from "@/server/api/v1/shared/author-cache";
 import { invalidateOfficialSidebarCache } from "@/server/api/v1/public-data";
+import { normalizeDirectusFileId } from "@/server/api/v1/shared/file-cleanup";
 import {
     bindFileOwnerToUser,
     syncManagedFileBinding,
 } from "@/server/api/v1/me/_helpers";
+import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 
 type ProfileInput = UpdateProfileInput;
+
+type AvatarPatch = {
+    hasPatch: boolean;
+    nextFile: string | null;
+};
+
+type DirectusUserProfileFields = {
+    id: string;
+    avatar: string | null;
+    description: string | null;
+};
+
+type AvatarFileRecord = Pick<
+    AppFile,
+    | "id"
+    | "app_lifecycle"
+    | "app_owner_user_id"
+    | "app_upload_purpose"
+    | "uploaded_by"
+>;
+
+const BLOCKED_AVATAR_FILE_LIFECYCLES = new Set<AppFileLifecycle>([
+    "detached",
+    "quarantined",
+    "deleting",
+    "deleted",
+    "delete_failed",
+]);
 
 function toProfileResponse(profile: AppProfileView): JsonObject {
     const { bangumi_access_token_encrypted, ...safeProfile } = profile;
@@ -108,36 +152,168 @@ function buildProfilePatchPayload(
 }
 
 function buildDirectusUserPatchPayload(
-    body: JsonObject,
     input: ProfileInput,
+    avatarPatch: AvatarPatch,
 ): JsonObject {
     const payload: JsonObject = {};
     if (input.bio !== undefined) {
         payload.description = parseProfileBioField(input.bio);
     }
-    if (hasOwn(body, "avatar_file")) {
-        payload.avatar = input.avatar_file ?? null;
+    if (avatarPatch.hasPatch) {
+        payload.avatar = avatarPatch.nextFile;
     }
     return payload;
 }
 
-async function applyAvatarFileBindings(
+function normalizeOwnerUserId(value: unknown): string | null {
+    if (typeof value === "string") {
+        return value.trim() || null;
+    }
+    if (value && typeof value === "object") {
+        return normalizeOwnerUserId((value as { id?: unknown }).id);
+    }
+    return null;
+}
+
+function toAvatarFileInvalidError(): AppError {
+    return new AppError("AVATAR_FILE_INVALID", "头像文件不存在或不可用", 400);
+}
+
+function isOwnedByUser(file: AvatarFileRecord, userId: string): boolean {
+    const ownerIds = [
+        normalizeOwnerUserId(file.app_owner_user_id),
+        normalizeOwnerUserId(file.uploaded_by),
+    ];
+    return ownerIds.includes(userId);
+}
+
+async function loadAvatarFile(
+    fileId: string,
+): Promise<AvatarFileRecord | null> {
+    return await withServiceRepositoryContext(async () => {
+        const file = await readOneById("directus_files", fileId, {
+            fields: [
+                "id",
+                "app_lifecycle",
+                "app_owner_user_id",
+                "app_upload_purpose",
+                "uploaded_by",
+            ],
+        });
+        return (file as AvatarFileRecord | null) ?? null;
+    });
+}
+
+async function validateAvatarFileForPatch(
     body: JsonObject,
     input: ProfileInput,
+    userId: string,
+): Promise<AvatarPatch> {
+    if (!hasOwn(body, "avatar_file")) {
+        return { hasPatch: false, nextFile: null };
+    }
+    if (input.avatar_file === null || input.avatar_file === undefined) {
+        return { hasPatch: true, nextFile: null };
+    }
+
+    const nextFile = normalizeDirectusFileId(input.avatar_file);
+    if (!nextFile) {
+        throw toAvatarFileInvalidError();
+    }
+
+    const file = await loadAvatarFile(nextFile);
+    if (
+        !file ||
+        file.app_upload_purpose !== "avatar" ||
+        !isOwnedByUser(file, userId) ||
+        (file.app_lifecycle !== null &&
+            file.app_lifecycle !== undefined &&
+            BLOCKED_AVATAR_FILE_LIFECYCLES.has(file.app_lifecycle))
+    ) {
+        throw toAvatarFileInvalidError();
+    }
+
+    return { hasPatch: true, nextFile };
+}
+
+async function updateDirectusUserWithServiceAccess(
+    userId: string,
+    payload: JsonObject,
+): Promise<void> {
+    await withServiceRepositoryContext(async () => {
+        await updateDirectusUser(userId, payload);
+    });
+}
+
+async function loadDirectusUserProfileFields(
+    userId: string,
+): Promise<DirectusUserProfileFields> {
+    const user = await withServiceRepositoryContext(async () =>
+        readOneById("directus_users", userId, {
+            fields: ["id", "description", "avatar"],
+        }),
+    );
+    const id = String(user?.id ?? "").trim();
+    if (!id) {
+        throw new AppError("USER_NOT_FOUND", "用户不存在", 404);
+    }
+    return {
+        id,
+        avatar: normalizeDirectusFileId(user?.avatar),
+        description:
+            typeof user?.description === "string" ? user.description : null,
+    };
+}
+
+function assertAvatarPersisted(params: {
+    avatarPatch: AvatarPatch;
+    persistedAvatar: string | null;
+}): void {
+    if (!params.avatarPatch.hasPatch) {
+        return;
+    }
+    if (params.persistedAvatar !== params.avatarPatch.nextFile) {
+        throw new AppError(
+            "AVATAR_SAVE_FAILED",
+            "头像保存失败，请稍后重试",
+            500,
+        );
+    }
+}
+
+async function rollbackAvatarPatch(params: {
+    userId: string;
+    previousAvatarFile: string | null;
+}): Promise<void> {
+    try {
+        await updateDirectusUserWithServiceAccess(params.userId, {
+            avatar: params.previousAvatarFile,
+        });
+    } catch (error) {
+        console.error("[me/profile] rollback avatar failed", {
+            userId: params.userId,
+            error: error instanceof Error ? error.message : String(error),
+        });
+    }
+}
+
+function toAvatarSaveFailedError(error: unknown): AppError {
+    if (error instanceof AppError && error.code === "AVATAR_SAVE_FAILED") {
+        return error;
+    }
+    return new AppError("AVATAR_SAVE_FAILED", "头像保存失败，请稍后重试", 500);
+}
+
+async function applyAvatarFileBindings(
+    avatarPatch: AvatarPatch,
+    nextProfilePublic: boolean,
     access: AppAccess,
     prevAvatarFile: string | null,
 ): Promise<void> {
-    const hasAvatarFilePatch = hasOwn(body, "avatar_file");
-    const nextAvatarFile = hasAvatarFilePatch
-        ? (input.avatar_file ?? null)
-        : prevAvatarFile;
-    const nextProfilePublic =
-        input.profile_public ?? access.profile.profile_public;
-
-    if (hasAvatarFilePatch) {
+    if (avatarPatch.hasPatch) {
         await syncManagedFileBinding({
             previousFileValue: prevAvatarFile,
-            nextFileValue: nextAvatarFile,
+            nextFileValue: avatarPatch.nextFile,
             userId: access.user.id,
             visibility: nextProfilePublic ? "public" : "private",
             reference: {
@@ -146,6 +322,7 @@ async function applyAvatarFileBindings(
                 ownerField: "avatar",
                 referenceKind: "structured_field",
             },
+            strict: true,
         });
     }
 }
@@ -183,11 +360,19 @@ async function applyHeaderFileBindings(
 async function applyFileBindingsAndCleanup(
     body: JsonObject,
     input: ProfileInput,
+    avatarPatch: AvatarPatch,
     access: AppAccess,
     prevAvatarFile: string | null,
     prevHeaderFile: string | null,
 ): Promise<void> {
-    await applyAvatarFileBindings(body, input, access, prevAvatarFile);
+    const nextProfilePublic =
+        input.profile_public ?? access.profile.profile_public;
+    await applyAvatarFileBindings(
+        avatarPatch,
+        nextProfilePublic,
+        access,
+        prevAvatarFile,
+    );
     await applyHeaderFileBindings(
         body,
         input,
@@ -230,20 +415,13 @@ async function applyFileBindingsAndCleanup(
 }
 
 function buildUpdatedProfileView(params: {
-    access: AppAccess;
     updatedProfile: AppProfile;
-    input: ProfileInput;
-    body: JsonObject;
+    directusUser: DirectusUserProfileFields;
 }): AppProfileView {
-    const { access, updatedProfile, input, body } = params;
+    const { updatedProfile, directusUser } = params;
     return toAppProfileView(updatedProfile, {
-        avatar: hasOwn(body, "avatar_file")
-            ? (input.avatar_file ?? null)
-            : access.profile.avatar_file,
-        description:
-            input.bio !== undefined
-                ? parseProfileBioField(input.bio)
-                : access.profile.bio,
+        avatar: directusUser.avatar,
+        description: directusUser.description,
     });
 }
 
@@ -259,8 +437,16 @@ async function patchMyProfile(
 ): Promise<Response> {
     const body = await parseJsonBody(context.request);
     const input = validateBody(UpdateProfileSchema, body);
+    const avatarPatch = await validateAvatarFileForPatch(
+        body,
+        input,
+        access.user.id,
+    );
     const profilePayload = buildProfilePatchPayload(body, input);
-    const directusUserPayload = buildDirectusUserPatchPayload(body, input);
+    const directusUserPayload = buildDirectusUserPatchPayload(
+        input,
+        avatarPatch,
+    );
 
     if (input.username !== undefined) {
         const normalized = await updateProfileUsername(
@@ -273,8 +459,13 @@ async function patchMyProfile(
         profilePayload.display_name = validateDisplayName(input.display_name);
     }
 
-    const prevAvatarFile = access.profile.avatar_file;
+    const prevAvatarFile = normalizeDirectusFileId(access.profile.avatar_file);
     const prevHeaderFile = access.profile.header_file;
+    let directusUser: DirectusUserProfileFields = {
+        id: access.user.id,
+        avatar: prevAvatarFile,
+        description: access.profile.bio,
+    };
     const currentProfile: AppProfile = {
         id: access.profile.id,
         user_id: access.profile.user_id,
@@ -306,26 +497,54 @@ async function patchMyProfile(
               )
             : currentProfile;
     if (Object.keys(directusUserPayload).length > 0) {
-        await updateDirectusUser(access.user.id, directusUserPayload);
+        try {
+            await updateDirectusUserWithServiceAccess(
+                access.user.id,
+                directusUserPayload,
+            );
+            directusUser = await loadDirectusUserProfileFields(access.user.id);
+            assertAvatarPersisted({
+                avatarPatch,
+                persistedAvatar: directusUser.avatar,
+            });
+        } catch (error) {
+            if (avatarPatch.hasPatch) {
+                await rollbackAvatarPatch({
+                    userId: access.user.id,
+                    previousAvatarFile: prevAvatarFile,
+                });
+            }
+            throw error;
+        }
     }
 
-    await applyFileBindingsAndCleanup(
-        body,
-        input,
-        access,
-        prevAvatarFile,
-        prevHeaderFile,
-    );
+    try {
+        await applyFileBindingsAndCleanup(
+            body,
+            input,
+            avatarPatch,
+            access,
+            prevAvatarFile,
+            prevHeaderFile,
+        );
+    } catch (error) {
+        if (avatarPatch.hasPatch) {
+            await rollbackAvatarPatch({
+                userId: access.user.id,
+                previousAvatarFile: prevAvatarFile,
+            });
+        }
+        throw toAvatarSaveFailedError(error);
+    }
 
     const profileView = buildUpdatedProfileView({
-        access,
         updatedProfile,
-        input,
-        body,
+        directusUser,
     });
 
     invalidateAuthorCache(access.user.id);
     invalidateOfficialSidebarCache();
+    invalidateSessionUserCache(getSessionAccessToken(context));
     return ok({
         profile: toProfileResponse(profileView),
     });

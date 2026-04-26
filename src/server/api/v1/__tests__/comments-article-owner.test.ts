@@ -19,6 +19,9 @@ vi.mock("@/server/directus/client", () => ({
     runWithDirectusPublicAccess: vi.fn(
         async (task: () => Promise<unknown>) => await task(),
     ),
+    runWithDirectusServiceAccess: vi.fn(
+        async (task: () => Promise<unknown>) => await task(),
+    ),
     runWithDirectusUserAccess: vi.fn(
         async (_token: string, task: () => Promise<unknown>) => await task(),
     ),

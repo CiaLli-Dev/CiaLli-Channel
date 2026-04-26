@@ -9,6 +9,7 @@ import {
     renderMarkdown,
     type MarkdownRenderMode,
 } from "@/server/markdown/render";
+import { AppError } from "@/server/api/errors";
 import { fail, ok } from "@/server/api/response";
 import { parseJsonBody } from "@/server/api/utils";
 import { validateBody } from "@/server/api/validate";
@@ -22,6 +23,7 @@ import {
     readComments,
     readViewerCommentLikes,
 } from "@/server/repositories/comments/comments.repository";
+import { withServiceRepositoryContext } from "@/server/repositories/directus/scope";
 
 import { requireAccess } from "./shared/auth";
 import { buildCommentTree } from "./shared/comments";
@@ -327,32 +329,55 @@ export async function renderCommentItem<T extends Record<string, unknown>>(
     };
 }
 
+function missingParentResponse(): Response {
+    return fail("父评论不存在", 404, "COMMENT_PARENT_NOT_FOUND");
+}
+
+function shouldHideParentLookupError(error: unknown): boolean {
+    if (!(error instanceof AppError)) {
+        return false;
+    }
+    if (!error.code.startsWith("DIRECTUS_")) {
+        return false;
+    }
+    return error.status === 403 || error.status === 404;
+}
+
 export async function validateReplyParent(
     collection: CommentCollection,
     parentId: string,
     entityId: string,
     relationKey: "article_id" | "diary_id",
 ): Promise<Response | null> {
-    const parent = await readCommentById(collection, parentId);
-    const relationValue = String(
-        (parent as Record<string, unknown> | null)?.[relationKey] || "",
-    );
-    if (!parent || relationValue !== entityId) {
-        return fail("父评论不存在", 404);
-    }
+    try {
+        return await withServiceRepositoryContext(async () => {
+            const parent = await readCommentById(collection, parentId);
+            const relationValue = String(
+                (parent as Record<string, unknown> | null)?.[relationKey] || "",
+            );
+            if (!parent || relationValue !== entityId) {
+                return missingParentResponse();
+            }
 
-    const parentDepth = await resolveCommentDepth(
-        collection,
-        String(parent.id),
-    );
-    if (parentDepth === null) {
-        return fail("父评论不存在", 404);
-    }
-    if (!canCreateReplyAtDepth(parentDepth)) {
-        return fail("最多支持三级回复", 400);
-    }
+            const parentDepth = await resolveCommentDepth(
+                collection,
+                String(parent.id),
+            );
+            if (parentDepth === null) {
+                return missingParentResponse();
+            }
+            if (!canCreateReplyAtDepth(parentDepth)) {
+                return fail("最多支持三级回复", 400, "COMMENT_DEPTH_EXCEEDED");
+            }
 
-    return null;
+            return null;
+        });
+    } catch (error) {
+        if (shouldHideParentLookupError(error)) {
+            return missingParentResponse();
+        }
+        throw error;
+    }
 }
 
 async function collectDescendantCommentIds(

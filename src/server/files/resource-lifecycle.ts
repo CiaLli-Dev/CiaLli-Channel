@@ -568,6 +568,7 @@ export async function markResourceReferenceSyncJobSucceeded(params: {
 
 export const resourceLifecycle = {
     syncOwnerReferences,
+    syncOwnerReferencesStrict,
     releaseOwnerResources,
     restoreQuarantinedFiles,
 };

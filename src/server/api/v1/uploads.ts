@@ -18,7 +18,7 @@ export async function handleUploads(context: APIContext): Promise<Response> {
 
     const file = formData.get("file");
     if (!(file instanceof File)) {
-        return fail("缺少上传文件", 400);
+        return fail("缺少上传文件", 400, "UPLOAD_FILE_REQUIRED");
     }
 
     const targetFormatRaw = formData.get("target_format");
@@ -28,7 +28,7 @@ export async function handleUploads(context: APIContext): Promise<Response> {
     const folderRaw = formData.get("folder");
     const requestedTitle = typeof titleRaw === "string" ? titleRaw.trim() : "";
     if (purpose === "registration-avatar") {
-        return fail("不支持的上传用途", 400);
+        return fail("不支持的上传用途", 400, "UNSUPPORTED_UPLOAD_PURPOSE");
     }
 
     const result = await (async () => {

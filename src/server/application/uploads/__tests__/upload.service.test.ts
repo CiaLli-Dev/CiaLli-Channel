@@ -75,9 +75,42 @@ describe("upload.service", () => {
         await expect(response.json()).resolves.toMatchObject({
             ok: false,
             error: {
+                code: "UPLOAD_FILE_TOO_LARGE",
                 message: "处理后的文件过大，最大允许 1.5 MB",
             },
         });
+        expect(mocks.uploadManagedFile).not.toHaveBeenCalled();
+    });
+
+    it("rejects uploads when the original file exceeds the purpose limit", async () => {
+        const response = await createManagedUpload({
+            authorization: {
+                purpose: "avatar",
+                ownerUserId: "user-1",
+                access: createMemberAccess(),
+                accessToken: "token-1",
+            },
+            file: new File([Buffer.alloc(2 * 1024 * 1024)], "avatar.png", {
+                type: "image/png",
+            }),
+            targetFormat: "png",
+            requestedTitle: "avatar",
+        });
+
+        expect(response).toBeInstanceOf(Response);
+        if (!(response instanceof Response)) {
+            throw new Error("expected a Response");
+        }
+
+        expect(response.status).toBe(413);
+        await expect(response.json()).resolves.toMatchObject({
+            ok: false,
+            error: {
+                code: "UPLOAD_FILE_TOO_LARGE",
+                message: "文件过大，最大允许 1.5 MB",
+            },
+        });
+        expect(mocks.validateFileMagicBytes).not.toHaveBeenCalled();
         expect(mocks.uploadManagedFile).not.toHaveBeenCalled();
     });
 });

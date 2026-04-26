@@ -189,6 +189,7 @@ export async function syncManagedFileBinding(params: {
     visibility: FileReferenceVisibility;
     detachedAt?: string;
     reference?: FileReferenceContext;
+    strict?: boolean;
 }): Promise<{
     attachedFileIds: string[];
     detachedFileIds: string[];
@@ -199,7 +200,10 @@ export async function syncManagedFileBinding(params: {
         nextFileIds: [params.nextFileValue],
     });
     if (params.reference) {
-        await resourceLifecycle.syncOwnerReferences({
+        const syncOwnerReferences = params.strict
+            ? resourceLifecycle.syncOwnerReferencesStrict
+            : resourceLifecycle.syncOwnerReferences;
+        await syncOwnerReferences({
             ownerCollection: params.reference.ownerCollection,
             ownerId: params.reference.ownerId,
             ownerUserId: params.userId ?? null,

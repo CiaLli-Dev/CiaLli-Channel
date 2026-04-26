@@ -117,6 +117,7 @@ import {
     clearBlockingUserReferences,
     loadReferencedFilesByUser,
     nullifyReferencedFileOwnership,
+    nullifyRegistrationRequestAvatars,
 } from "@/server/api/v1/admin/users-helpers";
 
 const mockedRequireAdmin = vi.mocked(requireAdmin);
@@ -135,6 +136,9 @@ const mockedClearBlockingUserReferences = vi.mocked(
 const mockedLoadReferencedFilesByUser = vi.mocked(loadReferencedFilesByUser);
 const mockedNullifyReferencedFileOwnership = vi.mocked(
     nullifyReferencedFileOwnership,
+);
+const mockedNullifyRegistrationRequestAvatars = vi.mocked(
+    nullifyRegistrationRequestAvatars,
 );
 const mockedNormalizeDirectusFileId = vi.mocked(normalizeDirectusFileId);
 const mockedSyncManagedFileBinding = vi.mocked(syncManagedFileBinding);
@@ -559,7 +563,7 @@ describe("DELETE /admin/users/:id", () => {
         ]);
     });
 
-    it("先 detach 用户资料文件、清空文件归属与阻塞引用，再删除用户", async () => {
+    it("先清理阻塞引用和文件外键，删除用户后再释放用户资源", async () => {
         const actingAdmin = createDirectusUser({
             id: "admin-1",
             email: "admin@example.com",
@@ -607,7 +611,7 @@ describe("DELETE /admin/users/:id", () => {
         expect(mockedSyncManagedFileBinding).toHaveBeenCalledWith({
             previousFileValue: "file-referenced",
             nextFileValue: null,
-            userId: "user-2",
+            userId: null,
             visibility: "private",
             reference: {
                 ownerCollection: "app_user_registration_requests",
@@ -635,17 +639,76 @@ describe("DELETE /admin/users/:id", () => {
             "user-2",
         );
         expect(mockedDeleteDirectusUser).toHaveBeenCalledWith("user-2");
+        expect(mockedNullifyRegistrationRequestAvatars).toHaveBeenCalledWith([
+            { id: "request-2", avatar_file: "file-referenced" },
+        ]);
         expect(
-            mockedNullifyReferencedFileOwnership.mock.invocationCallOrder[0],
-        ).toBeLessThan(
             mockedClearBlockingUserReferences.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+            mockedNullifyReferencedFileOwnership.mock.invocationCallOrder[0],
         );
         expect(
-            mockedClearBlockingUserReferences.mock.invocationCallOrder[0],
+            mockedNullifyReferencedFileOwnership.mock.invocationCallOrder[0],
         ).toBeLessThan(mockedDeleteDirectusUser.mock.invocationCallOrder[0]);
         expect(
-            mockedReleaseOwnerResources.mock.invocationCallOrder.at(-1) ?? 0,
-        ).toBeLessThan(mockedDeleteDirectusUser.mock.invocationCallOrder[0]);
+            mockedDeleteDirectusUser.mock.invocationCallOrder[0],
+        ).toBeLessThan(mockedReleaseOwnerResources.mock.invocationCallOrder[0]);
+        expect(mockedSyncManagedFileBinding).toHaveBeenCalledWith({
+            previousFileValue: "file-referenced",
+            nextFileValue: null,
+            userId: null,
+            visibility: "private",
+            reference: {
+                ownerCollection: "app_user_registration_requests",
+                ownerId: "request-2",
+                ownerField: "avatar_file",
+                referenceKind: "structured_field",
+            },
+        });
+    });
+
+    it("阻塞引用清理失败时不提前释放 profile 或注册头像资源", async () => {
+        const actingAdmin = createDirectusUser({
+            id: "admin-1",
+            email: "admin@example.com",
+            role: {
+                id: "role-site-admin",
+                name: DIRECTUS_ROLE_NAME.siteAdmin,
+            },
+        });
+        const targetUser = createDirectusUser({ avatar: "file-avatar" });
+
+        mockedReadOneById
+            .mockResolvedValueOnce(actingAdmin as never)
+            .mockResolvedValueOnce(targetUser as never);
+        mockedReadMany
+            .mockResolvedValueOnce([
+                { id: "profile-2", header_file: "file-header" },
+            ] as never)
+            .mockResolvedValueOnce([
+                { id: "request-2", avatar_file: "file-referenced" },
+            ] as never);
+        mockedClearBlockingUserReferences.mockRejectedValueOnce(
+            new Error("cleanup failed"),
+        );
+
+        const ctx = createMockAPIContext({
+            method: "DELETE",
+            url: "http://localhost:4321/api/v1/admin/users/user-2",
+            params: {
+                segments: "admin/users/user-2",
+            },
+        });
+
+        await expect(
+            handleAdminUsers(ctx as unknown as APIContext, ["users", "user-2"]),
+        ).rejects.toThrow("cleanup failed");
+
+        expect(mockedNullifyReferencedFileOwnership).not.toHaveBeenCalled();
+        expect(mockedDeleteDirectusUser).not.toHaveBeenCalled();
+        expect(mockedReleaseOwnerResources).not.toHaveBeenCalled();
+        expect(mockedSyncManagedFileBinding).not.toHaveBeenCalled();
+        expect(mockedNullifyRegistrationRequestAvatars).not.toHaveBeenCalled();
     });
 
     it("拒绝删除内部服务账号", async () => {

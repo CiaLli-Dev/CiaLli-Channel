@@ -79,6 +79,19 @@ import {
     replacePublicRegistrationAvatar,
 } from "@/server/application/registration/public-registration.service";
 
+function validRegistrationCommand(): Parameters<
+    typeof createPublicRegistration
+>[0] {
+    return {
+        email: "user@example.com",
+        username: "user",
+        displayName: "User",
+        password: "password1",
+        registrationReason: "hello",
+        avatar: null,
+    };
+}
+
 describe("public-registration.service", () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -130,18 +143,49 @@ describe("public-registration.service", () => {
     });
 
     it("creates registration without avatar upload when avatar is absent", async () => {
-        const result = await createPublicRegistration({
-            email: "user@example.com",
-            username: "user",
-            displayName: "User",
-            password: "password1",
-            registrationReason: "hello",
-            avatar: null,
-        });
+        const result = await createPublicRegistration(
+            validRegistrationCommand(),
+        );
 
         expect(result).toMatchObject({ id: "request-1", avatar_file: null });
         expect(mocks.createManagedUpload).not.toHaveBeenCalled();
         expect(mocks.setRegistrationRequestAvatar).not.toHaveBeenCalled();
+    });
+
+    it("rejects duplicate registration email with stable conflict code", async () => {
+        mocks.registrationEmailExists.mockResolvedValue(true);
+
+        await expect(
+            createPublicRegistration(validRegistrationCommand()),
+        ).rejects.toMatchObject({
+            code: "EMAIL_EXISTS",
+            status: 409,
+        });
+        expect(mocks.createPendingRegistrationUser).not.toHaveBeenCalled();
+    });
+
+    it("rejects duplicate registration username with stable conflict code", async () => {
+        mocks.registrationUsernameExists.mockResolvedValue(true);
+
+        await expect(
+            createPublicRegistration(validRegistrationCommand()),
+        ).rejects.toMatchObject({
+            code: "USERNAME_EXISTS",
+            status: 409,
+        });
+        expect(mocks.createPendingRegistrationUser).not.toHaveBeenCalled();
+    });
+
+    it("rejects existing pending registration with stable conflict code", async () => {
+        mocks.registrationHasPendingConflict.mockResolvedValue(true);
+
+        await expect(
+            createPublicRegistration(validRegistrationCommand()),
+        ).rejects.toMatchObject({
+            code: "REGISTRATION_REQUEST_EXISTS",
+            status: 409,
+        });
+        expect(mocks.createPendingRegistrationUser).not.toHaveBeenCalled();
     });
 
     it("uploads avatar after request creation and binds it to the request", async () => {

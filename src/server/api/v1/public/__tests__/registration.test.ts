@@ -38,7 +38,10 @@ vi.mock("@/server/security/rate-limit", () => ({
     rateLimitResponse: mocks.rateLimitResponse,
 }));
 
-import { handlePublicRegistrationRequests } from "@/server/api/v1/public/registration";
+import {
+    handlePublicRegistrationCheck,
+    handlePublicRegistrationRequests,
+} from "@/server/api/v1/public/registration";
 
 const REQUEST_ID = "11111111-1111-4111-8111-111111111111";
 
@@ -154,6 +157,36 @@ describe("public registration routes", () => {
             cookieRequestId: REQUEST_ID,
             avatar: expect.any(File),
         });
+    });
+
+    it("GET /registration-check without fields returns stable error code", async () => {
+        mocks.applyRateLimit.mockResolvedValue({
+            ok: true,
+            remaining: 10,
+            resetAt: Date.now() + 60_000,
+        });
+
+        const context = makeMultipartRequestContext({
+            method: "GET",
+            url: "http://localhost:4321/api/v1/public/registration-check",
+            segments: "public/registration-check",
+        });
+
+        const response = await handlePublicRegistrationCheck(context, [
+            "public",
+            "registration-check",
+        ]);
+
+        expect(response.status).toBe(400);
+        await expect(response.json()).resolves.toMatchObject({
+            error: {
+                code: "REGISTRATION_CHECK_QUERY_REQUIRED",
+                message: "至少提供邮箱或用户名",
+            },
+        });
+        expect(
+            mocks.checkPublicRegistrationAvailability,
+        ).not.toHaveBeenCalled();
     });
 
     it("GET /registration-requests/:id/avatar streams the private avatar response", async () => {
