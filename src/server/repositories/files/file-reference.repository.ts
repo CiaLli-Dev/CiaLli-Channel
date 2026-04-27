@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import type { AppFileReference } from "@/types/app";
 import type { JsonObject } from "@/types/json";
+import { AppError } from "@/server/api/errors";
 import {
     createOne,
     deleteOne,
@@ -125,6 +126,15 @@ function toReferencePayload(
     };
 }
 
+function isDuplicateReferenceCreateError(error: unknown): boolean {
+    return (
+        error instanceof AppError &&
+        error.code === "DIRECTUS_ERROR" &&
+        error.status === 400 &&
+        error.message.includes("RECORD_NOT_UNIQUE")
+    );
+}
+
 export async function replaceOwnerFieldReferences(
     input: FileReferenceInput,
     now: Date = new Date(),
@@ -187,12 +197,24 @@ export async function replaceOwnerFieldReferences(
             nowIso,
         );
         if (!current) {
-            await withServiceRepositoryContext(async () => {
-                await createOne("app_file_references", payload, {
-                    fields: ["id"],
-                });
-            });
-            created += 1;
+            const createResult = await withServiceRepositoryContext(
+                async () => {
+                    try {
+                        await createOne("app_file_references", payload, {
+                            fields: ["id"],
+                        });
+                        return "created";
+                    } catch (error) {
+                        if (isDuplicateReferenceCreateError(error)) {
+                            return "duplicate";
+                        }
+                        throw error;
+                    }
+                },
+            );
+            if (createResult === "created") {
+                created += 1;
+            }
             continue;
         }
         if (

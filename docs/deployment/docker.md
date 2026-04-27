@@ -1,67 +1,127 @@
-# Docker 部署
+# Docker 部署与运维
 
-## 架构
+## 概览
 
-生产部署默认使用单机 `docker compose`，服务拓扑如下：
+本项目默认以单机 `docker compose` 部署，核心服务如下：
 
-- `proxy`：统一处理站点入口与 HTTPS 终止
+- `proxy`：站点入口与 HTTPS 终止
 - `web`：Astro Node 服务
-- `worker`：AI Summary Worker + File GC
+- `worker`：AI Summary Worker 与文件生命周期任务
 - `directus`：CMS 与 API
-- `postgres`：Directus 主数据库
-- `redis`：缓存、限流与分布式刷新协调
+- `postgres`：主数据库
+- `redis`：缓存、限流与协调任务
 - `minio`：对象存储
 
-当前运行时仅保留对象存储：
+运行时文件存储只有一种形态：
 
-- `s3`：新上传与历史迁移后的文件统一走 MinIO
-- 历史 local 文件已迁移完成，运行时不再挂载 local uploads 目录
+- Directus 文件统一写入 MinIO，对应 `STORAGE_LOCATIONS=s3`
+- 不挂载本地 uploads 目录，也没有 `local` 回退分支
 
-Directus 后台默认只绑定到 `127.0.0.1:8055`，不直接暴露公网。
+默认访问约定：
 
-## 准备环境变量
+- 主站由 `proxy` 对外暴露 `80/443`
+- Directus 后台仅绑定 `127.0.0.1:8055`
+- MinIO Console 仅绑定 `127.0.0.1:9001`
 
-1. 首次安装默认使用全局安装器 `cialli-install install` 自动生成根目录 `.env`，并在命令行中完成管理员引导账户创建。
-2. 手动维护 `.env` 仅用于已有环境恢复、排障或高级部署；模板文件仍以 [`.env.example`](/Users/uednd/code/CiaLli-Channel/.env.example) 为准。
-3. 同一份 `.env` 同时服务于：
-   本机脚本 / 开发调试
-   Docker Compose
-4. 容器内互联地址、PostgreSQL/MinIO 默认账号、对象存储 bucket、Directus `s3` 存储参数与 AI worker 端口都已固定在仓库配置中，不再通过 `.env` 覆写。
-5. 当前运行时要求的环境变量为：
-   `APP_PUBLIC_BASE_URL`
-   `DIRECTUS_URL`
-   `DIRECTUS_WEB_STATIC_TOKEN`
-   `DIRECTUS_WORKER_STATIC_TOKEN`
-   `APP_SECRET_ENCRYPTION_KEY`
-   `AI_SUMMARY_INTERNAL_SECRET`
-   `AI_SUMMARY_PROVIDER_TIMEOUT_MS`（可选，默认 `90000`）
-   `FILE_GC_INTERVAL_MS`（可选，默认 `900000`）
-   `FILE_GC_RETENTION_HOURS`（可选，默认 `168`）
-   `FILE_GC_QUARANTINE_DAYS`（可选，默认 `7`）
-   `FILE_GC_BATCH_SIZE`（可选，默认 `200`）
-   `FILE_GC_DELETE_MAX_ATTEMPTS`（可选，默认 `6`）
-   `FILE_DETACH_JOB_INTERVAL_MS`（可选，默认 `60000`）
-   `FILE_DETACH_JOB_BATCH_SIZE`（可选，默认 `50`）
-   `FILE_DETACH_JOB_LEASE_SECONDS`（可选，默认 `300`）
-   `FILE_LIFECYCLE_RECONCILE_INTERVAL_MS`（可选，默认 `86400000`）
-   `FILE_REFERENCE_SHADOW_INTERVAL_MS`（可选，默认 `86400000`）
-   `DIRECTUS_SECRET`
-   `POSTGRES_USER`
-   `POSTGRES_DB`
-   `POSTGRES_PASSWORD`
-   `MINIO_ROOT_USER`
-   `MINIO_ROOT_PASSWORD`
-   `STORAGE_S3_KEY`
-   `STORAGE_S3_SECRET`
-6. 安装器还会把 `DIRECTUS_ADMIN_EMAIL` 与 `DIRECTUS_ADMIN_PASSWORD` 一并写入 `.env`，用于首次安装后的后台登录与运维排障；运行时服务本身不依赖这两项。
-7. `PUBLIC_ASSET_BASE_URL` 是唯一保留的可选环境变量；留空时继续统一走站内 BFF 代理资源地址。
-8. `CADDY_ADDITIONAL_SITE_ADDRESS` 是可选的 Caddy 追加入口；生产通常留空，本地开发 override 默认使用 `http://` 以允许局域网设备通过 HTTP 访问。
-9. `pnpm check:env` 只负责校验已存在的 `.env`；首次安装所需密钥、账号名与 web / worker 静态 token 都由安装器生成并写入。
-10. `APP_PUBLIC_BASE_URL` 是站点唯一公网入口真源，同时驱动 Astro `site`、sitemap、RSS、canonical 与 Caddy 反向代理入口；它必须是站点根 URL，不支持子路径部署。
+## 环境要求
 
-## 全局安装器
+建议环境：
 
-首次部署推荐使用全局安装器：
+- 生产服务器：Linux
+- 本地验证：macOS 或 WSL
+- 不建议把原生 Windows 作为安装器执行环境
+
+所需工具：
+
+- Docker Engine
+- Docker Compose
+- Git LFS
+- Node.js `24.x`
+- `pnpm`
+
+首次安装前建议执行：
+
+```bash
+git lfs pull
+```
+
+安装器和 seed 校验都会检查 Git LFS；如果 `seed/postgres/demo.dump` 或 MinIO seed 仍是 pointer 文件，安装会直接失败。
+
+## `.env` 约定
+
+根目录 `.env` 是唯一真源，同时服务于：
+
+- 本机脚本
+- Docker Compose
+- 运维排障
+
+模板见 [`.env.example`](/Users/uednd/code/CiaLli-Channel/.env.example)。
+
+当前部署会使用以下环境变量：
+
+- `APP_PUBLIC_BASE_URL`
+- `CADDY_ADDITIONAL_SITE_ADDRESS`
+- `PUBLIC_ASSET_BASE_URL`
+- `DIRECTUS_URL`
+- `DIRECTUS_HOST_BIND`
+- `DIRECTUS_HOST_PORT`
+- `DIRECTUS_WEB_STATIC_TOKEN`
+- `DIRECTUS_WORKER_STATIC_TOKEN`
+- `DIRECTUS_SECRET`
+- `POSTGRES_USER`
+- `POSTGRES_DB`
+- `POSTGRES_PASSWORD`
+- `REDIS_URL`
+- `REDIS_HOST_BIND`
+- `REDIS_HOST_PORT`
+- `MINIO_ROOT_USER`
+- `MINIO_ROOT_PASSWORD`
+- `MINIO_CONSOLE_HOST_BIND`
+- `MINIO_CONSOLE_HOST_PORT`
+- `DIRECTUS_ADMIN_EMAIL`
+- `DIRECTUS_ADMIN_PASSWORD`
+- `STORAGE_S3_KEY`
+- `STORAGE_S3_SECRET`
+- `APP_SECRET_ENCRYPTION_KEY`
+- `AI_SUMMARY_INTERNAL_SECRET`
+- `AI_SUMMARY_PROVIDER_TIMEOUT_MS`
+- `FILE_GC_INTERVAL_MS`
+- `FILE_GC_RETENTION_HOURS`
+- `FILE_GC_QUARANTINE_DAYS`
+- `FILE_GC_BATCH_SIZE`
+- `FILE_GC_DELETE_MAX_ATTEMPTS`
+- `FILE_DETACH_JOB_INTERVAL_MS`
+- `FILE_DETACH_JOB_BATCH_SIZE`
+- `FILE_DETACH_JOB_LEASE_SECONDS`
+- `FILE_LIFECYCLE_RECONCILE_INTERVAL_MS`
+- `FILE_REFERENCE_SHADOW_INTERVAL_MS`
+- `WEB_HOST_BIND`
+- `WEB_HOST_PORT`
+
+其中：
+
+- `APP_PUBLIC_BASE_URL` 是站点唯一公开入口真源，只支持根路径 URL，不支持子路径部署
+- `DIRECTUS_URL` 与 `REDIS_URL` 主要用于宿主机脚本和本地调试
+- `DIRECTUS_WEB_STATIC_TOKEN` 与 `DIRECTUS_WORKER_STATIC_TOKEN` 分别供 `web` 与 `worker` 使用
+- `DIRECTUS_ADMIN_EMAIL` 与 `DIRECTUS_ADMIN_PASSWORD` 主要用于安装阶段与后台运维
+- `PUBLIC_ASSET_BASE_URL` 留空时，资源继续统一走 BFF 代理
+- `CADDY_ADDITIONAL_SITE_ADDRESS` 生产通常留空；本地 override 会使用 `http://`
+
+校验现有 `.env`：
+
+```bash
+pnpm check:env
+```
+
+若要强制按生产标准校验占位值与密钥长度：
+
+```bash
+CHECK_ENV_STRICT=1 pnpm check:env
+```
+
+## 推荐安装
+
+首次部署优先使用全局安装器：
 
 ```bash
 pnpm install -g . && cialli-install install --site-url https://example.com
@@ -69,18 +129,18 @@ pnpm install -g . && cialli-install install --site-url https://example.com
 
 安装器会自动完成：
 
-- 宿主机环境检查（Docker / Compose / 端口 / Git LFS / 支持的平台）
-- 先让用户选择安装器语言（当前支持 `en`、`zh_CN`、`zh_TW`、`ja`）
-- 仅要求用户输入站点公开 URL，其余账号、密码、token、secret 自动生成并写入 `.env`
-- 构建 `web` / `worker`
-- 启动基础设施与 Directus
-- 使用生成的管理员账户完成 Directus 初始化
-- 自动生成并回填 `DIRECTUS_WEB_STATIC_TOKEN` 与 `DIRECTUS_WORKER_STATIC_TOKEN`
-- 将所选语言写入站点默认语言设置
+- 检查 Docker、Compose、Git LFS、端口与支持的平台
+- 选择安装器语言，支持 `en`、`zh_CN`、`zh_TW`、`ja`
+- 生成 `.env`、基础设施账号、密钥与静态 token
+- 构建 `web` 与 `worker`
+- 启动 `postgres`、`redis`、`minio`、`directus`
+- 应用 Directus schema
+- 初始化 Directus 管理员与服务账号
+- 回填 `DIRECTUS_WEB_STATIC_TOKEN` 与 `DIRECTUS_WORKER_STATIC_TOKEN`
+- 写入站点默认语言设置
 - 启动 `web`、`worker`、`proxy`
-- 在 CLI 中按分组展示所有生成值，并提示可随时在 `.env` 查看
 
-非交互部署可显式提供参数：
+非交互安装：
 
 ```bash
 cialli-install install \
@@ -88,181 +148,180 @@ cialli-install install \
   --site-url https://example.com
 ```
 
-若通过仓库脚本调用本地安装器，可直接写：
+在仓库内直接调用本地安装器：
 
 ```bash
 pnpm install:host --reset --lang zh_CN --site-url https://example.com
 ```
 
-当前安装器也兼容部分 shell / 包管理器习惯性的参数分隔写法：
+也兼容带参数分隔符的写法：
 
 ```bash
 pnpm install:host -- --reset --lang zh_CN --site-url https://example.com
 ```
 
-如果当前目录已有 `.env`、Compose volumes 或历史容器记录，安装器默认拒绝覆盖；显式传入 `--reset` 才会清空当前 Compose 资源并重装。
+说明：
 
-本机手动 QA 建议使用 HTTP 本地入口，例如：
+- 当前目录已有 `.env`、Compose 容器或 Compose volume 时，安装器默认拒绝覆盖
+- 显式传入 `--reset` 后，安装器会执行 `docker compose down --volumes --remove-orphans` 并重新安装
+- 当 `--site-url` 指向 `localhost`、`127.0.0.1` 或其他回环地址时，安装器会把 `https://` 自动收敛为 `http://`
+
+## 本地验证与热更新
+
+本地验证推荐使用回环地址：
 
 ```bash
 pnpm install:host --reset --lang zh_CN --site-url http://localhost
 ```
 
-如果传入 `https://localhost`、`https://127.0.0.1` 或其他回环地址，安装器会自动改写为对应的 `http://` 入口，避免浏览器被本地自签证书拦截。
-
-建议在启动前先执行：
-
-```bash
-git lfs pull
-```
-
-说明：
-
-- 安装器本身会检查 Git LFS 是否可用，并在 seed 仍是 pointer 时直接报错
-- 某些已有 Git hooks 的仓库中，`git lfs install` 可能因为 `pre-push` hook 已存在而返回非零；这不影响继续执行 `git lfs pull`
-- 如确实需要补装 Git LFS hooks，请按 `git lfs update --manual` 的提示合并，或在确认会覆盖现有 hook 时显式使用 `git lfs update --force`
-
-已有 `.env` 的环境可继续手动运行校验；本地环境默认会放宽对占位值的检查。如需在 CI 或正式发版前强制按生产标准校验，可使用：
-
-```bash
-CHECK_ENV_STRICT=1 pnpm check:env
-```
-
-## 本地热更新启动
+本地热更新入口：
 
 ```bash
 pnpm docker:build
 pnpm docker:up
 ```
 
-仓库提供 [docker-compose.override.yml](/Users/uednd/code/CiaLli-Channel/docker-compose.override.yml) 作为本地开发覆盖配置。使用默认 `docker compose up` 时，`web` 会以 `pnpm dev` 运行并挂载源码，`worker` 会以 `tsx watch` 运行，代码改动会自动热更新或重启。该入口仅用于本地开发，不作为正式生产部署流程。
+默认 `docker compose up` 会自动带上 [docker-compose.override.yml](/Users/uednd/code/CiaLli-Channel/docker-compose.override.yml)：
 
-本地开发覆盖配置会让 `proxy` 额外接受任意 HTTP Host，因此同一局域网中的其他设备可通过 `http://<本机局域网IP>/` 访问主站。若容器已启动但其他设备仍无法连接，请先确认宿主机系统防火墙允许 80 端口入站。
+- `web` 以 `pnpm exec astro dev --host 0.0.0.0 --port 4321` 运行
+- `worker` 以 `pnpm exec tsx watch src/worker/ai-summary/server.ts` 运行
+- 源码会挂载进容器，代码改动会触发热更新或重启
 
-## 生产部署约定
+该入口仅用于本地开发与手动 QA，不作为生产部署流程。
 
-正式部署流程统一使用安装器。安装器内部仍基于主 [docker-compose.yml](/Users/uednd/code/CiaLli-Channel/docker-compose.yml) 启动生产服务，并自动绕过本地开发用 override 配置。
+## 生产部署
 
-## 演示种子与后台账号
+默认生产形态使用主 [docker-compose.yml](/Users/uednd/code/CiaLli-Channel/docker-compose.yml)：
 
-仓库内置的演示种子覆盖：
+- `proxy` 暴露 `80/443`
+- `web` 与 `worker` 使用构建产物运行
+- `directus` 对宿主机仅暴露回环地址
 
-- PostgreSQL 业务与 Directus 系统表
-- MinIO bucket 中的对象资源
+如果宿主机已有 nginx 或其他反向代理负责 TLS 与公网入口，不要再启用 Compose 内置 `proxy`。可使用 [docker-compose.nginx.yml](/Users/uednd/code/CiaLli-Channel/docker-compose.nginx.yml)：
 
-当前仓库的 MinIO demo seed 允许为空：
+```bash
+docker compose -f docker-compose.yml -f docker-compose.nginx.yml up -d \
+  postgres redis minio minio-init seed-postgres-restore seed-minio-restore directus web worker
+```
 
-- 当 `seed/metadata.json` 中 `minio.objectCount=0` 时，`seed/minio/demo-bucket` 缺失会被视为“空 seed”
-- 若未来 `minio.objectCount > 0`，则该目录仍必须存在并包含对应对象
+此时：
 
-恢复只会在以下条件同时成立时触发：
+- `web` 默认绑定到 `127.0.0.1:4321`
+- `proxy` 只有在显式启用 `caddy-proxy` profile 时才会启动
+- 可通过 `WEB_HOST_BIND` 与 `WEB_HOST_PORT` 调整 `web` 的宿主机回环绑定
 
-- `postgres_data` 是空库或尚未完成业务初始化
-- `minio_data` 中的目标 bucket 为空
+nginx 反代时至少需要透传以下头：
 
-若 volume 已有数据，恢复脚本会自动跳过，不会覆盖现有环境。
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:4321;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+}
+```
 
-请注意：
+同机多实例部署时，至少为每个实例分配独立的宿主机回环端口：
 
-- 当前 `seed/metadata.json` 记录的 MinIO `objectCount` 为 `1`，对应仓库中的 `seed/minio/demo-bucket/.gitkeep`
-- PostgreSQL seed 保留 `admin@example.com` 这条管理员记录以承接业务外键；安装器会在 restore 后确保该管理员存在并重置为新的随机密码
-- AI 运行时密钥、基础设施账号名与内部调用密钥都由安装器写入 `.env`
-- `APP_SECRET_ENCRYPTION_KEY` 是运行时唯一生效的通用加密密钥变量，必须提供 base64 编码的 32-byte key
-- PostgreSQL seed dump 仍通过 Git LFS 分发，部署前应先执行 `git lfs pull`
-- 如果需要重新触发演示恢复，请先删除 `postgres_data` 与 `minio_data` 对应的 Docker volume，或使用 `cialli-install install --reset`
+- `DIRECTUS_HOST_PORT`
+- `REDIS_HOST_PORT`
+- `MINIO_CONSOLE_HOST_PORT`
+- `WEB_HOST_PORT`
 
-## 访问
+## 演示 seed
 
-- 主站通过 `proxy` 对外暴露 `80/443`
-- Directus 后台仅绑定 `127.0.0.1:8055`
-- MinIO Console 仅绑定 `127.0.0.1:9001`
+仓库内置演示 seed，用于空白环境首次启动时恢复：
 
-默认本地开发栈支持通过 `http://<本机局域网IP>/` 从同一局域网访问主站；正式生产部署仍应使用 `APP_PUBLIC_BASE_URL` 对应的域名或公开 IP 作为入口。
+- PostgreSQL dump
+- MinIO bucket 对象
 
-如需访问 Directus 后台，建议使用 SSH 隧道或在服务器本机浏览器访问。
+当前恢复策略：
 
-## 升级顺序
+- `seed-postgres-restore` 仅在业务表尚未完成初始化时执行
+- `seed-minio-restore` 仅在目标 bucket 为空时执行
+- 目标环境已有数据时，恢复脚本会自动跳过，不覆盖现有内容
 
-1. 使用统一 Docker 数据包备份 PostgreSQL、Directus schema 与 MinIO 数据
-2. 应用 Directus schema 变更
-3. 重建镜像并滚动 `web` / `worker`
-4. 回归验证主站、资源代理、AI worker 与后台健康状态
+与 seed 相关的事实约束：
 
-## Docker 数据包备份与恢复
+- PostgreSQL dump 位于 `seed/postgres/demo.dump`
+- MinIO 对象目录位于 `seed/minio/demo-bucket`
+- PostgreSQL seed dump 通过 Git LFS 分发
+- `seed/metadata.json` 记录 dump 大小与 MinIO 对象数量
+- 当前仓库要求 `seed/metadata.json`、`seed/postgres/demo.dump` 与 `directus/schema/app-schema.json` 始终保持一致
 
-当前 Docker Compose 环境的数据备份使用统一 zip 包，不再分开手动处理 PostgreSQL 与 MinIO。
+如需重新触发演示恢复：
 
-导出当前环境：
+- 删除 `postgres_data` 与 `minio_data` 对应的 Docker volume 后重新启动
+- 或重新执行 `cialli-install install --reset`
+
+## 访问与排障
+
+默认访问方式：
+
+- 主站：`APP_PUBLIC_BASE_URL`
+- Directus 后台：宿主机 `127.0.0.1:8055`
+- MinIO Console：宿主机 `127.0.0.1:9001`
+
+建议：
+
+- 生产环境访问 Directus 后台时，优先使用 SSH 隧道或宿主机本地访问
+- 本地局域网调试时，可通过 `http://<本机局域网IP>/` 访问默认开发栈
+- 若其他设备无法访问本地开发栈，优先检查宿主机防火墙是否放行 `80` 端口
+
+## 备份与恢复
+
+统一数据包命令：
 
 ```bash
 pnpm docker:data:export
-```
-
-也可以指定输出路径：
-
-```bash
-pnpm docker:data:export --output backups/docker-data-20260422-153000.zip
-```
-
-zip 包固定包含：
-
-- `manifest.json`：格式版本、生成时间、源信息与强校验摘要
-- `postgres/directus.dump`：完整 PostgreSQL 自定义格式 dump
-- `directus/schema.json`：当前 Directus schema 快照
-- `minio/objects/**`：当前固定 bucket `cialli-assets` 中的全部对象
-- `minio/objects-manifest.json`：每个对象的 key、大小与 SHA-256
-
-导入前可只做离线校验，不触碰当前 Docker 环境：
-
-```bash
 pnpm docker:data:verify backups/docker-data-20260422-153000.zip
-```
-
-导入 zip 包会先自动导出当前环境作为备份，然后停止 `web`、`worker`、`directus`，覆盖恢复 PostgreSQL 与 MinIO，最后重启服务并做轻量校验：
-
-```bash
 pnpm docker:data:import backups/docker-data-20260422-153000.zip
 ```
 
-如需固定导入前备份路径：
+可选参数：
 
 ```bash
+pnpm docker:data:export --output backups/docker-data-20260422-153000.zip
 pnpm docker:data:import backups/docker-data-20260422-153000.zip --backup-output backups/before-import-20260422-153500.zip
-```
-
-如果当前环境已有外部备份，或该环境可直接丢弃，可跳过导入前自动备份并直接覆盖：
-
-```bash
 pnpm docker:data:import backups/docker-data-20260422-153000.zip --no-backup
 ```
 
-`--no-backup` 只跳过当前环境备份，仍会先校验 zip 包内的 manifest、PostgreSQL dump、Directus schema 与每个 MinIO 对象 SHA-256。
+导出包固定包含：
 
-导入采用覆盖策略：
+- `manifest.json`
+- `postgres/directus.dump`
+- `directus/schema.json`
+- `minio/objects/**`
+- `minio/objects-manifest.json`
 
-- PostgreSQL 会先重建 `public` schema，再恢复 zip 内 dump
-- MinIO 会先清空目标 bucket，再恢复 zip 内对象
-- 导入前备份默认写入 `backups/before-docker-data-import-<timestamp>.zip`
-- `--no-backup` 会直接覆盖当前数据，不会生成导入前备份，无法由脚本提供回滚包
-- 如果覆盖过程中失败，脚本会输出导入前备份路径；确认原因后可用该备份 zip 手动回滚
+恢复流程会：
 
-## 校验仓库种子
+- 先校验待导入 zip 包
+- 默认先备份当前环境
+- 停止 `web`、`worker`、`directus`
+- 覆盖恢复 PostgreSQL 与 MinIO
+- 重启服务并执行轻量校验
 
-仓库内置演示 seed 可用以下命令校验：
+`--no-backup` 只会跳过“导入前自动备份当前环境”这一步，不会跳过 zip 包自身校验。
+
+## 发布与升级建议
+
+推荐顺序：
+
+1. 执行 `pnpm docker:data:export` 备份当前环境
+2. 应用最新 Directus schema
+3. 重建并启动服务
+4. 回归验证主站、后台、资源代理与 worker
+
+常用命令：
 
 ```bash
-pnpm seed:verify
+pnpm directus:schema:apply
+pnpm docker:build
+pnpm docker:up:prod
 ```
-
-`pnpm seed:verify` 会检查：
-
-- `seed/postgres/demo.dump` 存在且不是 Git LFS pointer
-- `seed/minio/demo-bucket/**` 中的对象不是 Git LFS pointer；当 `minio.objectCount=0` 时允许该目录缺失并按空 seed 校验
-- `seed/metadata.json` 中记录的 dump 大小与对象数量与实际文件一致
-- `directus/schema/app-schema.json` 是有效的 Directus schema 快照
-- 临时还原 `seed/postgres/demo.dump` 后，不存在 `demo-admin@example.com`
-- 临时还原后不存在 `status='suspended' and email like 'disabled+%@seed.invalid'` 的占位管理员
-- 临时还原的 `directus_users.token` 全部为空
-- 临时还原的 `directus_sessions` 为空
-
-当前仓库中的 seed 已基于本地 Docker Compose 演示环境重建为干净产物，并明确不再依赖 restore 后的运行时净化步骤。

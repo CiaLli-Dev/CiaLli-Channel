@@ -102,7 +102,7 @@ services:
     image: redis:7-alpine
     command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
     ports:
-      - "127.0.0.1:6379:6379"
+      - "${REDIS_HOST_BIND:-127.0.0.1}:${REDIS_HOST_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -126,7 +126,7 @@ services:
       retries: 5
       start_period: 15s
     ports:
-      - "127.0.0.1:9001:9001"
+      - "${MINIO_CONSOLE_HOST_BIND:-127.0.0.1}:${MINIO_CONSOLE_HOST_PORT:-9001}:9001"
     volumes:
       - minio_data:/data
     restart: unless-stopped
@@ -245,7 +245,7 @@ services:
     restart: "no"
 
   directus:
-    image: directus/directus:11.10.2
+    image: directus/directus:11.15.4
     depends_on:
       postgres:
         condition: service_healthy
@@ -300,7 +300,7 @@ services:
       retries: 10
       start_period: 30s
     ports:
-      - "127.0.0.1:8055:8055"
+      - "${DIRECTUS_HOST_BIND:-127.0.0.1}:${DIRECTUS_HOST_PORT:-8055}:8055"
     volumes:
       - directus_extensions:/directus/extensions
     restart: unless-stopped

@@ -28,6 +28,7 @@ import {
     readFileReferencesByFileIds,
     replaceOwnerFieldReferences,
 } from "@/server/repositories/files/file-reference.repository";
+import { AppError } from "@/server/api/errors";
 
 const FILE_KEEP = "11111111-1111-4111-8111-111111111111";
 const FILE_NEW = "22222222-2222-4222-8222-222222222222";
@@ -132,6 +133,34 @@ describe("file-reference.repository", () => {
             updated: 1,
             deleted: 1,
             fileIds: [FILE_KEEP, FILE_NEW],
+        });
+    });
+
+    it("treats duplicate deterministic reference creates as idempotent", async () => {
+        mocks.readMany.mockResolvedValue([]);
+        mocks.createOne.mockRejectedValueOnce(
+            new AppError(
+                "DIRECTUS_ERROR",
+                '[directus/client] 创建集合 app_file_references 数据失败 (400) codes=RECORD_NOT_UNIQUE: RECORD_NOT_UNIQUE:Value "ref" for field "id" in collection "app_file_references" has to be unique.',
+                400,
+            ),
+        );
+
+        await expect(
+            replaceOwnerFieldReferences({
+                ownerCollection: "app_articles",
+                ownerId: "article-1",
+                ownerField: "body_markdown",
+                referenceKind: "markdown_asset",
+                fileIds: [FILE_NEW],
+                ownerUserId: "user-1",
+                visibility: "public",
+            }),
+        ).resolves.toMatchObject({
+            created: 0,
+            updated: 0,
+            deleted: 0,
+            fileIds: [FILE_NEW],
         });
     });
 

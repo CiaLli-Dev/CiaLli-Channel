@@ -8,6 +8,7 @@ dist
 .astro
 .vercel
 coverage
+import
 seed
 Dockerfile*
 docker-compose*.override.yml

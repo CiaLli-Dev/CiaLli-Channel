@@ -46,11 +46,19 @@ export const DIRECTUS_REFRESH_COOKIE_NAME = "cialli_directus_refresh";
 export const REMEMBER_COOKIE_NAME = "cialli_remember";
 
 function resolveCookieSecure(requestUrl?: URL): boolean {
-    if (import.meta.env.PROD) {
-        return true;
-    }
     if (requestUrl) {
         return requestUrl.protocol === "https:";
+    }
+    if (import.meta.env.PROD) {
+        const publicBaseUrl =
+            process.env.APP_PUBLIC_BASE_URL ||
+            import.meta.env.APP_PUBLIC_BASE_URL ||
+            "";
+        try {
+            return new URL(publicBaseUrl).protocol === "https:";
+        } catch {
+            return true;
+        }
     }
     return false;
 }

@@ -1,36 +1,33 @@
-# Directus Schema 迁移约定
+# Directus Schema 管理
 
 ## 目标
 
-仓库内不再把 MCP 手工改库作为唯一发布手段。Directus 数据模型变更统一进入版本控制，并跟随 Docker 部署一起发布。
+Directus 数据模型的结构变更必须进入版本控制，并与应用代码一起发布。仓库中的 schema 快照是当前结构定义的交付物，不能依赖线上手工操作作为唯一来源。
 
-当前仓库同时维护两类交付物：
-
-- 演示 seed：用于新环境首次启动时恢复演示数据与对象资源
-- schema snapshot：用于结构演进、审阅与正式环境发布
-
-两者职责不同，不能互相替代。
-
-当前仓库内的演示 seed 已经基于本地 Docker Compose 演示环境重建为干净产物。后续如果需要再次刷新 seed，应继续以运行中的演示 Docker 环境为源，但结构性变更仍应以 schema snapshot 为准。
-
-## 约定
-
-- 结构性变更以 `schema snapshot / apply` 为主
-- 数据回填、复杂转换、一次性修复可额外编写自定义 migration 脚本
-- 发布前先备份数据库，再执行 schema apply
-- 生产环境的 schema 变更必须保留仓库内快照文件
-
-当前快照默认存放路径：
+当前默认快照文件：
 
 - [directus/schema/app-schema.json](/Users/uednd/code/CiaLli-Channel/directus/schema/app-schema.json)
 
+## 基本原则
+
+- 结构变更通过 schema 快照管理
+- 代码与 schema 一起提交、一起评审、一起发布
+- 发布前先备份现有环境
+- 需要数据回填、数据修复或一次性清理时，单独编写脚本完成，不把业务数据变更混入 schema 快照
+
 ## 导出当前 Schema
+
+确保 `directus` 容器已经运行，然后执行：
 
 ```bash
 pnpm directus:schema:snapshot
 ```
 
-可通过环境变量自定义输出文件：
+默认会把当前容器内的 Directus schema 导出到：
+
+- `directus/schema/app-schema.json`
+
+如需导出到其他位置：
 
 ```bash
 DIRECTUS_SCHEMA_FILE=./directus/schema/staging.json pnpm directus:schema:snapshot
@@ -38,21 +35,54 @@ DIRECTUS_SCHEMA_FILE=./directus/schema/staging.json pnpm directus:schema:snapsho
 
 ## 应用 Schema
 
+确保 `directus` 容器已经运行，并确认目标快照文件正确后执行：
+
 ```bash
 pnpm directus:schema:apply
 ```
 
-可通过环境变量指定其他快照文件：
+如需指定其他快照文件：
 
 ```bash
 DIRECTUS_SCHEMA_FILE=./directus/schema/staging.json pnpm directus:schema:apply
 ```
 
+脚本行为以 [scripts/directus/schema.sh](/Users/uednd/code/CiaLli-Channel/scripts/directus/schema.sh) 为准：
+
+- `snapshot`：从运行中的 `directus` 容器导出 schema
+- `apply`：把本地快照写入容器后执行 `npx directus schema apply`
+
+## 日常流程
+
+推荐工作流：
+
+1. 在本地或测试环境完成 Directus 结构调整
+2. 执行 `pnpm directus:schema:snapshot`
+3. 审阅 `directus/schema/app-schema.json`
+4. 将 schema 快照与对应应用代码一起提交
+5. 发布前执行环境备份
+6. 在目标环境执行 `pnpm directus:schema:apply`
+7. 验证后台、API 与相关页面行为
+
 ## 发布建议
 
-1. 导出并审阅最新 schema 快照
-2. 提交 schema 快照与应用代码
-3. 生产发布前备份数据库
-4. 执行 `pnpm directus:schema:apply`
-5. 执行 `docker compose up -d --build`
-6. 验证主站、后台与 worker 行为
+正式发布前建议按以下顺序执行：
+
+```bash
+pnpm docker:data:export
+pnpm directus:schema:apply
+pnpm docker:build
+pnpm docker:up:prod
+```
+
+如果变更涉及：
+
+- 新增集合、字段、关系或权限策略：重点检查后台可见性与 API 返回结构
+- 文件链路：重点检查 `directus_files.storage` 仍为 `s3`
+- 站点设置或权限模型：重点检查 `web`、`worker` 的静态 token 访问路径
+
+## 注意事项
+
+- `pnpm directus:schema:snapshot` 与 `pnpm directus:schema:apply` 都依赖运行中的 `directus` 容器
+- 快照文件缺失时，`pnpm directus:schema:apply` 会直接失败
+- Schema 快照只描述结构，不替代演示 seed、备份包或业务数据初始化

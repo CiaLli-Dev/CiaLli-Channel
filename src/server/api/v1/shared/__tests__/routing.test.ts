@@ -79,6 +79,34 @@ describe("assertSameOrigin", () => {
         expect(assertSameOrigin(context as unknown as APIContext)).toBeNull();
     });
 
+    it("接受反向代理保留的 Host 头作为外部来源回退", () => {
+        const context = createMockAPIContext({
+            method: "POST",
+            url: "http://web:4321/api/v1/me/articles",
+            headers: {
+                origin: "https://www.ciallichannel.com",
+                host: "www.ciallichannel.com",
+                "x-forwarded-proto": "https",
+            },
+        });
+
+        expect(assertSameOrigin(context as unknown as APIContext)).toBeNull();
+    });
+
+    it("接受标准 Forwarded 头透传的外部来源", () => {
+        const context = createMockAPIContext({
+            method: "POST",
+            url: "http://web:4321/api/v1/me/articles",
+            headers: {
+                origin: "https://demo.ciallichannel.com",
+                forwarded:
+                    'for=203.0.113.10;proto=https;host="demo.ciallichannel.com"',
+            },
+        });
+
+        expect(assertSameOrigin(context as unknown as APIContext)).toBeNull();
+    });
+
     it("拒绝未知来源", async () => {
         const context = createMockAPIContext({
             method: "POST",

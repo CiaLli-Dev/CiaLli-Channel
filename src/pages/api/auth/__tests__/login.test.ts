@@ -222,6 +222,41 @@ describe("/api/auth/login rate limit", () => {
         expect(mockedDirectusLogin).toHaveBeenCalledTimes(1);
     });
 
+    it("accepts reverse-proxy host fallback when forwarded host is absent", async () => {
+        mockedApplyRateLimit
+            .mockResolvedValueOnce({
+                ok: true,
+                remaining: 9,
+                resetAt: Date.now() + 5 * 60 * 1000,
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                remaining: 8,
+                resetAt: Date.now() + 5 * 60 * 1000,
+            });
+
+        const response = await POST(
+            makeContext(
+                {
+                    email: "cialichannel@example.com",
+                    password: "admin",
+                },
+                {
+                    url: "http://web:4321/api/auth/login",
+                    headers: {
+                        origin: "https://www.ciallichannel.com",
+                        host: "www.ciallichannel.com",
+                        "x-forwarded-proto": "https",
+                    },
+                },
+            ),
+        );
+
+        expect(response.status).toBe(200);
+        expect(mockedApplyRateLimit).toHaveBeenCalledTimes(2);
+        expect(mockedDirectusLogin).toHaveBeenCalledTimes(1);
+    });
+
     it("returns 403 for unknown origin before rate limit and login", async () => {
         const response = await POST(
             makeContext(

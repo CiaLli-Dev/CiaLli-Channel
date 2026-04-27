@@ -1,0 +1,8 @@
+services:
+  proxy:
+    profiles:
+      - caddy-proxy
+
+  web:
+    ports:
+      - "${WEB_HOST_BIND:-127.0.0.1}:${WEB_HOST_PORT:-4321}:4321"

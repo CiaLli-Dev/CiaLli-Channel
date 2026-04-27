@@ -1,7 +1,7 @@
 {
   "name": "@cialli-dev/cialli-channel",
   "type": "module",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "bin": {
     "cialli-install": "./scripts/install/cli.mjs"
   },
