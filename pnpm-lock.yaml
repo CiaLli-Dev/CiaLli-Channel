@@ -24,8 +24,8 @@ importers:
         specifier: ^8.0.5
         version: 8.0.5(@types/node@24.12.2)(astro@6.1.9(@types/node@24.12.2)(@upstash/redis@1.37.0)(@vercel/functions@3.4.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.60.2)(sass@1.80.4)(stylus@0.64.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.80.4)(stylus@0.64.0)(svelte@5.55.5(@typescript-eslint/types@8.59.0))(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
       '@directus/sdk':
-        specifier: ^21.2.2
-        version: 21.2.2
+        specifier: ^21.3.0
+        version: 21.3.0
       '@expressive-code/core':
         specifier: ^0.41.7
         version: 0.41.7
@@ -415,8 +415,8 @@ packages:
     resolution: {integrity: sha512-Nqem9BsvvGyVtAa69mGPtoMoMVkZxdIREdsWvvTzNF4/1XqaFfEiFL7PhtUNfc46/Nufus2+QUKYQbNiAWe3ZA==}
     engines: {node: '>=22'}
 
-  '@directus/sdk@21.2.2':
-    resolution: {integrity: sha512-T8UhDG+GY534AqvLpRmycLYZmIYIaUYzu25X3WeUjWuxCvqAiKqXbYUrTRb0A5Mw93vUeVuyqabzvLbBY9AXxQ==}
+  '@directus/sdk@21.3.0':
+    resolution: {integrity: sha512-ozK2OmlaBiCuP5RuL046CaGGqEnlOdl4Rg690qaOgbC0C45XnDZVeBlb+NDLTUqEj88iSX8Cv74G3qh0L2i7Yw==}
     engines: {node: '>=22'}
 
   '@emmetio/abbreviation@2.3.3':
@@ -4388,7 +4388,7 @@ snapshots:
 
   '@directus/sdk@19.1.0': {}
 
-  '@directus/sdk@21.2.2': {}
+  '@directus/sdk@21.3.0': {}
 
   '@emmetio/abbreviation@2.3.3':
     dependencies:
